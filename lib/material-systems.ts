@@ -1,5 +1,12 @@
 /** أنظمة الخامات: قطاعات · اكسسوار · زجاج · حديد */
 
+import {
+  deductToFormula,
+  ensureEqualsPrefix,
+  evaluateFormula,
+  validateFormula,
+} from "@/lib/excel-formula";
+
 export type MaterialCategory = "profiles" | "accessories" | "glass" | "iron";
 
 /** دور العود داخل نظام القطاعات */
@@ -49,23 +56,18 @@ export type ProfilePiece = {
 };
 
 /**
- * التخصيمات بالمليمتر.
- * الحلق = مقاس الفتحة − تخصيم الحلق
- * الضلفة = مقاس الحلق − تخصيم الضلفة
+ * معادلات التخصيم (صيغة إكسل).
+ * متغيرات: W عرض الفتحة، H ارتفاع الفتحة، FW عرض الحلق، FH ارتفاع الحلق.
+ * مثال: =W   |   =W-10   |   =FW-2*5   |   =MAX(H-20,0)
  */
+export type ProfileAxisFormulas = {
+  width: string;
+  height: string;
+};
+
 export type ProfileDeductions = {
-  frame: {
-    /** خصم من العرض: عرض الحلق = عرض الفتحة − القيمة */
-    widthMm: number;
-    /** خصم من الارتفاع: ارتفاع الحلق = ارتفاع الفتحة − القيمة */
-    heightMm: number;
-  };
-  sash: {
-    /** خصم من العرض: عرض الضلفة = عرض الحلق − القيمة */
-    widthMm: number;
-    /** خصم من الارتفاع: ارتفاع الضلفة = ارتفاع الحلق − القيمة */
-    heightMm: number;
-  };
+  frame: ProfileAxisFormulas;
+  sash: ProfileAxisFormulas;
 };
 
 export type ProfileSystemDetails = {
@@ -133,8 +135,8 @@ export function getCategoryMeta(id: MaterialCategory) {
 
 export function defaultDeductions(): ProfileDeductions {
   return {
-    frame: { widthMm: 0, heightMm: 0 },
-    sash: { widthMm: 10, heightMm: 10 },
+    frame: { width: "=W", height: "=H" },
+    sash: { width: "=FW-10", height: "=FH-10" },
   };
 }
 
@@ -223,8 +225,8 @@ export function getDefaultCatalog(): MaterialCatalog {
             },
           ],
           deductions: {
-            frame: { widthMm: 0, heightMm: 0 },
-            sash: { widthMm: 10, heightMm: 10 },
+            frame: { width: "=W", height: "=H" },
+            sash: { width: "=FW-10", height: "=FH-10" },
           },
         },
       }),
@@ -264,8 +266,8 @@ export function getDefaultCatalog(): MaterialCatalog {
             },
           ],
           deductions: {
-            frame: { widthMm: 0, heightMm: 0 },
-            sash: { widthMm: 40, heightMm: 60 },
+            frame: { width: "=W", height: "=H" },
+            sash: { width: "=FW-40", height: "=FH-60" },
           },
         },
       }),
@@ -346,17 +348,49 @@ function normalizePiece(raw: unknown): ProfilePiece | null {
   };
 }
 
-function normalizeAxis(
+function normalizeFormulaField(
   raw: unknown,
-  fallback: { widthMm: number; heightMm: number }
-): { widthMm: number; heightMm: number } {
+  legacyDeduct: unknown,
+  baseVar: "W" | "H" | "FW" | "FH",
+  fallback: string
+): string {
+  if (typeof raw === "string" && raw.trim()) {
+    const formula = ensureEqualsPrefix(raw);
+    const check = validateFormula(formula);
+    return check.ok ? formula : fallback;
+  }
+  if (typeof legacyDeduct === "number" && Number.isFinite(legacyDeduct)) {
+    return deductToFormula(baseVar, legacyDeduct);
+  }
+  if (typeof legacyDeduct === "string" && legacyDeduct.trim() !== "") {
+    const n = Number(legacyDeduct);
+    if (Number.isFinite(n)) return deductToFormula(baseVar, n);
+  }
+  return fallback;
+}
+
+function normalizeAxisFormulas(
+  raw: unknown,
+  fallback: ProfileAxisFormulas,
+  kind: "frame" | "sash"
+): ProfileAxisFormulas {
   if (!raw || typeof raw !== "object") return { ...fallback };
   const a = raw as Record<string, unknown>;
-  const w = Number(a.widthMm);
-  const h = Number(a.heightMm);
+  const widthBase = kind === "frame" ? "W" : "FW";
+  const heightBase = kind === "frame" ? "H" : "FH";
   return {
-    widthMm: Number.isFinite(w) && w >= 0 ? w : fallback.widthMm,
-    heightMm: Number.isFinite(h) && h >= 0 ? h : fallback.heightMm,
+    width: normalizeFormulaField(
+      a.width ?? a.widthFormula,
+      a.widthMm,
+      widthBase,
+      fallback.width
+    ),
+    height: normalizeFormulaField(
+      a.height ?? a.heightFormula,
+      a.heightMm,
+      heightBase,
+      fallback.height
+    ),
   };
 }
 
@@ -380,8 +414,16 @@ function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
   return {
     pieces: pieces.length > 0 ? pieces : fallback.pieces,
     deductions: {
-      frame: normalizeAxis(deductionsRaw.frame, fallback.deductions.frame),
-      sash: normalizeAxis(deductionsRaw.sash, fallback.deductions.sash),
+      frame: normalizeAxisFormulas(
+        deductionsRaw.frame,
+        fallback.deductions.frame,
+        "frame"
+      ),
+      sash: normalizeAxisFormulas(
+        deductionsRaw.sash,
+        fallback.deductions.sash,
+        "sash"
+      ),
     },
   };
 }
@@ -607,50 +649,79 @@ export type CutSizes = {
   sashWidthMm: number;
   sashHeightMm: number;
   deductions: ProfileDeductions;
+  errors: {
+    frameWidth?: string;
+    frameHeight?: string;
+    sashWidth?: string;
+    sashHeight?: string;
+  };
 };
+
+function evalCut(
+  formula: string,
+  vars: Record<string, number>
+): { value: number; error?: string } {
+  const result = evaluateFormula(formula, vars);
+  if (!result.ok) return { value: 0, error: result.error };
+  return { value: Math.max(0, Math.round(result.value * 1000) / 1000) };
+}
 
 export function calcCutSizes(
   openingWidthMm: number,
   openingHeightMm: number,
   deductions: ProfileDeductions
 ): CutSizes {
-  const frameWidthMm = Math.max(0, openingWidthMm - deductions.frame.widthMm);
-  const frameHeightMm = Math.max(
-    0,
-    openingHeightMm - deductions.frame.heightMm
-  );
-  const sashWidthMm = Math.max(0, frameWidthMm - deductions.sash.widthMm);
-  const sashHeightMm = Math.max(0, frameHeightMm - deductions.sash.heightMm);
+  const base = {
+    W: openingWidthMm,
+    H: openingHeightMm,
+    FW: openingWidthMm,
+    FH: openingHeightMm,
+  };
+
+  const frameW = evalCut(deductions.frame.width, base);
+  const frameH = evalCut(deductions.frame.height, base);
+
+  const withFrame = {
+    ...base,
+    FW: frameW.value,
+    FH: frameH.value,
+  };
+
+  const sashW = evalCut(deductions.sash.width, withFrame);
+  const sashH = evalCut(deductions.sash.height, withFrame);
+
   return {
     openingWidthMm,
     openingHeightMm,
-    frameWidthMm,
-    frameHeightMm,
-    sashWidthMm,
-    sashHeightMm,
+    frameWidthMm: frameW.value,
+    frameHeightMm: frameH.value,
+    sashWidthMm: sashW.value,
+    sashHeightMm: sashH.value,
     deductions,
+    errors: {
+      frameWidth: frameW.error,
+      frameHeight: frameH.error,
+      sashWidth: sashW.error,
+      sashHeight: sashH.error,
+    },
   };
 }
 
 /** نصوص معادلات التخصيم للعرض */
 export function frameWidthFormula(d: ProfileDeductions): string {
-  if (d.frame.widthMm <= 0) return "عرض الحلق = عرض الفتحة";
-  return `عرض الحلق = عرض الفتحة − ${d.frame.widthMm} مم`;
+  return `عرض الحلق ${ensureEqualsPrefix(d.frame.width)}`;
 }
 
 export function frameHeightFormula(d: ProfileDeductions): string {
-  if (d.frame.heightMm <= 0) return "ارتفاع الحلق = ارتفاع الفتحة";
-  return `ارتفاع الحلق = ارتفاع الفتحة − ${d.frame.heightMm} مم`;
+  return `ارتفاع الحلق ${ensureEqualsPrefix(d.frame.height)}`;
 }
 
 export function sashWidthFormula(d: ProfileDeductions): string {
-  if (d.sash.widthMm <= 0) return "عرض الضلفة = عرض الحلق";
-  return `عرض الضلفة = عرض الحلق − ${d.sash.widthMm} مم`;
+  return `عرض الضلفة ${ensureEqualsPrefix(d.sash.width)}`;
 }
 
 export function sashHeightFormula(d: ProfileDeductions): string {
-  if (d.sash.heightMm <= 0) return "ارتفاع الضلفة = ارتفاع الحلق";
-  return `ارتفاع الضلفة = ارتفاع الحلق − ${d.sash.heightMm} مم`;
+  return `ارتفاع الضلفة ${ensureEqualsPrefix(d.sash.height)}`;
 }
 
 export function formatBarLength(m: number): string {

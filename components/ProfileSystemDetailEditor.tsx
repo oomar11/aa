@@ -30,6 +30,11 @@ import {
   type ProfilePieceRole,
   type ProfileSystemDetails,
 } from "@/lib/material-systems";
+import {
+  FORMULA_VAR_HELP,
+  ensureEqualsPrefix,
+  validateFormula,
+} from "@/lib/excel-formula";
 
 type Props = {
   systemId: string;
@@ -153,8 +158,19 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
 
   function saveDeductions(e: FormEvent) {
     e.preventDefault();
-    persistProfile(pieces, deductions);
-    showFlash("تم حفظ التخصيمات");
+    const normalized: ProfileDeductions = {
+      frame: {
+        width: ensureEqualsPrefix(deductions.frame.width),
+        height: ensureEqualsPrefix(deductions.frame.height),
+      },
+      sash: {
+        width: ensureEqualsPrefix(deductions.sash.width),
+        height: ensureEqualsPrefix(deductions.sash.height),
+      },
+    };
+    setDeductions(normalized);
+    persistProfile(pieces, normalized);
+    showFlash("تم حفظ المعادلات");
   }
 
   function openNewPiece() {
@@ -425,59 +441,48 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         )}
       </section>
 
-      {/* التخصيمات */}
+      {/* التخصيمات — معادلات إكسل */}
       <form
         onSubmit={saveDeductions}
         className="space-y-3 rounded-2xl border border-border bg-card p-3"
       >
         <div>
-          <h3 className="text-xs font-bold text-foreground">التخصيمات</h3>
-          <p className="mt-0.5 text-[11px] text-muted">
-            بالمليمتر — بتتحسب من مقاس الفتحة للحلق، ومن الحلق للضلفة
+          <h3 className="text-xs font-bold text-foreground">
+            معادلات التخصيم (زي إكسل)
+          </h3>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+            اكتب أي معادلة بحرية. المتغيرات:{" "}
+            {FORMULA_VAR_HELP.map((v) => v.key).join(" · ")}. دوال: MIN MAX ABS
+            ROUND FLOOR CEIL IF. مثال:{" "}
+            <span className="font-mono text-foreground">=W-2*60</span>
           </p>
         </div>
 
         <div className="rounded-xl border border-border bg-background p-3">
           <p className="mb-2 text-[11px] font-bold text-primary">الحلق</p>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block text-[11px] text-muted">
-              تخصيم العرض (مم)
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={deductions.frame.widthMm}
-                onChange={(e) =>
-                  setDeductions((d) => ({
-                    ...d,
-                    frame: {
-                      ...d.frame,
-                      widthMm: Math.max(0, Number(e.target.value) || 0),
-                    },
-                  }))
-                }
-                className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
-              />
-            </label>
-            <label className="block text-[11px] text-muted">
-              تخصيم الارتفاع (مم)
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={deductions.frame.heightMm}
-                onChange={(e) =>
-                  setDeductions((d) => ({
-                    ...d,
-                    frame: {
-                      ...d.frame,
-                      heightMm: Math.max(0, Number(e.target.value) || 0),
-                    },
-                  }))
-                }
-                className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
-              />
-            </label>
+          <div className="space-y-2.5">
+            <FormulaField
+              label="عرض الحلق"
+              value={deductions.frame.width}
+              onChange={(width) =>
+                setDeductions((d) => ({
+                  ...d,
+                  frame: { ...d.frame, width },
+                }))
+              }
+              hint="مثال: =W أو =W-10"
+            />
+            <FormulaField
+              label="ارتفاع الحلق"
+              value={deductions.frame.height}
+              onChange={(height) =>
+                setDeductions((d) => ({
+                  ...d,
+                  frame: { ...d.frame, height },
+                }))
+              }
+              hint="مثال: =H أو =H-5"
+            />
           </div>
           <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
             <p>{frameWidthFormula(deductions)}</p>
@@ -487,45 +492,29 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
 
         <div className="rounded-xl border border-border bg-background p-3">
           <p className="mb-2 text-[11px] font-bold text-primary">الضلفة</p>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block text-[11px] text-muted">
-              تخصيم العرض (مم)
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={deductions.sash.widthMm}
-                onChange={(e) =>
-                  setDeductions((d) => ({
-                    ...d,
-                    sash: {
-                      ...d.sash,
-                      widthMm: Math.max(0, Number(e.target.value) || 0),
-                    },
-                  }))
-                }
-                className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
-              />
-            </label>
-            <label className="block text-[11px] text-muted">
-              تخصيم الارتفاع (مم)
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={deductions.sash.heightMm}
-                onChange={(e) =>
-                  setDeductions((d) => ({
-                    ...d,
-                    sash: {
-                      ...d.sash,
-                      heightMm: Math.max(0, Number(e.target.value) || 0),
-                    },
-                  }))
-                }
-                className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
-              />
-            </label>
+          <div className="space-y-2.5">
+            <FormulaField
+              label="عرض الضلفة"
+              value={deductions.sash.width}
+              onChange={(width) =>
+                setDeductions((d) => ({
+                  ...d,
+                  sash: { ...d.sash, width },
+                }))
+              }
+              hint="مثال: =FW-10 أو =W-70"
+            />
+            <FormulaField
+              label="ارتفاع الضلفة"
+              value={deductions.sash.height}
+              onChange={(height) =>
+                setDeductions((d) => ({
+                  ...d,
+                  sash: { ...d.sash, height },
+                }))
+              }
+              hint="مثال: =FH-10 أو =H-2*35"
+            />
           </div>
           <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
             <p>{sashWidthFormula(deductions)}</p>
@@ -533,11 +522,20 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           </div>
         </div>
 
+        <div className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-2 text-[10px] leading-relaxed text-muted">
+          <p className="font-semibold text-foreground">المتغيرات</p>
+          {FORMULA_VAR_HELP.map((v) => (
+            <p key={v.key}>
+              <span className="font-mono text-primary">{v.key}</span> — {v.label}
+            </p>
+          ))}
+        </div>
+
         <button
           type="submit"
           className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
         >
-          حفظ التخصيمات
+          حفظ المعادلات
         </button>
       </form>
 
@@ -546,7 +544,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         <h3 className="text-xs font-bold text-foreground">معاينة على مقاس</h3>
         <div className="grid grid-cols-2 gap-2">
           <label className="block text-[11px] text-muted">
-            عرض الفتحة (مم)
+            عرض الفتحة W (مم)
             <input
               type="number"
               min={0}
@@ -556,7 +554,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
             />
           </label>
           <label className="block text-[11px] text-muted">
-            ارتفاع الفتحة (مم)
+            ارتفاع الفتحة H (مم)
             <input
               type="number"
               min={0}
@@ -584,10 +582,14 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
               الحلق
             </span>
             <span className="px-2 py-2.5 font-semibold text-primary">
-              {previewCuts.frameWidthMm}
+              {previewCuts.errors.frameWidth
+                ? "!"
+                : previewCuts.frameWidthMm}
             </span>
             <span className="px-2 py-2.5 font-semibold text-primary">
-              {previewCuts.frameHeightMm}
+              {previewCuts.errors.frameHeight
+                ? "!"
+                : previewCuts.frameHeightMm}
             </span>
           </div>
           <div className="grid grid-cols-3 text-center tabular-nums">
@@ -595,13 +597,29 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
               الضلفة
             </span>
             <span className="px-2 py-2.5 font-semibold text-primary">
-              {previewCuts.sashWidthMm}
+              {previewCuts.errors.sashWidth ? "!" : previewCuts.sashWidthMm}
             </span>
             <span className="px-2 py-2.5 font-semibold text-primary">
-              {previewCuts.sashHeightMm}
+              {previewCuts.errors.sashHeight ? "!" : previewCuts.sashHeightMm}
             </span>
           </div>
         </div>
+        {Object.values(previewCuts.errors).some(Boolean) ? (
+          <ul className="space-y-0.5 text-[11px] text-red-600">
+            {previewCuts.errors.frameWidth ? (
+              <li>عرض الحلق: {previewCuts.errors.frameWidth}</li>
+            ) : null}
+            {previewCuts.errors.frameHeight ? (
+              <li>ارتفاع الحلق: {previewCuts.errors.frameHeight}</li>
+            ) : null}
+            {previewCuts.errors.sashWidth ? (
+              <li>عرض الضلفة: {previewCuts.errors.sashWidth}</li>
+            ) : null}
+            {previewCuts.errors.sashHeight ? (
+              <li>ارتفاع الضلفة: {previewCuts.errors.sashHeight}</li>
+            ) : null}
+          </ul>
+        ) : null}
       </section>
 
       <Link
@@ -611,5 +629,40 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         ← رجوع للقطاعات
       </Link>
     </div>
+  );
+}
+
+function FormulaField({
+  label,
+  value,
+  onChange,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  hint?: string;
+}) {
+  const check = validateFormula(value || "=");
+  return (
+    <label className="block text-[11px] text-muted">
+      {label}
+      <input
+        type="text"
+        dir="ltr"
+        spellCheck={false}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => onChange(ensureEqualsPrefix(value))}
+        placeholder="=W-10"
+        className={`mt-1 w-full rounded-xl border bg-card px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary ${
+          check.ok ? "border-border" : "border-red-400"
+        }`}
+      />
+      {hint ? <p className="mt-0.5 text-[10px] text-muted">{hint}</p> : null}
+      {!check.ok ? (
+        <p className="mt-0.5 text-[10px] text-red-600">{check.error}</p>
+      ) : null}
+    </label>
   );
 }

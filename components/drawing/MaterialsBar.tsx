@@ -223,10 +223,10 @@ function ProfileCutsPanel({
       ) : null}
 
       <div className="mt-2 grid gap-1 text-[11px] leading-relaxed text-muted">
-        <p>{frameWidthFormula(profile.deductions)}</p>
-        <p>{frameHeightFormula(profile.deductions)}</p>
-        <p>{sashWidthFormula(profile.deductions)}</p>
-        <p>{sashHeightFormula(profile.deductions)}</p>
+        <p className="font-mono">{frameWidthFormula(profile.deductions)}</p>
+        <p className="font-mono">{frameHeightFormula(profile.deductions)}</p>
+        <p className="font-mono">{sashWidthFormula(profile.deductions)}</p>
+        <p className="font-mono">{sashHeightFormula(profile.deductions)}</p>
       </div>
 
       {cuts ? (
@@ -239,19 +239,19 @@ function ProfileCutsPanel({
           <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
             <span className="px-2 py-1.5 text-start font-medium">الحلق</span>
             <span className="px-2 py-1.5 font-semibold text-primary">
-              {cuts.frameWidthMm} مم
+              {cuts.errors.frameWidth ? "خطأ" : `${cuts.frameWidthMm} مم`}
             </span>
             <span className="px-2 py-1.5 font-semibold text-primary">
-              {cuts.frameHeightMm} مم
+              {cuts.errors.frameHeight ? "خطأ" : `${cuts.frameHeightMm} مم`}
             </span>
           </div>
           <div className="grid grid-cols-3 text-center tabular-nums">
             <span className="px-2 py-1.5 text-start font-medium">الضلفة</span>
             <span className="px-2 py-1.5 font-semibold text-primary">
-              {cuts.sashWidthMm} مم
+              {cuts.errors.sashWidth ? "خطأ" : `${cuts.sashWidthMm} مم`}
             </span>
             <span className="px-2 py-1.5 font-semibold text-primary">
-              {cuts.sashHeightMm} مم
+              {cuts.errors.sashHeight ? "خطأ" : `${cuts.sashHeightMm} مم`}
             </span>
           </div>
         </div>
