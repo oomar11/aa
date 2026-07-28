@@ -62,6 +62,11 @@ const tools: ToolDef[] = [
     icon: <IconTilt />,
   },
   {
+    id: "tilt-inverted",
+    label: "قلاب معكوس",
+    icon: <IconTiltInverted />,
+  },
+  {
     id: "tilt-turn",
     label: "قلب وضلفة",
     icon: <IconTiltTurn />,
@@ -207,6 +212,15 @@ function IconTilt() {
     <Svg>
       <rect x="6" y="5" width="20" height="22" rx="1" />
       <path d="M8 24 L16 10 L24 24" />
+    </Svg>
+  );
+}
+
+function IconTiltInverted() {
+  return (
+    <Svg>
+      <rect x="6" y="5" width="20" height="22" rx="1" />
+      <path d="M8 10 L16 24 L24 10" />
     </Svg>
   );
 }

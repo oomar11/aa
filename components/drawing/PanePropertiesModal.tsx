@@ -39,6 +39,7 @@ const GRIDS: { id: PaneGrid; label: string }[] = [
 const OPENINGS: { id: PaneOpening; label: string }[] = [
   { id: "sliding-right", label: "سحاب يمين" },
   { id: "tilt", label: "قلاب" },
+  { id: "tilt-inverted", label: "قلاب معكوس" },
   { id: "sliding-left", label: "سحاب يسار" },
   { id: "fixed", label: "ثابت" },
   { id: "exhaust", label: "شفاط" },
@@ -543,6 +544,9 @@ function OpeningIcon({ type }: { type: PaneOpening }) {
       )}
       {type === "tilt" && (
         <path d="M8 32 L20 8 L32 32" stroke={s} strokeWidth="1.6" />
+      )}
+      {type === "tilt-inverted" && (
+        <path d="M8 8 L20 32 L32 8" stroke={s} strokeWidth="1.6" />
       )}
       {type === "casement-left" && (
         <path d="M32 8 L8 20 L32 32" stroke={s} strokeWidth="1.6" />

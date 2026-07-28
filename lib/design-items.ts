@@ -22,6 +22,7 @@ export type PaneOpening =
   | "casement-left"
   | "casement-right"
   | "tilt"
+  | "tilt-inverted"
   | "tilt-turn"
   | "tilt-turn-left"
   | "sliding-left"
