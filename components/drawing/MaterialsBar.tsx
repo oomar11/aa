@@ -57,40 +57,40 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
       className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
       aria-label="حساب الخامات"
     >
-      <div className="flex items-center justify-between border-b border-border bg-primary-soft/60 px-3 py-1.5">
-        <p className="text-[11px] font-semibold text-primary">حساب الخامات</p>
-        <p className="truncate text-[11px] text-muted">{partLabel}</p>
+      <div className="flex items-center justify-between border-b border-border bg-primary-soft/60 px-3 py-2">
+        <p className="text-xs font-semibold text-primary">حساب الخامات</p>
+        <p className="truncate text-xs text-muted">{partLabel}</p>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[520px] border-collapse text-center">
+        <table className="w-full min-w-[560px] border-collapse text-center">
           <thead>
-            <tr className="border-b border-border text-[10px] font-semibold uppercase tracking-wide text-muted">
-              <th className="px-2 py-1.5 text-start font-semibold normal-case">
+            <tr className="border-b border-border text-[11px] font-semibold text-muted">
+              <th className="px-2.5 py-2 text-start font-semibold">
                 الجزء
               </th>
               {cells.map((c) => (
-                <th key={c.key} className="px-2 py-1.5 font-semibold normal-case">
+                <th key={c.key} className="px-2.5 py-2 font-semibold">
                   {c.label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            <tr className="text-[12px]">
-              <td className="px-2 py-2 text-start font-semibold text-foreground">
+            <tr className="text-[13px]">
+              <td className="px-2.5 py-2.5 text-start font-semibold text-foreground">
                 {partLabel}
               </td>
               {cells.map((c) => (
                 <td
                   key={c.key}
-                  className={`px-2 py-2 tabular-nums ${
+                  className={`px-2.5 py-2.5 tabular-nums ${
                     c.accent ? "font-bold text-primary" : "font-medium text-foreground"
                   }`}
                 >
                   <div>{c.value}</div>
                   {c.hint ? (
-                    <div className="mt-0.5 text-[9px] font-normal text-muted">
+                    <div className="mt-0.5 text-[10px] font-normal text-muted">
                       {c.hint}
                     </div>
                   ) : null}
@@ -98,12 +98,12 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
               ))}
             </tr>
             {(materials.mullionFrameM > 0 || materials.mullionSashM > 0) && (
-              <tr className="border-t border-border/80 bg-background/50 text-[11px] text-muted">
-                <td className="px-2 py-1.5 text-start">تفاصيل السوقاس</td>
-                <td className="px-2 py-1.5" colSpan={2}>
+              <tr className="border-t border-border/80 bg-background/50 text-xs text-muted">
+                <td className="px-2.5 py-2 text-start">تفاصيل السوقاس</td>
+                <td className="px-2.5 py-2" colSpan={2}>
                   يقسم الحلق: {formatMeters(materials.mullionFrameM)}
                 </td>
-                <td className="px-2 py-1.5" colSpan={3}>
+                <td className="px-2.5 py-2" colSpan={3}>
                   يقسم الضلفة: {formatMeters(materials.mullionSashM)}
                 </td>
               </tr>
