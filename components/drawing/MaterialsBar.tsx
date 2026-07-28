@@ -1,11 +1,29 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { MaterialsBreakdown } from "@/lib/materials";
 import { formatArea, formatMeters } from "@/lib/materials";
+import {
+  calcCutSizes,
+  findSystem,
+  frameHeightFormula,
+  frameWidthFormula,
+  loadMaterialCatalog,
+  sashHeightFormula,
+  sashWidthFormula,
+  type CutSizes,
+  type MaterialSystem,
+  type ProfileSystemDetails,
+} from "@/lib/material-systems";
 
 type Props = {
   materials: MaterialsBreakdown;
   partLabel?: string;
+  /** مقاس الفتحة للبند */
+  widthMm?: number;
+  heightMm?: number;
+  /** نظام القطاعات المختار على البند */
+  systemId?: string | null;
 };
 
 type Cell = {
@@ -16,7 +34,28 @@ type Cell = {
   accent?: boolean;
 };
 
-export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
+export function MaterialsBar({
+  materials,
+  partLabel = "شباك",
+  widthMm,
+  heightMm,
+  systemId,
+}: Props) {
+  const [profileSystem, setProfileSystem] = useState<MaterialSystem | null>(
+    null
+  );
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      if (!systemId || systemId === "none") {
+        setProfileSystem(null);
+        return;
+      }
+      const catalog = loadMaterialCatalog();
+      setProfileSystem(findSystem("profiles", systemId, catalog) ?? null);
+    });
+  }, [systemId]);
+
   const cells: Cell[] = [
     {
       key: "area",
@@ -72,6 +111,12 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
     materials.knifeM > 0 ||
     materials.bouclierM > 0;
 
+  const profile = profileSystem?.profile;
+  const cuts =
+    profile && widthMm != null && heightMm != null && widthMm > 0 && heightMm > 0
+      ? calcCutSizes(widthMm, heightMm, profile.deductions)
+      : null;
+
   return (
     <section
       className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
@@ -79,7 +124,9 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
     >
       <div className="flex items-center justify-between border-b border-border bg-primary-soft/60 px-3 py-2">
         <p className="text-xs font-semibold text-primary">حساب الخامات</p>
-        <p className="truncate text-xs text-muted">{partLabel}</p>
+        <p className="truncate text-xs text-muted">
+          {profileSystem ? `${partLabel} · ${profileSystem.name}` : partLabel}
+        </p>
       </div>
 
       <div className="overflow-x-auto">
@@ -135,7 +182,81 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
           </tbody>
         </table>
       </div>
+
+      {profile ? (
+        <ProfileCutsPanel
+          systemName={profileSystem!.name}
+          profile={profile}
+          cuts={cuts}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function ProfileCutsPanel({
+  systemName,
+  profile,
+  cuts,
+}: {
+  systemName: string;
+  profile: ProfileSystemDetails;
+  cuts: CutSizes | null;
+}) {
+  return (
+    <div className="border-t border-border bg-background/40 px-3 py-2.5">
+      <p className="text-[11px] font-semibold text-primary">
+        نظام القطاعات: {systemName}
+      </p>
+
+      {profile.pieces.length > 0 ? (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {profile.pieces.map((p) => (
+            <span
+              key={p.id}
+              className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] text-foreground"
+            >
+              {p.name} · {p.sectionWidthMm}مم · عود {p.barLengthM}م
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-2 grid gap-1 text-[11px] leading-relaxed text-muted">
+        <p>{frameWidthFormula(profile.deductions)}</p>
+        <p>{frameHeightFormula(profile.deductions)}</p>
+        <p>{sashWidthFormula(profile.deductions)}</p>
+        <p>{sashHeightFormula(profile.deductions)}</p>
+      </div>
+
+      {cuts ? (
+        <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[11px]">
+          <div className="grid grid-cols-3 border-b border-border text-center font-semibold text-muted">
+            <span className="px-2 py-1.5 text-start">بعد التخصيم</span>
+            <span className="px-2 py-1.5">العرض</span>
+            <span className="px-2 py-1.5">الارتفاع</span>
+          </div>
+          <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
+            <span className="px-2 py-1.5 text-start font-medium">الحلق</span>
+            <span className="px-2 py-1.5 font-semibold text-primary">
+              {cuts.frameWidthMm} مم
+            </span>
+            <span className="px-2 py-1.5 font-semibold text-primary">
+              {cuts.frameHeightMm} مم
+            </span>
+          </div>
+          <div className="grid grid-cols-3 text-center tabular-nums">
+            <span className="px-2 py-1.5 text-start font-medium">الضلفة</span>
+            <span className="px-2 py-1.5 font-semibold text-primary">
+              {cuts.sashWidthMm} مم
+            </span>
+            <span className="px-2 py-1.5 font-semibold text-primary">
+              {cuts.sashHeightMm} مم
+            </span>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

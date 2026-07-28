@@ -469,6 +469,9 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
           <MaterialsBar
             materials={materials}
             partLabel={item.name || "شباك"}
+            widthMm={item.widthMm}
+            heightMm={item.heightMm}
+            systemId={item.systemId}
           />
         ) : null}
       </main>

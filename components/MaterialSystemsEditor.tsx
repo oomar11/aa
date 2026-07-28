@@ -8,10 +8,16 @@ import {
   type FormEvent,
 } from "react";
 import {
+  defaultProfileDetails,
   deleteSystem,
+  frameHeightFormula,
+  frameWidthFormula,
   getCategoryMeta,
   loadMaterialCatalog,
   newSystemId,
+  profileRoleLabel,
+  sashHeightFormula,
+  sashWidthFormula,
   saveMaterialCatalog,
   setDefaultSystem,
   upsertSystem,
@@ -39,6 +45,7 @@ export function MaterialSystemsEditor({ category }: Props) {
   }, []);
 
   const systems = catalog?.[category] ?? [];
+  const isProfiles = category === "profiles";
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -85,6 +92,10 @@ export function MaterialSystemsEditor({ category }: Props) {
       name: trimmed,
       notes: notes.trim() || undefined,
       isDefault: asDefault || (category === "iron" && systems.length === 0),
+      profile:
+        category === "profiles"
+          ? editing?.profile ?? defaultProfileDetails()
+          : undefined,
     };
 
     persist(upsertSystem(catalog, category, system));
@@ -148,6 +159,13 @@ export function MaterialSystemsEditor({ category }: Props) {
         </p>
       ) : null}
 
+      {isProfiles ? (
+        <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
+          اضغط «تفاصيل» على أي نظام عشان تدخل العيدان (حلق / ضلفة / سوقاس) وطول
+          العود ومعادلات التخصيم.
+        </p>
+      ) : null}
+
       {formOpen ? (
         <form
           onSubmit={handleSubmit}
@@ -208,60 +226,100 @@ export function MaterialSystemsEditor({ category }: Props) {
             مفيش أنظمة لسه — اضغط «نظام جديد»
           </li>
         ) : (
-          systems.map((system, i) => (
-            <li
-              key={system.id}
-              className={`flex items-start gap-3 px-3 py-3 ${
-                i > 0 ? "border-t border-border" : ""
-              }`}
-            >
-              <div
-                className="mt-1 h-3 w-3 shrink-0 rounded-full"
-                style={{ background: meta.accent }}
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1 text-right">
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <p className="text-sm font-semibold text-foreground">
-                    {system.name}
-                  </p>
-                  {system.isDefault ? (
-                    <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold text-primary">
-                      افتراضي
-                    </span>
-                  ) : null}
+          systems.map((system, i) => {
+            const profile = system.profile;
+            const pieceCount = profile?.pieces.length ?? 0;
+            return (
+              <li
+                key={system.id}
+                className={`px-3 py-3 ${i > 0 ? "border-t border-border" : ""}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="mt-1 h-3 w-3 shrink-0 rounded-full"
+                    style={{ background: meta.accent }}
+                    aria-hidden
+                  />
+                  <div className="min-w-0 flex-1 text-right">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <p className="text-sm font-semibold text-foreground">
+                        {system.name}
+                      </p>
+                      {system.isDefault ? (
+                        <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold text-primary">
+                          افتراضي
+                        </span>
+                      ) : null}
+                    </div>
+                    {system.notes ? (
+                      <p className="mt-0.5 text-xs text-muted">{system.notes}</p>
+                    ) : null}
+
+                    {isProfiles && profile ? (
+                      <div className="mt-2 space-y-1.5 rounded-xl border border-border/80 bg-background/70 p-2.5 text-[11px] text-muted">
+                        <p className="font-semibold text-foreground">
+                          {pieceCount} عود
+                          {pieceCount > 0 ? ":" : ""}
+                        </p>
+                        {profile.pieces.slice(0, 4).map((p) => (
+                          <p key={p.id}>
+                            {p.name || profileRoleLabel(p.role)} — مقطع{" "}
+                            {p.sectionWidthMm} مم · طول {p.barLengthM} م
+                          </p>
+                        ))}
+                        {pieceCount > 4 ? (
+                          <p>… و {pieceCount - 4} تانيين</p>
+                        ) : null}
+                        <div className="border-t border-border/70 pt-1.5 leading-relaxed">
+                          <p className="font-semibold text-foreground">
+                            التخصيمات
+                          </p>
+                          <p>{frameWidthFormula(profile.deductions)}</p>
+                          <p>{frameHeightFormula(profile.deductions)}</p>
+                          <p>{sashWidthFormula(profile.deductions)}</p>
+                          <p>{sashHeightFormula(profile.deductions)}</p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-2 flex flex-wrap justify-end gap-1.5">
+                      {isProfiles ? (
+                        <Link
+                          href={`/materials/profiles/${system.id}`}
+                          className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
+                        >
+                          تفاصيل
+                        </Link>
+                      ) : null}
+                      {!system.isDefault ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSetDefault(system.id)}
+                          className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-muted transition-colors hover:bg-primary-soft hover:text-primary"
+                        >
+                          جعله افتراضي
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => openEdit(system)}
+                        className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-primary-soft"
+                      >
+                        تعديل
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(system.id)}
+                        className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                {system.notes ? (
-                  <p className="mt-0.5 text-xs text-muted">{system.notes}</p>
-                ) : null}
-                <div className="mt-2 flex flex-wrap justify-end gap-1.5">
-                  {!system.isDefault ? (
-                    <button
-                      type="button"
-                      onClick={() => handleSetDefault(system.id)}
-                      className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-muted transition-colors hover:bg-primary-soft hover:text-primary"
-                    >
-                      جعله افتراضي
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => openEdit(system)}
-                    className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-primary-soft"
-                  >
-                    تعديل
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(system.id)}
-                    className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40"
-                  >
-                    حذف
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))
+              </li>
+            );
+          })
         )}
       </ul>
 
