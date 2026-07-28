@@ -107,6 +107,8 @@ const GRID_GROUPS: OptionGroup<PaneGrid>[] = [
   },
 ];
 
+type ExtraKey = "sandwichPanels" | "mesh" | "isDoor";
+
 export function PanePropertiesModal({
   open,
   initial,
@@ -115,20 +117,28 @@ export function PanePropertiesModal({
   onConfirm,
 }: Props) {
   const [draft, setDraft] = useState<PaneConfig>(defaultPaneConfig());
+  const [expandedExtra, setExpandedExtra] = useState<ExtraKey | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setDraft(normalizePaneConfig(initial));
+    setExpandedExtra(null);
   }, [open, initial]);
 
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (expandedExtra) {
+          setExpandedExtra(null);
+          return;
+        }
+        onClose();
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, expandedExtra]);
 
   const cellCount = useMemo(
     () => gridCellCount(draft.grid ?? "solid"),
@@ -155,32 +165,69 @@ export function PanePropertiesModal({
     });
   }
 
-  function toggleFlag(
-    key: "sandwichPanels" | "mesh" | "isDoor",
-    value: boolean
-  ) {
+  function setFlag(key: ExtraKey, value: boolean) {
     setDraft((d) => {
-      const next = { ...d, [key]: value };
-      if (
-        key === "sandwichPanels" &&
-        value &&
-        ((d.grid ?? "solid") === "solid" || d.grid === "diamond")
-      ) {
-        next.panelCells = [0];
+      const next: PaneConfig = { ...d, [key]: value };
+      if (key === "sandwichPanels") {
+        const solidLike =
+          (d.grid ?? "solid") === "solid" || d.grid === "diamond";
+        if (value && solidLike) next.panelCells = [0];
+        if (!value && solidLike) next.panelCells = [];
       }
-      if (
-        key === "sandwichPanels" &&
-        !value &&
-        ((d.grid ?? "solid") === "solid" || d.grid === "diamond")
-      ) {
-        next.panelCells = [];
+      if (key === "isDoor") {
+        if (value) {
+          if (d.opening === "casement-left") next.opening = "door-left";
+          else if (d.opening === "casement-right") next.opening = "door-right";
+        } else if (d.opening === "door-left") {
+          next.opening = "casement-left";
+        } else if (d.opening === "door-right") {
+          next.opening = "casement-right";
+        }
       }
       return next;
     });
+    if (!value) {
+      setExpandedExtra((cur) => (cur === key ? null : cur));
+    }
+  }
+
+  function handleExtraPress(key: ExtraKey) {
+    const isOn =
+      key === "sandwichPanels"
+        ? Boolean(draft.sandwichPanels)
+        : key === "mesh"
+          ? Boolean(draft.mesh)
+          : Boolean(draft.isDoor);
+
+    if (!isOn) {
+      // الضغطة الأولى: تفعيل
+      setFlag(key, true);
+      // لو البنل محتاج اختيار أجزاء، افتح الخيارات مباشرة
+      if (key === "sandwichPanels" && cellCount > 1) {
+        setExpandedExtra("sandwichPanels");
+      } else {
+        setExpandedExtra(null);
+      }
+      return;
+    }
+
+    // الضغطة التانية (وهو مفعّل): فتح / قفل الخيارات الداخلية
+    setExpandedExtra((cur) => (cur === key ? null : key));
+  }
+
+  function setDoorSide(side: "door-left" | "door-right") {
+    setDraft((d) => ({ ...d, isDoor: true, opening: side }));
   }
 
   const showBouclier = bouclierEligible && draft.opening === "fixed";
-  const showPanelCells = Boolean(draft.sandwichPanels) && cellCount > 1;
+  const doorSide: "door-left" | "door-right" | null =
+    draft.opening === "door-left" || draft.opening === "door-right"
+      ? draft.opening
+      : draft.opening === "casement-left" || draft.opening === "tilt-turn-left"
+        ? "door-left"
+        : draft.opening === "casement-right" || draft.opening === "tilt-turn"
+          ? "door-right"
+          : null;
 
   return (
     <div
@@ -276,103 +323,172 @@ export function PanePropertiesModal({
           </section>
         </div>
 
-        {/* شريط الخيارات الإضافية — ثابت فوق الأزرار */}
+        {/* شريط الخيارات الإضافية — ضغطة تفعيل، ضغطة تانية للخيارات */}
         <div className="shrink-0 border-t border-border bg-background/80">
           <div className="px-2.5 pt-2 pb-1.5">
-            <p className="mb-1.5 text-center text-[10px] font-semibold tracking-wide text-muted">
+            <p className="mb-1 text-center text-[10px] font-semibold tracking-wide text-muted">
               خيارات إضافية
+            </p>
+            <p className="mb-1.5 text-center text-[9px] text-muted/80">
+              ضغطة تفعيل · ضغطة تانية للخيارات
             </p>
             <div className="grid grid-cols-3 gap-1.5">
               <FlagChip
                 label="بنل ساندوتش"
                 checked={Boolean(draft.sandwichPanels)}
-                onChange={(v) => toggleFlag("sandwichPanels", v)}
+                expanded={expandedExtra === "sandwichPanels"}
+                onPress={() => handleExtraPress("sandwichPanels")}
                 icon={<PanelIcon />}
               />
               <FlagChip
                 label="شبكة سلك"
                 checked={Boolean(draft.mesh)}
-                onChange={(v) => toggleFlag("mesh", v)}
+                expanded={expandedExtra === "mesh"}
+                onPress={() => handleExtraPress("mesh")}
                 icon={<MeshIcon />}
               />
               <FlagChip
                 label="ضلفة باب"
                 checked={Boolean(draft.isDoor)}
-                onChange={(v) => toggleFlag("isDoor", v)}
+                expanded={expandedExtra === "isDoor"}
+                onPress={() => handleExtraPress("isDoor")}
                 icon={<DoorIcon />}
               />
             </div>
           </div>
 
-          {(showBouclier || showPanelCells) && (
-            <div className="max-h-[28dvh] space-y-2 overflow-y-auto border-t border-border/60 px-2.5 py-2">
-              {showBouclier && (
-                <div className="rounded-xl border border-border bg-card p-2">
-                  <p className="mb-2 text-[11px] font-semibold text-foreground">
-                    سوقاس / بوكلير
+          {expandedExtra && (
+            <div className="max-h-[32dvh] overflow-y-auto border-t border-border/60 px-2.5 py-2">
+              {expandedExtra === "sandwichPanels" && (
+                <ExtraPanel
+                  title="خيارات البنل"
+                  onDisable={() => setFlag("sandwichPanels", false)}
+                >
+                  {cellCount > 1 ? (
+                    <PanelCellPicker
+                      grid={draft.grid ?? "solid"}
+                      cellCount={cellCount}
+                      selected={draft.panelCells ?? []}
+                      onToggle={togglePanelCell}
+                      onSelectAll={() =>
+                        setDraft((d) => ({
+                          ...d,
+                          panelCells: Array.from(
+                            { length: cellCount },
+                            (_, i) => i
+                          ),
+                        }))
+                      }
+                      onClearAll={() =>
+                        setDraft((d) => ({ ...d, panelCells: [] }))
+                      }
+                    />
+                  ) : (
+                    <p className="text-[11px] leading-relaxed text-muted">
+                      البنل هيغطي الضلفة كاملة. لو عايز أجزاء بنل وأجزاء زجاج،
+                      اختَر تقسيم داخلي الأول.
+                    </p>
+                  )}
+                </ExtraPanel>
+              )}
+
+              {expandedExtra === "mesh" && (
+                <ExtraPanel
+                  title="خيارات شبكة السلك"
+                  onDisable={() => setFlag("mesh", false)}
+                >
+                  <p className="mb-2 text-[11px] leading-relaxed text-muted">
+                    الشبكة بتتحط على أجزاء الزجاج بس (مش على البنل).
+                  </p>
+                  <div className="rounded-lg border border-border bg-background px-2.5 py-2 text-[11px] font-medium text-foreground">
+                    التغطية: كل أجزاء الزجاج في الضلفة
+                  </div>
+                </ExtraPanel>
+              )}
+
+              {expandedExtra === "isDoor" && (
+                <ExtraPanel
+                  title="خيارات ضلفة الباب"
+                  onDisable={() => setFlag("isDoor", false)}
+                >
+                  <p className="mb-2 text-[11px] leading-relaxed text-muted">
+                    الباب بيترسم بـ ٣ مفصلات. اختَر اتجاه الفتح:
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        setDraft((d) => ({
-                          ...d,
-                          bouclier: false,
-                          bouclierManual: true,
-                        }))
-                      }
-                      className={`rounded-xl border px-2 py-2 text-[11px] font-semibold ${
-                        !draft.bouclier
+                      onClick={() => setDoorSide("door-right")}
+                      className={`rounded-xl border px-2 py-2.5 text-[11px] font-semibold transition-colors ${
+                        doorSide === "door-right"
                           ? "border-primary bg-primary-soft text-primary"
                           : "border-border bg-background text-foreground"
                       }`}
                     >
-                      سوقاس (ثابت)
+                      باب يمين
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        setDraft((d) => ({
-                          ...d,
-                          bouclier: true,
-                          bouclierManual: true,
-                        }))
-                      }
-                      className={`rounded-xl border px-2 py-2 text-[11px] font-semibold ${
-                        draft.bouclier
+                      onClick={() => setDoorSide("door-left")}
+                      className={`rounded-xl border px-2 py-2.5 text-[11px] font-semibold transition-colors ${
+                        doorSide === "door-left"
                           ? "border-primary bg-primary-soft text-primary"
                           : "border-border bg-background text-foreground"
                       }`}
                     >
-                      بوكلير
+                      باب يسار
                     </button>
                   </div>
-                  <p className="mt-1.5 text-[10px] text-muted">
-                    البوكلير متاح فقط بين مفصلي يمين ويسار والمقابض باتجاه بعض
-                  </p>
-                </div>
+                </ExtraPanel>
               )}
+            </div>
+          )}
 
-              {showPanelCells && (
-                <PanelCellPicker
-                  grid={draft.grid ?? "solid"}
-                  cellCount={cellCount}
-                  selected={draft.panelCells ?? []}
-                  onToggle={togglePanelCell}
-                  onSelectAll={() =>
-                    setDraft((d) => ({
-                      ...d,
-                      panelCells: Array.from(
-                        { length: cellCount },
-                        (_, i) => i
-                      ),
-                    }))
-                  }
-                  onClearAll={() =>
-                    setDraft((d) => ({ ...d, panelCells: [] }))
-                  }
-                />
-              )}
+          {!expandedExtra && showBouclier && (
+            <div className="max-h-[28dvh] overflow-y-auto border-t border-border/60 px-2.5 py-2">
+              <div className="rounded-xl border border-border bg-card p-2">
+                <p className="mb-2 text-[11px] font-semibold text-foreground">
+                  سوقاس / بوكلير
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        bouclier: false,
+                        bouclierManual: true,
+                      }))
+                    }
+                    className={`rounded-xl border px-2 py-2 text-[11px] font-semibold ${
+                      !draft.bouclier
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "border-border bg-background text-foreground"
+                    }`}
+                  >
+                    سوقاس (ثابت)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        bouclier: true,
+                        bouclierManual: true,
+                      }))
+                    }
+                    className={`rounded-xl border px-2 py-2 text-[11px] font-semibold ${
+                      draft.bouclier
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "border-border bg-background text-foreground"
+                    }`}
+                  >
+                    بوكلير
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[10px] text-muted">
+                  البوكلير متاح فقط بين مفصلي يمين ويسار والمقابض باتجاه بعض
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -468,7 +584,7 @@ function PanelCellPicker({
   const cells = getGridCells(grid, 0, 0, 100, 100);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-2.5">
+    <div>
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold text-foreground">
@@ -567,15 +683,45 @@ function PanelCellPicker({
   );
 }
 
+function ExtraPanel({
+  title,
+  onDisable,
+  children,
+}: {
+  title: string;
+  onDisable: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-foreground">{title}</p>
+        <button
+          type="button"
+          onClick={onDisable}
+          className="rounded-lg border border-border bg-card px-2.5 py-1 text-[10px] font-semibold text-muted transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+        >
+          إيقاف
+        </button>
+      </div>
+      <div className="rounded-xl border border-border bg-card p-2.5">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function FlagChip({
   label,
   checked,
-  onChange,
+  expanded,
+  onPress,
   icon,
 }: {
   label: string;
   checked: boolean;
-  onChange: (v: boolean) => void;
+  expanded: boolean;
+  onPress: () => void;
   icon: ReactNode;
 }) {
   return (
@@ -583,19 +729,48 @@ function FlagChip({
       type="button"
       role="switch"
       aria-checked={checked}
-      aria-label={label}
-      title={label}
-      onClick={() => onChange(!checked)}
-      className={`flex min-h-[3.6rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-1.5 transition-colors ${
+      aria-expanded={expanded}
+      aria-label={
         checked
-          ? "border-primary bg-primary-soft text-primary"
-          : "border-border bg-card text-muted hover:border-primary/40 hover:text-foreground"
+          ? expanded
+            ? `${label} — إخفاء الخيارات`
+            : `${label} — مفعّل، اضغط للخيارات`
+          : `${label} — اضغط للتفعيل`
+      }
+      title={
+        checked
+          ? expanded
+            ? "إخفاء الخيارات"
+            : "اضغط تاني للخيارات"
+          : "اضغط للتفعيل"
+      }
+      onClick={onPress}
+      className={`relative flex min-h-[3.6rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-1.5 transition-all ${
+        expanded
+          ? "border-primary bg-primary text-primary-foreground shadow-sm"
+          : checked
+            ? "border-primary bg-primary-soft text-primary"
+            : "border-border bg-card text-muted hover:border-primary/40 hover:text-foreground"
       }`}
     >
       <span className="flex h-6 w-6 items-center justify-center">{icon}</span>
       <span className="w-full truncate text-center text-[10px] font-semibold leading-tight">
         {label}
       </span>
+      {checked && (
+        <span
+          className={`absolute start-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${
+            expanded ? "bg-primary-foreground" : "bg-primary"
+          }`}
+          aria-hidden
+        />
+      )}
+      {expanded && (
+        <span
+          className="absolute inset-x-2 bottom-0.5 mx-auto h-0.5 w-4 rounded-full bg-primary-foreground/70"
+          aria-hidden
+        />
+      )}
     </button>
   );
 }
