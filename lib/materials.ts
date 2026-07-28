@@ -11,6 +11,14 @@ import type { LayoutNode } from "@/lib/window-layout";
 /** نوع الحلق حسب فتح الضلفة */
 export type FrameKind = "hinged" | "sliding";
 
+/** نوع خط التقسيم بين جزئين */
+export type JunctionKind =
+  | "mullion"
+  | "coupling"
+  | "knife"
+  | "bouclier"
+  | "none";
+
 export type MaterialsBreakdown = {
   /** مساحة القطعة الواحدة م² */
   areaSqm: number;
@@ -20,6 +28,10 @@ export type MaterialsBreakdown = {
   frameSlidingM: number;
   /** كوبلن تجميع بين مفصلي وجرار — متر طولي */
   couplingM: number;
+  /** سكينة بين ضلف الجرار — متر طولي */
+  knifeM: number;
+  /** بوكلير (مقابض في وش بعض) — متر طولي */
+  bouclierM: number;
   /** سوقاس بيقسم الحلق (خطوط التقسيم في اللليآوت) */
   mullionFrameM: number;
   /** سوقاس بيقسم الضلفة (تقسيم داخلي / عوائد) */
@@ -41,9 +53,18 @@ type PaneBox = {
   w: number;
   h: number;
   kind: FrameKind;
+  opening: PaneOpening;
+  bouclier: boolean;
 };
 
 type EdgeKey = string;
+
+type JunctionTotals = {
+  mullionMm: number;
+  couplingMm: number;
+  knifeMm: number;
+  bouclierMm: number;
+};
 
 function sum(nums: number[]) {
   return nums.reduce((a, b) => a + b, 0);
@@ -55,6 +76,23 @@ function mmToM(mm: number) {
 
 function roundM(m: number) {
   return Math.round(m * 1000) / 1000;
+}
+
+function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
+  return {
+    areaSqm,
+    frameHingedM: 0,
+    frameSlidingM: 0,
+    couplingM: 0,
+    knifeM: 0,
+    bouclierM: 0,
+    mullionFrameM: 0,
+    mullionSashM: 0,
+    frameTotalM: 0,
+    mullionTotalM: 0,
+    isMixedFrame: false,
+    frameLabel: "مفصلي",
+  };
 }
 
 /** جرار/سحاب → حلق جرار، الباقي → حلق مفصلي */
@@ -70,12 +108,42 @@ export function frameKindForOpening(opening: PaneOpening): FrameKind {
   return "hinged";
 }
 
-function paneKind(
+function isSlidingOpening(opening: PaneOpening): boolean {
+  return frameKindForOpening(opening) === "sliding";
+}
+
+/**
+ * ضلفتين المقابض في وش بعض:
+ * يمين-يفتح-لليمين على شمال جهة اليسار + شمال-يفتح-للشمال على يمين جهة اليمين
+ * (مفصلي/باب/قلب وضلفة)
+ */
+export function areFacingHandles(
+  leftOpening: PaneOpening,
+  rightOpening: PaneOpening
+): boolean {
+  const leftFacesIn =
+    leftOpening === "casement-right" ||
+    leftOpening === "door-right" ||
+    leftOpening === "tilt-turn";
+  const rightFacesIn =
+    rightOpening === "casement-left" ||
+    rightOpening === "door-left" ||
+    rightOpening === "tilt-turn-left";
+  return leftFacesIn && rightFacesIn;
+}
+
+function paneOpening(
   id: string,
   panes: Record<string, PaneConfig> | undefined
-): FrameKind {
-  const opening = (panes?.[id]?.opening ?? "fixed") as PaneOpening;
-  return frameKindForOpening(opening);
+): PaneOpening {
+  return (panes?.[id]?.opening ?? "fixed") as PaneOpening;
+}
+
+function paneBouclier(
+  id: string,
+  panes: Record<string, PaneConfig> | undefined
+): boolean {
+  return Boolean(normalizePaneConfig(panes?.[id]).bouclier);
 }
 
 function collectPaneBoxes(
@@ -89,13 +157,16 @@ function collectPaneBoxes(
 ) {
   if (node.type === "empty") return;
   if (node.type === "pane") {
+    const opening = paneOpening(node.id, panes);
     out.push({
       id: node.id,
       x,
       y,
       w,
       h,
-      kind: paneKind(node.id, panes),
+      kind: frameKindForOpening(opening),
+      opening,
+      bouclier: paneBouclier(node.id, panes),
     });
     return;
   }
@@ -117,10 +188,12 @@ function collectPaneBoxes(
 }
 
 /** طول التماس المشترك بين صندوقين (إن وُجد) */
-function sharedEdgeMm(a: PaneBox, b: PaneBox): { len: number; vertical: boolean } | null {
+function sharedEdgeMm(
+  a: PaneBox,
+  b: PaneBox
+): { len: number; vertical: boolean } | null {
   const eps = 0.5;
 
-  // حافة رأسية مشتركة (جنب بعض أفقياً)
   const aRight = a.x + a.w;
   const bRight = b.x + b.w;
   if (Math.abs(aRight - b.x) < eps || Math.abs(bRight - a.x) < eps) {
@@ -130,7 +203,6 @@ function sharedEdgeMm(a: PaneBox, b: PaneBox): { len: number; vertical: boolean 
     if (overlap > eps) return { len: overlap, vertical: true };
   }
 
-  // حافة أفقية مشتركة (فوق/تحت)
   const aBottom = a.y + a.h;
   const bBottom = b.y + b.h;
   if (Math.abs(aBottom - b.y) < eps || Math.abs(bBottom - a.y) < eps) {
@@ -143,7 +215,12 @@ function sharedEdgeMm(a: PaneBox, b: PaneBox): { len: number; vertical: boolean 
   return null;
 }
 
-function edgeKey(a: PaneBox, b: PaneBox, vertical: boolean, len: number): EdgeKey {
+function edgeKey(
+  a: PaneBox,
+  b: PaneBox,
+  vertical: boolean,
+  len: number
+): EdgeKey {
   if (vertical) {
     const x = Math.round(Math.min(a.x + a.w, b.x + b.w, Math.max(a.x, b.x)));
     const y1 = Math.round(Math.max(a.y, b.y));
@@ -154,7 +231,9 @@ function edgeKey(a: PaneBox, b: PaneBox, vertical: boolean, len: number): EdgeKe
   return `h:${y}:${x1}:${Math.round(len)}`;
 }
 
-function aabbOf(boxes: PaneBox[]): { x: number; y: number; w: number; h: number } | null {
+function aabbOf(
+  boxes: PaneBox[]
+): { x: number; y: number; w: number; h: number } | null {
   if (boxes.length === 0) return null;
   let minX = Infinity;
   let minY = Infinity;
@@ -169,7 +248,13 @@ function aabbOf(boxes: PaneBox[]): { x: number; y: number; w: number; h: number 
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
-/** أنواع الحلق الموجودة داخل عقدة (للتمييز بين سوقاس وكوبلن) */
+function isFullyEmpty(node: LayoutNode): boolean {
+  if (node.type === "empty") return true;
+  if (node.type === "pane") return false;
+  return node.children.every(isFullyEmpty);
+}
+
+/** أنواع الحلق داخل عقدة */
 function kindsInNode(
   node: LayoutNode,
   panes: Record<string, PaneConfig> | undefined,
@@ -177,7 +262,7 @@ function kindsInNode(
 ) {
   if (node.type === "empty") return;
   if (node.type === "pane") {
-    out.add(paneKind(node.id, panes));
+    out.add(frameKindForOpening(paneOpening(node.id, panes)));
     return;
   }
   for (const child of node.children) kindsInNode(child, panes, out);
@@ -194,61 +279,164 @@ function regionKind(
   return [...kinds][0]!;
 }
 
+/** أقصى يمين/شمال/فوق/تحت ضلفة ورقة داخل عقدة */
+function edgePaneId(
+  node: LayoutNode,
+  side: "left" | "right" | "top" | "bottom"
+): string | undefined {
+  if (node.type === "empty") return undefined;
+  if (node.type === "pane") return node.id;
+  if (node.children.length === 0) return undefined;
+
+  if (side === "left" || side === "right") {
+    if (node.dir === "v") {
+      const idx = side === "left" ? 0 : node.children.length - 1;
+      return edgePaneId(node.children[idx]!, side);
+    }
+    for (const child of node.children) {
+      const id = edgePaneId(child, side);
+      if (id) return id;
+    }
+    return undefined;
+  }
+
+  if (node.dir === "h") {
+    const idx = side === "top" ? 0 : node.children.length - 1;
+    return edgePaneId(node.children[idx]!, side);
+  }
+  for (const child of node.children) {
+    const id = edgePaneId(child, side);
+    if (id) return id;
+  }
+  return undefined;
+}
+
 /**
- * سوقاس تقسيم الحلق من شجرة اللليآوت.
- * خط الالتقاء بين مفصلي وجرار = كوبلن مش سوقاس.
+ * تصنيف خط التقسيم بين جزئين متجاورين.
+ * - جرار×جرار → سكينة (مش سوقاس)
+ * - مقابض في وش بعض → بوكلير (مش سوقاس)
+ * - ضلفة بوكلير ثابتة على الحافة → بوكلير
+ * - مفصلي×جرار → كوبلن
+ * - غير كده → سوقاس
  */
-function frameMullionMm(
+export function classifyJunction(
+  left: LayoutNode,
+  right: LayoutNode,
+  dir: "v" | "h",
+  panes: Record<string, PaneConfig> | undefined
+): JunctionKind {
+  if (isFullyEmpty(left) || isFullyEmpty(right)) return "none";
+
+  if (dir === "v") {
+    const leftId = edgePaneId(left, "right");
+    const rightId = edgePaneId(right, "left");
+    if (leftId && rightId) {
+      const leftOp = paneOpening(leftId, panes);
+      const rightOp = paneOpening(rightId, panes);
+
+      if (isSlidingOpening(leftOp) && isSlidingOpening(rightOp)) {
+        return "knife";
+      }
+
+      if (areFacingHandles(leftOp, rightOp)) {
+        return "bouclier";
+      }
+
+      // ضلفة ثابتة بوكلير بين مفصليين — الخطوط حواليها بوكلير مش سوقاس
+      if (paneBouclier(leftId, panes) || paneBouclier(rightId, panes)) {
+        return "bouclier";
+      }
+    }
+  }
+
+  const leftKind = regionKind(left, panes);
+  const rightKind = regionKind(right, panes);
+  if (
+    (leftKind === "hinged" && rightKind === "sliding") ||
+    (leftKind === "sliding" && rightKind === "hinged")
+  ) {
+    return "coupling";
+  }
+
+  return "mullion";
+}
+
+/**
+ * يمشي على شجرة التقسيم ويجمع أطوال:
+ * سوقاس / سكينة / بوكلير / كوبلن
+ *
+ * ملاحظة: لو في ضلفة بوكلير ثابتة، بنحسب ارتفاعها مرة واحدة
+ * ومش بنضاعف الخطوط على جنبيها.
+ */
+function collectJunctions(
   node: LayoutNode,
   w: number,
   h: number,
-  panes: Record<string, PaneConfig> | undefined
-): number {
-  if (node.type !== "split") return 0;
+  panes: Record<string, PaneConfig> | undefined,
+  out: JunctionTotals,
+  countedBouclierPanes: Set<string>
+) {
+  if (node.type !== "split") return;
+
   const total = sum(node.ratios) || 1;
   const sizes = node.ratios.map(
     (r) => ((node.dir === "v" ? w : h) * r) / total
   );
-  let length = 0;
 
   node.children.forEach((child, i) => {
     const size = sizes[i]!;
     const childW = node.dir === "v" ? size : w;
     const childH = node.dir === "h" ? size : h;
-    length += frameMullionMm(child, childW, childH, panes);
+    collectJunctions(child, childW, childH, panes, out, countedBouclierPanes);
 
-    if (i < node.children.length - 1) {
-      const next = node.children[i + 1]!;
-      if (isFullyEmpty(child) || isFullyEmpty(next)) return;
-
-      const leftKind = regionKind(child, panes);
-      const rightKind = regionKind(next, panes);
-      // مفصلي يقابل جرار → كوبلن تجميع، مش سوقاس
-      if (
-        (leftKind === "hinged" && rightKind === "sliding") ||
-        (leftKind === "sliding" && rightKind === "hinged")
-      ) {
-        return;
+    // ضلفة بوكلير ثابتة → طولها = ارتفاعها (مرة واحدة)
+    if (child.type === "pane" && paneBouclier(child.id, panes)) {
+      if (!countedBouclierPanes.has(child.id)) {
+        countedBouclierPanes.add(child.id);
+        out.bouclierMm += childH;
       }
+    }
 
-      // mullion رأسي طوله = ارتفاع الأب، أفقي = عرض الأب
-      length += node.dir === "v" ? h : w;
+    if (i >= node.children.length - 1) return;
+    const next = node.children[i + 1]!;
+    const kind = classifyJunction(child, next, node.dir, panes);
+    if (kind === "none") return;
+
+    const span = node.dir === "v" ? h : w;
+
+    if (kind === "mullion") {
+      out.mullionMm += span;
+      return;
+    }
+    if (kind === "knife") {
+      out.knifeMm += span;
+      return;
+    }
+    if (kind === "coupling") {
+      out.couplingMm += span;
+      return;
+    }
+    if (kind === "bouclier") {
+      // لو الخط على جنب ضلفة بوكلير ثابتة، الطول اتحسب من الضلفة نفسها
+      const touchesFixedBouclier =
+        (child.type === "pane" && paneBouclier(child.id, panes)) ||
+        (next.type === "pane" && paneBouclier(next.id, panes));
+      if (!touchesFixedBouclier) {
+        out.bouclierMm += span;
+      }
     }
   });
-
-  return length;
-}
-
-function isFullyEmpty(node: LayoutNode): boolean {
-  if (node.type === "empty") return true;
-  if (node.type === "pane") return false;
-  return node.children.every(isFullyEmpty);
 }
 
 /** سوقاس داخل الضلفة من التقسيم الداخلي */
-function sashMullionMm(boxes: PaneBox[], panes: Record<string, PaneConfig> | undefined): number {
+function sashMullionMm(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined
+): number {
   let total = 0;
   for (const box of boxes) {
+    // ضلفة البوكلير الثابتة مش بتتقسم بسوقاس داخلي للخامات دي
+    if (box.bouclier) continue;
     const grid = normalizePaneConfig(panes?.[box.id]).grid ?? "solid";
     if (grid === "solid") continue;
     const lines = gridLines(grid, 0, 0, box.w, box.h);
@@ -278,7 +466,9 @@ function frameLabelFor(
 /**
  * حساب خامات البند (للقطعة الواحدة — بدون ضرب الكمية).
  * الحلق: مفصلي أو جرار، ولو الاتنين موجودين يتحسب كوبلن عند خط الالتقاء.
- * السوقاس: تقسيم الحلق + تقسيم الضلفة.
+ * بين ضلف الجرار: سكينة (مش سوقاس).
+ * مقابض في وش بعض: بوكلير (مش سوقاس).
+ * السوقاس: باقي تقسيم الحلق + تقسيم الضلفة.
  */
 export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const widthMm = Math.max(0, item.widthMm || 0);
@@ -292,18 +482,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   collectPaneBoxes(layout, 0, 0, widthMm, heightMm, panes, boxes);
 
   if (boxes.length === 0 || widthMm <= 0 || heightMm <= 0) {
-    return {
-      areaSqm,
-      frameHingedM: 0,
-      frameSlidingM: 0,
-      couplingM: 0,
-      mullionFrameM: 0,
-      mullionSashM: 0,
-      frameTotalM: 0,
-      mullionTotalM: 0,
-      isMixedFrame: false,
-      frameLabel: "مفصلي",
-    };
+    return emptyBreakdown(areaSqm);
   }
 
   const hingedBoxes = boxes.filter((b) => b.kind === "hinged");
@@ -314,15 +493,26 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
 
   let frameHingedMm = 0;
   let frameSlidingMm = 0;
-  let couplingMm = 0;
 
-  if (!isMixedFrame) {
-    const peri = 2 * (widthMm + heightMm);
-    if (hasSliding) frameSlidingMm = peri;
-    else frameHingedMm = peri;
-  } else {
-    // كوبلن عند كل تماس بين ضلفة مفصلي وضلفة جرار
+  const junctions: JunctionTotals = {
+    mullionMm: 0,
+    couplingMm: 0,
+    knifeMm: 0,
+    bouclierMm: 0,
+  };
+  collectJunctions(
+    layout,
+    widthMm,
+    heightMm,
+    panes,
+    junctions,
+    new Set()
+  );
+
+  // كوبلن إضافي من تماس الصناديق (لو التقسيم أعقد من split مباشر)
+  if (isMixedFrame) {
     const seen = new Set<EdgeKey>();
+    let boxCoupling = 0;
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
         const a = boxes[i]!;
@@ -333,13 +523,21 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
         const key = edgeKey(a, b, shared.vertical, shared.len);
         if (seen.has(key)) continue;
         seen.add(key);
-        couplingMm += shared.len;
+        boxCoupling += shared.len;
       }
     }
+    // خُد الأكبر عشان متعملش نقص لو الـ walk غطّى نفس الخط
+    junctions.couplingMm = Math.max(junctions.couplingMm, boxCoupling);
+  }
 
-    // كل نوع حلق: محيط صندوقه ناقص ضلع الكوبلن (يبقى شكل U عند الالتقاء)
+  if (!isMixedFrame) {
+    const peri = 2 * (widthMm + heightMm);
+    if (hasSliding) frameSlidingMm = peri;
+    else frameHingedMm = peri;
+  } else {
     const hingedAabb = aabbOf(hingedBoxes);
     const slidingAabb = aabbOf(slidingBoxes);
+    const couplingMm = junctions.couplingMm;
     if (hingedAabb) {
       frameHingedMm = 2 * (hingedAabb.w + hingedAabb.h) - couplingMm;
     }
@@ -350,13 +548,14 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     frameSlidingMm = Math.max(0, frameSlidingMm);
   }
 
-  const mullionFrameMm = frameMullionMm(layout, widthMm, heightMm, panes);
   const mullionSashMm = sashMullionMm(boxes, panes);
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
-  const couplingM = roundM(mmToM(couplingMm));
-  const mullionFrameM = roundM(mmToM(mullionFrameMm));
+  const couplingM = roundM(mmToM(junctions.couplingMm));
+  const knifeM = roundM(mmToM(junctions.knifeMm));
+  const bouclierM = roundM(mmToM(junctions.bouclierMm));
+  const mullionFrameM = roundM(mmToM(junctions.mullionMm));
   const mullionSashM = roundM(mmToM(mullionSashMm));
   const frameTotalM = roundM(frameHingedM + frameSlidingM);
   const mullionTotalM = roundM(mullionFrameM + mullionSashM);
@@ -366,6 +565,8 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     frameHingedM,
     frameSlidingM,
     couplingM,
+    knifeM,
+    bouclierM,
     mullionFrameM,
     mullionSashM,
     frameTotalM,
@@ -388,6 +589,8 @@ export function scaleMaterials(
     frameHingedM: roundM(m.frameHingedM * q),
     frameSlidingM: roundM(m.frameSlidingM * q),
     couplingM: roundM(m.couplingM * q),
+    knifeM: roundM(m.knifeM * q),
+    bouclierM: roundM(m.bouclierM * q),
     mullionFrameM: roundM(m.mullionFrameM * q),
     mullionSashM: roundM(m.mullionSashM * q),
     frameTotalM: roundM(m.frameTotalM * q),

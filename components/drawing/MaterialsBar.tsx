@@ -44,6 +44,20 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
       accent: materials.couplingM > 0,
     },
     {
+      key: "knife",
+      label: "سكينة",
+      value: formatMeters(materials.knifeM),
+      hint: materials.knifeM > 0 ? "بين الجرار" : undefined,
+      accent: materials.knifeM > 0,
+    },
+    {
+      key: "bouclier",
+      label: "بوكلير",
+      value: formatMeters(materials.bouclierM),
+      hint: materials.bouclierM > 0 ? "مقابض متقابلة" : undefined,
+      accent: materials.bouclierM > 0,
+    },
+    {
       key: "mullion",
       label: "سوقاس",
       value: formatMeters(materials.mullionTotalM),
@@ -51,6 +65,12 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
       accent: materials.mullionTotalM > 0,
     },
   ];
+
+  const showDetails =
+    materials.mullionFrameM > 0 ||
+    materials.mullionSashM > 0 ||
+    materials.knifeM > 0 ||
+    materials.bouclierM > 0;
 
   return (
     <section
@@ -63,12 +83,10 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] border-collapse text-center">
+        <table className="w-full min-w-[720px] border-collapse text-center">
           <thead>
             <tr className="border-b border-border text-[11px] font-semibold text-muted">
-              <th className="px-2.5 py-2 text-start font-semibold">
-                الجزء
-              </th>
+              <th className="px-2.5 py-2 text-start font-semibold">الجزء</th>
               {cells.map((c) => (
                 <th key={c.key} className="px-2.5 py-2 font-semibold">
                   {c.label}
@@ -85,7 +103,9 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
                 <td
                   key={c.key}
                   className={`px-2.5 py-2.5 tabular-nums ${
-                    c.accent ? "font-bold text-primary" : "font-medium text-foreground"
+                    c.accent
+                      ? "font-bold text-primary"
+                      : "font-medium text-foreground"
                   }`}
                 >
                   <div>{c.value}</div>
@@ -97,17 +117,21 @@ export function MaterialsBar({ materials, partLabel = "شباك" }: Props) {
                 </td>
               ))}
             </tr>
-            {(materials.mullionFrameM > 0 || materials.mullionSashM > 0) && (
+            {showDetails ? (
               <tr className="border-t border-border/80 bg-background/50 text-xs text-muted">
-                <td className="px-2.5 py-2 text-start">تفاصيل السوقاس</td>
-                <td className="px-2.5 py-2" colSpan={2}>
-                  يقسم الحلق: {formatMeters(materials.mullionFrameM)}
-                </td>
+                <td className="px-2.5 py-2 text-start">تفاصيل</td>
                 <td className="px-2.5 py-2" colSpan={3}>
-                  يقسم الضلفة: {formatMeters(materials.mullionSashM)}
+                  سوقاس حلق: {formatMeters(materials.mullionFrameM)} · ضلفة:{" "}
+                  {formatMeters(materials.mullionSashM)}
+                </td>
+                <td className="px-2.5 py-2" colSpan={2}>
+                  سكينة: {formatMeters(materials.knifeM)}
+                </td>
+                <td className="px-2.5 py-2" colSpan={2}>
+                  بوكلير: {formatMeters(materials.bouclierM)}
                 </td>
               </tr>
-            )}
+            ) : null}
           </tbody>
         </table>
       </div>
