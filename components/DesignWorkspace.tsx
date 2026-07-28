@@ -363,6 +363,11 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     }
   }
 
+  function handleCardContextMenu(e: ReactMouseEvent) {
+    // Item cards support long-press dragging, so suppress the browser link menu.
+    e.preventDefault();
+  }
+
   function setCardRef(id: string, el: HTMLElement | null) {
     if (el) cardRefs.current.set(id, el);
     else cardRefs.current.delete(id);
@@ -457,6 +462,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
                 draggable={false}
                 onPointerDown={(e) => handleCardPointerDown(item.id, e)}
                 onClick={handleCardClick}
+                onContextMenu={handleCardContextMenu}
                 className={`flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-[opacity,transform,box-shadow,border-color] duration-200 select-none ${
                   isDragging
                     ? "scale-[0.97] border-border opacity-35"
