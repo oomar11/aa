@@ -286,9 +286,6 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   ) {
     if (e.button !== 0) return;
 
-    // Keep the browser from stealing the gesture (scroll / callout / cancel).
-    e.preventDefault();
-
     const cardEl = e.currentTarget;
     const startX = e.clientX;
     const startY = e.clientY;
@@ -296,17 +293,16 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     let activated = false;
     let cancelled = false;
 
-    try {
-      cardEl.setPointerCapture(pointerId);
-    } catch {
-      // Older browsers may not support capture on this element.
-    }
-
     clearLongPress();
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null;
       if (cancelled) return;
       activated = true;
+      try {
+        cardEl.setPointerCapture(pointerId);
+      } catch {
+        // Older browsers may not support capture on this element.
+      }
       startDrag(itemId, pointerId, startX, startY, cardEl);
     }, LONG_PRESS_MS);
 
@@ -319,6 +315,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       }
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
+      // Finger moved: this is a scroll/swipe, not a long-press drag.
       if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
         cancelled = true;
         clearLongPress();
@@ -337,7 +334,6 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
 
     function onCancel(ev: PointerEvent) {
       if (ev.pointerId !== pointerId) return;
-      // If drag already started, finish at last known point instead of snapping away.
       clearLongPress();
       if (activated && dragSessionRef.current) {
         endDrag(ev.clientX, ev.clientY);
@@ -470,7 +466,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
             <li
               key={item.id}
               ref={(el) => setCardRef(item.id, el)}
-              className="relative h-full min-h-0 touch-none"
+              className="relative h-full min-h-0 touch-pan-y"
               data-item-id={item.id}
             >
               <button
@@ -481,9 +477,9 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
                   if (!e.defaultPrevented) openItem(item.id);
                 }}
                 onContextMenu={handleCardContextMenu}
-                className={`flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-[opacity,transform,box-shadow,border-color] duration-200 select-none touch-none ${
+                className={`flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-[opacity,transform,box-shadow,border-color] duration-200 select-none touch-pan-y ${
                   isDragging
-                    ? "scale-[0.97] border-border opacity-35"
+                    ? "scale-[0.97] border-border opacity-35 touch-none"
                     : isDropTarget
                       ? "border-primary shadow-[0_0_0_2px_rgba(43,125,233,0.35)]"
                       : "border-border hover:-translate-y-0.5"
