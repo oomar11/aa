@@ -14,14 +14,12 @@ import {
   type PaneOpening,
 } from "@/lib/design-items";
 import {
-  collectAllSplitDims,
   collectMullionRects,
   collectPaneRects,
-  overallDimLane,
-  splitDimLane,
   type DimSegment,
   type PaneRect,
 } from "@/lib/drawing-ops";
+import { buildDimPlan, DIM, type DimSegmentPlan } from "@/lib/dim-system";
 import { exhaustFanGeom } from "@/lib/exhaust-fan";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { panelStripeDivider, panelStripeLayout } from "@/lib/panel-stripes";
@@ -56,9 +54,6 @@ type Props = {
 
 export type { EqualizeTarget };
 
-const VB_W = 400;
-const VB_H = 460;
-
 type DimColors = {
   line: string;
   fill: string;
@@ -73,17 +68,23 @@ type DimColors = {
 
 export type { DimTarget };
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
-function maxLayoutSplitDepth(node: LayoutNode): number {
-  if (node.type !== "split") return 0;
-  let deepest = 1;
-  for (const child of node.children) {
-    deepest = Math.max(deepest, 1 + maxLayoutSplitDepth(child));
-  }
-  return deepest;
+function toDimSegment(seg: DimSegmentPlan): DimSegment {
+  return {
+    id: seg.id,
+    path: seg.path,
+    childIndex: seg.childIndex,
+    orient: seg.orient,
+    valueMm: seg.valueMm,
+    totalMm: seg.totalMm,
+    x: seg.x,
+    y: seg.y,
+    x1: seg.x1,
+    x2: seg.x2,
+    y1: seg.y1,
+    y2: seg.y2,
+    placement: seg.placement,
+    depth: seg.depth,
+  };
 }
 
 export function DrawingCanvas({
@@ -131,59 +132,20 @@ export function DrawingCanvas({
         jointStroke: "#0369a1",
       };
 
-  const dimDepth = maxLayoutSplitDepth(layout);
-  const maxSegDepth = Math.max(0, dimDepth - 1);
-  const hasSplits = dimDepth > 0;
-  // Outer lane = overall W/H; keep label padding so lines never stack.
-  const outerLane = overallDimLane(maxSegDepth, hasSplits);
-  const sideSplitLane = hasSplits ? splitDimLane(maxSegDepth) : 0;
-  const marginL = Math.min(120, outerLane + 22);
-  const marginR = Math.min(100, sideSplitLane + 20);
-  const marginT = Math.min(120, outerLane + 16);
-  const marginB = Math.min(100, sideSplitLane + 18);
-  const availW = Math.max(120, VB_W - marginL - marginR);
-  const availH = Math.max(140, VB_H - marginT - marginB);
-  const aspect =
-    item.widthMm > 0 && item.heightMm > 0
-      ? item.widthMm / item.heightMm
-      : availW / availH;
-  let frameW = availW;
-  let frameH = frameW / aspect;
-  if (frameH > availH) {
-    frameH = availH;
-    frameW = frameH * aspect;
-  }
-  const frame: PaneRect = {
-    id: "frame",
-    x: marginL + (availW - frameW) / 2,
-    y: marginT + (availH - frameH) / 2,
-    w: frameW,
-    h: frameH,
-  };
-  const svgPerMm =
-    item.widthMm > 0 ? frameW / item.widthMm : 0;
+  const dimPlan = buildDimPlan(layout, item.widthMm, item.heightMm);
+  const { frame: frameBox, viewBoxW, viewBoxH } = dimPlan;
+  const frame: PaneRect = { id: "frame", ...frameBox };
+  const svgPerMm = item.widthMm > 0 ? frame.w / item.widthMm : 0;
 
   const panes: PaneRect[] = [];
   const mullions: { x: number; y: number; w: number; h: number }[] = [];
   collectPaneRects(layout, frame, panes);
   collectMullionRects(layout, frame, 8, mullions);
 
-  const { widthSegments, heightSegments } = collectAllSplitDims(
-    layout,
-    item.widthMm,
-    item.heightMm,
-    frame,
-    VB_W,
-    VB_H
-  );
-  const safeWidthSegments = widthSegments.map((seg) => ({
-    ...seg,
-    y: clamp(seg.y, 10, VB_H - 10),
-  }));
-  const safeHeightSegments = heightSegments.map((seg) => ({
-    ...seg,
-    x: clamp(seg.x, 16, VB_W - 16),
-  }));
+  const widthSegments = dimPlan.widthSegments;
+  const heightSegments = dimPlan.heightSegments;
+  const widthSegModels = widthSegments.map(toDimSegment);
+  const heightSegModels = heightSegments.map(toDimSegment);
 
   const profile = 10;
   const lastTap = useRef<{ id: string; at: number } | null>(null);
@@ -207,8 +169,8 @@ export function DrawingCanvas({
 
   return (
     <svg
-      viewBox={`0 0 ${VB_W} ${VB_H}`}
-      className="h-full w-full max-h-[min(66dvh,560px)] overflow-hidden touch-manipulation"
+      viewBox={`0 0 ${viewBoxW} ${viewBoxH}`}
+      className="h-full w-full max-h-[min(70dvh,600px)] overflow-visible touch-manipulation"
       role="img"
       aria-label="رسم الشباك"
       onClick={() => onSelectPane(null)}
@@ -256,16 +218,17 @@ export function DrawingCanvas({
         })}
       </defs>
 
-      <rect width={VB_W} height={VB_H} fill="transparent" />
+      <rect width={viewBoxW} height={viewBoxH} fill="transparent" />
 
-      {/* العرض الكلي — برّا (فوق) خارج كل أبعاد التقسيم */}
+      {/* نظام المقاسات: حارات ثابتة فوق/يسار، الكلي برّه، التقسيم جوّه */}
       <DimensionLine
         x1={frame.x}
         x2={frame.x + frame.w}
-        y={Math.max(12, frame.y - outerLane)}
+        y={dimPlan.overallWidthY}
         label={formatLength(item.widthMm, unit)}
         size="lg"
         colors={dimColors}
+        frameEdge={frame.y}
         onClick={(e) => {
           e.stopPropagation();
           onEditDimension({ kind: "width" });
@@ -282,8 +245,7 @@ export function DrawingCanvas({
         endRole={rootCanEqualizeW ? "edge" : "plain"}
       />
 
-      {/* أبعاد التقسيم — أقرب حافة (فوق/تحت/يمين/يسار) */}
-      {safeWidthSegments.map((seg, _idx, all) => {
+      {widthSegModels.map((seg, _idx, all) => {
         const roles = segmentEndRoles(seg, all, "h");
         return (
           <DimensionLine
@@ -294,6 +256,7 @@ export function DrawingCanvas({
             label={formatLength(seg.valueMm, unit)}
             size="sm"
             colors={dimColors}
+            frameEdge={frame.y}
             startRole={roles.start}
             endRole={roles.end}
             onClick={(e) => {
@@ -318,7 +281,7 @@ export function DrawingCanvas({
         );
       })}
 
-      {safeHeightSegments.map((seg, _idx, all) => {
+      {heightSegModels.map((seg, _idx, all) => {
         const roles = segmentEndRoles(seg, all, "v");
         return (
           <DimensionLineVertical
@@ -329,6 +292,7 @@ export function DrawingCanvas({
             label={formatLength(seg.valueMm, unit)}
             size="sm"
             colors={dimColors}
+            frameEdge={frame.x}
             startRole={roles.start}
             endRole={roles.end}
             onClick={(e) => {
@@ -353,14 +317,14 @@ export function DrawingCanvas({
         );
       })}
 
-      {/* الارتفاع الكلي — برّا (يسار) خارج كل أبعاد التقسيم */}
       <DimensionLineVertical
         y1={frame.y}
         y2={frame.y + frame.h}
-        x={Math.max(16, frame.x - outerLane)}
+        x={dimPlan.overallHeightX}
         label={formatLength(item.heightMm, unit)}
         size="lg"
         colors={dimColors}
+        frameEdge={frame.x}
         onClick={(e) => {
           e.stopPropagation();
           onEditDimension({ kind: "height" });
@@ -1043,6 +1007,7 @@ function DimensionLine({
   label,
   size = "lg",
   colors,
+  frameEdge,
   onClick,
   onEqualize,
   onDeleteJoint,
@@ -1055,6 +1020,8 @@ function DimensionLine({
   label: string;
   size?: "lg" | "sm";
   colors: DimColors;
+  /** Frame edge Y — draws extension ticks down to the window. */
+  frameEdge?: number;
   onClick: (e: MouseEvent) => void;
   onEqualize?: (e: MouseEvent) => void;
   onDeleteJoint?: (e: MouseEvent, side: "start" | "end") => void;
@@ -1065,11 +1032,43 @@ function DimensionLine({
   const fontSize = size === "lg" ? 12 : 10;
   const padX = size === "lg" ? 10 : 7;
   const bw = Math.max(label.length * (fontSize * 0.62) + padX * 2, 28);
-  const bh = size === "lg" ? 15 : 13;
+  const bh = size === "lg" ? 16 : 14;
+  const hit = DIM.HIT_SLOP;
 
   return (
     <g className="cursor-pointer">
-      <line x1={x1} y1={y} x2={x2} y2={y} stroke={colors.line} strokeWidth={1} />
+      {frameEdge != null ? (
+        <>
+          <line
+            x1={x1}
+            y1={frameEdge}
+            x2={x1}
+            y2={y}
+            stroke={colors.line}
+            strokeWidth={0.9}
+            opacity={0.55}
+          />
+          <line
+            x1={x2}
+            y1={frameEdge}
+            x2={x2}
+            y2={y}
+            stroke={colors.line}
+            strokeWidth={0.9}
+            opacity={0.55}
+          />
+        </>
+      ) : null}
+      {/* Fat invisible hit target */}
+      <rect
+        x={Math.min(x1, x2) - 2}
+        y={y - hit / 2}
+        width={Math.abs(x2 - x1) + 4}
+        height={hit}
+        fill="transparent"
+        onClick={onClick}
+      />
+      <line x1={x1} y1={y} x2={x2} y2={y} stroke={colors.line} strokeWidth={1.1} />
       <DimEndDot
         cx={x1}
         cy={y}
@@ -1103,7 +1102,7 @@ function DimensionLine({
           rx={bh / 2}
           fill={colors.fill}
           stroke={colors.stroke}
-          strokeWidth={0.8}
+          strokeWidth={0.9}
         />
         <text
           x={mid}
@@ -1127,6 +1126,7 @@ function DimensionLineVertical({
   label,
   size = "lg",
   colors,
+  frameEdge,
   onClick,
   onEqualize,
   onDeleteJoint,
@@ -1139,6 +1139,8 @@ function DimensionLineVertical({
   label: string;
   size?: "lg" | "sm";
   colors: DimColors;
+  /** Frame edge X — draws extension ticks across to the window. */
+  frameEdge?: number;
   onClick: (e: MouseEvent) => void;
   onEqualize?: (e: MouseEvent) => void;
   onDeleteJoint?: (e: MouseEvent, side: "start" | "end") => void;
@@ -1149,11 +1151,42 @@ function DimensionLineVertical({
   const fontSize = size === "lg" ? 12 : 10;
   const padX = size === "lg" ? 10 : 7;
   const bw = Math.max(label.length * (fontSize * 0.62) + padX * 2, 28);
-  const bh = size === "lg" ? 15 : 13;
+  const bh = size === "lg" ? 16 : 14;
+  const hit = DIM.HIT_SLOP;
 
   return (
     <g className="cursor-pointer">
-      <line x1={x} y1={y1} x2={x} y2={y2} stroke={colors.line} strokeWidth={1} />
+      {frameEdge != null ? (
+        <>
+          <line
+            x1={frameEdge}
+            y1={y1}
+            x2={x}
+            y2={y1}
+            stroke={colors.line}
+            strokeWidth={0.9}
+            opacity={0.55}
+          />
+          <line
+            x1={frameEdge}
+            y1={y2}
+            x2={x}
+            y2={y2}
+            stroke={colors.line}
+            strokeWidth={0.9}
+            opacity={0.55}
+          />
+        </>
+      ) : null}
+      <rect
+        x={x - hit / 2}
+        y={Math.min(y1, y2) - 2}
+        width={hit}
+        height={Math.abs(y2 - y1) + 4}
+        fill="transparent"
+        onClick={onClick}
+      />
+      <line x1={x} y1={y1} x2={x} y2={y2} stroke={colors.line} strokeWidth={1.1} />
       <DimEndDot
         cx={x}
         cy={y1}
@@ -1187,7 +1220,7 @@ function DimensionLineVertical({
           rx={bh / 2}
           fill={colors.fill}
           stroke={colors.stroke}
-          strokeWidth={0.8}
+          strokeWidth={0.9}
         />
         <text
           x={x}
@@ -1220,7 +1253,7 @@ function DimEndDot({
   onClick: (e: MouseEvent) => void;
 }) {
   if (role === "hidden") return null;
-  const hitR = size === "lg" ? 7 : 6;
+  const hitR = size === "lg" ? 11 : 10;
   if (role === "plain") {
     return (
       <g onClick={onClick}>

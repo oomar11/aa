@@ -4,6 +4,12 @@ import {
   type PaneOpening,
 } from "@/lib/design-items";
 import {
+  buildDimPlan,
+  overallLane as overallDimLane,
+  splitLane as splitDimLane,
+  DIM as DIM_SYSTEM,
+} from "@/lib/dim-system";
+import {
   listPaneIds,
   pane,
   type LayoutNode,
@@ -318,130 +324,50 @@ export function updateSplitRatio(
   };
 }
 
-/** Distance from frame edge to the first (innermost) split dimension lane. */
-export const DIM_LANE_BASE = 22;
-/** Extra space between nested split dimension lanes. */
-export const DIM_LANE_STEP = 28;
-/** Gap from the outermost split lane to the overall W/H dimension. */
-export const DIM_OVERALL_GAP = 28;
+/** @deprecated use DIM from @/lib/dim-system */
+export const DIM_LANE_BASE = DIM_SYSTEM.LANE_BASE;
+/** @deprecated use DIM from @/lib/dim-system */
+export const DIM_LANE_STEP = DIM_SYSTEM.LANE_STEP;
+/** @deprecated use DIM from @/lib/dim-system */
+export const DIM_OVERALL_GAP = DIM_SYSTEM.OVERALL_GAP;
 
-export function splitDimLane(depth: number) {
-  return DIM_LANE_BASE + depth * DIM_LANE_STEP;
-}
+export { splitDimLane, overallDimLane };
 
-/** Overall width/height sit outside every split lane. */
-export function overallDimLane(maxSegDepth: number, hasSplits: boolean) {
-  if (!hasSplits) return 26;
-  return splitDimLane(maxSegDepth) + DIM_OVERALL_GAP;
-}
-
-/** يجمع أبعاد كل التقسيمات ويضعها على أقرب حافة */
+/**
+ * Collects split dimensions using the unified dim system
+ * (fixed top/left lanes anchored to the outer frame).
+ */
 export function collectAllSplitDims(
   layout: LayoutNode,
   widthMm: number,
   heightMm: number,
-  frame: Rect,
-  canvasW: number,
-  canvasH: number
+  _frame?: Rect,
+  _canvasW?: number,
+  _canvasH?: number
 ): { widthSegments: DimSegment[]; heightSegments: DimSegment[] } {
-  const widthSegments: DimSegment[] = [];
-  const heightSegments: DimSegment[] = [];
-
-  function walk(
-    node: LayoutNode,
-    rect: Rect,
-    wMm: number,
-    hMm: number,
-    path: number[]
-  ) {
-    if (node.type !== "split") return;
-
-    const total = sum(node.ratios) || 1;
-    let offset = 0;
-    const depth = path.length;
-
-    if (node.dir === "v") {
-      node.ratios.forEach((r, i) => {
-        const w = (rect.w * r) / total;
-        const childRect = {
-          x: rect.x + offset,
-          y: rect.y,
-          w,
-          h: rect.h,
-        };
-        const childMm = (wMm * r) / total;
-        const distTop = rect.y;
-        const distBottom = canvasH - (rect.y + rect.h);
-        const placement: DimSegment["placement"] =
-          distTop <= distBottom ? "top" : "bottom";
-        const lane = splitDimLane(depth);
-        const y =
-          placement === "top"
-            ? Math.max(10, rect.y - lane)
-            : Math.min(canvasH - 10, rect.y + rect.h + lane);
-
-        widthSegments.push({
-          id: `w-${path.join(".") || "r"}-${i}`,
-          path: [...path],
-          childIndex: i,
-          orient: "v",
-          valueMm: Math.round(childMm),
-          totalMm: wMm,
-          x: childRect.x + w / 2,
-          y,
-          x1: childRect.x,
-          x2: childRect.x + w,
-          placement,
-          depth,
-        });
-
-        walk(node.children[i]!, childRect, childMm, hMm, [...path, i]);
-        offset += w;
-      });
-      return;
-    }
-
-    node.ratios.forEach((r, i) => {
-      const h = (rect.h * r) / total;
-      const childRect = {
-        x: rect.x,
-        y: rect.y + offset,
-        w: rect.w,
-        h,
-      };
-      const childMm = (hMm * r) / total;
-      const distLeft = rect.x;
-      const distRight = canvasW - (rect.x + rect.w);
-      const placement: DimSegment["placement"] =
-        distLeft <= distRight ? "left" : "right";
-      const lane = splitDimLane(depth);
-      const x =
-        placement === "left"
-          ? Math.max(16, rect.x - lane)
-          : Math.min(canvasW - 16, rect.x + rect.w + lane);
-
-      heightSegments.push({
-        id: `h-${path.join(".") || "r"}-${i}`,
-        path: [...path],
-        childIndex: i,
-        orient: "h",
-        valueMm: Math.round(childMm),
-        totalMm: hMm,
-        x,
-        y: childRect.y + h / 2,
-        y1: childRect.y,
-        y2: childRect.y + h,
-        placement,
-        depth,
-      });
-
-      walk(node.children[i]!, childRect, wMm, childMm, [...path, i]);
-      offset += h;
-    });
-  }
-
-  walk(layout, frame, widthMm, heightMm, []);
-  return { widthSegments, heightSegments };
+  const plan = buildDimPlan(layout, widthMm, heightMm);
+  const toSeg = (
+    seg: (typeof plan.widthSegments)[number]
+  ): DimSegment => ({
+    id: seg.id,
+    path: seg.path,
+    childIndex: seg.childIndex,
+    orient: seg.orient,
+    valueMm: seg.valueMm,
+    totalMm: seg.totalMm,
+    x: seg.x,
+    y: seg.y,
+    x1: seg.x1,
+    x2: seg.x2,
+    y1: seg.y1,
+    y2: seg.y2,
+    placement: seg.placement,
+    depth: seg.depth,
+  });
+  return {
+    widthSegments: plan.widthSegments.map(toSeg),
+    heightSegments: plan.heightSegments.map(toSeg),
+  };
 }
 
 /** @deprecated استخدم collectAllSplitDims */
@@ -449,12 +375,12 @@ export function collectTopLevelDims(
   layout: LayoutNode,
   widthMm: number,
   heightMm: number,
-  frame: Rect
+  _frame: Rect
 ): {
   widthSegments: DimSegment[];
   heightSegments: DimSegment[];
 } {
-  return collectAllSplitDims(layout, widthMm, heightMm, frame, 360, 420);
+  return collectAllSplitDims(layout, widthMm, heightMm);
 }
 
 export function ratioFromMm(
