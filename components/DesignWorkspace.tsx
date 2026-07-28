@@ -49,6 +49,26 @@ type DragSession = {
   offsetY: number;
 };
 
+function appendDebugLog(
+  hypothesisId: string,
+  location: string,
+  message: string,
+  data: Record<string, unknown>
+) {
+  void fetch("/api/debug-log", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      hypothesisId,
+      location,
+      message,
+      data,
+      timestamp: Date.now(),
+    }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 export function DesignWorkspace({ customerId, projectId }: Props) {
   const router = useRouter();
   const { unit } = useUnit();
@@ -296,6 +316,15 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     cardEl: HTMLElement
   ) {
     const rect = cardEl.getBoundingClientRect();
+    // #region agent log
+    appendDebugLog("B", "components/DesignWorkspace.tsx:startDrag", "Long press promoted to drag", {
+      itemId,
+      pointerId,
+      clientX,
+      clientY,
+      tagName: cardEl.tagName,
+    });
+    // #endregion
     dragSessionRef.current = {
       id: itemId,
       pointerId,
@@ -322,6 +351,18 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     const startX = e.clientX;
     const startY = e.clientY;
     const pointerId = e.pointerId;
+    // #region agent log
+    appendDebugLog("A", "components/DesignWorkspace.tsx:handleCardPointerDown", "Card pointer down", {
+      itemId,
+      pointerId,
+      pointerType: e.pointerType,
+      targetTag: (e.target as HTMLElement | null)?.tagName ?? null,
+      currentTargetTag: cardEl.tagName,
+      href: cardEl.getAttribute("href"),
+      clientX: startX,
+      clientY: startY,
+    });
+    // #endregion
 
     clearLongPress();
     longPressTimerRef.current = setTimeout(() => {
@@ -334,6 +375,15 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
       if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
+        // #region agent log
+        appendDebugLog("D", "components/DesignWorkspace.tsx:handleCardPointerDown:onMove", "Long press cancelled by movement", {
+          itemId,
+          pointerId,
+          dx,
+          dy,
+          distance: Math.hypot(dx, dy),
+        });
+        // #endregion
         clearLongPress();
         cleanup();
       }
@@ -363,8 +413,21 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     }
   }
 
+  function openItem(itemId: string) {
+    const href = drawHref(itemId);
+    if (href !== "#") router.push(href);
+  }
+
   function handleCardContextMenu(e: ReactMouseEvent) {
     // Item cards support long-press dragging, so suppress the browser link menu.
+    // #region agent log
+    appendDebugLog("C", "components/DesignWorkspace.tsx:handleCardContextMenu", "Context menu event reached React handler", {
+      targetTag: (e.target as HTMLElement | null)?.tagName ?? null,
+      currentTargetTag: (e.currentTarget as HTMLElement | null)?.tagName ?? null,
+      draggingId,
+      suppressClick: suppressClickRef.current,
+    });
+    // #endregion
     e.preventDefault();
   }
 
@@ -457,11 +520,13 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
               className="relative h-full touch-manipulation"
               data-item-id={item.id}
             >
-              <Link
-                href={drawHref(item.id)}
-                draggable={false}
+              <button
+                type="button"
                 onPointerDown={(e) => handleCardPointerDown(item.id, e)}
-                onClick={handleCardClick}
+                onClick={(e) => {
+                  handleCardClick(e);
+                  if (!e.defaultPrevented) openItem(item.id);
+                }}
                 onContextMenu={handleCardContextMenu}
                 className={`flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-[opacity,transform,box-shadow,border-color] duration-200 select-none ${
                   isDragging
@@ -473,7 +538,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
                 style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
               >
                 <ItemCardBody item={item} index={index} unit={unit} />
-              </Link>
+              </button>
             </li>
           );
         })}
