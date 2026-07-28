@@ -188,6 +188,23 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     []
   );
 
+  const unlockPageScroll = useCallback(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const y = lockedScrollYRef.current;
+
+    html.style.overscrollBehavior = "";
+    body.style.overscrollBehavior = "";
+    html.style.touchAction = "";
+    body.style.touchAction = "";
+    body.style.position = "";
+    body.style.top = "";
+    body.style.left = "";
+    body.style.right = "";
+    body.style.width = "";
+    window.scrollTo(0, y);
+  }, []);
+
   const endDrag = useCallback(
     (clientX: number, clientY: number) => {
       const session = dragSessionRef.current;
@@ -219,11 +236,13 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         }
       }
 
+      // Always clear the fixed-body lock here so scrolling returns immediately.
+      unlockPageScroll();
       setDraggingId(null);
       setOverTrash(false);
       setInsertIndex(null);
     },
-    [hitTestInsertIndex, hitTestTrash, persist]
+    [hitTestInsertIndex, hitTestTrash, persist, unlockPageScroll]
   );
 
   const pendingDeleteItem = useMemo(
@@ -262,17 +281,6 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
 
     const html = document.documentElement;
     const body = document.body;
-    const prev = {
-      htmlOverscroll: html.style.overscrollBehavior,
-      bodyOverscroll: body.style.overscrollBehavior,
-      bodyPosition: body.style.position,
-      bodyTop: body.style.top,
-      bodyLeft: body.style.left,
-      bodyRight: body.style.right,
-      bodyWidth: body.style.width,
-      bodyTouch: body.style.touchAction,
-      htmlTouch: html.style.touchAction,
-    };
 
     // Hard-lock native scroll + pull-to-refresh while holding a card.
     if (body.style.position !== "fixed") {
@@ -291,6 +299,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       body.style.right = "0";
       body.style.width = "100%";
     }
+
     function preventTouchScroll(ev: TouchEvent) {
       ev.preventDefault();
     }
@@ -353,20 +362,10 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         cancelAnimationFrame(autoScrollRafRef.current);
         autoScrollRafRef.current = null;
       }
-
-      const y = lockedScrollYRef.current;
-      html.style.overscrollBehavior = prev.htmlOverscroll;
-      body.style.overscrollBehavior = prev.bodyOverscroll;
-      body.style.position = prev.bodyPosition;
-      body.style.top = prev.bodyTop;
-      body.style.left = prev.bodyLeft;
-      body.style.right = prev.bodyRight;
-      body.style.width = prev.bodyWidth;
-      body.style.touchAction = prev.bodyTouch;
-      html.style.touchAction = prev.htmlTouch;
-      window.scrollTo(0, y);
+      // Clear lock styles explicitly (do not restore polluted "prev" values).
+      unlockPageScroll();
     };
-  }, [draggingId, hitTestTrash, refreshDragTargets]);
+  }, [draggingId, hitTestTrash, refreshDragTargets, unlockPageScroll]);
 
   useEffect(() => {
     return () => clearLongPress();
