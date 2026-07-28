@@ -701,6 +701,25 @@ function OpeningOverlay({
     );
   }
 
+  if (opening === "tilt-inverted") {
+    return (
+      <>
+        <path
+          d={`M ${x + inset} ${y + inset} L ${cx} ${y + h - inset} L ${x + w - inset} ${y + inset}`}
+          fill="none"
+          stroke={openStroke}
+          strokeWidth={1.4}
+        />
+        <Handle
+          x={cx}
+          y={y + h - inset - 5}
+          vertical={false}
+          hardware={hardware}
+        />
+      </>
+    );
+  }
+
   if (opening === "tilt-turn") {
     return (
       <>

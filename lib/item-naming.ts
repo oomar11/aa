@@ -23,7 +23,7 @@ function openingFamily(opening: PaneOpening): Exclude<OpeningFamily, "mixed"> {
   ) {
     return "casement";
   }
-  if (opening === "tilt") return "tilt";
+  if (opening === "tilt" || opening === "tilt-inverted") return "tilt";
   if (opening === "panel-h" || opening === "panel-v") return "panel";
   return "fixed";
 }
