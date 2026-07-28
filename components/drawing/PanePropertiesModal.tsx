@@ -29,29 +29,19 @@ type OptionGroup<T extends string> = {
   items: OptionDef<T>[];
 };
 
-const GRIDS: { id: PaneGrid; label: string }[] = [
-  { id: "solid", label: "ضلفة كاملة" },
-  { id: "2v", label: "قسمين رأسي" },
-  { id: "2h", label: "قسمين أفقي" },
-  { id: "3v", label: "٣ أقسام رأسي" },
-  { id: "3h", label: "٣ أقسام أفقي" },
-  { id: "4v", label: "٤ أقسام رأسي" },
-  { id: "4h", label: "٤ أقسام أفقي" },
-  { id: "2x2", label: "شبكة ٢×٢" },
-  { id: "3x2", label: "شبكة ٣×٢" },
-  { id: "2x3", label: "شبكة ٢×٣" },
-  { id: "3x3", label: "شبكة ٣×٣" },
-  { id: "top-2v", label: "أعلى منقسم" },
-  { id: "bot-2v", label: "أسفل منقسم" },
-  { id: "diamond", label: "معين" },
-];
-
 const OPENING_GROUPS: OptionGroup<PaneOpening>[] = [
   {
     title: "ثابت",
     items: [
       { id: "fixed", label: "ثابت" },
       { id: "exhaust", label: "شفاط" },
+    ],
+  },
+  {
+    title: "مفصلي",
+    items: [
+      { id: "casement-right", label: "مفصلي يمين" },
+      { id: "casement-left", label: "مفصلي يسار" },
     ],
   },
   {
@@ -62,17 +52,10 @@ const OPENING_GROUPS: OptionGroup<PaneOpening>[] = [
     ],
   },
   {
-    title: "مفصلي",
+    title: "قلب وضلفة",
     items: [
-      { id: "tilt-turn", label: "قلب وضلفة" },
+      { id: "tilt-turn", label: "قلب وضلفة يمين" },
       { id: "tilt-turn-left", label: "قلب وضلفة يسار" },
-    ],
-  },
-  {
-    title: "سحاب",
-    items: [
-      { id: "sliding-right", label: "سحاب يمين" },
-      { id: "sliding-left", label: "سحاب يسار" },
     ],
   },
   {
@@ -196,6 +179,9 @@ export function PanePropertiesModal({
     });
   }
 
+  const showBouclier = bouclierEligible && draft.opening === "fixed";
+  const showPanelCells = Boolean(draft.sandwichPanels) && cellCount > 1;
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-3 backdrop-blur-[2px]"
@@ -205,7 +191,7 @@ export function PanePropertiesModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[min(90dvh,680px)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_50px_rgba(15,20,28,0.25)]"
+        className="flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_50px_rgba(15,20,28,0.25)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-border px-3 py-2.5 text-center">
@@ -228,7 +214,7 @@ export function PanePropertiesModal({
                 نوع الفتح
               </p>
               <p className="text-[10px] font-normal text-primary-foreground/80">
-                ثابت، سحاب، قلاب…
+                ثابت، مفصلي، قلاب…
               </p>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-2">
@@ -286,35 +272,42 @@ export function PanePropertiesModal({
                   </OptionSection>
                 ))}
               </div>
+            </div>
+          </section>
+        </div>
 
-              <div className="mt-3 rounded-xl border border-border bg-card p-2">
-                <p className="mb-2 text-[11px] font-semibold text-foreground">
-                  خيارات إضافية
-                </p>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <FlagRow
-                    label="بنل ساندوتش"
-                    checked={Boolean(draft.sandwichPanels)}
-                    onChange={(v) => toggleFlag("sandwichPanels", v)}
-                    icon={<PanelIcon />}
-                  />
-                  <FlagRow
-                    label="شبكة سلك"
-                    checked={Boolean(draft.mesh)}
-                    onChange={(v) => toggleFlag("mesh", v)}
-                    icon={<MeshIcon />}
-                  />
-                  <FlagRow
-                    label="ضلفة باب"
-                    checked={Boolean(draft.isDoor)}
-                    onChange={(v) => toggleFlag("isDoor", v)}
-                    icon={<DoorIcon />}
-                  />
-                </div>
-              </div>
+        {/* شريط الخيارات الإضافية — ثابت فوق الأزرار */}
+        <div className="shrink-0 border-t border-border bg-background/80">
+          <div className="px-2.5 pt-2 pb-1.5">
+            <p className="mb-1.5 text-center text-[10px] font-semibold tracking-wide text-muted">
+              خيارات إضافية
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              <FlagChip
+                label="بنل ساندوتش"
+                checked={Boolean(draft.sandwichPanels)}
+                onChange={(v) => toggleFlag("sandwichPanels", v)}
+                icon={<PanelIcon />}
+              />
+              <FlagChip
+                label="شبكة سلك"
+                checked={Boolean(draft.mesh)}
+                onChange={(v) => toggleFlag("mesh", v)}
+                icon={<MeshIcon />}
+              />
+              <FlagChip
+                label="ضلفة باب"
+                checked={Boolean(draft.isDoor)}
+                onChange={(v) => toggleFlag("isDoor", v)}
+                icon={<DoorIcon />}
+              />
+            </div>
+          </div>
 
-              {bouclierEligible && draft.opening === "fixed" && (
-                <div className="mt-3 rounded-xl border border-border bg-card p-2">
+          {(showBouclier || showPanelCells) && (
+            <div className="max-h-[28dvh] space-y-2 overflow-y-auto border-t border-border/60 px-2.5 py-2">
+              {showBouclier && (
+                <div className="rounded-xl border border-border bg-card p-2">
                   <p className="mb-2 text-[11px] font-semibold text-foreground">
                     سوقاس / بوكلير
                   </p>
@@ -360,7 +353,7 @@ export function PanePropertiesModal({
                 </div>
               )}
 
-              {draft.sandwichPanels && cellCount > 1 && (
+              {showPanelCells && (
                 <PanelCellPicker
                   grid={draft.grid ?? "solid"}
                   cellCount={cellCount}
@@ -381,10 +374,10 @@ export function PanePropertiesModal({
                 />
               )}
             </div>
-          </section>
+          )}
         </div>
 
-        <footer className="grid grid-cols-2 gap-3 border-t border-border p-3">
+        <footer className="grid shrink-0 grid-cols-2 gap-3 border-t border-border p-3">
           <button
             type="button"
             onClick={onClose}
@@ -475,7 +468,7 @@ function PanelCellPicker({
   const cells = getGridCells(grid, 0, 0, 100, 100);
 
   return (
-    <div className="mt-3 rounded-xl border border-border bg-card p-2.5">
+    <div className="rounded-xl border border-border bg-card p-2.5">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold text-foreground">
@@ -574,7 +567,7 @@ function PanelCellPicker({
   );
 }
 
-function FlagRow({
+function FlagChip({
   label,
   checked,
   onChange,
@@ -586,20 +579,24 @@ function FlagRow({
   icon: ReactNode;
 }) {
   return (
-    <label className="flex min-h-[4rem] cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-2 py-2">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-primary">
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1 text-[11px] font-medium leading-tight text-foreground">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      title={label}
+      onClick={() => onChange(!checked)}
+      className={`flex min-h-[3.6rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-1.5 transition-colors ${
+        checked
+          ? "border-primary bg-primary-soft text-primary"
+          : "border-border bg-card text-muted hover:border-primary/40 hover:text-foreground"
+      }`}
+    >
+      <span className="flex h-6 w-6 items-center justify-center">{icon}</span>
+      <span className="w-full truncate text-center text-[10px] font-semibold leading-tight">
         {label}
       </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 accent-[var(--primary)]"
-      />
-    </label>
+    </button>
   );
 }
 

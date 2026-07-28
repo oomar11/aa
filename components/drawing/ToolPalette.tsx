@@ -48,12 +48,12 @@ const tools: ToolDef[] = [
   },
   {
     id: "casement-left",
-    label: "ضلفة يسار",
+    label: "مفصلي يسار",
     icon: <IconCasementLeft />,
   },
   {
     id: "casement-right",
-    label: "ضلفة يمين",
+    label: "مفصلي يمين",
     icon: <IconCasementRight />,
   },
   {
