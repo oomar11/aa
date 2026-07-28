@@ -84,7 +84,7 @@ export function TemplateOrderEditor() {
     setTemplates(getOrderedTemplates(saved));
     setSavedFlash(true);
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = setTimeout(() => setSavedFlash(false), 1400);
+    flashTimerRef.current = setTimeout(() => setSavedFlash(false), 2000);
   }, []);
 
   const clearLongPress = useCallback(() => {
@@ -422,7 +422,7 @@ export function TemplateOrderEditor() {
     setTemplates(getOrderedTemplates(ids));
     setSavedFlash(true);
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = setTimeout(() => setSavedFlash(false), 1400);
+    flashTimerRef.current = setTimeout(() => setSavedFlash(false), 2000);
   }
 
   const draggingTemplate =
@@ -438,10 +438,10 @@ export function TemplateOrderEditor() {
           </p>
         </div>
         <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-opacity ${
+          className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all duration-300 ${
             savedFlash
               ? "bg-primary/15 text-primary opacity-100"
-              : "bg-transparent text-transparent opacity-0"
+              : "pointer-events-none bg-transparent text-muted opacity-0"
           }`}
           aria-live="polite"
         >
