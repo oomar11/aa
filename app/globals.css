@@ -1,15 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f8fa;
-  --foreground: #1a1a1a;
+  --background: #f4f6f9;
+  --foreground: #152033;
   --card: #ffffff;
   --primary: #2b7de9;
   --primary-soft: #e8f1fc;
-  --border: #e8eaed;
-  --muted: #8b939e;
-  --coral: #e8956f;
-  --orders: #7b8fd4;
+  --primary-foreground: #ffffff;
+  --border: #e4e8ee;
+  --muted: #8a93a3;
+  --icon-bg: #eef4fc;
+}
+
+.dark {
+  --background: #0f141c;
+  --foreground: #eef2f7;
+  --card: #1a2230;
+  --primary: #4b93f0;
+  --primary-soft: #1c2d45;
+  --primary-foreground: #ffffff;
+  --border: #2a3548;
+  --muted: #8b95a8;
+  --icon-bg: #243247;
 }
 
 @theme inline {
@@ -18,10 +30,10 @@
   --color-card: var(--card);
   --color-primary: var(--primary);
   --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
   --color-border: var(--border);
   --color-muted: var(--muted);
-  --color-coral: var(--coral);
-  --color-orders: var(--orders);
+  --color-icon-bg: var(--icon-bg);
   --font-sans: var(--font-cairo);
 }
 
@@ -29,4 +41,5 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-cairo), system-ui, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
