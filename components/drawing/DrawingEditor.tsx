@@ -72,7 +72,9 @@ type HistorySnap = {
   specialPrice: number | null;
   discountId: string;
   systemId: string;
+  accessoryId: string;
   glassId: string;
+  ironId: string;
   name: string;
   nameIsCustom: boolean;
 };
@@ -91,7 +93,9 @@ function snapshot(item: DesignItem): HistorySnap {
     specialPrice: item.specialPrice ?? null,
     discountId: item.discountId ?? "none",
     systemId: item.systemId ?? "none",
+    accessoryId: item.accessoryId ?? "none",
     glassId: item.glassId ?? "none",
+    ironId: item.ironId ?? "iron-std",
     name: item.name,
     nameIsCustom: Boolean(item.nameIsCustom),
   };
@@ -110,7 +114,9 @@ function applySnap(item: DesignItem, snap: HistorySnap): DesignItem {
     specialPrice: snap.specialPrice,
     discountId: snap.discountId,
     systemId: snap.systemId,
+    accessoryId: snap.accessoryId,
     glassId: snap.glassId,
+    ironId: snap.ironId,
     name: snap.name,
     nameIsCustom: snap.nameIsCustom,
   };
@@ -270,7 +276,9 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       specialPrice: patch.specialPrice,
       discountId: patch.discountId,
       systemId: patch.systemId,
+      accessoryId: patch.accessoryId,
       glassId: patch.glassId,
+      ironId: patch.ironId,
       frameColor: patch.frameColor,
     });
     setSettingsOpen(false);

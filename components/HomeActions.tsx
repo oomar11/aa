@@ -53,6 +53,29 @@ function OrdersIcon() {
   );
 }
 
+function MaterialsIcon() {
+  return (
+    <svg viewBox="0 0 48 48" className="h-11 w-11" fill="none" aria-hidden>
+      <rect x="8" y="10" width="12" height="28" rx="2.5" fill="currentColor" />
+      <rect
+        x="28"
+        y="10"
+        width="12"
+        height="28"
+        rx="2.5"
+        fill="currentColor"
+        opacity="0.72"
+      />
+      <path
+        d="M20 16h8M20 24h8M20 32h8"
+        stroke="rgba(0,0,0,0.22)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 const baseCard =
   "flex min-h-[176px] flex-col items-center justify-center gap-4 rounded-2xl p-5 text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]";
 
@@ -73,6 +96,19 @@ export function HomeActions() {
       >
         <OrdersIcon />
         <span className="text-base font-semibold">الطلبات</span>
+      </Link>
+
+      <Link
+        href="/materials"
+        className={`${baseCard} col-span-2 min-h-[132px] flex-row gap-5 bg-[#5A9B8E] shadow-[0_6px_20px_rgba(90,155,142,0.35)] sm:min-h-[148px]`}
+      >
+        <MaterialsIcon />
+        <div className="text-right">
+          <span className="block text-base font-semibold">خامات</span>
+          <span className="mt-0.5 block text-xs font-medium text-white/80">
+            قطاعات · اكسسوار · زجاج · حديد
+          </span>
+        </div>
       </Link>
     </section>
   );

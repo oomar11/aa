@@ -167,10 +167,14 @@ export type DesignItem = {
   specialPrice?: number | null;
   /** مخطط مالي / خصم */
   discountId?: string;
-  /** نظام النوافذ PVC */
+  /** نظام القطاعات (بروفيل) */
   systemId?: string;
+  /** نظام الاكسسوار */
+  accessoryId?: string;
   /** نوع الزجاج */
   glassId?: string;
+  /** نظام الحديد (غالباً ثابت/افتراضي) */
+  ironId?: string;
 };
 
 export function itemAreaSqm(item: DesignItem): number {
@@ -235,7 +239,10 @@ export function createItemFromTemplate(
     specialPrice: null,
     discountId: "none",
     systemId: "none",
+    accessoryId: "none",
     glassId: "none",
+    /** الحديد ثابت غالباً — يُملأ بالافتراضي عند فتح الإعدادات إن لزم */
+    ironId: "iron-std",
   };
   return { ...draft, name: suggestItemName(draft) };
 }

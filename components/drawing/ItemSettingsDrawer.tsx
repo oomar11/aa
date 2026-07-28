@@ -8,12 +8,13 @@ import {
 } from "@/lib/design-items";
 import {
   DISCOUNT_OPTIONS,
-  GLASS_OPTIONS,
-  SYSTEM_OPTIONS,
+  loadAccessoryOptions,
+  loadGlassOptions,
+  loadIronOptions,
+  loadSystemOptions,
   type DiscountId,
-  type GlassId,
-  type SystemId,
 } from "@/lib/item-catalogs";
+import { getDefaultSystemId } from "@/lib/material-systems";
 import { suggestItemName } from "@/lib/item-naming";
 
 export type ItemSettingsPatch = {
@@ -23,10 +24,14 @@ export type ItemSettingsPatch = {
   notes: string;
   specialPrice: number | null;
   discountId: DiscountId;
-  systemId: SystemId;
-  glassId: GlassId;
+  systemId: string;
+  accessoryId: string;
+  glassId: string;
+  ironId: string;
   frameColor: FrameColorId;
 };
+
+type CatalogOpts = { id: string; label: string }[];
 
 type Props = {
   open: boolean;
@@ -34,6 +39,11 @@ type Props = {
   onClose: () => void;
   onConfirm: (patch: ItemSettingsPatch) => void;
 };
+
+function resolveIronId(item: DesignItem): string {
+  if (item.ironId && item.ironId !== "none") return item.ironId;
+  return getDefaultSystemId("iron");
+}
 
 function toDraft(item: DesignItem): ItemSettingsPatch {
   return {
@@ -46,8 +56,10 @@ function toDraft(item: DesignItem): ItemSettingsPatch {
         ? item.specialPrice
         : null,
     discountId: (item.discountId as DiscountId) || "none",
-    systemId: (item.systemId as SystemId) || "none",
-    glassId: (item.glassId as GlassId) || "none",
+    systemId: item.systemId || "none",
+    accessoryId: item.accessoryId || "none",
+    glassId: item.glassId || "none",
+    ironId: resolveIronId(item),
     frameColor: (item.frameColor as FrameColorId) || "white",
   };
 }
@@ -59,6 +71,10 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
       ? String(item.specialPrice)
       : ""
   );
+  const [systemOpts, setSystemOpts] = useState<CatalogOpts>([]);
+  const [accessoryOpts, setAccessoryOpts] = useState<CatalogOpts>([]);
+  const [glassOpts, setGlassOpts] = useState<CatalogOpts>([]);
+  const [ironOpts, setIronOpts] = useState<CatalogOpts>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -69,6 +85,10 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
         ? String(next.specialPrice)
         : ""
     );
+    setSystemOpts(loadSystemOptions());
+    setAccessoryOpts(loadAccessoryOptions());
+    setGlassOpts(loadGlassOptions());
+    setIronOpts(loadIronOptions());
   }, [open, item]);
 
   useEffect(() => {
@@ -115,7 +135,9 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
         <header className="flex shrink-0 items-center justify-between border-b border-border bg-card px-3 py-3">
           <div className="min-w-0 text-right">
             <h2 className="text-base font-bold text-foreground">تفاصيل البند</h2>
-            <p className="text-[11px] text-muted">الاسم · العدد · السعر · النظام</p>
+            <p className="text-[11px] text-muted">
+              الاسم · العدد · القطاعات · الزجاج
+            </p>
           </div>
           <button
             type="button"
@@ -177,12 +199,12 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
             </div>
           </Section>
 
-          <Section title="عدد">
-            <div className="flex items-center overflow-hidden rounded-2xl border border-border bg-background">
+          <Section title="العدد">
+            <div className="flex overflow-hidden rounded-2xl border border-border">
               <button
                 type="button"
                 className="flex h-11 w-12 items-center justify-center text-xl font-bold text-primary transition-colors hover:bg-primary-soft"
-                aria-label="إنقاص"
+                aria-label="نقصان"
                 onClick={() =>
                   setDraft((d) => ({ ...d, qty: Math.max(1, d.qty - 1) }))
                 }
@@ -194,8 +216,11 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
                 min={1}
                 value={draft.qty}
                 onChange={(e) => {
-                  const n = Math.max(1, Math.floor(Number(e.target.value) || 1));
-                  setDraft((d) => ({ ...d, qty: n }));
+                  const n = Number(e.target.value);
+                  setDraft((d) => ({
+                    ...d,
+                    qty: Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1,
+                  }));
                 }}
                 className="h-11 min-w-0 flex-1 border-x border-border bg-card text-center text-base font-semibold text-foreground outline-none"
               />
@@ -250,25 +275,42 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
             />
           </Section>
 
-          <Section title="نظام النوافذ">
+          <Section title="نظام القطاعات">
             <RadioList
               name="system"
-              options={SYSTEM_OPTIONS}
+              options={systemOpts}
               value={draft.systemId}
-              onChange={(id) =>
-                setDraft((d) => ({ ...d, systemId: id as SystemId }))
-              }
+              onChange={(id) => setDraft((d) => ({ ...d, systemId: id }))}
+            />
+          </Section>
+
+          <Section title="نظام الاكسسوار">
+            <RadioList
+              name="accessory"
+              options={accessoryOpts}
+              value={draft.accessoryId}
+              onChange={(id) => setDraft((d) => ({ ...d, accessoryId: id }))}
             />
           </Section>
 
           <Section title="نوع الزجاج">
             <RadioList
               name="glass"
-              options={GLASS_OPTIONS}
+              options={glassOpts}
               value={draft.glassId}
-              onChange={(id) =>
-                setDraft((d) => ({ ...d, glassId: id as GlassId }))
-              }
+              onChange={(id) => setDraft((d) => ({ ...d, glassId: id }))}
+            />
+          </Section>
+
+          <Section title="الحديد">
+            <p className="mb-2 text-[11px] text-muted">
+              غالباً ثابت — الافتراضي بيتحدد من شاشة الخامات
+            </p>
+            <RadioList
+              name="iron"
+              options={ironOpts}
+              value={draft.ironId}
+              onChange={(id) => setDraft((d) => ({ ...d, ironId: id }))}
             />
           </Section>
 
