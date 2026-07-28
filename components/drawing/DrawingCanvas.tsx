@@ -131,12 +131,12 @@ export function DrawingCanvas({
 
   const dimDepth = maxLayoutSplitDepth(layout);
   const maxSegDepth = Math.max(0, dimDepth - 1);
-  // Keep the window large — only reserve a slim band for split dim labels.
-  const hasSplitDims = dimDepth > 0;
-  const marginL = hasSplitDims ? Math.min(52, 22 + maxSegDepth * 10) : 18;
-  const marginR = hasSplitDims ? Math.min(40, 18 + maxSegDepth * 8) : 18;
-  const marginT = hasSplitDims ? Math.min(48, 20 + maxSegDepth * 10) : 16;
-  const marginB = hasSplitDims ? Math.min(40, 16 + maxSegDepth * 8) : 16;
+  // Room for overall W/H + split labels, without crushing the window.
+  const splitPad = dimDepth === 0 ? 0 : Math.min(26, 10 + maxSegDepth * 8);
+  const marginL = Math.min(64, 36 + splitPad);
+  const marginR = Math.min(48, 20 + splitPad);
+  const marginT = Math.min(58, 34 + splitPad);
+  const marginB = Math.min(48, 18 + splitPad);
   const availW = Math.max(120, VB_W - marginL - marginR);
   const availH = Math.max(140, VB_H - marginT - marginB);
   const aspect =
@@ -183,6 +183,10 @@ export function DrawingCanvas({
 
   const profile = 10;
   const lastTap = useRef<{ id: string; at: number } | null>(null);
+  const rootCanEqualizeW =
+    layout.type === "split" && layout.dir === "v" && layout.children.length > 1;
+  const rootCanEqualizeH =
+    layout.type === "split" && layout.dir === "h" && layout.children.length > 1;
 
   function handlePanePointer(paneId: string) {
     const now = Date.now();
@@ -250,7 +254,31 @@ export function DrawingCanvas({
 
       <rect width={VB_W} height={VB_H} fill="transparent" />
 
-      {/* أبعاد التقسيم فقط — العرض/الارتفاع الكلي يتعملوا من شريط المقاسات تحت الرسم */}
+      {/* العرض الكلي — برّا (فوق) */}
+      <DimensionLine
+        x1={frame.x}
+        x2={frame.x + frame.w}
+        y={Math.max(12, frame.y - 22)}
+        label={formatLength(item.widthMm, unit)}
+        size="lg"
+        colors={dimColors}
+        onClick={(e) => {
+          e.stopPropagation();
+          onEditDimension({ kind: "width" });
+        }}
+        onEqualize={
+          rootCanEqualizeW
+            ? (e) => {
+                e.stopPropagation();
+                onRequestEqualize({ kind: "width" });
+              }
+            : undefined
+        }
+        startRole={rootCanEqualizeW ? "edge" : "plain"}
+        endRole={rootCanEqualizeW ? "edge" : "plain"}
+      />
+
+      {/* أبعاد التقسيم — أقرب حافة (فوق/تحت/يمين/يسار) */}
       {safeWidthSegments.map((seg, _idx, all) => {
         const roles = segmentEndRoles(seg, all, "h");
         return (
@@ -320,6 +348,30 @@ export function DrawingCanvas({
           />
         );
       })}
+
+      {/* الارتفاع الكلي — برّا (يسار) */}
+      <DimensionLineVertical
+        y1={frame.y}
+        y2={frame.y + frame.h}
+        x={Math.max(16, frame.x - 22)}
+        label={formatLength(item.heightMm, unit)}
+        size="lg"
+        colors={dimColors}
+        onClick={(e) => {
+          e.stopPropagation();
+          onEditDimension({ kind: "height" });
+        }}
+        onEqualize={
+          rootCanEqualizeH
+            ? (e) => {
+                e.stopPropagation();
+                onRequestEqualize({ kind: "height" });
+              }
+            : undefined
+        }
+        startRole={rootCanEqualizeH ? "edge" : "plain"}
+        endRole={rootCanEqualizeH ? "edge" : "plain"}
+      />
 
       {/* إطار خارجي */}
       {panes.map((p) => (
