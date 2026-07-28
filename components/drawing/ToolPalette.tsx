@@ -42,6 +42,11 @@ const tools: ToolDef[] = [
     icon: <IconFixed />,
   },
   {
+    id: "exhaust",
+    label: "شفاط",
+    icon: <IconExhaust />,
+  },
+  {
     id: "casement-left",
     label: "ضلفة يسار",
     icon: <IconCasementLeft />,
@@ -164,6 +169,17 @@ function IconFixed() {
       <rect x="6" y="5" width="20" height="22" rx="1" />
       <line x1="10" y1="9" x2="22" y2="23" />
       <line x1="22" y1="9" x2="10" y2="23" />
+    </Svg>
+  );
+}
+
+function IconExhaust() {
+  return (
+    <Svg>
+      <rect x="6" y="5" width="20" height="22" rx="1" />
+      <circle cx="16" cy="16" r="7" />
+      <circle cx="16" cy="16" r="1.6" fill="currentColor" stroke="none" />
+      <path d="M16 9.5 Q20.5 12 19.5 16 Q18 11 16 9.5 M16 9.5 Q11.5 12 12.5 16 Q14 11 16 9.5 M19.5 16 Q20.5 20 16 22.5 Q18 18 19.5 16 M12.5 16 Q11.5 20 16 22.5 Q14 18 12.5 16" />
     </Svg>
   );
 }

@@ -7,6 +7,7 @@ type OpeningFamily =
   | "casement"
   | "tilt"
   | "fixed"
+  | "exhaust"
   | "panel"
   | "mixed";
 
@@ -24,6 +25,7 @@ function openingFamily(opening: PaneOpening): Exclude<OpeningFamily, "mixed"> {
     return "casement";
   }
   if (opening === "tilt") return "tilt";
+  if (opening === "exhaust") return "exhaust";
   if (opening === "panel-h" || opening === "panel-v") return "panel";
   return "fixed";
 }
@@ -34,6 +36,7 @@ const FAMILY_LABEL: Record<Exclude<OpeningFamily, "mixed">, string> = {
   casement: "مفصلي",
   tilt: "قلاب",
   fixed: "ثابت",
+  exhaust: "شفاط",
   panel: "بانل",
 };
 

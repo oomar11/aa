@@ -20,6 +20,7 @@ import {
   type DimSegment,
   type PaneRect,
 } from "@/lib/drawing-ops";
+import { exhaustFanGeom } from "@/lib/exhaust-fan";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { panelStripeDivider, panelStripeLayout } from "@/lib/panel-stripes";
 import { formatLength } from "@/lib/units";
@@ -637,6 +638,34 @@ function OpeningOverlay({
           strokeWidth={1.1}
           opacity={0.35}
         />
+      </>
+    );
+  }
+
+  if (opening === "exhaust") {
+    const fan = exhaustFanGeom(cx, cy, Math.min(w, h), 1.35);
+    return (
+      <>
+        <circle
+          cx={fan.cx}
+          cy={fan.cy}
+          r={fan.outerR}
+          fill="none"
+          stroke={openStroke}
+          strokeWidth={fan.strokeWidth}
+        />
+        {fan.blades.map((d, i) => (
+          <path
+            key={i}
+            d={d}
+            fill="none"
+            stroke={openStroke}
+            strokeWidth={fan.strokeWidth * 0.95}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+        <circle cx={fan.cx} cy={fan.cy} r={fan.hubR} fill={openStroke} />
       </>
     );
   }

@@ -17,6 +17,8 @@ export type WindowStyle =
 
 export type PaneOpening =
   | "fixed"
+  /** شفاط مطبخ / حمام — ضلفة ثابتة بفتحة مروحة */
+  | "exhaust"
   | "casement-left"
   | "casement-right"
   | "tilt"

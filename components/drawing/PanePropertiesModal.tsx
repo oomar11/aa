@@ -41,6 +41,7 @@ const OPENINGS: { id: PaneOpening; label: string }[] = [
   { id: "tilt", label: "قلاب" },
   { id: "sliding-left", label: "سحاب يسار" },
   { id: "fixed", label: "ثابت" },
+  { id: "exhaust", label: "شفاط" },
   { id: "tilt-turn", label: "قلب وضلفة" },
   { id: "tilt-turn-left", label: "قلب وضلفة يسار" },
   { id: "drawer-right", label: "جرار يمين" },
@@ -526,6 +527,18 @@ function OpeningIcon({ type }: { type: PaneOpening }) {
         <>
           <line x1="8" y1="20" x2="32" y2="20" stroke={s} strokeWidth="1.6" />
           <line x1="20" y1="8" x2="20" y2="32" stroke={s} strokeWidth="1.6" />
+        </>
+      )}
+      {type === "exhaust" && (
+        <>
+          <circle cx="20" cy="20" r="10" stroke={s} strokeWidth="1.6" />
+          <circle cx="20" cy="20" r="2.2" fill={s} stroke="none" />
+          <path
+            d="M20 10.5 Q26 14 24.5 20 Q22 12.5 20 10.5 M20 10.5 Q14 14 15.5 20 Q18 12.5 20 10.5 M24.5 20 Q26 26 20 29.5 Q22 22.5 24.5 20 M15.5 20 Q14 26 20 29.5 Q18 22.5 15.5 20"
+            stroke={s}
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+          />
         </>
       )}
       {type === "tilt" && (
