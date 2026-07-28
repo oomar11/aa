@@ -167,19 +167,26 @@ export function WindowPreview({
             />
           </pattern>
         )}
-        <pattern
-          id={meshId}
-          patternUnits="userSpaceOnUse"
-          width="5"
-          height="5"
-        >
-          <path
-            d="M0 0 L5 5 M5 0 L0 5"
-            stroke={isDark ? "#8aa0b5" : "#6b7c8f"}
-            strokeWidth="0.55"
-            opacity="0.65"
-          />
-        </pattern>
+        {paneRects.map((p) => {
+          const cfg = normalizePaneConfig(panes?.[p.id]);
+          const meshColor = cfg.meshSpec?.renderColor ?? (isDark ? "#d7e3f0" : "#0f766e");
+          return (
+            <pattern
+              key={`${meshId}-${p.id}`}
+              id={`${meshId}-${p.id}`}
+              patternUnits="userSpaceOnUse"
+              width="5"
+              height="5"
+            >
+              <path
+                d="M5 0 V5 M0 5 H5"
+                stroke={meshColor}
+                strokeWidth="0.85"
+                opacity="0.95"
+              />
+            </pattern>
+          );
+        })}
         <pattern
           id={emptyPatId}
           patternUnits="userSpaceOnUse"
@@ -263,12 +270,14 @@ export function WindowPreview({
               w={gw}
               h={gh}
               frameFill={frameFill}
-              meshId={meshId}
+              meshId={`${meshId}-${p.id}`}
+              meshTint={cfg.meshSpec?.renderColor ?? "#0f766e"}
               svgPerMm={svgPerMm}
             />
             <OpeningMarks
               opening={cfg.opening}
               bouclier={Boolean(cfg.bouclier)}
+              mesh={Boolean(cfg.mesh)}
               x={gx}
               y={gy}
               w={gw}
@@ -306,6 +315,7 @@ function PaneDetailFill({
   h,
   frameFill,
   meshId,
+  meshTint,
   svgPerMm = 0,
 }: {
   config: PaneConfig;
@@ -315,21 +325,23 @@ function PaneDetailFill({
   h: number;
   frameFill: string;
   meshId: string;
+  meshTint: string;
   svgPerMm?: number;
 }) {
   const grid = config.grid ?? "solid";
   const cells = getGridCells(grid, x, y, w, h);
   const panelSet = new Set(config.panelCells ?? []);
   const mullion = Math.max(2.2, Math.min(w, h) * 0.055);
+  const solidLike = grid === "solid" || grid === "diamond";
+  const sandwichActive =
+    Boolean(config.sandwichPanels) && !(Boolean(config.mesh) && solidLike);
 
   return (
     <g>
       {cells.map((cell, i) => {
         const isPanel =
-          Boolean(config.sandwichPanels) &&
-          ((grid === "solid" || grid === "diamond")
-            ? true
-            : panelSet.has(i));
+          sandwichActive &&
+          (solidLike ? true : panelSet.has(i));
         if (!isPanel && !config.mesh) return null;
         return (
           <g key={i}>
@@ -344,13 +356,23 @@ function PaneDetailFill({
               />
             )}
             {config.mesh && !isPanel && (
-              <rect
-                x={cell.x}
-                y={cell.y}
-                width={cell.w}
-                height={cell.h}
-                fill={`url(#${meshId})`}
-              />
+              <>
+                <rect
+                  x={cell.x}
+                  y={cell.y}
+                  width={cell.w}
+                  height={cell.h}
+                  fill={meshTint}
+                  opacity={0.14}
+                />
+                <rect
+                  x={cell.x}
+                  y={cell.y}
+                  width={cell.w}
+                  height={cell.h}
+                  fill={`url(#${meshId})`}
+                />
+              </>
             )}
           </g>
         );
@@ -408,6 +430,7 @@ function SandwichPanelCell({
 function OpeningMarks({
   opening,
   bouclier,
+  mesh = false,
   x,
   y,
   w,
@@ -419,6 +442,7 @@ function OpeningMarks({
 }: {
   opening: PaneOpening;
   bouclier: boolean;
+  mesh?: boolean;
   x: number;
   y: number;
   w: number;
@@ -443,6 +467,7 @@ function OpeningMarks({
   }
 
   if (opening === "fixed") {
+    if (mesh) return null;
     return (
       <>
         <line

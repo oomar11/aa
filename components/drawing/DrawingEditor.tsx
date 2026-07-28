@@ -254,6 +254,10 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
 
   function handleSettingsConfirm(patch: ItemSettingsPatch) {
     if (!item) return;
+    const nextPanes =
+      patch.selectedPaneId && patch.selectedPaneConfig
+        ? setPaneConfig(item.panes ?? {}, patch.selectedPaneId, patch.selectedPaneConfig)
+        : item.panes;
     persistItem({
       ...item,
       name: patch.name,
@@ -265,6 +269,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       systemId: patch.systemId,
       glassId: patch.glassId,
       frameColor: patch.frameColor,
+      panes: nextPanes,
     });
     setSettingsOpen(false);
   }
@@ -573,8 +578,10 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       />
 
       <ItemSettingsDrawer
+        key={`${item.id}-${selectedPaneId ?? "none"}-${settingsOpen ? "open" : "closed"}`}
         open={settingsOpen}
         item={item}
+        selectedPaneId={selectedPaneId}
         onClose={() => setSettingsOpen(false)}
         onConfirm={handleSettingsConfirm}
       />

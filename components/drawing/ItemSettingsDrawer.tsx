@@ -1,10 +1,21 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import {
   FRAME_COLORS,
+  defaultMeshSpec,
+  normalizePaneConfig,
   type DesignItem,
   type FrameColorId,
+  type MeshMode,
+  type PaneConfig,
 } from "@/lib/design-items";
 import {
   DISCOUNT_OPTIONS,
@@ -15,6 +26,11 @@ import {
   type SystemId,
 } from "@/lib/item-catalogs";
 import { suggestItemName } from "@/lib/item-naming";
+import {
+  getMeshPaneSummaries,
+  getPaneRectMm,
+  summarizeMeshMaterials,
+} from "@/lib/mesh-materials";
 
 export type ItemSettingsPatch = {
   name: string;
@@ -26,11 +42,14 @@ export type ItemSettingsPatch = {
   systemId: SystemId;
   glassId: GlassId;
   frameColor: FrameColorId;
+  selectedPaneId?: string | null;
+  selectedPaneConfig?: PaneConfig | null;
 };
 
 type Props = {
   open: boolean;
   item: DesignItem;
+  selectedPaneId: string | null;
   onClose: () => void;
   onConfirm: (patch: ItemSettingsPatch) => void;
 };
@@ -49,27 +68,77 @@ function toDraft(item: DesignItem): ItemSettingsPatch {
     systemId: (item.systemId as SystemId) || "none",
     glassId: (item.glassId as GlassId) || "none",
     frameColor: (item.frameColor as FrameColorId) || "white",
+    selectedPaneId: null,
+    selectedPaneConfig: null,
   };
 }
 
-export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
+const MESH_COLORS = [
+  { value: "#0f766e", label: "تركواز" },
+  { value: "#7c3aed", label: "بنفسجي" },
+  { value: "#b45309", label: "نحاسي" },
+  { value: "#be123c", label: "نبيتي" },
+];
+
+const OPENING_LABELS: Record<PaneConfig["opening"], string> = {
+  fixed: "ثابت",
+  "casement-left": "ضلفة يسار",
+  "casement-right": "ضلفة يمين",
+  tilt: "قلاب",
+  "tilt-turn": "قلب وضلفة",
+  "tilt-turn-left": "قلب وضلفة يسار",
+  "sliding-left": "سحاب يسار",
+  "sliding-right": "سحاب يمين",
+  "door-left": "باب يسار",
+  "door-right": "باب يمين",
+  "drawer-left": "جرار شمال",
+  "drawer-right": "جرار يمين",
+  "panel-h": "بانل أفقي",
+  "panel-v": "بانل رأسي",
+};
+
+export function ItemSettingsDrawer({
+  open,
+  item,
+  selectedPaneId,
+  onClose,
+  onConfirm,
+}: Props) {
   const [draft, setDraft] = useState<ItemSettingsPatch>(() => toDraft(item));
   const [specialText, setSpecialText] = useState(
     item.specialPrice != null && item.specialPrice > 0
       ? String(item.specialPrice)
       : ""
   );
+  const [selectedPaneDraft, setSelectedPaneDraft] = useState<PaneConfig | null>(
+    () =>
+      selectedPaneId ? normalizePaneConfig(item.panes?.[selectedPaneId]) : null
+  );
 
-  useEffect(() => {
-    if (!open) return;
-    const next = toDraft(item);
-    setDraft(next);
-    setSpecialText(
-      next.specialPrice != null && next.specialPrice > 0
-        ? String(next.specialPrice)
-        : ""
-    );
-  }, [open, item]);
+  const previewItem = useMemo(() => {
+    if (!selectedPaneId || !selectedPaneDraft) return item;
+    return {
+      ...item,
+      panes: {
+        ...(item.panes ?? {}),
+        [selectedPaneId]: selectedPaneDraft,
+      },
+    };
+  }, [item, selectedPaneDraft, selectedPaneId]);
+
+  const activePaneRect = useMemo(() => {
+    if (!selectedPaneId) return undefined;
+    return getPaneRectMm(previewItem, selectedPaneId);
+  }, [previewItem, selectedPaneId]);
+
+  const meshSummaries = useMemo(
+    () => getMeshPaneSummaries(previewItem),
+    [previewItem]
+  );
+  const meshTotals = useMemo(
+    () => summarizeMeshMaterials(previewItem),
+    [previewItem]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -91,6 +160,10 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
       nameIsCustom: trimmed ? draft.nameIsCustom : false,
       specialPrice:
         parsed != null && Number.isFinite(parsed) && parsed > 0 ? parsed : null,
+      selectedPaneId,
+      selectedPaneConfig: selectedPaneDraft
+        ? normalizePaneConfig(selectedPaneDraft)
+        : null,
     });
   }
 
@@ -300,6 +373,436 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
               })}
             </div>
           </Section>
+
+          <Section title="سلك الضلفة المحددة">
+            {!selectedPaneId || !selectedPaneDraft ? (
+              <p className="text-xs text-muted">
+                اختر ضلفة من الرسمة أولاً ثم افتح تفاصيل البند.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-border bg-background px-3 py-2 text-xs text-muted">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>الضلفة: {selectedPaneId}</span>
+                    <span>{OPENING_LABELS[selectedPaneDraft.opening]}</span>
+                  </div>
+                  {activePaneRect ? (
+                    <div className="mt-1.5">
+                      المقاس التقريبي: {Math.round(activePaneRect.w)} ×{" "}
+                      {Math.round(activePaneRect.h)} مم
+                    </div>
+                  ) : null}
+                </div>
+
+                <FlagToggle
+                  label="تفعيل سلك لهذه الضلفة"
+                  checked={Boolean(selectedPaneDraft.mesh)}
+                  onChange={(checked) =>
+                    setSelectedPaneDraft((current) => {
+                      if (!current) return current;
+                      return normalizePaneConfig({
+                        ...current,
+                        mesh: checked,
+                        meshSpec: checked
+                          ? current.meshSpec ?? defaultMeshSpec(current.opening)
+                          : current.meshSpec,
+                      });
+                    })
+                  }
+                />
+
+                {selectedPaneDraft.mesh && selectedPaneDraft.meshSpec ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedPaneDraft((current) => {
+                          if (!current) return current;
+                          return normalizePaneConfig({
+                            ...current,
+                            mesh: true,
+                            meshSpec: defaultMeshSpec(current.opening),
+                          });
+                        })
+                      }
+                      className="flex w-full items-center justify-center rounded-2xl border border-border bg-background px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary-soft"
+                    >
+                      اقتراح تلقائي حسب نوع الضلفة
+                    </button>
+
+                    <label className="flex flex-col gap-1.5 text-right">
+                      <span className="text-xs font-bold text-foreground">
+                        اسم/نوع السلك
+                      </span>
+                      <input
+                        type="text"
+                        value={selectedPaneDraft.meshSpec.label}
+                        onChange={(e) =>
+                          setSelectedPaneDraft((current) => {
+                            if (!current?.meshSpec) return current;
+                            return normalizePaneConfig({
+                              ...current,
+                              meshSpec: {
+                                ...current.meshSpec,
+                                label: e.target.value,
+                                autoAssigned: false,
+                              },
+                            });
+                          })
+                        }
+                        className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary focus:bg-card"
+                        placeholder="مثال: سلك جرار أو سلك مفصلي"
+                      />
+                    </label>
+
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-bold text-foreground">
+                        لون السلك في الرسمة
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {MESH_COLORS.map((color) => {
+                          const active =
+                            selectedPaneDraft.meshSpec?.renderColor ===
+                            color.value;
+                          return (
+                            <button
+                              key={color.value}
+                              type="button"
+                              onClick={() =>
+                                setSelectedPaneDraft((current) => {
+                                  if (!current?.meshSpec) return current;
+                                  return normalizePaneConfig({
+                                    ...current,
+                                    meshSpec: {
+                                      ...current.meshSpec,
+                                      renderColor: color.value,
+                                      autoAssigned: false,
+                                    },
+                                  });
+                                })
+                              }
+                              className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold ${
+                                active
+                                  ? "border-primary bg-primary-soft text-primary"
+                                  : "border-border bg-background text-foreground"
+                              }`}
+                            >
+                              <span
+                                className="h-4 w-4 rounded-full border border-black/10"
+                                style={{ backgroundColor: color.value }}
+                              />
+                              {color.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateMeshMode(
+                            setSelectedPaneDraft,
+                            "custom-materials"
+                          )
+                        }
+                        className={`rounded-2xl border px-3 py-2 text-xs font-semibold ${
+                          selectedPaneDraft.meshSpec.mode === "custom-materials"
+                            ? "border-primary bg-primary-soft text-primary"
+                            : "border-border bg-background text-foreground"
+                        }`}
+                      >
+                        تفصيل خامات
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateMeshMode(setSelectedPaneDraft, "ready-made")
+                        }
+                        className={`rounded-2xl border px-3 py-2 text-xs font-semibold ${
+                          selectedPaneDraft.meshSpec.mode === "ready-made"
+                            ? "border-primary bg-primary-soft text-primary"
+                            : "border-border bg-background text-foreground"
+                        }`}
+                      >
+                        جاهز على المقاس
+                      </button>
+                    </div>
+
+                    {selectedPaneDraft.meshSpec.mode === "custom-materials" ? (
+                      <div className="space-y-3 rounded-2xl border border-border bg-background p-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <NumberField
+                            label="عدد العرضيات"
+                            value={
+                              selectedPaneDraft.meshSpec.materials?.widthPieces ??
+                              0
+                            }
+                            onChange={(value) =>
+                              updateMeshMaterials(
+                                setSelectedPaneDraft,
+                                "widthPieces",
+                                value
+                              )
+                            }
+                          />
+                          <NumberField
+                            label="عدد الارتفاعيات"
+                            value={
+                              selectedPaneDraft.meshSpec.materials?.heightPieces ??
+                              0
+                            }
+                            onChange={(value) =>
+                              updateMeshMaterials(
+                                setSelectedPaneDraft,
+                                "heightPieces",
+                                value
+                              )
+                            }
+                          />
+                          <NumberField
+                            label="عدد العجل"
+                            value={
+                              selectedPaneDraft.meshSpec.materials?.wheelCount ??
+                              0
+                            }
+                            onChange={(value) =>
+                              updateMeshMaterials(
+                                setSelectedPaneDraft,
+                                "wheelCount",
+                                value
+                              )
+                            }
+                          />
+                          <NumberField
+                            label="مقبض لطش"
+                            value={
+                              selectedPaneDraft.meshSpec.materials
+                                ?.latchHandleCount ?? 0
+                            }
+                            onChange={(value) =>
+                              updateMeshMaterials(
+                                setSelectedPaneDraft,
+                                "latchHandleCount",
+                                value
+                              )
+                            }
+                          />
+                        </div>
+
+                        <FlagToggle
+                          label="يأخذ سلك بمساحة الضلفة"
+                          checked={
+                            selectedPaneDraft.meshSpec.materials?.usePaneArea ??
+                            true
+                          }
+                          onChange={(checked) =>
+                            setSelectedPaneDraft((current) => {
+                              if (!current?.meshSpec?.materials) return current;
+                              return normalizePaneConfig({
+                                ...current,
+                                meshSpec: {
+                                  ...current.meshSpec,
+                                  autoAssigned: false,
+                                  materials: {
+                                    ...current.meshSpec.materials,
+                                    usePaneArea: checked,
+                                  },
+                                },
+                              });
+                            })
+                          }
+                        />
+
+                        <label className="flex flex-col gap-1.5 text-right">
+                          <span className="text-xs font-bold text-foreground">
+                            ملاحظات الخامة
+                          </span>
+                          <textarea
+                            value={
+                              selectedPaneDraft.meshSpec.materials?.extraNotes ??
+                              ""
+                            }
+                            onChange={(e) =>
+                              setSelectedPaneDraft((current) => {
+                                if (!current?.meshSpec?.materials) return current;
+                                return normalizePaneConfig({
+                                  ...current,
+                                  meshSpec: {
+                                    ...current.meshSpec,
+                                    autoAssigned: false,
+                                    materials: {
+                                      ...current.meshSpec.materials,
+                                      extraNotes: e.target.value,
+                                    },
+                                  },
+                                });
+                              })
+                            }
+                            rows={2}
+                            className="w-full resize-none rounded-2xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                            placeholder="مثال: خامة مختلفة أو مقاس خاص"
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 rounded-2xl border border-border bg-background p-3">
+                        <NumberField
+                          label="كمية السلك الجاهز"
+                          value={selectedPaneDraft.meshSpec.readyMadeQuantity ?? 1}
+                          onChange={(value) =>
+                            setSelectedPaneDraft((current) => {
+                              if (!current?.meshSpec) return current;
+                              return normalizePaneConfig({
+                                ...current,
+                                meshSpec: {
+                                  ...current.meshSpec,
+                                  autoAssigned: false,
+                                  readyMadeQuantity: Math.max(1, value),
+                                },
+                              });
+                            })
+                          }
+                        />
+
+                        <FlagToggle
+                          label="احسب مساحة السلك من مساحة الضلفة"
+                          checked={
+                            selectedPaneDraft.meshSpec.readyMadeUsesPaneArea ??
+                            true
+                          }
+                          onChange={(checked) =>
+                            setSelectedPaneDraft((current) => {
+                              if (!current?.meshSpec) return current;
+                              return normalizePaneConfig({
+                                ...current,
+                                meshSpec: {
+                                  ...current.meshSpec,
+                                  autoAssigned: false,
+                                  readyMadeUsesPaneArea: checked,
+                                },
+                              });
+                            })
+                          }
+                        />
+
+                        <label className="flex flex-col gap-1.5 text-right">
+                          <span className="text-xs font-bold text-foreground">
+                            ملاحظات السلك الجاهز
+                          </span>
+                          <textarea
+                            value={selectedPaneDraft.meshSpec.readyMadeNotes ?? ""}
+                            onChange={(e) =>
+                              setSelectedPaneDraft((current) => {
+                                if (!current?.meshSpec) return current;
+                                return normalizePaneConfig({
+                                  ...current,
+                                  meshSpec: {
+                                    ...current.meshSpec,
+                                    autoAssigned: false,
+                                    readyMadeNotes: e.target.value,
+                                  },
+                                });
+                              })
+                            }
+                            rows={2}
+                            className="w-full resize-none rounded-2xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                            placeholder="مثال: يأتي مفصل وجاهز على المقاس"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-muted">
+                    فعّل سلك الضلفة من الأعلى أو من خصائص الضلفة لتحديد نوعه
+                    وخاماته.
+                  </p>
+                )}
+              </div>
+            )}
+          </Section>
+
+          <Section title="ملخص خامات السلك">
+            {meshSummaries.length === 0 ? (
+              <p className="text-xs text-muted">
+                لا يوجد ضلف عليها سلك حالياً.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <SummaryChip label="عدد ضلف السلك" value={String(meshTotals.panes)} />
+                  <SummaryChip
+                    label="مساحة السلك"
+                    value={`${meshTotals.meshAreaSqm.toFixed(2)} م²`}
+                  />
+                  <SummaryChip
+                    label="إجمالي العرضيات"
+                    value={`${meshTotals.widthPieces} قطعة`}
+                  />
+                  <SummaryChip
+                    label="إجمالي الارتفاعيات"
+                    value={`${meshTotals.heightPieces} قطعة`}
+                  />
+                  <SummaryChip
+                    label="إجمالي العجل"
+                    value={`${meshTotals.wheelCount}`}
+                  />
+                  <SummaryChip
+                    label="مقابض لطش"
+                    value={`${meshTotals.latchHandleCount}`}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  {meshSummaries.map((summary) => (
+                    <div
+                      key={summary.paneId}
+                      className="rounded-2xl border border-border bg-background px-3 py-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2 font-semibold text-foreground">
+                        <span>{summary.label}</span>
+                        <span>{summary.paneId}</span>
+                      </div>
+                      <div className="mt-1 text-muted">
+                        {Math.round(summary.widthMm)} × {Math.round(summary.heightMm)} مم
+                      </div>
+                      {summary.mode === "custom-materials" ? (
+                        <div className="mt-1 space-y-0.5 text-muted">
+                          <div>
+                            عرضيات: {summary.widthPieces} × {Math.round(summary.widthMm)} مم
+                          </div>
+                          <div>
+                            ارتفاعيات: {summary.heightPieces} × {Math.round(summary.heightMm)} مم
+                          </div>
+                          <div>
+                            سلك: {summary.meshAreaSqm.toFixed(2)} م²
+                          </div>
+                          <div>
+                            عجل {summary.wheelCount} · مقبض لطش{" "}
+                            {summary.latchHandleCount}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-1 space-y-0.5 text-muted">
+                          <div>جاهز على المقاس: {summary.readyMadeQuantity} قطعة</div>
+                          {summary.meshAreaSqm > 0 ? (
+                            <div>مساحة مرجعية: {summary.meshAreaSqm.toFixed(2)} م²</div>
+                          ) : null}
+                        </div>
+                      )}
+                      {summary.notes ? (
+                        <div className="mt-1 text-[11px] text-muted">
+                          ملاحظات: {summary.notes}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Section>
         </div>
 
         <footer className="grid shrink-0 grid-cols-2 gap-3 border-t border-border bg-card p-3">
@@ -323,6 +826,49 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
   );
 }
 
+function updateMeshMode(
+  setSelectedPaneDraft: Dispatch<SetStateAction<PaneConfig | null>>,
+  mode: MeshMode
+) {
+  setSelectedPaneDraft((current) => {
+    if (!current?.meshSpec) return current;
+    const spec = current.meshSpec;
+    return normalizePaneConfig({
+      ...current,
+      meshSpec: {
+        ...spec,
+        mode,
+        autoAssigned: false,
+      },
+    });
+  });
+}
+
+function updateMeshMaterials(
+  setSelectedPaneDraft: Dispatch<SetStateAction<PaneConfig | null>>,
+  key:
+    | "widthPieces"
+    | "heightPieces"
+    | "wheelCount"
+    | "latchHandleCount",
+  value: number
+) {
+  setSelectedPaneDraft((current) => {
+    if (!current?.meshSpec?.materials) return current;
+    return normalizePaneConfig({
+      ...current,
+      meshSpec: {
+        ...current.meshSpec,
+        autoAssigned: false,
+        materials: {
+          ...current.meshSpec.materials,
+          [key]: Math.max(0, Math.floor(value)),
+        },
+      },
+    });
+  });
+}
+
 function Section({
   title,
   children,
@@ -335,6 +881,71 @@ function Section({
       <h3 className="mb-2 text-xs font-bold text-foreground">{title}</h3>
       {children}
     </section>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5 text-right">
+      <span className="text-xs font-bold text-foreground">{label}</span>
+      <input
+        type="number"
+        min={0}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        className="w-full rounded-2xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+      />
+    </label>
+  );
+}
+
+function FlagToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-border bg-background px-3 py-2.5">
+      <span className="text-sm font-medium text-foreground">{label}</span>
+      <span
+        className={`flex h-6 w-11 items-center rounded-full p-0.5 transition-colors ${
+          checked ? "bg-primary" : "bg-border"
+        }`}
+      >
+        <span
+          className={`h-5 w-5 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-5" : "translate-x-0"
+          }`}
+        />
+      </span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="sr-only"
+      />
+    </label>
+  );
+}
+
+function SummaryChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-background px-3 py-2">
+      <div className="text-muted">{label}</div>
+      <div className="mt-1 font-semibold text-foreground">{value}</div>
+    </div>
   );
 }
 

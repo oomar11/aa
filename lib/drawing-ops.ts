@@ -168,10 +168,10 @@ export function setPaneOpening(
 ): Record<string, PaneConfig> {
   return {
     ...panes,
-    [paneId]: {
+    [paneId]: normalizePaneConfig({
       ...normalizePaneConfig(panes[paneId]),
       opening,
-    },
+    }),
   };
 }
 
