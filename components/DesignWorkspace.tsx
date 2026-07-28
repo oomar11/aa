@@ -31,8 +31,8 @@ import { formatSizePair, type LengthUnit } from "@/lib/units";
 import { useUnit } from "@/components/UnitProvider";
 import type { LayoutNode } from "@/lib/window-layout";
 
-const LONG_PRESS_MS = 350;
-const MOVE_CANCEL_PX = 10;
+const LONG_PRESS_MS = 280;
+const MOVE_CANCEL_PX = 16;
 const GHOST_W = 148;
 
 type Props = {
@@ -239,52 +239,6 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   }, [draggingId]);
 
   useEffect(() => {
-    if (!draggingId) return;
-
-    function onPointerMove(e: PointerEvent) {
-      const session = dragSessionRef.current;
-      if (!session || e.pointerId !== session.pointerId) return;
-      e.preventDefault();
-      setDragPoint({ x: e.clientX, y: e.clientY });
-      const over = hitTestTrash(e.clientX, e.clientY);
-      setOverTrash(over);
-      if (!over) {
-        setInsertIndex(hitTestInsertIndex(e.clientX, e.clientY, session.id));
-      } else {
-        setInsertIndex(null);
-      }
-    }
-
-    function onPointerUp(e: PointerEvent) {
-      const session = dragSessionRef.current;
-      if (!session || e.pointerId !== session.pointerId) return;
-      endDrag(e.clientX, e.clientY);
-    }
-
-    function onPointerCancel(e: PointerEvent) {
-      const session = dragSessionRef.current;
-      if (!session || e.pointerId !== session.pointerId) return;
-      dragSessionRef.current = null;
-      setDraggingId(null);
-      setOverTrash(false);
-      setInsertIndex(null);
-      suppressClickRef.current = true;
-      window.setTimeout(() => {
-        suppressClickRef.current = false;
-      }, 400);
-    }
-
-    window.addEventListener("pointermove", onPointerMove, { passive: false });
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerCancel);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerCancel);
-    };
-  }, [draggingId, endDrag, hitTestInsertIndex, hitTestTrash]);
-
-  useEffect(() => {
     return () => clearLongPress();
   }, [clearLongPress]);
 
@@ -313,27 +267,60 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     }
   }
 
+  function updateDragPoint(clientX: number, clientY: number) {
+    const session = dragSessionRef.current;
+    if (!session) return;
+    setDragPoint({ x: clientX, y: clientY });
+    const over = hitTestTrash(clientX, clientY);
+    setOverTrash(over);
+    if (!over) {
+      setInsertIndex(hitTestInsertIndex(clientX, clientY, session.id));
+    } else {
+      setInsertIndex(null);
+    }
+  }
+
   function handleCardPointerDown(
     itemId: string,
     e: ReactPointerEvent<HTMLElement>
   ) {
     if (e.button !== 0) return;
+
+    // Keep the browser from stealing the gesture (scroll / callout / cancel).
+    e.preventDefault();
+
     const cardEl = e.currentTarget;
     const startX = e.clientX;
     const startY = e.clientY;
     const pointerId = e.pointerId;
+    let activated = false;
+    let cancelled = false;
+
+    try {
+      cardEl.setPointerCapture(pointerId);
+    } catch {
+      // Older browsers may not support capture on this element.
+    }
 
     clearLongPress();
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null;
+      if (cancelled) return;
+      activated = true;
       startDrag(itemId, pointerId, startX, startY, cardEl);
     }, LONG_PRESS_MS);
 
     function onMove(ev: PointerEvent) {
       if (ev.pointerId !== pointerId) return;
+      if (activated) {
+        ev.preventDefault();
+        updateDragPoint(ev.clientX, ev.clientY);
+        return;
+      }
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
       if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
+        cancelled = true;
         clearLongPress();
         cleanup();
       }
@@ -342,18 +329,40 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     function onUp(ev: PointerEvent) {
       if (ev.pointerId !== pointerId) return;
       clearLongPress();
+      if (activated) {
+        endDrag(ev.clientX, ev.clientY);
+      }
+      cleanup();
+    }
+
+    function onCancel(ev: PointerEvent) {
+      if (ev.pointerId !== pointerId) return;
+      // If drag already started, finish at last known point instead of snapping away.
+      clearLongPress();
+      if (activated && dragSessionRef.current) {
+        endDrag(ev.clientX, ev.clientY);
+      } else {
+        cancelled = true;
+      }
       cleanup();
     }
 
     function cleanup() {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      try {
+        if (cardEl.hasPointerCapture(pointerId)) {
+          cardEl.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // ignore
+      }
     }
 
-    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("pointercancel", onCancel);
   }
 
   function handleCardClick(e: ReactMouseEvent) {
@@ -425,21 +434,23 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       </header>
 
       <ul
-        className={`grid grid-cols-2 gap-3 ${draggingId ? "touch-none" : ""}`}
+        className={`grid grid-cols-2 auto-rows-fr gap-3 ${
+          draggingId ? "touch-none" : ""
+        }`}
       >
-        <li className="h-full">
+        <li className="h-full min-h-0">
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
             className="flex h-full w-full flex-col overflow-hidden rounded-xl border-2 border-dashed border-primary/40 bg-card text-primary shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary-soft active:scale-[0.98]"
             aria-label="إضافة بند جديد"
           >
-            <div className="flex aspect-square w-full items-center justify-center border-b border-dashed border-primary/30 bg-primary-soft/40 p-3">
+            <div className="flex aspect-square w-full shrink-0 items-center justify-center border-b border-dashed border-primary/30 bg-primary-soft/40 p-3">
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl font-light leading-none text-white shadow-[0_6px_16px_rgba(43,125,233,0.3)]">
                 +
               </span>
             </div>
-            <div className="flex min-h-[92px] flex-1 flex-col items-center justify-center gap-1 p-2.5">
+            <div className="flex h-[92px] flex-col items-center justify-center gap-1 p-2.5">
               <span className="text-sm font-semibold">بند جديد</span>
               <span className="text-[10px] text-muted">اختَر تمبلت جاهز</span>
             </div>
@@ -459,7 +470,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
             <li
               key={item.id}
               ref={(el) => setCardRef(item.id, el)}
-              className="relative h-full touch-manipulation"
+              className="relative h-full min-h-0 touch-none"
               data-item-id={item.id}
             >
               <button
@@ -470,7 +481,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
                   if (!e.defaultPrevented) openItem(item.id);
                 }}
                 onContextMenu={handleCardContextMenu}
-                className={`flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-[opacity,transform,box-shadow,border-color] duration-200 select-none ${
+                className={`flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-[opacity,transform,box-shadow,border-color] duration-200 select-none touch-none ${
                   isDragging
                     ? "scale-[0.97] border-border opacity-35"
                     : isDropTarget
@@ -633,7 +644,7 @@ function ItemCardBody({
     <>
       <div
         className={`flex items-center justify-center border-b border-border bg-primary-soft/50 p-3 ${
-          compact ? "aspect-[4/3]" : "aspect-square"
+          compact ? "aspect-[4/3]" : "aspect-square shrink-0"
         }`}
       >
         <WindowPreview
@@ -651,8 +662,8 @@ function ItemCardBody({
       </div>
 
       <div
-        className={`flex flex-1 gap-2 p-2.5 ${
-          compact ? "min-h-[72px]" : "min-h-[92px]"
+        className={`flex gap-2 overflow-hidden p-2.5 ${
+          compact ? "min-h-[72px]" : "h-[92px]"
         }`}
       >
         <div className="flex min-w-[2.25rem] flex-col items-center justify-center border-l border-border pl-2 text-center">
@@ -663,25 +674,22 @@ function ItemCardBody({
           <span className="mt-0.5 text-[9px] text-muted">بند</span>
         </div>
 
-        <div className="min-w-0 flex-1 text-right">
+        <div className="flex min-w-0 flex-1 flex-col justify-center text-right">
           <p className="truncate text-[11px] font-semibold text-foreground">
             {item.name?.trim() || suggestItemName(item)}
           </p>
           <p
-            className="mt-0.5 text-[11px] font-medium text-foreground"
+            className="mt-0.5 truncate text-[11px] font-medium text-foreground"
             dir="ltr"
           >
             {formatSizePair(item.widthMm, item.heightMm, unit)}
           </p>
           {!compact ? (
-            <>
-              <p className="mt-0.5 text-[10px] text-muted">العدد: {item.qty}</p>
-              <p className="mt-0.5 text-[10px] text-muted">
-                {area.toFixed(2)} م²
-              </p>
-            </>
+            <p className="mt-0.5 truncate text-[10px] text-muted">
+              عدد {item.qty} · {area.toFixed(2)} م²
+            </p>
           ) : null}
-          <p className="mt-0.5 text-[11px] font-bold text-primary">
+          <p className="mt-0.5 truncate text-[11px] font-bold text-primary">
             {formatCurrency(Math.round(price))} ج.م
           </p>
         </div>
