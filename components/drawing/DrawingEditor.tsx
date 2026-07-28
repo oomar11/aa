@@ -418,11 +418,6 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       <ToolPalette activeOpening={activeOpening} onTool={handleTool} />
 
       <main className="relative mt-3 flex flex-1 flex-col">
-        {!selectedPaneId && (
-          <p className="absolute right-1/2 top-3 z-10 translate-x-1/2 rounded-full border border-border bg-card px-3 py-1 text-[11px] text-foreground shadow-lg">
-            اضغط المقاس على الرسم للتعديل · ضغطتين على الضلفة ← الخصائص · النقطة الزرقاء = مسح التقسيم
-          </p>
-        )}
         <section className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-sm">
           <div className="flex flex-1 items-center justify-center">
             <DrawingCanvas

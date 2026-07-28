@@ -17,6 +17,8 @@ import {
   collectAllSplitDims,
   collectMullionRects,
   collectPaneRects,
+  overallDimLane,
+  splitDimLane,
   type DimSegment,
   type PaneRect,
 } from "@/lib/drawing-ops";
@@ -131,12 +133,14 @@ export function DrawingCanvas({
 
   const dimDepth = maxLayoutSplitDepth(layout);
   const maxSegDepth = Math.max(0, dimDepth - 1);
-  // Room for overall W/H + split labels, without crushing the window.
-  const splitPad = dimDepth === 0 ? 0 : Math.min(26, 10 + maxSegDepth * 8);
-  const marginL = Math.min(64, 36 + splitPad);
-  const marginR = Math.min(48, 20 + splitPad);
-  const marginT = Math.min(58, 34 + splitPad);
-  const marginB = Math.min(48, 18 + splitPad);
+  const hasSplits = dimDepth > 0;
+  // Outer lane = overall W/H; keep label padding so lines never stack.
+  const outerLane = overallDimLane(maxSegDepth, hasSplits);
+  const sideSplitLane = hasSplits ? splitDimLane(maxSegDepth) : 0;
+  const marginL = Math.min(120, outerLane + 22);
+  const marginR = Math.min(100, sideSplitLane + 20);
+  const marginT = Math.min(120, outerLane + 16);
+  const marginB = Math.min(100, sideSplitLane + 18);
   const availW = Math.max(120, VB_W - marginL - marginR);
   const availH = Math.max(140, VB_H - marginT - marginB);
   const aspect =
@@ -254,11 +258,11 @@ export function DrawingCanvas({
 
       <rect width={VB_W} height={VB_H} fill="transparent" />
 
-      {/* العرض الكلي — برّا (فوق) */}
+      {/* العرض الكلي — برّا (فوق) خارج كل أبعاد التقسيم */}
       <DimensionLine
         x1={frame.x}
         x2={frame.x + frame.w}
-        y={Math.max(12, frame.y - 22)}
+        y={Math.max(12, frame.y - outerLane)}
         label={formatLength(item.widthMm, unit)}
         size="lg"
         colors={dimColors}
@@ -349,11 +353,11 @@ export function DrawingCanvas({
         );
       })}
 
-      {/* الارتفاع الكلي — برّا (يسار) */}
+      {/* الارتفاع الكلي — برّا (يسار) خارج كل أبعاد التقسيم */}
       <DimensionLineVertical
         y1={frame.y}
         y2={frame.y + frame.h}
-        x={Math.max(16, frame.x - 22)}
+        x={Math.max(16, frame.x - outerLane)}
         label={formatLength(item.heightMm, unit)}
         size="lg"
         colors={dimColors}

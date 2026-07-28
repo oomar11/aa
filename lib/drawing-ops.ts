@@ -318,6 +318,23 @@ export function updateSplitRatio(
   };
 }
 
+/** Distance from frame edge to the first (innermost) split dimension lane. */
+export const DIM_LANE_BASE = 22;
+/** Extra space between nested split dimension lanes. */
+export const DIM_LANE_STEP = 28;
+/** Gap from the outermost split lane to the overall W/H dimension. */
+export const DIM_OVERALL_GAP = 28;
+
+export function splitDimLane(depth: number) {
+  return DIM_LANE_BASE + depth * DIM_LANE_STEP;
+}
+
+/** Overall width/height sit outside every split lane. */
+export function overallDimLane(maxSegDepth: number, hasSplits: boolean) {
+  if (!hasSplits) return 26;
+  return splitDimLane(maxSegDepth) + DIM_OVERALL_GAP;
+}
+
 /** يجمع أبعاد كل التقسيمات ويضعها على أقرب حافة */
 export function collectAllSplitDims(
   layout: LayoutNode,
@@ -357,10 +374,7 @@ export function collectAllSplitDims(
         const distBottom = canvasH - (rect.y + rect.h);
         const placement: DimSegment["placement"] =
           distTop <= distBottom ? "top" : "bottom";
-        const lane = Math.min(
-          14 + depth * 16,
-          placement === "top" ? Math.max(12, distTop - 10) : Math.max(12, distBottom - 10)
-        );
+        const lane = splitDimLane(depth);
         const y =
           placement === "top"
             ? Math.max(10, rect.y - lane)
@@ -400,10 +414,7 @@ export function collectAllSplitDims(
       const distRight = canvasW - (rect.x + rect.w);
       const placement: DimSegment["placement"] =
         distLeft <= distRight ? "left" : "right";
-      const lane = Math.min(
-        16 + depth * 16,
-        placement === "left" ? Math.max(14, distLeft - 16) : Math.max(14, distRight - 16)
-      );
+      const lane = splitDimLane(depth);
       const x =
         placement === "left"
           ? Math.max(16, rect.x - lane)
