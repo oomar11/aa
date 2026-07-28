@@ -31,11 +31,12 @@ import { formatSizePair, type LengthUnit } from "@/lib/units";
 import { useUnit } from "@/components/UnitProvider";
 import type { LayoutNode } from "@/lib/window-layout";
 
-const LONG_PRESS_MS = 280;
-const MOVE_CANCEL_PX = 16;
+const LONG_PRESS_MS = 320;
+const MOVE_CANCEL_PX = 14;
 const GHOST_W = 148;
-const AUTO_SCROLL_EDGE_PX = 88;
-const AUTO_SCROLL_MAX_PX = 22;
+const AUTO_SCROLL_EDGE_PX = 64;
+const AUTO_SCROLL_MAX_PX = 10;
+const TRASH_SAFE_PX = 112;
 
 type Props = {
   customerId?: string;
@@ -73,6 +74,8 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
   const lastPointerRef = useRef({ x: 0, y: 0 });
   const autoScrollRafRef = useRef<number | null>(null);
+  const lockedScrollYRef = useRef(0);
+  const lockedScrollMaxRef = useRef(0);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -238,19 +241,68 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     setPendingDeleteId(null);
   }
 
+  const refreshDragTargets = useCallback(
+    (clientX: number, clientY: number) => {
+      const session = dragSessionRef.current;
+      if (!session) return;
+      setDragPoint({ x: clientX, y: clientY });
+      const over = hitTestTrash(clientX, clientY);
+      setOverTrash(over);
+      if (!over) {
+        setInsertIndex(hitTestInsertIndex(clientX, clientY, session.id));
+      } else {
+        setInsertIndex(null);
+      }
+    },
+    [hitTestInsertIndex, hitTestTrash]
+  );
+
   useEffect(() => {
     if (!draggingId) return;
 
-    // Block native page scrolling while holding an item, but keep
-    // programmatic auto-scroll available near the viewport edges.
     const html = document.documentElement;
     const body = document.body;
-    const prevHtmlTouch = html.style.touchAction;
-    const prevBodyTouch = body.style.touchAction;
-    const prevOverscroll = body.style.overscrollBehavior;
-    html.style.touchAction = "none";
-    body.style.touchAction = "none";
-    body.style.overscrollBehavior = "none";
+    const prev = {
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverscroll: body.style.overscrollBehavior,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+      bodyWidth: body.style.width,
+      bodyTouch: body.style.touchAction,
+      htmlTouch: html.style.touchAction,
+    };
+
+    // Hard-lock native scroll + pull-to-refresh while holding a card.
+    if (body.style.position !== "fixed") {
+      lockedScrollYRef.current = window.scrollY;
+      lockedScrollMaxRef.current = Math.max(
+        0,
+        html.scrollHeight - window.innerHeight
+      );
+      html.style.overscrollBehavior = "none";
+      body.style.overscrollBehavior = "none";
+      html.style.touchAction = "none";
+      body.style.touchAction = "none";
+      body.style.position = "fixed";
+      body.style.top = `-${lockedScrollYRef.current}px`;
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+    }
+    function preventTouchScroll(ev: TouchEvent) {
+      ev.preventDefault();
+    }
+
+    function preventWheel(ev: WheelEvent) {
+      ev.preventDefault();
+    }
+
+    document.addEventListener("touchmove", preventTouchScroll, {
+      passive: false,
+    });
+    document.addEventListener("wheel", preventWheel, { passive: false });
 
     const tick = () => {
       if (!dragSessionRef.current) {
@@ -260,30 +312,32 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
 
       const { x, y } = lastPointerRef.current;
       const vh = window.innerHeight;
-      // Keep a larger bottom edge so the list can tilt down above the trash.
-      const bottomEdge = Math.max(AUTO_SCROLL_EDGE_PX, 132);
+      const topZone = AUTO_SCROLL_EDGE_PX;
+      const bottomZoneStart = vh - TRASH_SAFE_PX - AUTO_SCROLL_EDGE_PX;
+      const bottomZoneEnd = vh - TRASH_SAFE_PX;
       let dy = 0;
 
-      if (y < AUTO_SCROLL_EDGE_PX) {
-        const t = (AUTO_SCROLL_EDGE_PX - y) / AUTO_SCROLL_EDGE_PX;
-        dy = -Math.ceil(AUTO_SCROLL_MAX_PX * Math.min(1, t));
-      } else if (y > vh - bottomEdge && !hitTestTrash(x, y)) {
-        const t = (y - (vh - bottomEdge)) / bottomEdge;
-        dy = Math.ceil(AUTO_SCROLL_MAX_PX * Math.min(1, t));
+      if (y < topZone) {
+        const t = (topZone - y) / topZone;
+        dy = -Math.ceil(AUTO_SCROLL_MAX_PX * t * t);
+      } else if (
+        y > bottomZoneStart &&
+        y < bottomZoneEnd &&
+        !hitTestTrash(x, y)
+      ) {
+        const t = (y - bottomZoneStart) / AUTO_SCROLL_EDGE_PX;
+        dy = Math.ceil(AUTO_SCROLL_MAX_PX * t * t);
       }
 
       if (dy !== 0) {
-        window.scrollBy({ top: dy, left: 0, behavior: "auto" });
-        const session = dragSessionRef.current;
-        if (session) {
-          setDragPoint({ x, y });
-          const over = hitTestTrash(x, y);
-          setOverTrash(over);
-          if (!over) {
-            setInsertIndex(hitTestInsertIndex(x, y, session.id));
-          } else {
-            setInsertIndex(null);
-          }
+        const next = Math.max(
+          0,
+          Math.min(lockedScrollMaxRef.current, lockedScrollYRef.current + dy)
+        );
+        if (next !== lockedScrollYRef.current) {
+          lockedScrollYRef.current = next;
+          body.style.top = `-${next}px`;
+          refreshDragTargets(x, y);
         }
       }
 
@@ -293,15 +347,26 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     autoScrollRafRef.current = window.requestAnimationFrame(tick);
 
     return () => {
-      html.style.touchAction = prevHtmlTouch;
-      body.style.touchAction = prevBodyTouch;
-      body.style.overscrollBehavior = prevOverscroll;
+      document.removeEventListener("touchmove", preventTouchScroll);
+      document.removeEventListener("wheel", preventWheel);
       if (autoScrollRafRef.current != null) {
         cancelAnimationFrame(autoScrollRafRef.current);
         autoScrollRafRef.current = null;
       }
+
+      const y = lockedScrollYRef.current;
+      html.style.overscrollBehavior = prev.htmlOverscroll;
+      body.style.overscrollBehavior = prev.bodyOverscroll;
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.left = prev.bodyLeft;
+      body.style.right = prev.bodyRight;
+      body.style.width = prev.bodyWidth;
+      body.style.touchAction = prev.bodyTouch;
+      html.style.touchAction = prev.htmlTouch;
+      window.scrollTo(0, y);
     };
-  }, [draggingId, hitTestInsertIndex, hitTestTrash]);
+  }, [draggingId, hitTestTrash, refreshDragTargets]);
 
   useEffect(() => {
     return () => clearLongPress();
@@ -324,6 +389,27 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       offsetY: clientY - rect.top,
     };
     lastPointerRef.current = { x: clientX, y: clientY };
+
+    // Lock immediately so the browser cannot scroll/refresh before React effects run.
+    const html = document.documentElement;
+    const body = document.body;
+    if (body.style.position !== "fixed") {
+      lockedScrollYRef.current = window.scrollY;
+      lockedScrollMaxRef.current = Math.max(
+        0,
+        html.scrollHeight - window.innerHeight
+      );
+      html.style.overscrollBehavior = "none";
+      body.style.overscrollBehavior = "none";
+      html.style.touchAction = "none";
+      body.style.touchAction = "none";
+      body.style.position = "fixed";
+      body.style.top = `-${lockedScrollYRef.current}px`;
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+    }
+
     setDragPoint({ x: clientX, y: clientY });
     setDraggingId(itemId);
     setOverTrash(false);
@@ -337,14 +423,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     const session = dragSessionRef.current;
     if (!session) return;
     lastPointerRef.current = { x: clientX, y: clientY };
-    setDragPoint({ x: clientX, y: clientY });
-    const over = hitTestTrash(clientX, clientY);
-    setOverTrash(over);
-    if (!over) {
-      setInsertIndex(hitTestInsertIndex(clientX, clientY, session.id));
-    } else {
-      setInsertIndex(null);
-    }
+    refreshDragTargets(clientX, clientY);
   }
 
   function handleCardPointerDown(
