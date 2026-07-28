@@ -244,11 +244,16 @@ export function TemplateOrderEditor() {
     function preventWheel(ev: WheelEvent) {
       ev.preventDefault();
     }
+    function preventSelect(ev: Event) {
+      ev.preventDefault();
+    }
 
     document.addEventListener("touchmove", preventTouchScroll, {
       passive: false,
     });
     document.addEventListener("wheel", preventWheel, { passive: false });
+    document.addEventListener("selectstart", preventSelect);
+    window.getSelection()?.removeAllRanges();
 
     const tick = () => {
       if (!dragSessionRef.current) {
@@ -283,6 +288,7 @@ export function TemplateOrderEditor() {
     return () => {
       document.removeEventListener("touchmove", preventTouchScroll);
       document.removeEventListener("wheel", preventWheel);
+      document.removeEventListener("selectstart", preventSelect);
       if (autoScrollRafRef.current != null) {
         cancelAnimationFrame(autoScrollRafRef.current);
         autoScrollRafRef.current = null;
@@ -333,6 +339,7 @@ export function TemplateOrderEditor() {
     const fromIndex = orderRef.current.indexOf(id);
     if (fromIndex < 0) return;
     const rect = el.getBoundingClientRect();
+    window.getSelection()?.removeAllRanges();
     dragSessionRef.current = {
       id,
       pointerId,
@@ -354,6 +361,9 @@ export function TemplateOrderEditor() {
 
   function onCardPointerDown(e: ReactPointerEvent<HTMLElement>, id: string) {
     if (e.button !== 0) return;
+    // Avoid native text selection / callouts while preparing a long-press drag.
+    e.preventDefault();
+    window.getSelection()?.removeAllRanges();
     const el = e.currentTarget;
     const startX = e.clientX;
     const startY = e.clientY;
@@ -429,7 +439,11 @@ export function TemplateOrderEditor() {
     templates.find((t) => t.id === draggingId) ?? null;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className={`flex flex-col gap-3 ${
+        draggingId ? "touch-none select-none" : "select-none"
+      }`}
+    >
       <div className="flex items-start justify-between gap-3 px-1">
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">ترتيب التمبلتات</p>
@@ -460,18 +474,24 @@ export function TemplateOrderEditor() {
                 if (node) cardRefs.current.set(tpl.id, node);
                 else cardRefs.current.delete(tpl.id);
               }}
-              className={`relative flex flex-col overflow-hidden rounded-xl border bg-card transition-[box-shadow,border-color,opacity] ${
+              className={`relative flex flex-col overflow-hidden rounded-xl border bg-card select-none transition-[box-shadow,border-color,opacity] ${
                 active
-                  ? "pointer-events-none border-transparent opacity-30"
+                  ? "pointer-events-none border-transparent opacity-30 touch-none"
                   : highlighted
                     ? "border-primary shadow-[0_0_0_3px_rgba(43,125,233,0.18)]"
                     : "border-border"
               }`}
-              style={{ touchAction: draggingId ? "none" : "manipulation" }}
+              style={{
+                touchAction: draggingId ? "none" : "manipulation",
+                WebkitUserSelect: "none",
+                WebkitTouchCallout: "none",
+                userSelect: "none",
+              }}
               onPointerDown={(e) => onCardPointerDown(e, tpl.id)}
               onPointerMove={onCardPointerMove}
               onPointerUp={onCardPointerUp}
               onPointerCancel={onCardPointerUp}
+              onContextMenu={(e) => e.preventDefault()}
             >
               <div className="flex h-[6.5rem] items-center justify-center p-2">
                 <TemplatePreview
