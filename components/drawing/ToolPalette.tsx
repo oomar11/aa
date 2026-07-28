@@ -20,99 +20,63 @@ type Props = {
   onTool: (id: ToolId) => void;
 };
 
-const tools: ToolDef[] = [
-  {
-    id: "split-v",
-    label: "تقسيم رأسي",
-    icon: <LineV />,
-  },
-  {
-    id: "split-h",
-    label: "تقسيم أفقي",
-    icon: <LineH />,
-  },
-  {
-    id: "split-v2",
-    label: "تقسيم لعمودين",
-    icon: <LineV2 />,
-  },
-  {
-    id: "fixed",
-    label: "ثابت",
-    icon: <IconFixed />,
-  },
-  {
-    id: "exhaust",
-    label: "شفاط",
-    icon: <IconExhaust />,
-  },
-  {
-    id: "casement-left",
-    label: "مفصلي يسار",
-    icon: <IconCasementLeft />,
-  },
-  {
-    id: "casement-right",
-    label: "مفصلي يمين",
-    icon: <IconCasementRight />,
-  },
-  {
-    id: "tilt",
-    label: "قلب علوي",
-    icon: <IconTilt />,
-  },
-  {
-    id: "tilt-turn",
-    label: "قلب وضلفة",
-    icon: <IconTiltTurn />,
-  },
-  {
-    id: "drawer-left",
-    label: "جرار شمال",
-    icon: <IconDrawerLeft />,
-  },
-  {
-    id: "drawer-right",
-    label: "جرار يمين",
-    icon: <IconDrawerRight />,
-  },
-  {
-    id: "panel-h",
-    label: "بانل أفقي",
-    icon: <IconPanelH />,
-  },
-  {
-    id: "panel-v",
-    label: "بانل رأسي",
-    icon: <IconPanelV />,
-  },
+/**
+ * شريط سريع ٢×٥ — الأهم أولاً (يمين في RTL):
+ * الصف ١: تقسيم + ثابت/شفاط/بانل
+ * الصف ٢: مفصلي · قلاب · جرار
+ * الباقي (تقسيم ٣ / قلب وضلفة / بانل رأسي) من خصائص الضلفة
+ */
+const TOOL_ROWS: ToolDef[][] = [
+  [
+    { id: "split-v", label: "تقسيم رأسي", icon: <LineV /> },
+    { id: "split-h", label: "تقسيم أفقي", icon: <LineH /> },
+    { id: "fixed", label: "ثابت", icon: <IconFixed /> },
+    { id: "exhaust", label: "شفاط", icon: <IconExhaust /> },
+    { id: "panel-h", label: "بانل أفقي", icon: <IconPanelH /> },
+  ],
+  [
+    { id: "casement-right", label: "مفصلي يمين", icon: <IconCasementRight /> },
+    { id: "casement-left", label: "مفصلي يسار", icon: <IconCasementLeft /> },
+    { id: "tilt", label: "قلب علوي", icon: <IconTilt /> },
+    { id: "drawer-right", label: "جرار يمين", icon: <IconDrawerRight /> },
+    { id: "drawer-left", label: "جرار شمال", icon: <IconDrawerLeft /> },
+  ],
 ];
 
 export function ToolPalette({ activeOpening, onTool }: Props) {
   return (
     <div className="rounded-[24px] border border-border bg-card px-2 py-2 shadow-[0_10px_30px_rgba(15,20,28,0.06)]">
-      <div className="mx-auto grid max-w-md grid-cols-6 gap-1.5">
-        {tools.map((tool) => {
-          const active =
-            activeOpening != null && tool.id === activeOpening;
-          return (
-            <button
-              key={tool.id}
-              type="button"
-              title={tool.label}
-              aria-label={tool.label}
-              aria-pressed={active}
-              onClick={() => onTool(tool.id)}
-              className={`flex aspect-square items-center justify-center rounded-2xl border transition-all ${
-                active
-                  ? "border-primary bg-primary-soft text-primary shadow-sm"
-                  : "border-transparent bg-background text-primary hover:border-border hover:bg-primary-soft/60"
-              }`}
-            >
-              {tool.icon}
-            </button>
-          );
-        })}
+      <div className="mx-auto flex max-w-sm flex-col gap-1.5">
+        {TOOL_ROWS.map((row, rowIndex) => (
+          <div
+            key={rowIndex}
+            className="grid grid-cols-5 gap-1.5"
+            role="toolbar"
+            aria-label={rowIndex === 0 ? "تقسيم وثابت" : "أنواع الفتح"}
+          >
+            {row.map((tool) => {
+              const active =
+                activeOpening != null && tool.id === activeOpening;
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  title={tool.label}
+                  aria-label={tool.label}
+                  aria-pressed={active}
+                  onClick={() => onTool(tool.id)}
+                  className={`flex aspect-square items-center justify-center rounded-2xl border transition-all ${
+                    active
+                      ? "border-primary bg-primary-soft text-primary shadow-sm"
+                      : "border-transparent bg-background text-primary hover:border-border hover:bg-primary-soft/60"
+                  }`}
+                >
+                  {tool.icon}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -149,16 +113,6 @@ function LineH() {
     <Svg>
       <rect x="6" y="5" width="20" height="22" rx="1" />
       <line x1="6" y1="16" x2="26" y2="16" />
-    </Svg>
-  );
-}
-
-function LineV2() {
-  return (
-    <Svg>
-      <rect x="5" y="5" width="22" height="22" rx="1" />
-      <line x1="12.5" y1="5" x2="12.5" y2="27" />
-      <line x1="19.5" y1="5" x2="19.5" y2="27" />
     </Svg>
   );
 }
@@ -211,16 +165,6 @@ function IconTilt() {
   );
 }
 
-function IconTiltTurn() {
-  return (
-    <Svg>
-      <rect x="6" y="5" width="20" height="22" rx="1" />
-      <path d="M8 24 L16 10 L24 24" />
-      <path d="M22 8 L10 16 L22 24" opacity="0.7" />
-    </Svg>
-  );
-}
-
 function IconDrawerLeft() {
   return (
     <Svg>
@@ -246,17 +190,6 @@ function IconPanelH() {
       <rect x="8" y="8" width="16" height="4" fill="currentColor" opacity="0.35" rx="0.5" />
       <rect x="8" y="14" width="16" height="4" fill="currentColor" opacity="0.35" rx="0.5" />
       <rect x="8" y="20" width="16" height="4" fill="currentColor" opacity="0.35" rx="0.5" />
-    </Svg>
-  );
-}
-
-function IconPanelV() {
-  return (
-    <Svg>
-      <rect x="6" y="5" width="20" height="22" rx="1" />
-      <rect x="8" y="7" width="4" height="18" fill="currentColor" opacity="0.35" rx="0.5" />
-      <rect x="14" y="7" width="4" height="18" fill="currentColor" opacity="0.35" rx="0.5" />
-      <rect x="20" y="7" width="4" height="18" fill="currentColor" opacity="0.35" rx="0.5" />
     </Svg>
   );
 }

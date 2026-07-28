@@ -65,6 +65,13 @@ const OPENING_GROUPS: OptionGroup<PaneOpening>[] = [
       { id: "drawer-left", label: "جرار شمال" },
     ],
   },
+  {
+    title: "بانل",
+    items: [
+      { id: "panel-h", label: "بانل أفقي" },
+      { id: "panel-v", label: "بانل رأسي" },
+    ],
+  },
 ];
 
 const GRID_GROUPS: OptionGroup<PaneGrid>[] = [
@@ -885,6 +892,20 @@ function OpeningIcon({ type }: { type: PaneOpening }) {
           stroke={s}
           strokeWidth="1.6"
         />
+      )}
+      {type === "panel-h" && (
+        <>
+          <rect x="8" y="9" width="24" height="5" fill={s} opacity="0.35" rx="0.5" />
+          <rect x="8" y="17.5" width="24" height="5" fill={s} opacity="0.35" rx="0.5" />
+          <rect x="8" y="26" width="24" height="5" fill={s} opacity="0.35" rx="0.5" />
+        </>
+      )}
+      {type === "panel-v" && (
+        <>
+          <rect x="9" y="8" width="5" height="24" fill={s} opacity="0.35" rx="0.5" />
+          <rect x="17.5" y="8" width="5" height="24" fill={s} opacity="0.35" rx="0.5" />
+          <rect x="26" y="8" width="5" height="24" fill={s} opacity="0.35" rx="0.5" />
+        </>
       )}
     </svg>
   );
