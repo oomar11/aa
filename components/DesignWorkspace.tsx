@@ -34,9 +34,20 @@ import type { LayoutNode } from "@/lib/window-layout";
 const LONG_PRESS_MS = 320;
 const MOVE_CANCEL_PX = 14;
 const GHOST_W = 148;
-const AUTO_SCROLL_EDGE_PX = 64;
-const AUTO_SCROLL_MAX_PX = 10;
+/** Minimum edge band for drag auto-pan (px). */
+const AUTO_SCROLL_EDGE_MIN_PX = 130;
+/** Portion of the viewport used as an auto-pan band on each side. */
+const AUTO_SCROLL_EDGE_RATIO = 0.28;
+/** Peak auto-pan speed (px/frame) at the deepest edge point. */
+const AUTO_SCROLL_MAX_PX = 18;
 const TRASH_SAFE_PX = 112;
+
+function autoScrollSpeed(progress: number) {
+  const t = Math.max(0, Math.min(1, progress));
+  // Smoothstep: slow at the start of the band, then ramps up gradually.
+  const eased = t * t * (3 - 2 * t);
+  return Math.max(1, Math.round(AUTO_SCROLL_MAX_PX * eased));
+}
 
 type Props = {
   customerId?: string;
@@ -363,21 +374,22 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
 
       const { x, y } = lastPointerRef.current;
       const vh = window.innerHeight;
-      const topZone = AUTO_SCROLL_EDGE_PX;
-      const bottomZoneStart = vh - TRASH_SAFE_PX - AUTO_SCROLL_EDGE_PX;
+      const edge = Math.max(
+        AUTO_SCROLL_EDGE_MIN_PX,
+        Math.round(vh * AUTO_SCROLL_EDGE_RATIO)
+      );
+      const topZone = edge;
       const bottomZoneEnd = vh - TRASH_SAFE_PX;
+      const bottomZoneStart = bottomZoneEnd - edge;
       let dy = 0;
 
       if (y < topZone) {
-        const t = (topZone - y) / topZone;
-        dy = -Math.ceil(AUTO_SCROLL_MAX_PX * t * t);
-      } else if (
-        y > bottomZoneStart &&
-        y < bottomZoneEnd &&
-        !hitTestTrash(x, y)
-      ) {
-        const t = (y - bottomZoneStart) / AUTO_SCROLL_EDGE_PX;
-        dy = Math.ceil(AUTO_SCROLL_MAX_PX * t * t);
+        dy = -autoScrollSpeed((topZone - y) / edge);
+      } else if (y > bottomZoneStart && !hitTestTrash(x, y)) {
+        // Keep panning through the lower band, including near the trash shelf,
+        // but stop once the finger is actually over the trash hit area.
+        const depth = Math.min(edge, Math.max(0, y - bottomZoneStart));
+        dy = autoScrollSpeed(depth / edge);
       }
 
       if (dy !== 0) {
