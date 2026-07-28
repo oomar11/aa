@@ -131,16 +131,14 @@ export function DrawingCanvas({
 
   const dimDepth = maxLayoutSplitDepth(layout);
   const maxSegDepth = Math.max(0, dimDepth - 1);
-  const topLane = dimDepth === 0 ? 28 : Math.max(28, 14 + maxSegDepth * 16);
-  const bottomLane = dimDepth === 0 ? 18 : 14 + maxSegDepth * 16;
-  const leftLane = dimDepth === 0 ? 28 : Math.max(28, 16 + maxSegDepth * 16);
-  const rightLane = dimDepth === 0 ? 18 : 16 + maxSegDepth * 16;
-  const marginL = Math.min(110, leftLane + 24);
-  const marginR = Math.min(90, rightLane + 22);
-  const marginT = Math.min(110, topLane + 14);
-  const marginB = Math.min(90, bottomLane + 14);
-  const availW = Math.max(80, VB_W - marginL - marginR);
-  const availH = Math.max(80, VB_H - marginT - marginB);
+  // Keep the window large — only reserve a slim band for split dim labels.
+  const hasSplitDims = dimDepth > 0;
+  const marginL = hasSplitDims ? Math.min(52, 22 + maxSegDepth * 10) : 18;
+  const marginR = hasSplitDims ? Math.min(40, 18 + maxSegDepth * 8) : 18;
+  const marginT = hasSplitDims ? Math.min(48, 20 + maxSegDepth * 10) : 16;
+  const marginB = hasSplitDims ? Math.min(40, 16 + maxSegDepth * 8) : 16;
+  const availW = Math.max(120, VB_W - marginL - marginR);
+  const availH = Math.max(140, VB_H - marginT - marginB);
   const aspect =
     item.widthMm > 0 && item.heightMm > 0
       ? item.widthMm / item.heightMm
@@ -185,10 +183,6 @@ export function DrawingCanvas({
 
   const profile = 10;
   const lastTap = useRef<{ id: string; at: number } | null>(null);
-  const rootCanEqualizeW =
-    layout.type === "split" && layout.dir === "v" && layout.children.length > 1;
-  const rootCanEqualizeH =
-    layout.type === "split" && layout.dir === "h" && layout.children.length > 1;
 
   function handlePanePointer(paneId: string) {
     const now = Date.now();
@@ -256,31 +250,7 @@ export function DrawingCanvas({
 
       <rect width={VB_W} height={VB_H} fill="transparent" />
 
-      {/* العرض الكلي — برّا (فوق) */}
-      <DimensionLine
-        x1={frame.x}
-        x2={frame.x + frame.w}
-        y={frame.y - 28}
-        label={formatLength(item.widthMm, unit)}
-        size="lg"
-        colors={dimColors}
-        onClick={(e) => {
-          e.stopPropagation();
-          onEditDimension({ kind: "width" });
-        }}
-        onEqualize={
-          rootCanEqualizeW
-            ? (e) => {
-                e.stopPropagation();
-                onRequestEqualize({ kind: "width" });
-              }
-            : undefined
-        }
-        startRole={rootCanEqualizeW ? "edge" : "plain"}
-        endRole={rootCanEqualizeW ? "edge" : "plain"}
-      />
-
-      {/* أبعاد التقسيم — أقرب حافة (فوق/تحت/يمين/يسار) */}
+      {/* أبعاد التقسيم فقط — العرض/الارتفاع الكلي يتعملوا من شريط المقاسات تحت الرسم */}
       {safeWidthSegments.map((seg, _idx, all) => {
         const roles = segmentEndRoles(seg, all, "h");
         return (
@@ -350,30 +320,6 @@ export function DrawingCanvas({
           />
         );
       })}
-
-      {/* الارتفاع الكلي — برّا (يسار) */}
-      <DimensionLineVertical
-        y1={frame.y}
-        y2={frame.y + frame.h}
-        x={frame.x - 28}
-        label={formatLength(item.heightMm, unit)}
-        size="lg"
-        colors={dimColors}
-        onClick={(e) => {
-          e.stopPropagation();
-          onEditDimension({ kind: "height" });
-        }}
-        onEqualize={
-          rootCanEqualizeH
-            ? (e) => {
-                e.stopPropagation();
-                onRequestEqualize({ kind: "height" });
-              }
-            : undefined
-        }
-        startRole={rootCanEqualizeH ? "edge" : "plain"}
-        endRole={rootCanEqualizeH ? "edge" : "plain"}
-      />
 
       {/* إطار خارجي */}
       {panes.map((p) => (

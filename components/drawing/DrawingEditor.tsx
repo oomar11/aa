@@ -48,7 +48,7 @@ import {
   saveItemsForProject,
 } from "@/lib/projects";
 import { applyBouclierRules, isBouclierEligible } from "@/lib/bouclier";
-import { fromMm, toMm } from "@/lib/units";
+import { fromMm, formatLength, toMm, unitLabel } from "@/lib/units";
 import type { LayoutNode } from "@/lib/window-layout";
 import { cloneLayout, ensurePaneIds, listPaneIds } from "@/lib/window-layout";
 import { getTemplateById } from "@/lib/window-templates";
@@ -200,6 +200,16 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
     if (!item || !selectedPaneId) return null;
     return item.panes?.[selectedPaneId]?.opening ?? "fixed";
   }, [item, selectedPaneId]);
+
+  const rootLayout = item?.layout ? ensurePaneIds(item.layout) : null;
+  const canEqualizeWidth =
+    rootLayout?.type === "split" &&
+    rootLayout.dir === "v" &&
+    rootLayout.children.length > 1;
+  const canEqualizeHeight =
+    rootLayout?.type === "split" &&
+    rootLayout.dir === "h" &&
+    rootLayout.children.length > 1;
 
   function handleUndo() {
     if (!item || undoStack.length === 0) return;
@@ -417,14 +427,14 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
 
       <ToolPalette activeOpening={activeOpening} onTool={handleTool} />
 
-      <main className="relative mt-3 flex flex-1 flex-col">
+      <main className="relative mt-3 flex flex-1 flex-col gap-2">
         {!selectedPaneId && (
-          <p className="absolute right-1/2 top-3 z-10 translate-x-1/2 rounded-full border border-border bg-card px-3 py-1 text-[11px] text-foreground shadow-lg">
-            ضغطتين على الضلفة ← الخصائص · النقطة الزرقاء = مسح التقسيم
+          <p className="text-center text-[11px] text-muted">
+            اضغط العرض أو الارتفاع تحت الرسم للتعديل · ضغطتين على الضلفة ← الخصائص · النقطة الزرقاء = مسح التقسيم
           </p>
         )}
-        <section className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-sm">
-          <div className="flex flex-1 items-center justify-center">
+        <section className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-2 shadow-sm sm:p-3">
+          <div className="flex min-h-0 flex-1 items-center justify-center">
             <DrawingCanvas
               item={item}
               selectedPaneId={selectedPaneId}
@@ -452,6 +462,72 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
               }}
             />
           </div>
+
+          <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-2">
+            <button
+              type="button"
+              onClick={() =>
+                setDimEdit({
+                  value: fromMm(item.widthMm, unit),
+                  target: { kind: "width" },
+                })
+              }
+              className="flex flex-col items-stretch gap-1 rounded-xl border border-border bg-background px-3 py-2.5 text-right transition-colors hover:border-primary hover:bg-primary-soft/50 active:scale-[0.99]"
+            >
+              <span className="text-[11px] text-muted">العرض</span>
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="text-lg font-bold tabular-nums text-foreground">
+                  {formatLength(item.widthMm, unit)}
+                </span>
+                <span className="text-[11px] font-medium text-primary">
+                  {unitLabel(unit)} · تعديل
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setDimEdit({
+                  value: fromMm(item.heightMm, unit),
+                  target: { kind: "height" },
+                })
+              }
+              className="flex flex-col items-stretch gap-1 rounded-xl border border-border bg-background px-3 py-2.5 text-right transition-colors hover:border-primary hover:bg-primary-soft/50 active:scale-[0.99]"
+            >
+              <span className="text-[11px] text-muted">الارتفاع</span>
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="text-lg font-bold tabular-nums text-foreground">
+                  {formatLength(item.heightMm, unit)}
+                </span>
+                <span className="text-[11px] font-medium text-primary">
+                  {unitLabel(unit)} · تعديل
+                </span>
+              </span>
+            </button>
+          </div>
+
+          {canEqualizeWidth || canEqualizeHeight ? (
+            <div className="mt-2 flex gap-2">
+              {canEqualizeWidth ? (
+                <button
+                  type="button"
+                  onClick={() => setEqualizeTarget({ kind: "width" })}
+                  className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-primary-soft"
+                >
+                  تساوي العرض
+                </button>
+              ) : null}
+              {canEqualizeHeight ? (
+                <button
+                  type="button"
+                  onClick={() => setEqualizeTarget({ kind: "height" })}
+                  className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-primary-soft"
+                >
+                  تساوي الارتفاع
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </section>
       </main>
 
