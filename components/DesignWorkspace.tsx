@@ -363,6 +363,16 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     }
   }
 
+  function openItem(itemId: string) {
+    const href = drawHref(itemId);
+    if (href !== "#") router.push(href);
+  }
+
+  function handleCardContextMenu(e: ReactMouseEvent) {
+    // Item cards support long-press dragging, so suppress the browser link menu.
+    e.preventDefault();
+  }
+
   function setCardRef(id: string, el: HTMLElement | null) {
     if (el) cardRefs.current.set(id, el);
     else cardRefs.current.delete(id);
@@ -452,11 +462,14 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
               className="relative h-full touch-manipulation"
               data-item-id={item.id}
             >
-              <Link
-                href={drawHref(item.id)}
-                draggable={false}
+              <button
+                type="button"
                 onPointerDown={(e) => handleCardPointerDown(item.id, e)}
-                onClick={handleCardClick}
+                onClick={(e) => {
+                  handleCardClick(e);
+                  if (!e.defaultPrevented) openItem(item.id);
+                }}
+                onContextMenu={handleCardContextMenu}
                 className={`flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-[opacity,transform,box-shadow,border-color] duration-200 select-none ${
                   isDragging
                     ? "scale-[0.97] border-border opacity-35"
@@ -467,7 +480,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
                 style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
               >
                 <ItemCardBody item={item} index={index} unit={unit} />
-              </Link>
+              </button>
             </li>
           );
         })}
