@@ -50,6 +50,12 @@ type DragSession = {
   originY: number;
   offsetX: number;
   offsetY: number;
+  fromIndex: number;
+};
+
+type DropHit = {
+  insertIndex: number;
+  highlightId: string;
 };
 
 export function DesignWorkspace({ customerId, projectId }: Props) {
@@ -63,6 +69,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   const [dragPoint, setDragPoint] = useState({ x: 0, y: 0 });
   const [overTrash, setOverTrash] = useState(false);
   const [insertIndex, setInsertIndex] = useState<number | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const itemsRef = useRef(items);
@@ -159,12 +166,30 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     );
   }, []);
 
-  const hitTestInsertIndex = useCallback(
-    (clientX: number, clientY: number, activeId: string) => {
+  const hitTestDrop = useCallback(
+    (clientX: number, clientY: number, activeId: string): DropHit | null => {
       const current = itemsRef.current;
-      let bestIndex = current.findIndex((item) => item.id === activeId);
-      if (bestIndex < 0) bestIndex = current.length;
+      const from = current.findIndex((item) => item.id === activeId);
+      if (from < 0) return null;
+
+      // Still over the original card → no target highlight / no reorder.
+      const originEl = cardRefs.current.get(activeId);
+      if (originEl) {
+        const rect = originEl.getBoundingClientRect();
+        if (
+          clientX >= rect.left &&
+          clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom
+        ) {
+          return null;
+        }
+      }
+
+      let bestTargetId: string | null = null;
+      let bestTargetIndex = -1;
       let bestDist = Number.POSITIVE_INFINITY;
+      let insertIndex = from;
 
       for (let i = 0; i < current.length; i++) {
         const item = current[i];
@@ -177,13 +202,26 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         const dist = (clientX - cx) ** 2 + (clientY - cy) ** 2;
         if (dist < bestDist) {
           bestDist = dist;
-          bestIndex = clientX < cx ? i : i + 1;
+          bestTargetId = item.id;
+          bestTargetIndex = i;
+          // In a 2-col grid, choose before/after by the nearer axis side.
+          const preferBefore =
+            Math.abs(clientX - cx) >= Math.abs(clientY - cy)
+              ? clientX < cx
+              : clientY < cy;
+          insertIndex = preferBefore ? i : i + 1;
         }
       }
 
-      const from = current.findIndex((item) => item.id === activeId);
-      if (from >= 0 && bestIndex > from) bestIndex -= 1;
-      return Math.max(0, Math.min(current.length - 1, bestIndex));
+      if (!bestTargetId || bestTargetIndex < 0) return null;
+
+      if (insertIndex > from) insertIndex -= 1;
+      insertIndex = Math.max(0, Math.min(current.length - 1, insertIndex));
+
+      // Landing back in the original slot → nothing selected.
+      if (insertIndex === from) return null;
+
+      return { insertIndex, highlightId: bestTargetId };
     },
     []
   );
@@ -226,12 +264,12 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       if (over) {
         setPendingDeleteId(id);
       } else {
-        const toIndex = hitTestInsertIndex(clientX, clientY, id);
+        const hit = hitTestDrop(clientX, clientY, id);
         const next = [...itemsRef.current];
         const from = next.findIndex((item) => item.id === id);
-        if (from >= 0 && toIndex !== from) {
+        if (hit && from >= 0 && hit.insertIndex !== from) {
           const [moved] = next.splice(from, 1);
-          next.splice(toIndex, 0, moved);
+          next.splice(hit.insertIndex, 0, moved);
           persist(next);
         }
       }
@@ -241,8 +279,9 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       setDraggingId(null);
       setOverTrash(false);
       setInsertIndex(null);
+      setHighlightId(null);
     },
-    [hitTestInsertIndex, hitTestTrash, persist, unlockPageScroll]
+    [hitTestDrop, hitTestTrash, persist, unlockPageScroll]
   );
 
   const pendingDeleteItem = useMemo(
@@ -268,12 +307,15 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       const over = hitTestTrash(clientX, clientY);
       setOverTrash(over);
       if (!over) {
-        setInsertIndex(hitTestInsertIndex(clientX, clientY, session.id));
+        const hit = hitTestDrop(clientX, clientY, session.id);
+        setInsertIndex(hit?.insertIndex ?? null);
+        setHighlightId(hit?.highlightId ?? null);
       } else {
         setInsertIndex(null);
+        setHighlightId(null);
       }
     },
-    [hitTestInsertIndex, hitTestTrash]
+    [hitTestDrop, hitTestTrash]
   );
 
   useEffect(() => {
@@ -379,6 +421,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     cardEl: HTMLElement
   ) {
     const rect = cardEl.getBoundingClientRect();
+    const fromIndex = itemsRef.current.findIndex((item) => item.id === itemId);
     dragSessionRef.current = {
       id: itemId,
       pointerId,
@@ -386,6 +429,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       originY: clientY,
       offsetX: clientX - rect.left,
       offsetY: clientY - rect.top,
+      fromIndex,
     };
     lastPointerRef.current = { x: clientX, y: clientY };
 
@@ -412,7 +456,9 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     setDragPoint({ x: clientX, y: clientY });
     setDraggingId(itemId);
     setOverTrash(false);
-    setInsertIndex(itemsRef.current.findIndex((item) => item.id === itemId));
+    // No highlight while still in the original place.
+    setInsertIndex(null);
+    setHighlightId(null);
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate(12);
     }
@@ -605,11 +651,10 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         {items.map((item, index) => {
           const isDragging = draggingId === item.id;
           const isDropTarget =
-            draggingId &&
-            insertIndex !== null &&
+            Boolean(draggingId) &&
             !overTrash &&
-            insertIndex === index &&
-            draggingId !== item.id;
+            highlightId === item.id &&
+            !isDragging;
 
           return (
             <li
