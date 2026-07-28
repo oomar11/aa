@@ -12,6 +12,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { NavBack } from "@/components/NavBack";
 import { TemplatePickerModal } from "@/components/TemplatePickerModal";
 import { WindowPreview } from "@/components/WindowPreview";
 import {
@@ -722,13 +723,13 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
           <p className="truncate text-[10px] opacity-80">بنود المشروع</p>
         </div>
 
-        <Link
-          href={customerId ? "/design/customers" : "/design"}
+        <NavBack
+          href="/"
           className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-          aria-label="رجوع للعملاء"
+          aria-label="رجوع للرئيسية"
         >
           <BackIcon />
-        </Link>
+        </NavBack>
       </header>
 
       <ul

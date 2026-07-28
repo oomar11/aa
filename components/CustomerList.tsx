@@ -58,7 +58,7 @@ export function CustomerList() {
             return (
               <li key={customer.id}>
                 <Link
-                  href={`/design/projects/new?customer=${customer.id}`}
+                  href={`/design/projects?customer=${customer.id}`}
                   className="block rounded-2xl border border-border bg-card p-4 shadow-[0_2px_10px_rgba(15,20,28,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 active:scale-[0.99]"
                 >
                   <div className="flex items-start justify-between gap-3">

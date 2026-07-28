@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { NavBack } from "@/components/NavBack";
 import {
   loadLocalProjects,
   PROJECTS_STORAGE_KEY,
@@ -49,7 +49,8 @@ export function NewProjectForm({ customerId }: Props) {
       JSON.stringify([project, ...existing])
     );
 
-    router.push(
+    // Replace the “مشروع جديد” form so Back from the editor returns to projects.
+    router.replace(
       `/design/editor?customer=${customerId}&project=${project.id}`
     );
   }
@@ -96,12 +97,12 @@ export function NewProjectForm({ customerId }: Props) {
       ) : null}
 
       <div className="mt-2 flex gap-3">
-        <Link
-          href="/design/customers"
+        <NavBack
+          href={`/design/projects?customer=${customerId}`}
           className="flex h-12 flex-1 items-center justify-center rounded-2xl border border-border bg-card text-sm font-semibold transition-colors hover:bg-primary-soft"
         >
           رجوع
-        </Link>
+        </NavBack>
         <button
           type="submit"
           className="flex h-12 flex-1 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"

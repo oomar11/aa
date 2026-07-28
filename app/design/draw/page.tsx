@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NavBack } from "@/components/NavBack";
 import { DrawingEditor } from "@/components/drawing/DrawingEditor";
 
 type Props = {
@@ -16,9 +17,18 @@ export default async function DrawPage({ searchParams }: Props) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <p className="font-semibold text-foreground">بيانات الرسم غير مكتملة</p>
-        <Link href="/design/customers" className="text-sm text-primary">
-          الرجوع للعملاء
-        </Link>
+        {params.customer && params.project ? (
+          <NavBack
+            href={`/design/editor?customer=${params.customer}&project=${params.project}`}
+            className="text-sm text-primary"
+          >
+            الرجوع للمشروع
+          </NavBack>
+        ) : (
+          <Link href="/" className="text-sm text-primary">
+            الرجوع للرئيسية
+          </Link>
+        )}
       </div>
     );
   }
@@ -31,3 +41,4 @@ export default async function DrawPage({ searchParams }: Props) {
     />
   );
 }
+

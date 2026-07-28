@@ -1,3 +1,4 @@
+import { NavBack } from "@/components/NavBack";
 import { ProjectList } from "@/components/ProjectList";
 
 type Props = {
@@ -12,9 +13,9 @@ export default async function ProjectsPage({ searchParams }: Props) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <p className="text-foreground font-semibold">مفيش عميل محدد</p>
-        <a href="/design/customers" className="text-sm text-primary">
+        <NavBack href="/design/customers" className="text-sm text-primary">
           رجوع لاختيار عميل
-        </a>
+        </NavBack>
       </div>
     );
   }

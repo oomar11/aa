@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NavBack } from "@/components/NavBack";
 
 export default function DesignPage() {
   return (
@@ -25,12 +26,12 @@ export default function DesignPage() {
           </Link>
         </div>
 
-        <Link
+        <NavBack
           href="/"
           className="mt-10 text-sm font-medium text-muted transition-colors hover:text-primary"
         >
           رجوع للرئيسية
-        </Link>
+        </NavBack>
       </main>
     </div>
   );

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { NavBack } from "@/components/NavBack";
 import { ProjectSettingsForm } from "@/components/ProjectSettingsForm";
 
 type Props = {
@@ -12,9 +12,9 @@ export default async function ProjectSettingsPage({ searchParams }: Props) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <p className="font-semibold text-foreground">بيانات المشروع ناقصة</p>
-        <Link href="/design/customers" className="text-sm text-primary">
-          رجوع
-        </Link>
+        <NavBack href="/" className="text-sm text-primary">
+          رجوع للرئيسية
+        </NavBack>
       </div>
     );
   }

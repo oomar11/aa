@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { NavBack } from "@/components/NavBack";
 import {
   getProjectById,
   upsertProjectOverride,
@@ -63,7 +63,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
     setError("");
 
     window.setTimeout(() => {
-      router.push(
+      router.replace(
         `/design/editor?customer=${customerId}&project=${projectId}`
       );
     }, 400);
@@ -76,12 +76,12 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
         المشروع غير موجود
-        <Link
+        <NavBack
           href={`/design/projects?customer=${customerId}`}
           className="mt-3 block text-primary"
         >
           رجوع للمشاريع
-        </Link>
+        </NavBack>
       </div>
     );
   }
@@ -165,12 +165,12 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
       ) : null}
 
       <div className="mt-2 flex gap-3">
-        <Link
+        <NavBack
           href={`/design/editor?customer=${customerId}&project=${projectId}`}
           className="flex h-12 flex-1 items-center justify-center rounded-2xl border border-border bg-card text-sm font-semibold transition-colors hover:bg-primary-soft"
         >
           رجوع
-        </Link>
+        </NavBack>
         <button
           type="submit"
           className="flex h-12 flex-1 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
