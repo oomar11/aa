@@ -75,6 +75,58 @@ export type ProfileSystemDetails = {
   deductions: ProfileDeductions;
 };
 
+/** نوع الزجاجة الواحدة */
+export type GlassPaneKind =
+  | "clear"
+  | "tinted"
+  | "reflective"
+  | "tempered"
+  | "laminated"
+  | "low-e"
+  | "other";
+
+export const GLASS_PANE_KINDS: { id: GlassPaneKind; label: string }[] = [
+  { id: "clear", label: "شفاف عادي" },
+  { id: "tinted", label: "ملون" },
+  { id: "reflective", label: "عاكس" },
+  { id: "tempered", label: "سيكوريت" },
+  { id: "laminated", label: "مصفح" },
+  { id: "low-e", label: "Low-E" },
+  { id: "other", label: "أخرى" },
+];
+
+export function glassPaneKindLabel(kind: GlassPaneKind): string {
+  return GLASS_PANE_KINDS.find((k) => k.id === kind)?.label ?? kind;
+}
+
+export type GlassPaneSpec = {
+  /** وصف الزجاجة (مثلاً: شفاف 4 مم) */
+  label: string;
+  /** سمك الزجاجة بالمليمتر */
+  thicknessMm: number;
+  kind: GlassPaneKind;
+};
+
+export type GlassGlazing = "single" | "double";
+
+/**
+ * تفاصيل نظام الزجاج:
+ * مفرد أو دبل، الزجاجة الأولى/الثانية، جورجيا بينهم.
+ */
+export type GlassSystemDetails = {
+  glazing: GlassGlazing;
+  /** الزجاجة الأولى (الخارجية / الوحيدة في المفرد) */
+  pane1: GlassPaneSpec;
+  /** الزجاجة الثانية — للدبل فقط */
+  pane2?: GlassPaneSpec;
+  /** سمك الفاصل الهوائي بين الزجاجتين (مم) — للدبل */
+  spacerMm?: number;
+  /** جورجيا بين الزجاجتين */
+  georgian: boolean;
+  /** وصف الجورجيا (شكل / لون) */
+  georgianNote?: string;
+};
+
 export type MaterialSystem = {
   id: string;
   name: string;
@@ -83,6 +135,8 @@ export type MaterialSystem = {
   isDefault?: boolean;
   /** تفاصيل نظام القطاعات: العيدان + التخصيمات */
   profile?: ProfileSystemDetails;
+  /** تفاصيل نظام الزجاج: مفرد/دبل + جورجيا */
+  glass?: GlassSystemDetails;
 };
 
 export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]>;
@@ -116,7 +170,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "glass",
     label: "زجاج",
-    description: "أنواع الزجاج المستخدمة في التصميم",
+    description: "مفرد / دبل · الزجاجات · جورجيا",
     accent: "#4BA3F5",
     shadow: "rgba(75,163,245,0.35)",
   },
@@ -180,9 +234,43 @@ export function defaultProfileDetails(): ProfileSystemDetails {
   };
 }
 
+export function defaultGlassPane(
+  partial?: Partial<GlassPaneSpec>
+): GlassPaneSpec {
+  return {
+    label: partial?.label ?? "شفاف عادي",
+    thicknessMm: partial?.thicknessMm ?? 4,
+    kind: partial?.kind ?? "clear",
+  };
+}
+
+export function defaultGlassDetails(
+  glazing: GlassGlazing = "double"
+): GlassSystemDetails {
+  if (glazing === "single") {
+    return {
+      glazing: "single",
+      pane1: defaultGlassPane({ label: "شفاف عادي", thicknessMm: 6 }),
+      georgian: false,
+    };
+  }
+  return {
+    glazing: "double",
+    pane1: defaultGlassPane({ label: "شفاف عادي", thicknessMm: 4 }),
+    pane2: defaultGlassPane({ label: "شفاف عادي", thicknessMm: 4 }),
+    spacerMm: 6,
+    georgian: false,
+  };
+}
+
 function withDefaultProfile(system: MaterialSystem): MaterialSystem {
   if (system.profile) return system;
   return { ...system, profile: defaultProfileDetails() };
+}
+
+function withDefaultGlass(system: MaterialSystem): MaterialSystem {
+  if (system.glass) return system;
+  return { ...system, glass: defaultGlassDetails("double") };
 }
 
 /** القيم الافتراضية — متوافقة مع الاختيارات القديمة في التصميم */
@@ -298,9 +386,80 @@ export function getDefaultCatalog(): MaterialCatalog {
       { id: "acc-economy", name: "اكسسوار اقتصادي" },
     ],
     glass: [
-      { id: "g464", name: "زجاج عادي 4-6-4" },
-      { id: "g46464", name: "زجاج عادي 4-6-4-6-4" },
-      { id: "g-tempered", name: "زجاج سيكوريت" },
+      withDefaultGlass({
+        id: "g464",
+        name: "زجاج دبل 4-6-4",
+        notes: "دبل قياسي",
+        glass: {
+          glazing: "double",
+          pane1: defaultGlassPane({
+            label: "الزجاجة الأولى — شفاف 4 مم",
+            thicknessMm: 4,
+            kind: "clear",
+          }),
+          pane2: defaultGlassPane({
+            label: "الزجاجة الثانية — شفاف 4 مم",
+            thicknessMm: 4,
+            kind: "clear",
+          }),
+          spacerMm: 6,
+          georgian: false,
+        },
+      }),
+      withDefaultGlass({
+        id: "g464-geo",
+        name: "زجاج دبل 4-6-4 بجورجيا",
+        notes: "دبل مع جورجيا",
+        glass: {
+          glazing: "double",
+          pane1: defaultGlassPane({
+            label: "الزجاجة الأولى — شفاف 4 مم",
+            thicknessMm: 4,
+            kind: "clear",
+          }),
+          pane2: defaultGlassPane({
+            label: "الزجاجة الثانية — شفاف 4 مم",
+            thicknessMm: 4,
+            kind: "clear",
+          }),
+          spacerMm: 6,
+          georgian: true,
+          georgianNote: "جورجيا أبيض",
+        },
+      }),
+      withDefaultGlass({
+        id: "g-tempered",
+        name: "زجاج سيكوريت مفرد",
+        glass: {
+          glazing: "single",
+          pane1: defaultGlassPane({
+            label: "سيكوريت 6 مم",
+            thicknessMm: 6,
+            kind: "tempered",
+          }),
+          georgian: false,
+        },
+      }),
+      withDefaultGlass({
+        id: "g46464",
+        name: "زجاج دبل عاكس",
+        notes: "زجاجة أولى عاكس",
+        glass: {
+          glazing: "double",
+          pane1: defaultGlassPane({
+            label: "الزجاجة الأولى — عاكس 4 مم",
+            thicknessMm: 4,
+            kind: "reflective",
+          }),
+          pane2: defaultGlassPane({
+            label: "الزجاجة الثانية — شفاف 4 مم",
+            thicknessMm: 4,
+            kind: "clear",
+          }),
+          spacerMm: 6,
+          georgian: false,
+        },
+      }),
     ],
     iron: [
       {
@@ -428,6 +587,69 @@ function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
   };
 }
 
+function normalizeGlassPane(
+  raw: unknown,
+  fallback: GlassPaneSpec
+): GlassPaneSpec {
+  if (!raw || typeof raw !== "object") return { ...fallback };
+  const p = raw as Record<string, unknown>;
+  const thicknessMm = Number(p.thicknessMm);
+  const kindRaw = p.kind;
+  const kindOk = GLASS_PANE_KINDS.some((k) => k.id === kindRaw);
+  return {
+    label:
+      typeof p.label === "string" && p.label.trim()
+        ? p.label.trim()
+        : fallback.label,
+    thicknessMm:
+      Number.isFinite(thicknessMm) && thicknessMm > 0
+        ? thicknessMm
+        : fallback.thicknessMm,
+    kind: kindOk ? (kindRaw as GlassPaneKind) : fallback.kind,
+  };
+}
+
+function normalizeGlassDetails(raw: unknown): GlassSystemDetails {
+  const fallback = defaultGlassDetails("double");
+  if (!raw || typeof raw !== "object") return fallback;
+  const g = raw as Record<string, unknown>;
+  const glazing: GlassGlazing = g.glazing === "single" ? "single" : "double";
+  const pane1 = normalizeGlassPane(g.pane1, fallback.pane1);
+  const spacerRaw = Number(g.spacerMm);
+  const georgian = Boolean(g.georgian);
+
+  if (glazing === "single") {
+    return {
+      glazing: "single",
+      pane1,
+      georgian: false,
+      georgianNote: undefined,
+      spacerMm: undefined,
+      pane2: undefined,
+    };
+  }
+
+  return {
+    glazing: "double",
+    pane1,
+    pane2: normalizeGlassPane(
+      g.pane2,
+      fallback.pane2 ?? defaultGlassPane({ thicknessMm: 4 })
+    ),
+    spacerMm:
+      Number.isFinite(spacerRaw) && spacerRaw >= 0
+        ? spacerRaw
+        : (fallback.spacerMm ?? 6),
+    georgian,
+    georgianNote:
+      georgian && typeof g.georgianNote === "string" && g.georgianNote.trim()
+        ? g.georgianNote.trim()
+        : georgian
+          ? undefined
+          : undefined,
+  };
+}
+
 function normalizeSystem(
   raw: unknown,
   category: MaterialCategory
@@ -444,6 +666,9 @@ function normalizeSystem(
   };
   if (category === "profiles") {
     base.profile = normalizeProfileDetails(s.profile);
+  }
+  if (category === "glass") {
+    base.glass = normalizeGlassDetails(s.glass);
   }
   return base;
 }
@@ -469,15 +694,18 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
     } else {
       let foundDefault = false;
       next[cat.id] = systems.map((s) => {
-        const withProfile =
-          cat.id === "profiles" && !s.profile
-            ? { ...s, profile: defaultProfileDetails() }
-            : s;
-        if (withProfile.isDefault && !foundDefault) {
-          foundDefault = true;
-          return withProfile;
+        let enriched = s;
+        if (cat.id === "profiles" && !enriched.profile) {
+          enriched = { ...enriched, profile: defaultProfileDetails() };
         }
-        return { ...withProfile, isDefault: false };
+        if (cat.id === "glass" && !enriched.glass) {
+          enriched = { ...enriched, glass: defaultGlassDetails("double") };
+        }
+        if (enriched.isDefault && !foundDefault) {
+          foundDefault = true;
+          return enriched;
+        }
+        return { ...enriched, isDefault: false };
       });
     }
   }
@@ -548,22 +776,56 @@ export function getProfileDetails(
   return system?.profile;
 }
 
+export function getGlassDetails(
+  systemId: string | undefined | null,
+  catalog?: MaterialCatalog
+): GlassSystemDetails | undefined {
+  const system = findSystem("glass", systemId, catalog);
+  return system?.glass;
+}
+
+/** ملخص قصير لتركيبة الزجاج */
+export function glassCompositionLabel(glass: GlassSystemDetails): string {
+  if (glass.glazing === "single") {
+    return `مفرد ${glass.pane1.thicknessMm} مم (${glassPaneKindLabel(glass.pane1.kind)})`;
+  }
+  const p1 = glass.pane1.thicknessMm;
+  const p2 = glass.pane2?.thicknessMm ?? p1;
+  const spacer = glass.spacerMm ?? 0;
+  const base = `دبل ${p1}-${spacer}-${p2}`;
+  const kinds = `${glassPaneKindLabel(glass.pane1.kind)} + ${glassPaneKindLabel(
+    glass.pane2?.kind ?? "clear"
+  )}`;
+  return glass.georgian ? `${base} · ${kinds} · جورجيا` : `${base} · ${kinds}`;
+}
+
+export function glassTotalThicknessMm(glass: GlassSystemDetails): number {
+  if (glass.glazing === "single") return glass.pane1.thicknessMm;
+  return (
+    glass.pane1.thicknessMm +
+    (glass.spacerMm ?? 0) +
+    (glass.pane2?.thicknessMm ?? 0)
+  );
+}
+
 export function upsertSystem(
   catalog: MaterialCatalog,
   category: MaterialCategory,
   system: MaterialSystem
 ): MaterialCatalog {
-  const toSave: MaterialSystem =
-    category === "profiles" && !system.profile
-      ? { ...system, profile: defaultProfileDetails() }
-      : system;
+  let toSave: MaterialSystem = system;
+  if (category === "profiles" && !toSave.profile) {
+    toSave = { ...toSave, profile: defaultProfileDetails() };
+  }
+  if (category === "glass" && !toSave.glass) {
+    toSave = { ...toSave, glass: defaultGlassDetails("double") };
+  }
 
   const list = [...(catalog[category] ?? [])];
   const idx = list.findIndex((s) => s.id === toSave.id);
   let nextList: MaterialSystem[];
 
   if (idx >= 0) {
-    // احتفظ بتفاصيل القطاعات لو التعديل ماجابش profile جديد كامل
     const prev = list[idx]!;
     const merged: MaterialSystem = {
       ...prev,
@@ -571,6 +833,10 @@ export function upsertSystem(
       profile:
         category === "profiles"
           ? toSave.profile ?? prev.profile ?? defaultProfileDetails()
+          : undefined,
+      glass:
+        category === "glass"
+          ? toSave.glass ?? prev.glass ?? defaultGlassDetails("double")
           : undefined,
     };
     nextList = list.map((s, i) => (i === idx ? merged : s));
@@ -633,10 +899,13 @@ export function catalogOptionsFor(
   const systems = getSystemsForCategory(category, catalog);
   return [
     { id: "none", label: "تجاهل" },
-    ...systems.map((s) => ({
-      id: s.id,
-      label: s.isDefault ? `${s.name} (افتراضي)` : s.name,
-    })),
+    ...systems.map((s) => {
+      let label = s.isDefault ? `${s.name} (افتراضي)` : s.name;
+      if (category === "glass" && s.glass) {
+        label = `${label} — ${glassCompositionLabel(s.glass)}`;
+      }
+      return { id: s.id, label };
+    }),
   ];
 }
 

@@ -8,11 +8,14 @@ import {
   type FormEvent,
 } from "react";
 import {
+  defaultGlassDetails,
   defaultProfileDetails,
   deleteSystem,
   frameHeightFormula,
   frameWidthFormula,
   getCategoryMeta,
+  glassCompositionLabel,
+  glassPaneKindLabel,
   loadMaterialCatalog,
   newSystemId,
   profileRoleLabel,
@@ -46,6 +49,7 @@ export function MaterialSystemsEditor({ category }: Props) {
 
   const systems = catalog?.[category] ?? [];
   const isProfiles = category === "profiles";
+  const isGlass = category === "glass";
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -95,6 +99,10 @@ export function MaterialSystemsEditor({ category }: Props) {
       profile:
         category === "profiles"
           ? editing?.profile ?? defaultProfileDetails()
+          : undefined,
+      glass:
+        category === "glass"
+          ? editing?.glass ?? defaultGlassDetails("double")
           : undefined,
     };
 
@@ -167,6 +175,13 @@ export function MaterialSystemsEditor({ category }: Props) {
         </p>
       ) : null}
 
+      {isGlass ? (
+        <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
+          اضغط «تفاصيل» عشان تحدد مفرد أو دبل، الزجاجة الأولى والثانية، ولو
+          بينهم جورجيا.
+        </p>
+      ) : null}
+
       {formOpen ? (
         <form
           onSubmit={handleSubmit}
@@ -229,6 +244,7 @@ export function MaterialSystemsEditor({ category }: Props) {
         ) : (
           systems.map((system, i) => {
             const profile = system.profile;
+            const glass = system.glass;
             const pieceCount = profile?.pieces.length ?? 0;
             return (
               <li
@@ -283,10 +299,53 @@ export function MaterialSystemsEditor({ category }: Props) {
                       </div>
                     ) : null}
 
+                    {isGlass && glass ? (
+                      <div className="mt-2 space-y-1 rounded-xl border border-border/80 bg-background/70 p-2.5 text-[11px] text-muted">
+                        <p className="font-semibold text-foreground">
+                          {glassCompositionLabel(glass)}
+                        </p>
+                        <p>
+                          الأولى:{" "}
+                          {glass.pane1.label ||
+                            glassPaneKindLabel(glass.pane1.kind)}{" "}
+                          — {glass.pane1.thicknessMm} مم
+                        </p>
+                        {glass.glazing === "double" ? (
+                          <>
+                            <p>فاصل: {glass.spacerMm ?? 0} مم</p>
+                            <p>
+                              الثانية:{" "}
+                              {glass.pane2?.label ||
+                                glassPaneKindLabel(
+                                  glass.pane2?.kind ?? "clear"
+                                )}{" "}
+                              — {glass.pane2?.thicknessMm ?? "—"} مم
+                            </p>
+                            <p>
+                              جورجيا:{" "}
+                              {glass.georgian
+                                ? glass.georgianNote
+                                  ? `نعم — ${glass.georgianNote}`
+                                  : "نعم"
+                                : "لا"}
+                            </p>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     <div className="mt-2 flex flex-wrap justify-end gap-1.5">
                       {isProfiles ? (
                         <Link
                           href={`/materials/profiles/${system.id}`}
+                          className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
+                        >
+                          تفاصيل
+                        </Link>
+                      ) : null}
+                      {isGlass ? (
+                        <Link
+                          href={`/materials/glass/${system.id}`}
                           className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
                         >
                           تفاصيل

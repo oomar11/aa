@@ -40,8 +40,8 @@ export default function MaterialsPage() {
         </section>
 
         <p className="px-1 text-center text-[11px] leading-relaxed text-muted">
-          كل تصميم يختار نظام قطاعات واكسسوار وزجاج. الحديد غالباً بيفضل على
-          الافتراضي.
+          كل تصميم يختار نظام قطاعات واكسسوار وزجاج (مفرد/دبل + جورجيا). الحديد
+          غالباً بيفضل على الافتراضي.
         </p>
       </main>
       <BottomNav />
