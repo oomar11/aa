@@ -42,6 +42,28 @@ const AUTO_SCROLL_EDGE_RATIO = 0.28;
 /** Peak auto-pan speed (px/frame) at the deepest edge point. */
 const AUTO_SCROLL_MAX_PX = 18;
 const TRASH_SAFE_PX = 112;
+/** Reorder settle animation — soft and readable. */
+const REORDER_MS = 420;
+const REORDER_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+/** Move item at `from` so it ends at index `to` (the highlighted card's slot). */
+function moveItemToSlot<T>(list: T[], from: number, to: number): T[] {
+  if (
+    from < 0 ||
+    to < 0 ||
+    from >= list.length ||
+    to >= list.length ||
+    from === to
+  ) {
+    return list;
+  }
+  const next = list.slice();
+  const [moved] = next.splice(from, 1);
+  // `to` is the desired final index (= highlighted card index before the move).
+  // splice(from) then splice(to) already yields that final index in both directions.
+  next.splice(to, 0, moved);
+  return next;
+}
 
 function autoScrollSpeed(progress: number) {
   const t = Math.max(0, Math.min(1, progress));
@@ -96,6 +118,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   const lockedScrollYRef = useRef(0);
   const lockedScrollMaxRef = useRef(0);
   const prevCardRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  const pendingFlipFromRef = useRef<Map<string, DOMRect> | null>(null);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -185,7 +208,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       const from = current.findIndex((item) => item.id === activeId);
       if (from < 0) return null;
 
-      // Still over the original card → no target highlight / no reorder.
+      // Still over the original card → stay put, no highlight.
       const originEl = cardRefs.current.get(activeId);
       if (originEl) {
         const rect = originEl.getBoundingClientRect();
@@ -199,10 +222,29 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         }
       }
 
+      // 1) Prefer the card the finger is actually inside.
+      for (let i = 0; i < current.length; i++) {
+        const item = current[i];
+        if (item.id === activeId) continue;
+        const el = cardRefs.current.get(item.id);
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (
+          clientX >= rect.left &&
+          clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom
+        ) {
+          if (i === from) return null;
+          // Take this card's slot index directly.
+          return { insertIndex: i, highlightId: item.id };
+        }
+      }
+
+      // 2) Otherwise pick the nearest card, but only within a clear radius.
       let bestTargetId: string | null = null;
       let bestTargetIndex = -1;
       let bestDist = Number.POSITIVE_INFINITY;
-      let insertIndex = from;
 
       for (let i = 0; i < current.length; i++) {
         const item = current[i];
@@ -212,29 +254,21 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         const rect = el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        const dist = (clientX - cx) ** 2 + (clientY - cy) ** 2;
-        if (dist < bestDist) {
+        const dist = Math.hypot(clientX - cx, clientY - cy);
+        const reach = Math.max(rect.width, rect.height) * 0.75;
+        if (dist <= reach && dist < bestDist) {
           bestDist = dist;
           bestTargetId = item.id;
           bestTargetIndex = i;
-          // In a 2-col grid, choose before/after by the nearer axis side.
-          const preferBefore =
-            Math.abs(clientX - cx) >= Math.abs(clientY - cy)
-              ? clientX < cx
-              : clientY < cy;
-          insertIndex = preferBefore ? i : i + 1;
         }
       }
 
-      if (!bestTargetId || bestTargetIndex < 0) return null;
+      if (!bestTargetId || bestTargetIndex < 0 || bestTargetIndex === from) {
+        return null;
+      }
 
-      if (insertIndex > from) insertIndex -= 1;
-      insertIndex = Math.max(0, Math.min(current.length - 1, insertIndex));
-
-      // Landing back in the original slot → nothing selected.
-      if (insertIndex === from) return null;
-
-      return { insertIndex, highlightId: bestTargetId };
+      // Dropping on a card always means: occupy that card's current index.
+      return { insertIndex: bestTargetIndex, highlightId: bestTargetId };
     },
     []
   );
@@ -278,12 +312,16 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         setPendingDeleteId(id);
       } else {
         const hit = hitTestDrop(clientX, clientY, id);
-        const next = [...itemsRef.current];
-        const from = next.findIndex((item) => item.id === id);
+        const current = itemsRef.current;
+        const from = current.findIndex((item) => item.id === id);
         if (hit && from >= 0 && hit.insertIndex !== from) {
-          const [moved] = next.splice(from, 1);
-          next.splice(hit.insertIndex, 0, moved);
-          persist(next);
+          // Snapshot first positions before React reorders the grid (FLIP).
+          const firsts = new Map<string, DOMRect>();
+          for (const [cardId, el] of cardRefs.current) {
+            firsts.set(cardId, el.getBoundingClientRect());
+          }
+          pendingFlipFromRef.current = firsts;
+          persist(moveItemToSlot(current, from, hit.insertIndex));
         }
       }
 
@@ -438,10 +476,13 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       nextRects.set(id, el.getBoundingClientRect());
     }
 
+    const firsts = pendingFlipFromRef.current ?? prevCardRectsRef.current;
+    pendingFlipFromRef.current = null;
+
     if (!prefersReduced) {
       for (const [id, el] of cardRefs.current) {
         if (id === draggingId) continue;
-        const prev = prevCardRectsRef.current.get(id);
+        const prev = firsts.get(id);
         const next = nextRects.get(id);
         if (!prev || !next) continue;
 
@@ -449,20 +490,30 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         const dy = prev.top - next.top;
         if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
 
+        const distance = Math.hypot(dx, dy);
+        // Slightly longer travel → slightly longer settle, still soft.
+        const duration = Math.min(560, REORDER_MS + distance * 0.12);
+
         el.style.transition = "none";
         el.style.transform = `translate(${dx}px, ${dy}px)`;
+        el.style.zIndex = "2";
         // Force invert paint before releasing to the final slot.
         void el.getBoundingClientRect();
-        el.style.transition =
-          "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)";
+        el.style.transition = `transform ${duration}ms ${REORDER_EASE}`;
         el.style.transform = "";
 
         const clear = (event: TransitionEvent) => {
           if (event.propertyName !== "transform") return;
           el.style.transition = "";
+          el.style.zIndex = "";
           el.removeEventListener("transitionend", clear);
         };
         el.addEventListener("transitionend", clear);
+        window.setTimeout(() => {
+          el.style.transition = "";
+          el.style.zIndex = "";
+          el.removeEventListener("transitionend", clear);
+        }, duration + 80);
       }
     }
 
@@ -727,16 +778,26 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
                   if (!e.defaultPrevented) openItem(item.id);
                 }}
                 onContextMenu={handleCardContextMenu}
-                className={`flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-[opacity,transform,box-shadow,border-color] duration-200 select-none touch-pan-y ${
+                className={`flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-[opacity,transform,box-shadow,border-color,background-color] duration-200 select-none touch-pan-y ${
                   isDragging
                     ? "scale-[0.97] border-border opacity-35 touch-none"
                     : isDropTarget
-                      ? "border-primary shadow-[0_0_0_2px_rgba(43,125,233,0.35)]"
+                      ? "scale-[1.02] border-primary bg-primary-soft/40 shadow-[0_0_0_2px_rgba(43,125,233,0.4)]"
                       : "border-border hover:-translate-y-0.5"
                 }`}
                 style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
+                aria-label={
+                  isDropTarget && insertIndex != null
+                    ? `إسقاط في الموضع ${insertIndex + 1}`
+                    : undefined
+                }
               >
-                <ItemCardBody item={item} index={index} unit={unit} />
+                <ItemCardBody
+                  item={item}
+                  index={index}
+                  unit={unit}
+                  emphasizeIndex={isDropTarget}
+                />
               </button>
             </li>
           );
@@ -798,21 +859,29 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
 
       {draggingItem ? (
         <div
-          className="pointer-events-none fixed z-[60] w-[148px] overflow-hidden rounded-xl border border-border bg-card opacity-90 shadow-[0_12px_32px_rgba(15,20,28,0.22)]"
+          className="pointer-events-none fixed z-[60] w-[148px] overflow-hidden rounded-xl border border-primary/50 bg-card opacity-95 shadow-[0_16px_36px_rgba(15,20,28,0.24)]"
           style={{
             left: ghostLeft,
             top: ghostTop,
-            transform: overTrash ? "scale(0.88) rotate(-3deg)" : "scale(1.04)",
-            transition: "transform 120ms ease",
+            transform: overTrash
+              ? "scale(0.86) rotate(-4deg)"
+              : highlightId
+                ? "scale(1.06)"
+                : "scale(1.03)",
+            transition: `transform 180ms ${REORDER_EASE}`,
           }}
           aria-hidden
         >
           <ItemCardBody
             item={draggingItem}
-            index={Math.max(
-              0,
-              items.findIndex((i) => i.id === draggingItem.id)
-            )}
+            index={
+              insertIndex != null
+                ? insertIndex
+                : Math.max(
+                    0,
+                    items.findIndex((i) => i.id === draggingItem.id)
+                  )
+            }
             unit={unit}
             compact
           />
@@ -877,11 +946,13 @@ function ItemCardBody({
   index,
   unit,
   compact = false,
+  emphasizeIndex = false,
 }: {
   item: DesignItem;
   index: number;
   unit: LengthUnit;
   compact?: boolean;
+  emphasizeIndex?: boolean;
 }) {
   const area = itemAreaSqm(item);
   const price = itemTotalPrice(item);
@@ -914,10 +985,20 @@ function ItemCardBody({
       >
         <div className="flex min-w-[2.25rem] flex-col items-center justify-center border-l border-border pl-2 text-center">
           <span className="text-[9px] text-muted">uPVC</span>
-          <span className="text-xl font-bold leading-none text-foreground">
+          <span
+            className={`text-xl font-bold leading-none transition-colors duration-200 ${
+              emphasizeIndex ? "text-primary" : "text-foreground"
+            }`}
+          >
             {index + 1}
           </span>
-          <span className="mt-0.5 text-[9px] text-muted">بند</span>
+          <span
+            className={`mt-0.5 text-[9px] ${
+              emphasizeIndex ? "font-semibold text-primary" : "text-muted"
+            }`}
+          >
+            {emphasizeIndex ? "هنا" : "بند"}
+          </span>
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col justify-center text-right">
