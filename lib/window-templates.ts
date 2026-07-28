@@ -176,21 +176,12 @@ export const WINDOW_TEMPLATES: WindowTemplate[] = [
     ),
   },
   { id: "t35-t-top-3-wide", layout: transomTop(3, 0.32) },
-  { id: "t36-2x2", layout: grid(2, 2) },
   {
     id: "t37-asym-4",
     layout: cols(
       [1.4, pane()],
       rows(pane(), pane())
     ),
-  },
-  {
-    id: "t38-left-2h-right-full",
-    layout: cols(nRows(2), pane()),
-  },
-  {
-    id: "t39-3v-equal",
-    layout: nCols(3),
   },
   {
     id: "t40-3v-wide-center",
@@ -266,7 +257,6 @@ export const WINDOW_TEMPLATES: WindowTemplate[] = [
     id: "t61-7v-thin-transom",
     layout: rows([0.18, pane()], [0.82, nCols(7)]),
   },
-  { id: "t62-2x2-b", layout: grid(2, 2) },
   {
     id: "t63-top-thin-2v",
     layout: rows([0.22, pane()], [0.78, nCols(2)]),
@@ -279,7 +269,6 @@ export const WINDOW_TEMPLATES: WindowTemplate[] = [
       [0.28, pane()]
     ),
   },
-  { id: "t65-t-top-3-c", layout: transomTop(3, 0.28) },
   {
     id: "t66-t-top-3-wide-sides",
     layout: rows(
@@ -287,8 +276,6 @@ export const WINDOW_TEMPLATES: WindowTemplate[] = [
       [0.72, cols([1.3, pane()], pane(), [1.3, pane()])]
     ),
   },
-  { id: "t67-t-top-4", layout: transomTop(4, 0.26) },
-  { id: "t68-t-top-5", layout: transomTop(5, 0.26) },
   { id: "t69-t-top-7", layout: transomTop(7, 0.22) },
 
   // ─── إضافات شائعة من التمرير ───────────────────────────
@@ -307,18 +294,6 @@ export const WINDOW_TEMPLATES: WindowTemplate[] = [
       rows([0.28, pane()], [0.72, pane()]),
       pane()
     ),
-  },
-  {
-    id: "t73-left-3h-right-2h",
-    layout: cols(nRows(3), nRows(2)),
-  },
-  {
-    id: "t74-l-bottom-left",
-    layout: cols(rows(empty(), pane()), pane()),
-  },
-  {
-    id: "t75-l-bottom-right",
-    layout: cols(pane(), rows(empty(), pane())),
   },
 ];
 
