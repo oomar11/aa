@@ -101,17 +101,29 @@ export function PanePropertiesModal({
   ) {
     setDraft((d) => {
       const next = { ...d, [key]: value };
+      const grid = d.grid ?? "solid";
+      const solidLike = grid === "solid" || grid === "diamond";
+
+      // على الضلفة الكاملة: البنل والشبك بيتغطّوا على بعض — نخليهم متعارضين
+      if (key === "mesh" && value && solidLike && d.sandwichPanels) {
+        next.sandwichPanels = false;
+        next.panelCells = [];
+      }
+      if (key === "sandwichPanels" && value && solidLike && d.mesh) {
+        next.mesh = false;
+      }
+
       if (
         key === "sandwichPanels" &&
         value &&
-        ((d.grid ?? "solid") === "solid" || d.grid === "diamond")
+        solidLike
       ) {
         next.panelCells = [0];
       }
       if (
         key === "sandwichPanels" &&
         !value &&
-        ((d.grid ?? "solid") === "solid" || d.grid === "diamond")
+        solidLike
       ) {
         next.panelCells = [];
       }

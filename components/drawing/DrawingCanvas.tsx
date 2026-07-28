@@ -230,14 +230,14 @@ export function DrawingCanvas({
         <pattern
           id="mesh-pattern"
           patternUnits="userSpaceOnUse"
-          width="6"
-          height="6"
+          width="5"
+          height="5"
         >
           <path
-            d="M0 0 L6 6 M6 0 L0 6"
-            stroke="#6b7c8f"
-            strokeWidth="0.6"
-            opacity="0.55"
+            d="M5 0 V5 M0 5 H5"
+            stroke={isDark ? "#d7e3f0" : "#3d4f63"}
+            strokeWidth="0.85"
+            opacity="0.95"
           />
         </pattern>
         {panes.map((p) => {
@@ -439,6 +439,7 @@ export function DrawingCanvas({
               opening={cfg.opening}
               bouclier={Boolean(cfg.bouclier)}
               isDoor={Boolean(cfg.isDoor)}
+              mesh={Boolean(cfg.mesh)}
               x={gx}
               y={gy}
               w={gw}
@@ -490,15 +491,17 @@ function PaneInnerFill({
   const cells = getGridCells(grid, x, y, w, h);
   const panelSet = new Set(config.panelCells ?? []);
   const mullion = 3.2;
+  const solidLike = grid === "solid" || grid === "diamond";
+  // لو الشبك والبنل مع بعض على ضلفة كاملة — الشبك له الأولوية في العرض
+  const sandwichActive =
+    Boolean(config.sandwichPanels) && !(Boolean(config.mesh) && solidLike);
 
   return (
     <g>
       {cells.map((cell, i) => {
         const isPanel =
-          Boolean(config.sandwichPanels) &&
-          ((grid === "solid" || grid === "diamond")
-            ? true
-            : panelSet.has(i));
+          sandwichActive &&
+          (solidLike ? true : panelSet.has(i));
         if (!isPanel && !config.mesh) return null;
         return (
           <g key={i}>
@@ -513,13 +516,23 @@ function PaneInnerFill({
               />
             )}
             {config.mesh && !isPanel && (
-              <rect
-                x={cell.x}
-                y={cell.y}
-                width={cell.w}
-                height={cell.h}
-                fill="url(#mesh-pattern)"
-              />
+              <>
+                <rect
+                  x={cell.x}
+                  y={cell.y}
+                  width={cell.w}
+                  height={cell.h}
+                  fill="#4a5d70"
+                  opacity={0.14}
+                />
+                <rect
+                  x={cell.x}
+                  y={cell.y}
+                  width={cell.w}
+                  height={cell.h}
+                  fill="url(#mesh-pattern)"
+                />
+              </>
             )}
           </g>
         );
@@ -580,6 +593,7 @@ function OpeningOverlay({
   opening,
   bouclier = false,
   isDoor = false,
+  mesh = false,
   x,
   y,
   w,
@@ -592,6 +606,7 @@ function OpeningOverlay({
   opening: PaneOpening;
   bouclier?: boolean;
   isDoor?: boolean;
+  mesh?: boolean;
   x: number;
   y: number;
   w: number;
@@ -616,7 +631,9 @@ function OpeningOverlay({
     );
   }
 
+  // مع شبك السلك: منرسمش علامة الثابت (X) عشان الشبك يبان أوضح
   if (opening === "fixed") {
+    if (mesh) return null;
     return (
       <>
         <line
