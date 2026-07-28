@@ -21,6 +21,7 @@ import {
   ToolPalette,
   type ToolId,
 } from "@/components/drawing/ToolPalette";
+import { MaterialsBar } from "@/components/drawing/MaterialsBar";
 import { TemplatePickerModal } from "@/components/TemplatePickerModal";
 import { useUnit } from "@/components/UnitProvider";
 import {
@@ -32,6 +33,7 @@ import {
   type PaneOpening,
 } from "@/lib/design-items";
 import { withSuggestedName } from "@/lib/item-naming";
+import { calcItemMaterials, scaleMaterials } from "@/lib/materials";
 import {
   equalizeSplitRatios,
   ratioFromMm,
@@ -195,6 +197,11 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
     },
     [projectId]
   );
+
+  const materials = useMemo(() => {
+    if (!item) return null;
+    return scaleMaterials(calcItemMaterials(item), item.qty);
+  }, [item]);
 
   const activeOpening = useMemo(() => {
     if (!item || !selectedPaneId) return null;
@@ -449,6 +456,13 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
             />
           </div>
         </section>
+
+        {materials ? (
+          <MaterialsBar
+            materials={materials}
+            partLabel={item.name || "شباك"}
+          />
+        ) : null}
       </main>
 
       <DimensionEditDialog
