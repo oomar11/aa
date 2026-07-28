@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { ScreenBack } from "@/components/ScreenBack";
 import {
   useCallback,
   useEffect,
@@ -139,13 +139,11 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
 
   if (missing) {
     return (
-      <div className="space-y-3 text-center">
-        <p className="rounded-2xl border border-border bg-card p-6 text-sm text-muted">
+      <div className="space-y-3">
+        <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">
           النظام مش موجود
         </p>
-        <Link href="/materials/glass" className="text-sm font-medium text-primary">
-          ← رجوع للزجاج
-        </Link>
+        <ScreenBack href="/materials/glass">رجوع للزجاج</ScreenBack>
       </div>
     );
   }
@@ -353,13 +351,6 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
           حفظ
         </button>
       </form>
-
-      <Link
-        href="/materials/glass"
-        className="mx-auto text-sm font-medium text-primary"
-      >
-        ← رجوع للزجاج
-      </Link>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
-import { NavBack } from "@/components/NavBack";
+import { ScreenBack } from "@/components/ScreenBack";
 import { MATERIAL_CATEGORIES } from "@/lib/material-systems";
 
 export default function MaterialsPage() {
@@ -10,12 +10,9 @@ export default function MaterialsPage() {
       <Header />
       <main className="flex flex-1 flex-col gap-4 px-4 pb-20 pt-2">
         <div className="px-1">
-          <NavBack
-            href="/"
-            className="mb-2 inline-flex text-sm font-medium text-primary"
-          >
-            ← رجوع للرئيسية
-          </NavBack>
+          <ScreenBack href="/" className="mb-2">
+            رجوع للرئيسية
+          </ScreenBack>
           <h1 className="text-xl font-bold">الخامات</h1>
           <p className="mt-1 text-xs text-muted">
             أدِر أنظمة القطاعات والاكسسوار والزجاج والحديد — وربطها بالتصميمات

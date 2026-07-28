@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
 import { MaterialSystemsEditor } from "@/components/MaterialSystemsEditor";
-import { NavBack } from "@/components/NavBack";
+import { ScreenBack } from "@/components/ScreenBack";
 import {
   MATERIAL_CATEGORIES,
   type MaterialCategory,
@@ -22,12 +22,9 @@ export default async function MaterialCategoryPage({ params }: Props) {
     <div className="mx-auto flex min-h-full w-full max-w-md flex-col bg-background">
       <Header />
       <main className="flex flex-1 flex-col gap-3 px-4 pb-24 pt-2">
-        <NavBack
-          href="/materials"
-          className="mb-1 inline-flex px-1 text-sm font-medium text-primary"
-        >
-          ← رجوع للخامات
-        </NavBack>
+        <ScreenBack href="/materials" className="mb-1 px-1">
+          رجوع للخامات
+        </ScreenBack>
         <MaterialSystemsEditor category={category as MaterialCategory} />
       </main>
       <BottomNav />

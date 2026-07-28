@@ -12,6 +12,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { BackChevron } from "@/components/BackChevron";
 import { NavBack } from "@/components/NavBack";
 import { TemplatePickerModal } from "@/components/TemplatePickerModal";
 import { WindowPreview } from "@/components/WindowPreview";
@@ -694,7 +695,22 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       }`}
     >
       <header className="flex items-center justify-between rounded-2xl bg-primary px-3 py-2.5 text-primary-foreground shadow-[0_6px_18px_rgba(43,125,233,0.28)]">
-        <div className="flex items-center gap-1">
+        <NavBack
+          href="/"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+          aria-label="رجوع للرئيسية"
+        >
+          <BackChevron />
+        </NavBack>
+
+        <div className="min-w-0 flex-1 px-2 text-center">
+          <p className="truncate text-sm font-bold">
+            {project?.name ?? "مساحة التصميم"}
+          </p>
+          <p className="truncate text-[10px] opacity-80">بنود المشروع</p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
           <Link
             href={
               customerId && projectId
@@ -715,21 +731,6 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
             <ShareIcon />
           </button>
         </div>
-
-        <div className="min-w-0 flex-1 px-2 text-center">
-          <p className="truncate text-sm font-bold">
-            {project?.name ?? "مساحة التصميم"}
-          </p>
-          <p className="truncate text-[10px] opacity-80">بنود المشروع</p>
-        </div>
-
-        <NavBack
-          href="/"
-          className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-          aria-label="رجوع للرئيسية"
-        >
-          <BackIcon />
-        </NavBack>
       </header>
 
       <ul
@@ -1076,19 +1077,3 @@ function ShareIcon() {
   );
 }
 
-function BackIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M9 18l6-6-6-6" />
-    </svg>
-  );
-}

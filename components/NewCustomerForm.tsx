@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { NavBack } from "@/components/NavBack";
 import {
   CUSTOMERS_STORAGE_KEY,
   loadLocalCustomers,
@@ -111,20 +110,12 @@ export function NewCustomerForm() {
         <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
       ) : null}
 
-      <div className="mt-2 flex gap-3">
-        <NavBack
-          href="/design"
-          className="flex h-12 flex-1 items-center justify-center rounded-2xl border border-border bg-card text-sm font-semibold transition-colors hover:bg-primary-soft"
-        >
-          رجوع
-        </NavBack>
-        <button
-          type="submit"
-          className="flex h-12 flex-1 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
-        >
-          حفظ ومتابعة
-        </button>
-      </div>
+      <button
+        type="submit"
+        className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
+      >
+        حفظ ومتابعة
+      </button>
     </form>
   );
 }

@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { NavBack } from "@/components/NavBack";
+import { ScreenBack } from "@/components/ScreenBack";
 
 export default function DesignPage() {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
-      <header className="px-4 pt-5 pb-2 text-center">
-        <p className="text-sm font-medium text-primary">UPVC Design</p>
+      <header className="px-4 pt-5 pb-2">
+        <ScreenBack href="/">رجوع للرئيسية</ScreenBack>
+        <p className="mt-3 text-center text-sm font-medium text-primary">UPVC Design</p>
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-6 pb-16">
@@ -25,13 +26,6 @@ export default function DesignPage() {
             قاعدة العملاء
           </Link>
         </div>
-
-        <NavBack
-          href="/"
-          className="mt-10 text-sm font-medium text-muted transition-colors hover:text-primary"
-        >
-          رجوع للرئيسية
-        </NavBack>
       </main>
     </div>
   );

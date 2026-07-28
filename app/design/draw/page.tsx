@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { NavBack } from "@/components/NavBack";
+import { ScreenBack } from "@/components/ScreenBack";
 import { DrawingEditor } from "@/components/drawing/DrawingEditor";
 
 type Props = {
@@ -15,20 +14,17 @@ export default async function DrawPage({ searchParams }: Props) {
 
   if (!params.customer || !params.project || !params.item) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 bg-background px-6 text-center">
-        <p className="font-semibold text-foreground">بيانات الرسم غير مكتملة</p>
-        {params.customer && params.project ? (
-          <NavBack
-            href={`/design/editor?customer=${params.customer}&project=${params.project}`}
-            className="text-sm text-primary"
-          >
-            الرجوع للمشروع
-          </NavBack>
-        ) : (
-          <Link href="/" className="text-sm text-primary">
-            الرجوع للرئيسية
-          </Link>
-        )}
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-3 bg-background px-6 py-6">
+        <ScreenBack
+          href={
+            params.customer && params.project
+              ? `/design/editor?customer=${params.customer}&project=${params.project}`
+              : "/"
+          }
+        >
+          {params.customer && params.project ? "الرجوع للمشروع" : "الرجوع للرئيسية"}
+        </ScreenBack>
+        <p className="text-center font-semibold text-foreground">بيانات الرسم غير مكتملة</p>
       </div>
     );
   }

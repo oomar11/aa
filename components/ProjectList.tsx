@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { NavBack } from "@/components/NavBack";
 import {
   customers,
   loadLocalCustomers,
@@ -134,12 +133,6 @@ export function ProjectList({ customerId }: Props) {
         </ul>
       )}
 
-      <NavBack
-        href="/design/customers"
-        className="block text-center text-sm font-medium text-muted transition-colors hover:text-primary"
-      >
-        رجوع للعملاء
-      </NavBack>
     </div>
   );
 }

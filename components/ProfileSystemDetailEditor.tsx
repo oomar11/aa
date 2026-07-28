@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ScreenBack } from "@/components/ScreenBack";
 import {
   useCallback,
   useEffect,
@@ -207,13 +208,11 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
 
   if (missing) {
     return (
-      <div className="space-y-3 text-center">
-        <p className="rounded-2xl border border-border bg-card p-6 text-sm text-muted">
+      <div className="space-y-3">
+        <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">
           النظام مش موجود
         </p>
-        <Link href="/materials/profiles" className="text-sm font-medium text-primary">
-          ← رجوع للقطاعات
-        </Link>
+        <ScreenBack href="/materials/profiles">رجوع للقطاعات</ScreenBack>
       </div>
     );
   }
@@ -621,13 +620,6 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           </ul>
         ) : null}
       </section>
-
-      <Link
-        href="/materials/profiles"
-        className="mx-auto text-sm font-medium text-primary"
-      >
-        ← رجوع للقطاعات
-      </Link>
     </div>
   );
 }

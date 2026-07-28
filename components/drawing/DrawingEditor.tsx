@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { NavBack } from "@/components/NavBack";
+import { ScreenBack } from "@/components/ScreenBack";
 import {
   DimensionEditDialog,
 } from "@/components/drawing/DimensionEditDialog";
@@ -364,13 +364,11 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background px-3 pb-5 pt-3 sm:px-4">
       <header className="mb-3 flex items-center gap-2 rounded-2xl border border-border bg-card px-2.5 py-2 text-foreground shadow-[0_8px_24px_rgba(15,20,28,0.07)]">
-        <NavBack
+        <ScreenBack
           href={backHref}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-primary transition-colors hover:bg-primary-soft"
+          variant="icon"
           aria-label="رجوع للمشروع"
-        >
-          <BackArrow />
-        </NavBack>
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="inline-flex min-w-7 items-center justify-center rounded-lg bg-primary-soft px-1.5 py-0.5 text-sm font-bold text-primary">
@@ -600,14 +598,6 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
         onConfirm={handleSettingsConfirm}
       />
     </div>
-  );
-}
-
-function BackArrow() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
-      <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 

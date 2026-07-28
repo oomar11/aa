@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
-import { NavBack } from "@/components/NavBack";
+import { ScreenBack } from "@/components/ScreenBack";
 import { ProfileSystemDetailEditor } from "@/components/ProfileSystemDetailEditor";
 
 type Props = {
@@ -16,12 +16,9 @@ export default async function ProfileSystemPage({ params }: Props) {
     <div className="mx-auto flex min-h-full w-full max-w-md flex-col bg-background">
       <Header />
       <main className="flex flex-1 flex-col gap-3 px-4 pb-24 pt-2">
-        <NavBack
-          href="/materials/profiles"
-          className="mb-1 inline-flex px-1 text-sm font-medium text-primary"
-        >
-          ← رجوع للقطاعات
-        </NavBack>
+        <ScreenBack href="/materials/profiles" className="mb-1 px-1">
+          رجوع للقطاعات
+        </ScreenBack>
         <ProfileSystemDetailEditor systemId={systemId} />
       </main>
       <BottomNav />

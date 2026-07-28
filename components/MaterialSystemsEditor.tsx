@@ -386,13 +386,6 @@ export function MaterialSystemsEditor({ category }: Props) {
       <p className="px-1 text-center text-[11px] text-muted">
         الأنظمة دي بتظهر في تفاصيل البند وقت التصميم
       </p>
-
-      <Link
-        href="/materials"
-        className="mx-auto text-sm font-medium text-primary"
-      >
-        ← رجوع للخامات
-      </Link>
     </div>
   );
 }
