@@ -51,6 +51,28 @@ export type PaneGrid =
   | "bot-2v"
   | "diamond";
 
+export type MeshMode = "custom-materials" | "ready-made";
+
+export type MeshMaterialSpec = {
+  widthPieces: number;
+  heightPieces: number;
+  usePaneArea: boolean;
+  wheelCount: number;
+  latchHandleCount: number;
+  extraNotes?: string;
+};
+
+export type MeshSpec = {
+  label: string;
+  mode: MeshMode;
+  renderColor: string;
+  autoAssigned?: boolean;
+  materials?: MeshMaterialSpec;
+  readyMadeQuantity?: number;
+  readyMadeUsesPaneArea?: boolean;
+  readyMadeNotes?: string;
+};
+
 export type PaneConfig = {
   opening: PaneOpening;
   /** بوكلير — ثابت بين مفصليين والمقابض باتجاه بعض */
@@ -65,6 +87,8 @@ export type PaneConfig = {
   panelCells?: number[];
   /** شبكة / سلك */
   mesh?: boolean;
+  /** مواصفات السلك الخاصة بهذه الضلفة */
+  meshSpec?: MeshSpec;
   /** باب بدل شباك عادي */
   isDoor?: boolean;
 };
@@ -82,6 +106,100 @@ export function defaultPaneConfig(
     mesh: false,
     isDoor: false,
     ...partial,
+  };
+}
+
+function clampCount(value: unknown, fallback: number) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.floor(n));
+}
+
+function defaultMeshMaterialSpec(opening: PaneOpening): MeshMaterialSpec {
+  const sliding =
+    opening === "drawer-left" ||
+    opening === "drawer-right" ||
+    opening === "sliding-left" ||
+    opening === "sliding-right";
+  return {
+    widthPieces: 2,
+    heightPieces: 2,
+    usePaneArea: true,
+    wheelCount: sliding ? 2 : 0,
+    latchHandleCount: sliding ? 1 : 0,
+    extraNotes: "",
+  };
+}
+
+export function defaultMeshSpec(opening: PaneOpening): MeshSpec {
+  const sliding =
+    opening === "drawer-left" ||
+    opening === "drawer-right" ||
+    opening === "sliding-left" ||
+    opening === "sliding-right";
+  return {
+    label: sliding ? "سلك جرار" : "سلك عادي",
+    mode: "custom-materials",
+    renderColor: sliding ? "#0f766e" : "#7c3aed",
+    autoAssigned: true,
+    materials: defaultMeshMaterialSpec(opening),
+    readyMadeQuantity: 1,
+    readyMadeUsesPaneArea: true,
+    readyMadeNotes: "",
+  };
+}
+
+function normalizeMeshSpec(
+  spec: MeshSpec | undefined,
+  opening: PaneOpening
+): MeshSpec {
+  const fallback = defaultMeshSpec(opening);
+  const base = {
+    ...fallback,
+    ...spec,
+  };
+
+  if (base.mode === "ready-made") {
+    return {
+      ...base,
+      readyMadeQuantity: Math.max(
+        1,
+        clampCount(base.readyMadeQuantity, fallback.readyMadeQuantity ?? 1)
+      ),
+      readyMadeUsesPaneArea: Boolean(base.readyMadeUsesPaneArea),
+      readyMadeNotes: base.readyMadeNotes ?? "",
+      materials: undefined,
+    };
+  }
+
+  return {
+    ...base,
+    materials: {
+      ...fallback.materials,
+      ...spec?.materials,
+      widthPieces: clampCount(
+        spec?.materials?.widthPieces,
+        fallback.materials?.widthPieces ?? 0
+      ),
+      heightPieces: clampCount(
+        spec?.materials?.heightPieces,
+        fallback.materials?.heightPieces ?? 0
+      ),
+      usePaneArea:
+        spec?.materials?.usePaneArea ?? fallback.materials?.usePaneArea ?? true,
+      wheelCount: clampCount(
+        spec?.materials?.wheelCount,
+        fallback.materials?.wheelCount ?? 0
+      ),
+      latchHandleCount: clampCount(
+        spec?.materials?.latchHandleCount,
+        fallback.materials?.latchHandleCount ?? 0
+      ),
+      extraNotes: spec?.materials?.extraNotes ?? "",
+    },
+    readyMadeQuantity: undefined,
+    readyMadeUsesPaneArea: undefined,
+    readyMadeNotes: undefined,
   };
 }
 
@@ -116,7 +234,22 @@ export function normalizePaneConfig(
   const base = defaultPaneConfig(config);
   const count = gridCellCount(base.grid);
   const cells = (base.panelCells ?? []).filter((i) => i >= 0 && i < count);
-  return { ...base, panelCells: cells };
+  const next: PaneConfig = { ...base, panelCells: cells };
+
+  if (next.mesh) {
+    const current = next.meshSpec;
+    const shouldAutoRefresh =
+      !current ||
+      current.autoAssigned !== false ||
+      !current.label.trim();
+    next.meshSpec = shouldAutoRefresh
+      ? defaultMeshSpec(next.opening)
+      : normalizeMeshSpec(current, next.opening);
+  } else if (next.meshSpec) {
+    next.meshSpec = normalizeMeshSpec(next.meshSpec, next.opening);
+  }
+
+  return next;
 }
 
 export type FrameColorId =

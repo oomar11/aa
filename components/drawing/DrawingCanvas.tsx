@@ -227,19 +227,26 @@ export function DrawingCanvas({
             />
           </pattern>
         )}
-        <pattern
-          id="mesh-pattern"
-          patternUnits="userSpaceOnUse"
-          width="5"
-          height="5"
-        >
-          <path
-            d="M5 0 V5 M0 5 H5"
-            stroke={isDark ? "#d7e3f0" : "#3d4f63"}
-            strokeWidth="0.85"
-            opacity="0.95"
-          />
-        </pattern>
+        {panes.map((p) => {
+          const cfg = normalizePaneConfig(item.panes?.[p.id]);
+          const meshColor = cfg.meshSpec?.renderColor ?? (isDark ? "#d7e3f0" : "#0f766e");
+          return (
+            <pattern
+              key={`mesh-pattern-${p.id}`}
+              id={`mesh-pattern-${p.id}`}
+              patternUnits="userSpaceOnUse"
+              width="5"
+              height="5"
+            >
+              <path
+                d="M5 0 V5 M0 5 H5"
+                stroke={meshColor}
+                strokeWidth="0.85"
+                opacity="0.95"
+              />
+            </pattern>
+          );
+        })}
         {panes.map((p) => {
           const gx = p.x + profile;
           const gy = p.y + profile;
@@ -433,6 +440,8 @@ export function DrawingCanvas({
               w={gw}
               h={gh}
               frameFill={frameFill}
+              meshId={`mesh-pattern-${p.id}`}
+              meshTint={cfg.meshSpec?.renderColor ?? "#0f766e"}
               svgPerMm={svgPerMm}
             />
             <OpeningOverlay
@@ -477,6 +486,8 @@ function PaneInnerFill({
   w,
   h,
   frameFill,
+  meshId,
+  meshTint,
   svgPerMm = 0,
 }: {
   config: PaneConfig;
@@ -485,6 +496,8 @@ function PaneInnerFill({
   w: number;
   h: number;
   frameFill: string;
+  meshId: string;
+  meshTint: string;
   svgPerMm?: number;
 }) {
   const grid = config.grid ?? "solid";
@@ -522,7 +535,7 @@ function PaneInnerFill({
                   y={cell.y}
                   width={cell.w}
                   height={cell.h}
-                  fill="#4a5d70"
+                  fill={meshTint}
                   opacity={0.14}
                 />
                 <rect
@@ -530,7 +543,7 @@ function PaneInnerFill({
                   y={cell.y}
                   width={cell.w}
                   height={cell.h}
-                  fill="url(#mesh-pattern)"
+                  fill={`url(#${meshId})`}
                 />
               </>
             )}

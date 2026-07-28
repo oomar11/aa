@@ -166,19 +166,26 @@ export function WindowPreview({
             />
           </pattern>
         )}
-        <pattern
-          id={meshId}
-          patternUnits="userSpaceOnUse"
-          width="5"
-          height="5"
-        >
-          <path
-            d="M5 0 V5 M0 5 H5"
-            stroke={isDark ? "#d7e3f0" : "#3d4f63"}
-            strokeWidth="0.85"
-            opacity="0.95"
-          />
-        </pattern>
+        {paneRects.map((p) => {
+          const cfg = normalizePaneConfig(panes?.[p.id]);
+          const meshColor = cfg.meshSpec?.renderColor ?? (isDark ? "#d7e3f0" : "#0f766e");
+          return (
+            <pattern
+              key={`${meshId}-${p.id}`}
+              id={`${meshId}-${p.id}`}
+              patternUnits="userSpaceOnUse"
+              width="5"
+              height="5"
+            >
+              <path
+                d="M5 0 V5 M0 5 H5"
+                stroke={meshColor}
+                strokeWidth="0.85"
+                opacity="0.95"
+              />
+            </pattern>
+          );
+        })}
         <pattern
           id={emptyPatId}
           patternUnits="userSpaceOnUse"
@@ -262,7 +269,8 @@ export function WindowPreview({
               w={gw}
               h={gh}
               frameFill={frameFill}
-              meshId={meshId}
+              meshId={`${meshId}-${p.id}`}
+              meshTint={cfg.meshSpec?.renderColor ?? "#0f766e"}
               svgPerMm={svgPerMm}
             />
             <OpeningMarks
@@ -306,6 +314,7 @@ function PaneDetailFill({
   h,
   frameFill,
   meshId,
+  meshTint,
   svgPerMm = 0,
 }: {
   config: PaneConfig;
@@ -315,6 +324,7 @@ function PaneDetailFill({
   h: number;
   frameFill: string;
   meshId: string;
+  meshTint: string;
   svgPerMm?: number;
 }) {
   const grid = config.grid ?? "solid";
@@ -351,7 +361,7 @@ function PaneDetailFill({
                   y={cell.y}
                   width={cell.w}
                   height={cell.h}
-                  fill="#4a5d70"
+                  fill={meshTint}
                   opacity={0.14}
                 />
                 <rect
