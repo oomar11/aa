@@ -19,6 +19,16 @@ type Props = {
   onConfirm: (config: PaneConfig) => void;
 };
 
+type OptionDef<T extends string> = {
+  id: T;
+  label: string;
+};
+
+type OptionGroup<T extends string> = {
+  title: string;
+  items: OptionDef<T>[];
+};
+
 const GRIDS: { id: PaneGrid; label: string }[] = [
   { id: "solid", label: "ضلفة كاملة" },
   { id: "2v", label: "قسمين رأسي" },
@@ -36,17 +46,82 @@ const GRIDS: { id: PaneGrid; label: string }[] = [
   { id: "diamond", label: "معين" },
 ];
 
-const OPENINGS: { id: PaneOpening; label: string }[] = [
-  { id: "sliding-right", label: "سحاب يمين" },
-  { id: "tilt", label: "قلاب" },
-  { id: "tilt-inverted", label: "قلاب معكوس" },
-  { id: "sliding-left", label: "سحاب يسار" },
-  { id: "fixed", label: "ثابت" },
-  { id: "exhaust", label: "شفاط" },
-  { id: "tilt-turn", label: "قلب وضلفة" },
-  { id: "tilt-turn-left", label: "قلب وضلفة يسار" },
-  { id: "drawer-right", label: "جرار يمين" },
-  { id: "drawer-left", label: "جرار شمال" },
+const OPENING_GROUPS: OptionGroup<PaneOpening>[] = [
+  {
+    title: "ثابت",
+    items: [
+      { id: "fixed", label: "ثابت" },
+      { id: "exhaust", label: "شفاط" },
+    ],
+  },
+  {
+    title: "قلاب",
+    items: [
+      { id: "tilt", label: "قلاب" },
+      { id: "tilt-inverted", label: "قلاب معكوس" },
+    ],
+  },
+  {
+    title: "مفصلي",
+    items: [
+      { id: "tilt-turn", label: "قلب وضلفة" },
+      { id: "tilt-turn-left", label: "قلب وضلفة يسار" },
+    ],
+  },
+  {
+    title: "سحاب",
+    items: [
+      { id: "sliding-right", label: "سحاب يمين" },
+      { id: "sliding-left", label: "سحاب يسار" },
+    ],
+  },
+  {
+    title: "جرار",
+    items: [
+      { id: "drawer-right", label: "جرار يمين" },
+      { id: "drawer-left", label: "جرار شمال" },
+    ],
+  },
+];
+
+const GRID_GROUPS: OptionGroup<PaneGrid>[] = [
+  {
+    title: "ضلفة كاملة",
+    items: [{ id: "solid", label: "ضلفة كاملة" }],
+  },
+  {
+    title: "تقسيم رأسي",
+    items: [
+      { id: "2v", label: "قسمين رأسي" },
+      { id: "3v", label: "٣ أقسام رأسي" },
+      { id: "4v", label: "٤ أقسام رأسي" },
+    ],
+  },
+  {
+    title: "تقسيم أفقي",
+    items: [
+      { id: "2h", label: "قسمين أفقي" },
+      { id: "3h", label: "٣ أقسام أفقي" },
+      { id: "4h", label: "٤ أقسام أفقي" },
+    ],
+  },
+  {
+    title: "شبكات",
+    items: [
+      { id: "2x2", label: "شبكة ٢×٢" },
+      { id: "3x2", label: "شبكة ٣×٢" },
+      { id: "2x3", label: "شبكة ٢×٣" },
+      { id: "3x3", label: "شبكة ٣×٣" },
+    ],
+  },
+  {
+    title: "أشكال خاصة",
+    items: [
+      { id: "top-2v", label: "أعلى منقسم" },
+      { id: "bot-2v", label: "أسفل منقسم" },
+      { id: "diamond", label: "معين" },
+    ],
+  },
 ];
 
 export function PanePropertiesModal({
@@ -157,34 +232,26 @@ export function PanePropertiesModal({
               </p>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-2">
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-                {OPENINGS.map((o) => {
-                  const active = draft.opening === o.id;
-                  return (
-                    <button
-                      key={o.id}
-                      type="button"
-                      title={o.label}
-                      aria-label={o.label}
-                      aria-pressed={active}
-                      onClick={() =>
-                        setDraft((d) => ({ ...d, opening: o.id }))
-                      }
-                      className={`flex flex-col items-center gap-1 rounded-xl border-2 bg-card p-1.5 ${
-                        active
-                          ? "border-primary ring-2 ring-primary/25"
-                          : "border-transparent hover:border-primary/40"
-                      }`}
-                    >
-                      <span className="aspect-square w-full max-w-[3.25rem]">
-                        <OpeningIcon type={o.id} />
-                      </span>
-                      <span className="w-full truncate text-center text-[10px] font-medium leading-tight text-foreground">
-                        {o.label}
-                      </span>
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                {OPENING_GROUPS.map((group) => (
+                  <OptionSection key={group.title} title={group.title}>
+                    {group.items.map((o) => {
+                      const active = draft.opening === o.id;
+                      return (
+                        <OptionCard
+                          key={o.id}
+                          label={o.label}
+                          active={active}
+                          onClick={() =>
+                            setDraft((d) => ({ ...d, opening: o.id }))
+                          }
+                        >
+                          <OpeningIcon type={o.id} />
+                        </OptionCard>
+                      );
+                    })}
+                  </OptionSection>
+                ))}
               </div>
             </div>
           </section>
@@ -200,53 +267,50 @@ export function PanePropertiesModal({
               </p>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-2">
-              <div className="grid grid-cols-2 gap-1.5">
-                {GRIDS.map((g) => {
-                  const active = (draft.grid ?? "solid") === g.id;
-                  return (
-                    <button
-                      key={g.id}
-                      type="button"
-                      title={g.label}
-                      aria-label={g.label}
-                      aria-pressed={active}
-                      onClick={() => setGrid(g.id)}
-                      className={`flex flex-col items-center gap-1 rounded-xl border-2 bg-card p-1.5 ${
-                        active
-                          ? "border-primary ring-2 ring-primary/25"
-                          : "border-transparent hover:border-primary/40"
-                      }`}
-                    >
-                      <span className="aspect-square w-full max-w-[3.25rem]">
-                        <GridIcon type={g.id} />
-                      </span>
-                      <span className="w-full truncate text-center text-[10px] font-medium leading-tight text-foreground">
-                        {g.label}
-                      </span>
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                {GRID_GROUPS.map((group) => (
+                  <OptionSection key={group.title} title={group.title}>
+                    {group.items.map((g) => {
+                      const active = (draft.grid ?? "solid") === g.id;
+                      return (
+                        <OptionCard
+                          key={g.id}
+                          label={g.label}
+                          active={active}
+                          onClick={() => setGrid(g.id)}
+                        >
+                          <GridIcon type={g.id} />
+                        </OptionCard>
+                      );
+                    })}
+                  </OptionSection>
+                ))}
               </div>
 
-              <div className="mt-3 space-y-2">
-                <FlagRow
-                  label="بنل ساندوتش"
-                  checked={Boolean(draft.sandwichPanels)}
-                  onChange={(v) => toggleFlag("sandwichPanels", v)}
-                  icon={<PanelIcon />}
-                />
-                <FlagRow
-                  label="ضلفة باب"
-                  checked={Boolean(draft.isDoor)}
-                  onChange={(v) => toggleFlag("isDoor", v)}
-                  icon={<DoorIcon />}
-                />
-                <FlagRow
-                  label="شبكة سلك"
-                  checked={Boolean(draft.mesh)}
-                  onChange={(v) => toggleFlag("mesh", v)}
-                  icon={<MeshIcon />}
-                />
+              <div className="mt-3 rounded-xl border border-border bg-card p-2">
+                <p className="mb-2 text-[11px] font-semibold text-foreground">
+                  خيارات إضافية
+                </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <FlagRow
+                    label="بنل ساندوتش"
+                    checked={Boolean(draft.sandwichPanels)}
+                    onChange={(v) => toggleFlag("sandwichPanels", v)}
+                    icon={<PanelIcon />}
+                  />
+                  <FlagRow
+                    label="شبكة سلك"
+                    checked={Boolean(draft.mesh)}
+                    onChange={(v) => toggleFlag("mesh", v)}
+                    icon={<MeshIcon />}
+                  />
+                  <FlagRow
+                    label="ضلفة باب"
+                    checked={Boolean(draft.isDoor)}
+                    onChange={(v) => toggleFlag("isDoor", v)}
+                    icon={<DoorIcon />}
+                  />
+                </div>
               </div>
 
               {bouclierEligible && draft.opening === "fixed" && (
@@ -338,6 +402,55 @@ export function PanePropertiesModal({
         </footer>
       </div>
     </div>
+  );
+}
+
+function OptionSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-card/60 p-1.5">
+      <p className="mb-1 px-1 text-[10px] font-semibold text-muted">
+        {title}
+      </p>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">{children}</div>
+    </div>
+  );
+}
+
+function OptionCard({
+  label,
+  active,
+  onClick,
+  children,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      onClick={onClick}
+      className={`flex min-h-[5.3rem] flex-col items-center justify-center gap-1 rounded-xl border-2 bg-card p-1.5 ${
+        active
+          ? "border-primary ring-2 ring-primary/25"
+          : "border-transparent hover:border-primary/40"
+      }`}
+    >
+      <span className="aspect-square w-full max-w-[3.1rem]">{children}</span>
+      <span className="w-full truncate text-center text-[10px] font-medium leading-tight text-foreground">
+        {label}
+      </span>
+    </button>
   );
 }
 
@@ -473,11 +586,11 @@ function FlagRow({
   icon: ReactNode;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-1.5 py-1">
-      <span className="flex h-8 w-8 items-center justify-center text-primary">
+    <label className="flex min-h-[4rem] cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-2 py-2">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-primary">
         {icon}
       </span>
-      <span className="min-w-0 flex-1 text-[11px] font-medium text-foreground">
+      <span className="min-w-0 flex-1 text-[11px] font-medium leading-tight text-foreground">
         {label}
       </span>
       <input
