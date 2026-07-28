@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   defaultPaneConfig,
   gridCellCount,
@@ -116,6 +116,15 @@ const GRID_GROUPS: OptionGroup<PaneGrid>[] = [
 
 type ExtraKey = "sandwichPanels" | "mesh" | "isDoor";
 
+const EXTRA_TITLES: Record<ExtraKey, string> = {
+  sandwichPanels: "خيارات البنل",
+  mesh: "خيارات شبكة السلك",
+  isDoor: "خيارات ضلفة الباب",
+};
+
+const DOUBLE_TAP_MS = 320;
+const LONG_PRESS_MS = 450;
+
 export function PanePropertiesModal({
   open,
   initial,
@@ -172,6 +181,12 @@ export function PanePropertiesModal({
     });
   }
 
+  function isFlagOn(key: ExtraKey): boolean {
+    if (key === "sandwichPanels") return Boolean(draft.sandwichPanels);
+    if (key === "mesh") return Boolean(draft.mesh);
+    return Boolean(draft.isDoor);
+  }
+
   function setFlag(key: ExtraKey, value: boolean) {
     setDraft((d) => {
       const next: PaneConfig = { ...d, [key]: value };
@@ -198,35 +213,27 @@ export function PanePropertiesModal({
     }
   }
 
-  function handleExtraPress(key: ExtraKey) {
-    const isOn =
-      key === "sandwichPanels"
-        ? Boolean(draft.sandwichPanels)
-        : key === "mesh"
-          ? Boolean(draft.mesh)
-          : Boolean(draft.isDoor);
+  /** ضغطة واحدة: تفعيل / إيقاف */
+  function toggleFlag(key: ExtraKey) {
+    setFlag(key, !isFlagOn(key));
+  }
 
-    if (!isOn) {
-      // الضغطة الأولى: تفعيل
-      setFlag(key, true);
-      // لو البنل محتاج اختيار أجزاء، افتح الخيارات مباشرة
-      if (key === "sandwichPanels" && cellCount > 1) {
-        setExpandedExtra("sandwichPanels");
-      } else {
-        setExpandedExtra(null);
-      }
+  /** ضغطتين أو ضغطة مطوّلة: فتح / قفل القائمة فوق */
+  function toggleExtraMenu(key: ExtraKey) {
+    if (expandedExtra === key) {
+      setExpandedExtra(null);
       return;
     }
-
-    // الضغطة التانية (وهو مفعّل): فتح / قفل الخيارات الداخلية
-    setExpandedExtra((cur) => (cur === key ? null : key));
+    if (!isFlagOn(key)) setFlag(key, true);
+    setExpandedExtra(key);
   }
 
   function setDoorSide(side: "door-left" | "door-right") {
     setDraft((d) => ({ ...d, isDoor: true, opening: side }));
   }
 
-  const showBouclier = bouclierEligible && draft.opening === "fixed";
+  const showBouclier =
+    !expandedExtra && bouclierEligible && draft.opening === "fixed";
   const doorSide: "door-left" | "door-right" | null =
     draft.opening === "door-left" || draft.opening === "door-right"
       ? draft.opening
@@ -253,204 +260,238 @@ export function PanePropertiesModal({
             id="pane-props-title"
             className="text-sm font-bold text-foreground"
           >
-            خصائص الضلفة
+            {expandedExtra ? EXTRA_TITLES[expandedExtra] : "خصائص الضلفة"}
           </h2>
           <p className="mt-0.5 text-[11px] text-muted">
-            اختَر نوع الفتح ثم التقسيم الداخلي
+            {expandedExtra
+              ? "ضغطتين أو ضغطة مطوّلة لقفل القائمة"
+              : "اختَر نوع الفتح ثم التقسيم الداخلي"}
           </p>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-2 gap-0 overflow-hidden">
-          {/* نوع الفتح — أولاً (يمين في RTL) */}
-          <section className="flex min-h-0 flex-col border-l border-border">
+        {/* المنطقة العلوية: نوع الفتح/التقسيم أو قائمة الخيار الإضافي */}
+        {expandedExtra ? (
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <header className="bg-primary px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-primary-foreground">
-                نوع الفتح
+                {EXTRA_TITLES[expandedExtra]}
               </p>
               <p className="text-[10px] font-normal text-primary-foreground/80">
-                ثابت، مفصلي، قلاب…
+                إعدادات الخيار الإضافي
               </p>
             </header>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-2">
-              <div className="space-y-2">
-                {OPENING_GROUPS.map((group) => (
-                  <OptionSection key={group.title} title={group.title}>
-                    {group.items.map((o) => {
-                      const active = draft.opening === o.id;
-                      return (
-                        <OptionCard
-                          key={o.id}
-                          label={o.label}
-                          active={active}
-                          onClick={() =>
-                            setDraft((d) => ({ ...d, opening: o.id }))
-                          }
-                        >
-                          <OpeningIcon type={o.id} />
-                        </OptionCard>
-                      );
-                    })}
-                  </OptionSection>
-                ))}
-              </div>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-3">
+              {expandedExtra === "sandwichPanels" && (
+                <div className="mx-auto w-full max-w-sm space-y-3">
+                  {cellCount > 1 ? (
+                    <div className="rounded-xl border border-border bg-card p-3">
+                      <PanelCellPicker
+                        grid={draft.grid ?? "solid"}
+                        cellCount={cellCount}
+                        selected={draft.panelCells ?? []}
+                        onToggle={togglePanelCell}
+                        onSelectAll={() =>
+                          setDraft((d) => ({
+                            ...d,
+                            panelCells: Array.from(
+                              { length: cellCount },
+                              (_, i) => i
+                            ),
+                          }))
+                        }
+                        onClearAll={() =>
+                          setDraft((d) => ({ ...d, panelCells: [] }))
+                        }
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-border bg-card p-3">
+                      <p className="text-[12px] leading-relaxed text-muted">
+                        البنل هيغطي الضلفة كاملة. لو عايز أجزاء بنل وأجزاء زجاج،
+                        ارجع للتقسيم الداخلي واختار تقسيم.
+                      </p>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setExpandedExtra(null)}
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[12px] font-semibold text-foreground"
+                  >
+                    رجوع للتقسيم ونوع الفتح
+                  </button>
+                </div>
+              )}
+
+              {expandedExtra === "mesh" && (
+                <div className="mx-auto w-full max-w-sm space-y-3">
+                  <div className="rounded-xl border border-border bg-card p-3">
+                    <p className="mb-2 text-[12px] leading-relaxed text-muted">
+                      الشبكة بتتحط على أجزاء الزجاج بس (مش على البنل).
+                    </p>
+                    <div className="rounded-lg border border-border bg-background px-2.5 py-2 text-[12px] font-medium text-foreground">
+                      التغطية: كل أجزاء الزجاج في الضلفة
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedExtra(null)}
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[12px] font-semibold text-foreground"
+                  >
+                    رجوع للتقسيم ونوع الفتح
+                  </button>
+                </div>
+              )}
+
+              {expandedExtra === "isDoor" && (
+                <div className="mx-auto w-full max-w-sm space-y-3">
+                  <div className="rounded-xl border border-border bg-card p-3">
+                    <p className="mb-3 text-[12px] leading-relaxed text-muted">
+                      الباب بيترسم بـ ٣ مفصلات. اختَر اتجاه الفتح:
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDoorSide("door-right")}
+                        className={`rounded-xl border px-2 py-3 text-[12px] font-semibold transition-colors ${
+                          doorSide === "door-right"
+                            ? "border-primary bg-primary-soft text-primary"
+                            : "border-border bg-background text-foreground"
+                        }`}
+                      >
+                        باب يمين
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDoorSide("door-left")}
+                        className={`rounded-xl border px-2 py-3 text-[12px] font-semibold transition-colors ${
+                          doorSide === "door-left"
+                            ? "border-primary bg-primary-soft text-primary"
+                            : "border-border bg-background text-foreground"
+                        }`}
+                      >
+                        باب يسار
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedExtra(null)}
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[12px] font-semibold text-foreground"
+                  >
+                    رجوع للتقسيم ونوع الفتح
+                  </button>
+                </div>
+              )}
             </div>
           </section>
-
-          {/* التقسيم الداخلي */}
-          <section className="flex min-h-0 flex-col">
-            <header className="bg-primary px-2 py-1.5 text-center">
-              <p className="text-sm font-bold text-primary-foreground">
-                التقسيم الداخلي
-              </p>
-              <p className="text-[10px] font-normal text-primary-foreground/80">
-                عوائد / تقسيم الزجاج
-              </p>
-            </header>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-2">
-              <div className="space-y-2">
-                {GRID_GROUPS.map((group) => (
-                  <OptionSection key={group.title} title={group.title}>
-                    {group.items.map((g) => {
-                      const active = (draft.grid ?? "solid") === g.id;
-                      return (
-                        <OptionCard
-                          key={g.id}
-                          label={g.label}
-                          active={active}
-                          onClick={() => setGrid(g.id)}
-                        >
-                          <GridIcon type={g.id} />
-                        </OptionCard>
-                      );
-                    })}
-                  </OptionSection>
-                ))}
+        ) : (
+          <div className="grid min-h-0 flex-1 grid-cols-2 gap-0 overflow-hidden">
+            <section className="flex min-h-0 flex-col border-l border-border">
+              <header className="bg-primary px-2 py-1.5 text-center">
+                <p className="text-sm font-bold text-primary-foreground">
+                  نوع الفتح
+                </p>
+                <p className="text-[10px] font-normal text-primary-foreground/80">
+                  ثابت، مفصلي، قلاب…
+                </p>
+              </header>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-2">
+                <div className="space-y-2">
+                  {OPENING_GROUPS.map((group) => (
+                    <OptionSection key={group.title} title={group.title}>
+                      {group.items.map((o) => {
+                        const active = draft.opening === o.id;
+                        return (
+                          <OptionCard
+                            key={o.id}
+                            label={o.label}
+                            active={active}
+                            onClick={() =>
+                              setDraft((d) => ({ ...d, opening: o.id }))
+                            }
+                          >
+                            <OpeningIcon type={o.id} />
+                          </OptionCard>
+                        );
+                      })}
+                    </OptionSection>
+                  ))}
+                </div>
               </div>
-            </div>
-          </section>
-        </div>
+            </section>
 
-        {/* شريط الخيارات الإضافية — ضغطة تفعيل، ضغطة تانية للخيارات */}
+            <section className="flex min-h-0 flex-col">
+              <header className="bg-primary px-2 py-1.5 text-center">
+                <p className="text-sm font-bold text-primary-foreground">
+                  التقسيم الداخلي
+                </p>
+                <p className="text-[10px] font-normal text-primary-foreground/80">
+                  عوائد / تقسيم الزجاج
+                </p>
+              </header>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-2">
+                <div className="space-y-2">
+                  {GRID_GROUPS.map((group) => (
+                    <OptionSection key={group.title} title={group.title}>
+                      {group.items.map((g) => {
+                        const active = (draft.grid ?? "solid") === g.id;
+                        return (
+                          <OptionCard
+                            key={g.id}
+                            label={g.label}
+                            active={active}
+                            onClick={() => setGrid(g.id)}
+                          >
+                            <GridIcon type={g.id} />
+                          </OptionCard>
+                        );
+                      })}
+                    </OptionSection>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* شريط الخيارات الإضافية */}
         <div className="shrink-0 border-t border-border bg-background/80">
           <div className="px-2.5 pt-2 pb-1.5">
             <p className="mb-1 text-center text-[10px] font-semibold tracking-wide text-muted">
               خيارات إضافية
             </p>
             <p className="mb-1.5 text-center text-[9px] text-muted/80">
-              ضغطة تفعيل · ضغطة تانية للخيارات
+              ضغطة تفعيل/إيقاف · ضغطتين أو مطوّلة للقائمة
             </p>
             <div className="grid grid-cols-3 gap-1.5">
               <FlagChip
                 label="بنل ساندوتش"
                 checked={Boolean(draft.sandwichPanels)}
                 expanded={expandedExtra === "sandwichPanels"}
-                onPress={() => handleExtraPress("sandwichPanels")}
+                onToggle={() => toggleFlag("sandwichPanels")}
+                onOpenMenu={() => toggleExtraMenu("sandwichPanels")}
                 icon={<PanelIcon />}
               />
               <FlagChip
                 label="شبكة سلك"
                 checked={Boolean(draft.mesh)}
                 expanded={expandedExtra === "mesh"}
-                onPress={() => handleExtraPress("mesh")}
+                onToggle={() => toggleFlag("mesh")}
+                onOpenMenu={() => toggleExtraMenu("mesh")}
                 icon={<MeshIcon />}
               />
               <FlagChip
                 label="ضلفة باب"
                 checked={Boolean(draft.isDoor)}
                 expanded={expandedExtra === "isDoor"}
-                onPress={() => handleExtraPress("isDoor")}
+                onToggle={() => toggleFlag("isDoor")}
+                onOpenMenu={() => toggleExtraMenu("isDoor")}
                 icon={<DoorIcon />}
               />
             </div>
           </div>
 
-          {expandedExtra && (
-            <div className="max-h-[32dvh] overflow-y-auto border-t border-border/60 px-2.5 py-2">
-              {expandedExtra === "sandwichPanels" && (
-                <ExtraPanel
-                  title="خيارات البنل"
-                  onDisable={() => setFlag("sandwichPanels", false)}
-                >
-                  {cellCount > 1 ? (
-                    <PanelCellPicker
-                      grid={draft.grid ?? "solid"}
-                      cellCount={cellCount}
-                      selected={draft.panelCells ?? []}
-                      onToggle={togglePanelCell}
-                      onSelectAll={() =>
-                        setDraft((d) => ({
-                          ...d,
-                          panelCells: Array.from(
-                            { length: cellCount },
-                            (_, i) => i
-                          ),
-                        }))
-                      }
-                      onClearAll={() =>
-                        setDraft((d) => ({ ...d, panelCells: [] }))
-                      }
-                    />
-                  ) : (
-                    <p className="text-[11px] leading-relaxed text-muted">
-                      البنل هيغطي الضلفة كاملة. لو عايز أجزاء بنل وأجزاء زجاج،
-                      اختَر تقسيم داخلي الأول.
-                    </p>
-                  )}
-                </ExtraPanel>
-              )}
-
-              {expandedExtra === "mesh" && (
-                <ExtraPanel
-                  title="خيارات شبكة السلك"
-                  onDisable={() => setFlag("mesh", false)}
-                >
-                  <p className="mb-2 text-[11px] leading-relaxed text-muted">
-                    الشبكة بتتحط على أجزاء الزجاج بس (مش على البنل).
-                  </p>
-                  <div className="rounded-lg border border-border bg-background px-2.5 py-2 text-[11px] font-medium text-foreground">
-                    التغطية: كل أجزاء الزجاج في الضلفة
-                  </div>
-                </ExtraPanel>
-              )}
-
-              {expandedExtra === "isDoor" && (
-                <ExtraPanel
-                  title="خيارات ضلفة الباب"
-                  onDisable={() => setFlag("isDoor", false)}
-                >
-                  <p className="mb-2 text-[11px] leading-relaxed text-muted">
-                    الباب بيترسم بـ ٣ مفصلات. اختَر اتجاه الفتح:
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDoorSide("door-right")}
-                      className={`rounded-xl border px-2 py-2.5 text-[11px] font-semibold transition-colors ${
-                        doorSide === "door-right"
-                          ? "border-primary bg-primary-soft text-primary"
-                          : "border-border bg-background text-foreground"
-                      }`}
-                    >
-                      باب يمين
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDoorSide("door-left")}
-                      className={`rounded-xl border px-2 py-2.5 text-[11px] font-semibold transition-colors ${
-                        doorSide === "door-left"
-                          ? "border-primary bg-primary-soft text-primary"
-                          : "border-border bg-background text-foreground"
-                      }`}
-                    >
-                      باب يسار
-                    </button>
-                  </div>
-                </ExtraPanel>
-              )}
-            </div>
-          )}
-
-          {!expandedExtra && showBouclier && (
+          {showBouclier && (
             <div className="max-h-[28dvh] overflow-y-auto border-t border-border/60 px-2.5 py-2">
               <div className="rounded-xl border border-border bg-card p-2">
                 <p className="mb-2 text-[11px] font-semibold text-foreground">
@@ -690,47 +731,86 @@ function PanelCellPicker({
   );
 }
 
-function ExtraPanel({
-  title,
-  onDisable,
-  children,
-}: {
-  title: string;
-  onDisable: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold text-foreground">{title}</p>
-        <button
-          type="button"
-          onClick={onDisable}
-          className="rounded-lg border border-border bg-card px-2.5 py-1 text-[10px] font-semibold text-muted transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-        >
-          إيقاف
-        </button>
-      </div>
-      <div className="rounded-xl border border-border bg-card p-2.5">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function FlagChip({
   label,
   checked,
   expanded,
-  onPress,
+  onToggle,
+  onOpenMenu,
   icon,
 }: {
   label: string;
   checked: boolean;
   expanded: boolean;
-  onPress: () => void;
+  onToggle: () => void;
+  onOpenMenu: () => void;
   icon: ReactNode;
 }) {
+  const longTimerRef = useRef<number | null>(null);
+  const longFiredRef = useRef(false);
+  const lastTapRef = useRef<number>(0);
+  const pendingToggleRef = useRef<number | null>(null);
+
+  function clearLongTimer() {
+    if (longTimerRef.current != null) {
+      window.clearTimeout(longTimerRef.current);
+      longTimerRef.current = null;
+    }
+  }
+
+  function clearPendingToggle() {
+    if (pendingToggleRef.current != null) {
+      window.clearTimeout(pendingToggleRef.current);
+      pendingToggleRef.current = null;
+    }
+  }
+
+  function handlePointerDown() {
+    longFiredRef.current = false;
+    clearLongTimer();
+    longTimerRef.current = window.setTimeout(() => {
+      longFiredRef.current = true;
+      clearPendingToggle();
+      lastTapRef.current = 0;
+      onOpenMenu();
+    }, LONG_PRESS_MS);
+  }
+
+  function handlePointerEnd() {
+    clearLongTimer();
+  }
+
+  function handleClick() {
+    if (longFiredRef.current) {
+      longFiredRef.current = false;
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastTapRef.current < DOUBLE_TAP_MS) {
+      // ضغطتين ورا بعض → فتح/قفل القائمة
+      clearPendingToggle();
+      lastTapRef.current = 0;
+      onOpenMenu();
+      return;
+    }
+
+    lastTapRef.current = now;
+    clearPendingToggle();
+    // استنى شوية عشان لو جت ضغطة تانية تبقى double-tap مش toggle
+    pendingToggleRef.current = window.setTimeout(() => {
+      pendingToggleRef.current = null;
+      onToggle();
+    }, DOUBLE_TAP_MS);
+  }
+
+  useEffect(() => {
+    return () => {
+      clearLongTimer();
+      clearPendingToggle();
+    };
+  }, []);
+
   return (
     <button
       type="button"
@@ -738,21 +818,17 @@ function FlagChip({
       aria-checked={checked}
       aria-expanded={expanded}
       aria-label={
-        checked
-          ? expanded
-            ? `${label} — إخفاء الخيارات`
-            : `${label} — مفعّل، اضغط للخيارات`
-          : `${label} — اضغط للتفعيل`
+        expanded
+          ? `${label} — القائمة مفتوحة، ضغطتين أو مطوّلة للقفل`
+          : `${label} — ضغطة تفعيل، ضغطتين أو مطوّلة للقائمة`
       }
-      title={
-        checked
-          ? expanded
-            ? "إخفاء الخيارات"
-            : "اضغط تاني للخيارات"
-          : "اضغط للتفعيل"
-      }
-      onClick={onPress}
-      className={`relative flex min-h-[3.6rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-1.5 transition-all ${
+      title="ضغطة: تفعيل/إيقاف · ضغطتين أو مطوّلة: القائمة"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      onPointerLeave={handlePointerEnd}
+      onClick={handleClick}
+      className={`relative flex min-h-[3.6rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-1.5 transition-all select-none touch-manipulation ${
         expanded
           ? "border-primary bg-primary text-primary-foreground shadow-sm"
           : checked
