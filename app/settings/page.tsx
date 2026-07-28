@@ -62,6 +62,25 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        <section className="overflow-hidden rounded-2xl border border-border bg-card">
+          <Link
+            href="/settings/design"
+            className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-primary-soft/50"
+          >
+            <div className="min-w-0 text-right">
+              <p className="text-sm font-medium text-foreground">
+                إعدادات التصميم
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                ترتيب التمبلتات في قائمة الاختيار
+              </p>
+            </div>
+            <span className="shrink-0 text-muted" aria-hidden>
+              ‹
+            </span>
+          </Link>
+        </section>
+
         <Link
           href="/"
           className="mx-auto mt-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TemplatePreview } from "@/components/TemplatePreview";
-import { WINDOW_TEMPLATES } from "@/lib/window-templates";
+import { getOrderedTemplates } from "@/lib/template-order";
 import type { LayoutNode } from "@/lib/window-layout";
 
 type Props = {
@@ -12,14 +12,16 @@ type Props = {
 };
 
 export function TemplatePickerModal({ open, onClose, onConfirm }: Props) {
-  const [selectedId, setSelectedId] = useState<string>(
-    WINDOW_TEMPLATES[0]?.id ?? ""
-  );
+  const templates = open ? getOrderedTemplates() : [];
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [wasOpen, setWasOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setSelectedId(WINDOW_TEMPLATES[0]?.id ?? "");
-  }, [open]);
+  if (open && !wasOpen) {
+    setWasOpen(true);
+    setSelectedId(templates[0]?.id ?? "");
+  } else if (!open && wasOpen) {
+    setWasOpen(false);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -32,7 +34,7 @@ export function TemplatePickerModal({ open, onClose, onConfirm }: Props) {
 
   if (!open) return null;
 
-  const selected = WINDOW_TEMPLATES.find((t) => t.id === selectedId);
+  const selected = templates.find((t) => t.id === selectedId);
 
   return (
     <div
@@ -68,7 +70,7 @@ export function TemplatePickerModal({ open, onClose, onConfirm }: Props) {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           <div className="grid grid-cols-3 gap-2.5">
-            {WINDOW_TEMPLATES.map((tpl) => {
+            {templates.map((tpl) => {
               const active = tpl.id === selectedId;
               return (
                 <button
