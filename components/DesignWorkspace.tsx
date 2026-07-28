@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -94,6 +95,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   const autoScrollRafRef = useRef<number | null>(null);
   const lockedScrollYRef = useRef(0);
   const lockedScrollMaxRef = useRef(0);
+  const prevCardRectsRef = useRef<Map<string, DOMRect>>(new Map());
 
   useEffect(() => {
     itemsRef.current = items;
@@ -425,6 +427,48 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     return () => clearLongPress();
   }, [clearLongPress]);
 
+  // FLIP animation when cards change order/position in the grid.
+  useLayoutEffect(() => {
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const nextRects = new Map<string, DOMRect>();
+    for (const [id, el] of cardRefs.current) {
+      nextRects.set(id, el.getBoundingClientRect());
+    }
+
+    if (!prefersReduced) {
+      for (const [id, el] of cardRefs.current) {
+        if (id === draggingId) continue;
+        const prev = prevCardRectsRef.current.get(id);
+        const next = nextRects.get(id);
+        if (!prev || !next) continue;
+
+        const dx = prev.left - next.left;
+        const dy = prev.top - next.top;
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+
+        el.style.transition = "none";
+        el.style.transform = `translate(${dx}px, ${dy}px)`;
+        // Force invert paint before releasing to the final slot.
+        void el.getBoundingClientRect();
+        el.style.transition =
+          "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)";
+        el.style.transform = "";
+
+        const clear = (event: TransitionEvent) => {
+          if (event.propertyName !== "transform") return;
+          el.style.transition = "";
+          el.removeEventListener("transitionend", clear);
+        };
+        el.addEventListener("transitionend", clear);
+      }
+    }
+
+    prevCardRectsRef.current = nextRects;
+  }, [items, draggingId]);
+
   function startDrag(
     itemId: string,
     pointerId: number,
@@ -672,7 +716,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
             <li
               key={item.id}
               ref={(el) => setCardRef(item.id, el)}
-              className="relative h-full min-h-0 touch-pan-y"
+              className="relative h-full min-h-0 touch-pan-y will-change-transform"
               data-item-id={item.id}
             >
               <button
