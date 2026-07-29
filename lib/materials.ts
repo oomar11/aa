@@ -7,6 +7,11 @@ import {
 } from "@/lib/design-items";
 import { gridLines } from "@/lib/pane-grid";
 import type { LayoutNode } from "@/lib/window-layout";
+import {
+  glassGlazingCostPerSqm,
+  glassSystemHasPricing,
+  type GlassSystemDetails,
+} from "@/lib/material-systems";
 
 /** نوع الحلق حسب فتح الضلفة */
 export type FrameKind = "hinged" | "sliding";
@@ -606,4 +611,91 @@ export function formatMeters(m: number): string {
 export function formatArea(sqm: number): string {
   if (sqm < 0.0005) return "—";
   return `${sqm.toFixed(2)} م²`;
+}
+
+// ─── حساب تكلفة الزجاج لكل ضلفة ────────────────────────────────
+
+export type PaneGlassLine = {
+  paneId: string;
+  /** مساحة الضلفة الواحدة م² */
+  areaSqm: number;
+  /** نوع الزجاج المطبق (مفرد/دبل) */
+  glazing: "single" | "double";
+  /** جورجيا */
+  georgian: boolean;
+  /** تكلفة متر مربع الزجاج لهذه الضلفة */
+  costPerSqm: number;
+  /** إجمالي تكلفة زجاج الضلفة */
+  totalCost: number;
+};
+
+export type GlassBreakdown = {
+  /** هل يوجد أسعار مُدخَلة في النظام */
+  hasPricing: boolean;
+  /** تفاصيل كل ضلفة */
+  lines: PaneGlassLine[];
+  /** إجمالي تكلفة الزجاج للقطعة الواحدة */
+  totalUnitCost: number;
+  /** إجمالي تكلفة الزجاج مضروبة في الكمية */
+  totalCost: number;
+};
+
+/**
+ * يحسب تكلفة الزجاج لكل ضلفة على حدة بناءً على:
+ * — نظام الزجاج (أسعاره)
+ * — إعداد كل ضلفة (glassGlazing / glassGeorgian)
+ * — مساحة كل ضلفة المحسوبة من اللآيوت والأبعاد
+ */
+export function calcGlassBreakdown(
+  item: DesignItem,
+  glassDetails: GlassSystemDetails | undefined
+): GlassBreakdown {
+  const empty: GlassBreakdown = {
+    hasPricing: false,
+    lines: [],
+    totalUnitCost: 0,
+    totalCost: 0,
+  };
+
+  if (!glassDetails || !glassSystemHasPricing(glassDetails)) return empty;
+
+  const widthMm = Math.max(0, item.widthMm || 0);
+  const heightMm = Math.max(0, item.heightMm || 0);
+  if (widthMm <= 0 || heightMm <= 0) return { ...empty, hasPricing: true };
+
+  const layout: LayoutNode =
+    item.layout ?? ({ type: "pane", id: "root" } as LayoutNode);
+  const panes = item.panes ?? {};
+
+  const boxes: PaneBox[] = [];
+  collectPaneBoxes(layout, 0, 0, widthMm, heightMm, panes, boxes);
+
+  const lines: PaneGlassLine[] = boxes.map((box) => {
+    const cfg = normalizePaneConfig(panes[box.id]);
+    const glazing = cfg.glassGlazing ?? glassDetails.glazing;
+    const georgian =
+      cfg.glassGeorgian !== undefined
+        ? cfg.glassGeorgian
+        : glassDetails.georgian;
+    const costPerSqm = glassGlazingCostPerSqm(glassDetails, glazing, georgian);
+    const areaSqm = roundM((box.w * box.h) / 1_000_000);
+    return {
+      paneId: box.id,
+      areaSqm,
+      glazing,
+      georgian,
+      costPerSqm,
+      totalCost: roundM(areaSqm * costPerSqm),
+    };
+  });
+
+  const totalUnitCost = roundM(lines.reduce((s, l) => s + l.totalCost, 0));
+  const qty = Math.max(1, item.qty || 1);
+
+  return {
+    hasPricing: true,
+    lines,
+    totalUnitCost,
+    totalCost: roundM(totalUnitCost * qty),
+  };
 }

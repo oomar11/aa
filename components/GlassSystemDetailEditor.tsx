@@ -13,6 +13,7 @@ import {
   defaultGlassPane,
   findSystem,
   glassCompositionLabel,
+  glassGlazingCostPerSqm,
   glassPaneKindLabel,
   glassTotalThicknessMm,
   loadMaterialCatalog,
@@ -91,6 +92,8 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
             glazing: "single",
             pane1: glass.pane1,
             georgian: false,
+            pane1PricePerSqm: glass.pane1PricePerSqm,
+            georgianCostPerSqm: glass.georgianCostPerSqm,
           }
         : {
             glazing: "double",
@@ -101,6 +104,10 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
             georgianNote: glass.georgian
               ? glass.georgianNote?.trim() || undefined
               : undefined,
+            pane1PricePerSqm: glass.pane1PricePerSqm,
+            pane2PricePerSqm: glass.pane2PricePerSqm,
+            doublingCostPerSqm: glass.doublingCostPerSqm,
+            georgianCostPerSqm: glass.georgianCostPerSqm,
           };
     setGlass(next);
     persist(next);
@@ -113,6 +120,8 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
         glazing: "single",
         pane1: glass.pane1,
         georgian: false,
+        pane1PricePerSqm: glass.pane1PricePerSqm,
+        georgianCostPerSqm: glass.georgianCostPerSqm,
       });
     } else {
       setGlass({
@@ -122,6 +131,10 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
         spacerMm: glass.spacerMm ?? 6,
         georgian: glass.georgian,
         georgianNote: glass.georgianNote,
+        pane1PricePerSqm: glass.pane1PricePerSqm,
+        pane2PricePerSqm: glass.pane2PricePerSqm,
+        doublingCostPerSqm: glass.doublingCostPerSqm,
+        georgianCostPerSqm: glass.georgianCostPerSqm,
       });
     }
   }
@@ -302,6 +315,113 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
             </section>
           </>
         ) : null}
+
+        {/* ─── الأسعار ──────────────────────────────── */}
+        <section className="space-y-3 rounded-2xl border border-border bg-card p-3">
+          <div>
+            <h3 className="text-xs font-bold text-foreground">الأسعار</h3>
+            <p className="mt-0.5 text-[11px] text-muted">
+              أدخل السعر بالجنيه لكل متر مربع — اتركه فاضي لو مش مهم دلوقتي
+            </p>
+          </div>
+
+          <label className="block text-[11px] text-muted">
+            سعر م² الزجاجة {isDouble ? "الأولى" : ""}
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={glass.pane1PricePerSqm ?? ""}
+              onChange={(e) =>
+                setGlass((g) => ({
+                  ...g,
+                  pane1PricePerSqm:
+                    e.target.value === "" ? undefined : Math.max(0, Number(e.target.value) || 0),
+                }))
+              }
+              placeholder="0.00"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            />
+          </label>
+
+          {isDouble ? (
+            <>
+              <label className="block text-[11px] text-muted">
+                سعر م² الزجاجة الثانية
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={glass.pane2PricePerSqm ?? ""}
+                  onChange={(e) =>
+                    setGlass((g) => ({
+                      ...g,
+                      pane2PricePerSqm:
+                        e.target.value === "" ? undefined : Math.max(0, Number(e.target.value) || 0),
+                    }))
+                  }
+                  placeholder="0.00"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+                />
+              </label>
+
+              <label className="block text-[11px] text-muted">
+                سعر م² التدبيل (تركيب الفاصل الهوائي)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={glass.doublingCostPerSqm ?? ""}
+                  onChange={(e) =>
+                    setGlass((g) => ({
+                      ...g,
+                      doublingCostPerSqm:
+                        e.target.value === "" ? undefined : Math.max(0, Number(e.target.value) || 0),
+                    }))
+                  }
+                  placeholder="0.00"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+                />
+              </label>
+            </>
+          ) : null}
+
+          <label className="block text-[11px] text-muted">
+            سعر م² الجورجيا
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={glass.georgianCostPerSqm ?? ""}
+              onChange={(e) =>
+                setGlass((g) => ({
+                  ...g,
+                  georgianCostPerSqm:
+                    e.target.value === "" ? undefined : Math.max(0, Number(e.target.value) || 0),
+                }))
+              }
+              placeholder="0.00"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            />
+          </label>
+
+          {(glass.pane1PricePerSqm ?? 0) > 0 ? (
+            <div className="rounded-xl bg-primary-soft px-3 py-2 text-[11px] text-primary">
+              <p className="font-semibold">ملخص التكلفة لكل م²:</p>
+              <p className="mt-0.5">
+                {glassGlazingCostPerSqm(
+                  isDouble
+                    ? { ...glass, pane2: glass.pane2 ?? defaultGlassPane(), spacerMm: glass.spacerMm ?? 6 }
+                    : { glazing: "single", pane1: glass.pane1, georgian: false, pane1PricePerSqm: glass.pane1PricePerSqm, georgianCostPerSqm: glass.georgianCostPerSqm }
+                ).toFixed(2)}{" "}
+                ج.م
+                {glass.georgian
+                  ? ` (شاملاً جورجيا ${(glass.georgianCostPerSqm ?? 0).toFixed(2)} ج.م)`
+                  : ""}
+              </p>
+            </div>
+          ) : null}
+        </section>
 
         <section className="rounded-2xl border border-border bg-background p-3 text-sm">
           <p className="text-xs font-bold text-primary">الملخص</p>

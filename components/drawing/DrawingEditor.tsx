@@ -33,7 +33,7 @@ import {
   type PaneOpening,
 } from "@/lib/design-items";
 import { withSuggestedName } from "@/lib/item-naming";
-import { calcItemMaterials, scaleMaterials } from "@/lib/materials";
+import { calcGlassBreakdown, calcItemMaterials, scaleMaterials, type GlassBreakdown } from "@/lib/materials";
 import {
   equalizeSplitRatios,
   ratioFromMm,
@@ -54,6 +54,7 @@ import { fromMm, toMm } from "@/lib/units";
 import type { LayoutNode } from "@/lib/window-layout";
 import { cloneLayout, ensurePaneIds, listPaneIds } from "@/lib/window-layout";
 import { getTemplateById } from "@/lib/window-templates";
+import { findSystem, loadMaterialCatalog } from "@/lib/material-systems";
 
 type Props = {
   customerId: string;
@@ -207,6 +208,13 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   const materials = useMemo(() => {
     if (!item) return null;
     return scaleMaterials(calcItemMaterials(item), item.qty);
+  }, [item]);
+
+  const glassBreakdown = useMemo((): GlassBreakdown | null => {
+    if (!item) return null;
+    const catalog = loadMaterialCatalog();
+    const glassDetails = findSystem("glass", item.glassId, catalog)?.glass;
+    return calcGlassBreakdown(item, glassDetails);
   }, [item]);
 
   const activeOpening = useMemo(() => {
@@ -466,6 +474,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
         {materials ? (
           <MaterialsBar
             materials={materials}
+            glassBreakdown={glassBreakdown}
             partLabel={item.name || "شباك"}
             widthMm={item.widthMm}
             heightMm={item.heightMm}

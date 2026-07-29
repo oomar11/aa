@@ -112,6 +112,7 @@ export type GlassGlazing = "single" | "double";
 /**
  * تفاصيل نظام الزجاج:
  * مفرد أو دبل، الزجاجة الأولى/الثانية، جورجيا بينهم.
+ * الأسعار اختيارية — تُستخدم لحساب تكلفة الزجاج منفصلة.
  */
 export type GlassSystemDetails = {
   glazing: GlassGlazing;
@@ -125,6 +126,14 @@ export type GlassSystemDetails = {
   georgian: boolean;
   /** وصف الجورجيا (شكل / لون) */
   georgianNote?: string;
+  /** سعر متر مربع الزجاجة الأولى (ج.م) */
+  pane1PricePerSqm?: number;
+  /** سعر متر مربع الزجاجة الثانية — للدبل (ج.م) */
+  pane2PricePerSqm?: number;
+  /** تكلفة التدبيل لكل متر مربع — للدبل (ج.م) */
+  doublingCostPerSqm?: number;
+  /** تكلفة الجورجيا لكل متر مربع (ج.م) */
+  georgianCostPerSqm?: number;
 };
 
 export type MaterialSystem = {
@@ -618,6 +627,16 @@ function normalizeGlassDetails(raw: unknown): GlassSystemDetails {
   const spacerRaw = Number(g.spacerMm);
   const georgian = Boolean(g.georgian);
 
+  function normPrice(v: unknown): number | undefined {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : undefined;
+  }
+
+  const pane1Price = normPrice(g.pane1PricePerSqm);
+  const pane2Price = normPrice(g.pane2PricePerSqm);
+  const doublingCost = normPrice(g.doublingCostPerSqm);
+  const georgianCost = normPrice(g.georgianCostPerSqm);
+
   if (glazing === "single") {
     return {
       glazing: "single",
@@ -626,6 +645,8 @@ function normalizeGlassDetails(raw: unknown): GlassSystemDetails {
       georgianNote: undefined,
       spacerMm: undefined,
       pane2: undefined,
+      pane1PricePerSqm: pane1Price,
+      georgianCostPerSqm: georgianCost,
     };
   }
 
@@ -647,6 +668,10 @@ function normalizeGlassDetails(raw: unknown): GlassSystemDetails {
         : georgian
           ? undefined
           : undefined,
+    pane1PricePerSqm: pane1Price,
+    pane2PricePerSqm: pane2Price,
+    doublingCostPerSqm: doublingCost,
+    georgianCostPerSqm: georgianCost,
   };
 }
 
@@ -806,6 +831,33 @@ export function glassTotalThicknessMm(glass: GlassSystemDetails): number {
     (glass.spacerMm ?? 0) +
     (glass.pane2?.thicknessMm ?? 0)
   );
+}
+
+/**
+ * حساب تكلفة الزجاج لكل متر مربع بناءً على إعدادات النظام.
+ * glazingOverride و georgianOverride يسمحان بتجاوز إعداد النظام
+ * (مثلاً لما الضلفة عندها نوع مختلف عن النظام الافتراضي).
+ */
+export function glassGlazingCostPerSqm(
+  glass: GlassSystemDetails,
+  glazingOverride?: GlassGlazing,
+  georgianOverride?: boolean
+): number {
+  const glazing = glazingOverride ?? glass.glazing;
+  const georgian = georgianOverride ?? glass.georgian;
+  const p1 = glass.pane1PricePerSqm ?? 0;
+  if (glazing === "single") {
+    return p1 + (georgian ? (glass.georgianCostPerSqm ?? 0) : 0);
+  }
+  const p2 = glass.pane2PricePerSqm ?? 0;
+  const dbl = glass.doublingCostPerSqm ?? 0;
+  const geo = georgian ? (glass.georgianCostPerSqm ?? 0) : 0;
+  return p1 + p2 + dbl + geo;
+}
+
+/** هل نظام الزجاج فيه أسعار مُدخَلة (الزجاجة الأولى على الأقل) */
+export function glassSystemHasPricing(glass: GlassSystemDetails): boolean {
+  return (glass.pane1PricePerSqm ?? 0) > 0;
 }
 
 export function upsertSystem(
