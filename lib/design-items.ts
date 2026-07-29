@@ -1,3 +1,4 @@
+import type { GlassGlazing } from "@/lib/material-systems";
 import type { LayoutNode } from "@/lib/window-layout";
 import {
   cloneLayout,
@@ -70,6 +71,10 @@ export type PaneConfig = {
   mesh?: boolean;
   /** باب بدل شباك عادي */
   isDoor?: boolean;
+  /** تجاوز نوع الزجاج لهذه الضلفة: مفرد أو دبل */
+  glassGlazing?: GlassGlazing;
+  /** جورجيا لهذه الضلفة (يتجاوز إعداد النظام) */
+  glassGeorgian?: boolean;
 };
 
 export function defaultPaneConfig(

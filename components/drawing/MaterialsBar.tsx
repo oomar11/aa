@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { MaterialsBreakdown } from "@/lib/materials";
+import type { GlassBreakdown, MaterialsBreakdown } from "@/lib/materials";
 import { formatArea, formatMeters } from "@/lib/materials";
 import {
   calcCutSizes,
@@ -15,9 +15,11 @@ import {
   type MaterialSystem,
   type ProfileSystemDetails,
 } from "@/lib/material-systems";
+import { formatCurrency } from "@/lib/utils";
 
 type Props = {
   materials: MaterialsBreakdown;
+  glassBreakdown?: GlassBreakdown | null;
   partLabel?: string;
   /** مقاس الفتحة للبند */
   widthMm?: number;
@@ -36,6 +38,7 @@ type Cell = {
 
 export function MaterialsBar({
   materials,
+  glassBreakdown,
   partLabel = "شباك",
   widthMm,
   heightMm,
@@ -190,6 +193,10 @@ export function MaterialsBar({
           cuts={cuts}
         />
       ) : null}
+
+      {glassBreakdown?.hasPricing && glassBreakdown.lines.length > 0 ? (
+        <GlassBreakdownPanel breakdown={glassBreakdown} />
+      ) : null}
     </section>
   );
 }
@@ -267,4 +274,73 @@ function mullionHint(m: MaterialsBreakdown): string | undefined {
   if (parts.length === 0) return undefined;
   if (parts.length === 2) return "حلق + ضلفة";
   return parts[0];
+}
+
+function GlassBreakdownPanel({ breakdown }: { breakdown: GlassBreakdown }) {
+  const [expanded, setExpanded] = useState(false);
+  const showExpand = breakdown.lines.length > 1;
+  return (
+    <div className="border-t border-border bg-background/40 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-primary">تكلفة الزجاج</p>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-foreground">
+            {formatCurrency(Math.round(breakdown.totalCost))} ج.م
+          </span>
+          {showExpand && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
+            >
+              {expanded ? "إخفاء" : "تفاصيل"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-1.5 grid grid-cols-3 gap-x-3 text-[10px] text-muted">
+        <span>
+          للقطعة: {formatCurrency(Math.round(breakdown.totalUnitCost))} ج.م
+        </span>
+        <span>الكمية × {breakdown.totalCost / (breakdown.totalUnitCost || 1)}</span>
+        <span>
+          الإجمالي: {formatCurrency(Math.round(breakdown.totalCost))} ج.م
+        </span>
+      </div>
+
+      {expanded && (
+        <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[10px]">
+          <div className="grid grid-cols-4 border-b border-border text-center font-semibold text-muted">
+            <span className="px-2 py-1.5 text-start">ضلفة</span>
+            <span className="px-2 py-1.5">نوع</span>
+            <span className="px-2 py-1.5">م²</span>
+            <span className="px-2 py-1.5">تكلفة</span>
+          </div>
+          {breakdown.lines.map((line, i) => (
+            <div
+              key={line.paneId}
+              className={`grid grid-cols-4 text-center tabular-nums ${
+                i > 0 ? "border-t border-border/60" : ""
+              }`}
+            >
+              <span className="px-2 py-1.5 text-start font-medium text-foreground">
+                {i + 1}
+              </span>
+              <span className="px-2 py-1.5 text-foreground">
+                {line.glazing === "double" ? "دبل" : "مفرد"}
+                {line.georgian ? " · ج" : ""}
+              </span>
+              <span className="px-2 py-1.5 text-foreground">
+                {line.areaSqm.toFixed(2)}
+              </span>
+              <span className="px-2 py-1.5 font-semibold text-primary">
+                {formatCurrency(Math.round(line.totalCost))}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

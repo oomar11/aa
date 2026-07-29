@@ -10,6 +10,7 @@ import {
   type PaneOpening,
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
+import type { GlassGlazing } from "@/lib/material-systems";
 
 type Props = {
   open: boolean;
@@ -114,12 +115,13 @@ const GRID_GROUPS: OptionGroup<PaneGrid>[] = [
   },
 ];
 
-type ExtraKey = "sandwichPanels" | "mesh" | "isDoor";
+type ExtraKey = "sandwichPanels" | "mesh" | "isDoor" | "glassType";
 
 const EXTRA_TITLES: Record<ExtraKey, string> = {
   sandwichPanels: "خيارات البنل",
   mesh: "خيارات شبكة السلك",
   isDoor: "خيارات ضلفة الباب",
+  glassType: "نوع الزجاج",
 };
 
 const DOUBLE_TAP_MS = 320;
@@ -184,7 +186,9 @@ export function PanePropertiesModal({
   function isFlagOn(key: ExtraKey): boolean {
     if (key === "sandwichPanels") return Boolean(draft.sandwichPanels);
     if (key === "mesh") return Boolean(draft.mesh);
-    return Boolean(draft.isDoor);
+    if (key === "isDoor") return Boolean(draft.isDoor);
+    // glassType: "on" if the pane has an explicit glass override
+    return draft.glassGlazing !== undefined;
   }
 
   function setFlag(key: ExtraKey, value: boolean) {
@@ -204,6 +208,16 @@ export function PanePropertiesModal({
           next.opening = "casement-left";
         } else if (d.opening === "door-right") {
           next.opening = "casement-right";
+        }
+      }
+      if (key === "glassType") {
+        if (!value) {
+          // reset overrides when turning off
+          next.glassGlazing = undefined;
+          next.glassGeorgian = undefined;
+        } else if (d.glassGlazing === undefined) {
+          // default to double when first enabling
+          next.glassGlazing = "double";
         }
       }
       return next;
@@ -382,6 +396,104 @@ export function PanePropertiesModal({
                   </button>
                 </div>
               )}
+
+              {expandedExtra === "glassType" && (
+                <div className="mx-auto w-full max-w-sm space-y-3">
+                  <div className="rounded-xl border border-border bg-card p-3 space-y-3">
+                    <p className="text-[12px] leading-relaxed text-muted">
+                      اختار نوع الزجاج لهذه الضلفة. لو ماختارتش، هيتطبق إعداد نظام الزجاج.
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDraft((d) => ({
+                            ...d,
+                            glassGlazing: undefined,
+                            glassGeorgian: undefined,
+                          }))
+                        }
+                        className={`rounded-xl border px-2 py-3 text-[12px] font-semibold transition-colors ${
+                          draft.glassGlazing === undefined
+                            ? "border-primary bg-primary-soft text-primary"
+                            : "border-border bg-background text-foreground"
+                        }`}
+                      >
+                        افتراضي
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDraft((d) => ({
+                            ...d,
+                            glassGlazing: "single" as GlassGlazing,
+                            glassGeorgian: undefined,
+                          }))
+                        }
+                        className={`rounded-xl border px-2 py-3 text-[12px] font-semibold transition-colors ${
+                          draft.glassGlazing === "single"
+                            ? "border-primary bg-primary-soft text-primary"
+                            : "border-border bg-background text-foreground"
+                        }`}
+                      >
+                        مفرد
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDraft((d) => ({
+                            ...d,
+                            glassGlazing: "double" as GlassGlazing,
+                          }))
+                        }
+                        className={`rounded-xl border px-2 py-3 text-[12px] font-semibold transition-colors ${
+                          draft.glassGlazing === "double"
+                            ? "border-primary bg-primary-soft text-primary"
+                            : "border-border bg-background text-foreground"
+                        }`}
+                      >
+                        دبل
+                      </button>
+                    </div>
+
+                    {(draft.glassGlazing === "double" || draft.glassGlazing === undefined) && (
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2.5">
+                        <div>
+                          <p className="text-[12px] font-semibold text-foreground">جورجيا</p>
+                          <p className="text-[10px] text-muted">بارك زخرفي بين الزجاجتين</p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={Boolean(draft.glassGeorgian)}
+                          onClick={() =>
+                            setDraft((d) => ({
+                              ...d,
+                              glassGeorgian: !d.glassGeorgian,
+                            }))
+                          }
+                          className={`relative h-7 w-12 rounded-full transition-colors ${
+                            draft.glassGeorgian ? "bg-primary" : "bg-border"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${
+                              draft.glassGeorgian ? "right-0.5" : "right-5"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedExtra(null)}
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[12px] font-semibold text-foreground"
+                  >
+                    رجوع للتقسيم ونوع الفتح
+                  </button>
+                </div>
+              )}
             </div>
           </section>
         ) : (
@@ -463,7 +575,7 @@ export function PanePropertiesModal({
             <p className="mb-1.5 text-center text-[9px] text-muted/80">
               ضغطة تفعيل/إيقاف · ضغطتين أو مطوّلة للقائمة
             </p>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
               <FlagChip
                 label="بنل ساندوتش"
                 checked={Boolean(draft.sandwichPanels)}
@@ -487,6 +599,14 @@ export function PanePropertiesModal({
                 onToggle={() => toggleFlag("isDoor")}
                 onOpenMenu={() => toggleExtraMenu("isDoor")}
                 icon={<DoorIcon />}
+              />
+              <FlagChip
+                label="نوع الزجاج"
+                checked={draft.glassGlazing !== undefined}
+                expanded={expandedExtra === "glassType"}
+                onToggle={() => toggleFlag("glassType")}
+                onOpenMenu={() => toggleExtraMenu("glassType")}
+                icon={<GlassIcon />}
               />
             </div>
           </div>
@@ -1010,6 +1130,16 @@ function MeshIcon() {
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
       <rect x="4" y="4" width="16" height="16" />
       <path d="M4 8h16M4 12h16M4 16h16M8 4v16M12 4v16M16 4v16" />
+    </svg>
+  );
+}
+
+function GlassIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <rect x="4" y="3" width="16" height="18" rx="1" fill="currentColor" opacity="0.12" />
+      <rect x="4" y="3" width="16" height="18" rx="1" />
+      <line x1="9" y1="3" x2="9" y2="21" strokeDasharray="2 1.5" strokeWidth="1.2" opacity="0.5" />
     </svg>
   );
 }
