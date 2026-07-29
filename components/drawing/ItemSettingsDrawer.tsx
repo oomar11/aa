@@ -9,7 +9,6 @@ import {
 import {
   DISCOUNT_OPTIONS,
   loadAccessoryOptions,
-  loadGlassOptions,
   loadIronOptions,
   loadSystemOptions,
   type DiscountId,
@@ -73,7 +72,6 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
   );
   const [systemOpts, setSystemOpts] = useState<CatalogOpts>([]);
   const [accessoryOpts, setAccessoryOpts] = useState<CatalogOpts>([]);
-  const [glassOpts, setGlassOpts] = useState<CatalogOpts>([]);
   const [ironOpts, setIronOpts] = useState<CatalogOpts>([]);
 
   useEffect(() => {
@@ -87,7 +85,6 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
     );
     setSystemOpts(loadSystemOptions());
     setAccessoryOpts(loadAccessoryOptions());
-    setGlassOpts(loadGlassOptions());
     setIronOpts(loadIronOptions());
   }, [open, item]);
 
@@ -136,7 +133,7 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
           <div className="min-w-0 text-right">
             <h2 className="text-base font-bold text-foreground">تفاصيل البند</h2>
             <p className="text-[11px] text-muted">
-              الاسم · العدد · القطاعات · الزجاج
+              الاسم · العدد · القطاعات
             </p>
           </div>
           <button
@@ -290,15 +287,6 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
               options={accessoryOpts}
               value={draft.accessoryId}
               onChange={(id) => setDraft((d) => ({ ...d, accessoryId: id }))}
-            />
-          </Section>
-
-          <Section title="نوع الزجاج">
-            <RadioList
-              name="glass"
-              options={glassOpts}
-              value={draft.glassId}
-              onChange={(id) => setDraft((d) => ({ ...d, glassId: id }))}
             />
           </Section>
 

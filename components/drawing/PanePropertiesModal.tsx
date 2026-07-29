@@ -10,7 +10,11 @@ import {
   type PaneOpening,
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
-import type { GlassGlazing } from "@/lib/material-systems";
+import {
+  GLASS_PANE_KINDS,
+  type GlassGlazing,
+  type GlassPaneKind,
+} from "@/lib/material-systems";
 
 type Props = {
   open: boolean;
@@ -214,10 +218,12 @@ export function PanePropertiesModal({
         if (!value) {
           // reset overrides when turning off
           next.glassGlazing = undefined;
+          next.glassPane1Kind = undefined;
+          next.glassPane2Kind = undefined;
           next.glassGeorgian = undefined;
         } else if (d.glassGlazing === undefined) {
-          // default to double when first enabling
-          next.glassGlazing = "double";
+          next.glassGlazing = "single";
+          next.glassPane1Kind = "clear";
         }
       }
       return next;
@@ -401,7 +407,8 @@ export function PanePropertiesModal({
                 <div className="mx-auto w-full max-w-sm space-y-3">
                   <div className="rounded-xl border border-border bg-card p-3 space-y-3">
                     <p className="text-[12px] leading-relaxed text-muted">
-                      اختار نوع الزجاج لهذه الضلفة. لو ماختارتش، هيتطبق إعداد نظام الزجاج.
+                      اختار الزجاجة الأولى أو دبل بزجاجة ثانية. الحساب بالمتر
+                      لكل زجاجة مع التدبيل والجورجيا عند التفعيل.
                     </p>
                     <div className="grid grid-cols-3 gap-2">
                       <button
@@ -410,6 +417,8 @@ export function PanePropertiesModal({
                           setDraft((d) => ({
                             ...d,
                             glassGlazing: undefined,
+                            glassPane1Kind: undefined,
+                            glassPane2Kind: undefined,
                             glassGeorgian: undefined,
                           }))
                         }
@@ -427,6 +436,8 @@ export function PanePropertiesModal({
                           setDraft((d) => ({
                             ...d,
                             glassGlazing: "single" as GlassGlazing,
+                            glassPane1Kind: d.glassPane1Kind ?? "clear",
+                            glassPane2Kind: undefined,
                             glassGeorgian: undefined,
                           }))
                         }
@@ -444,6 +455,8 @@ export function PanePropertiesModal({
                           setDraft((d) => ({
                             ...d,
                             glassGlazing: "double" as GlassGlazing,
+                            glassPane1Kind: d.glassPane1Kind ?? "clear",
+                            glassPane2Kind: d.glassPane2Kind ?? "clear",
                           }))
                         }
                         className={`rounded-xl border px-2 py-3 text-[12px] font-semibold transition-colors ${
@@ -456,7 +469,27 @@ export function PanePropertiesModal({
                       </button>
                     </div>
 
-                    {(draft.glassGlazing === "double" || draft.glassGlazing === undefined) && (
+                    {draft.glassGlazing !== undefined && (
+                      <GlassKindSelect
+                        label="الزجاجة الأولى"
+                        value={draft.glassPane1Kind ?? "clear"}
+                        onChange={(kind) =>
+                          setDraft((d) => ({ ...d, glassPane1Kind: kind }))
+                        }
+                      />
+                    )}
+
+                    {draft.glassGlazing === "double" && (
+                      <GlassKindSelect
+                        label="الزجاجة الثانية"
+                        value={draft.glassPane2Kind ?? "clear"}
+                        onChange={(kind) =>
+                          setDraft((d) => ({ ...d, glassPane2Kind: kind }))
+                        }
+                      />
+                    )}
+
+                    {draft.glassGlazing === "double" && (
                       <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2.5">
                         <div>
                           <p className="text-[12px] font-semibold text-foreground">جورجيا</p>
@@ -679,6 +712,33 @@ export function PanePropertiesModal({
         </footer>
       </div>
     </div>
+  );
+}
+
+function GlassKindSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: GlassPaneKind;
+  onChange: (kind: GlassPaneKind) => void;
+}) {
+  return (
+    <label className="block text-[11px] text-muted">
+      {label}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as GlassPaneKind)}
+        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-[12px] text-foreground outline-none focus:border-primary"
+      >
+        {GLASS_PANE_KINDS.map((kind) => (
+          <option key={kind.id} value={kind.id}>
+            {kind.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

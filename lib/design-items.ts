@@ -1,4 +1,4 @@
-import type { GlassGlazing } from "@/lib/material-systems";
+import type { GlassGlazing, GlassPaneKind } from "@/lib/material-systems";
 import type { LayoutNode } from "@/lib/window-layout";
 import {
   cloneLayout,
@@ -73,6 +73,10 @@ export type PaneConfig = {
   isDoor?: boolean;
   /** تجاوز نوع الزجاج لهذه الضلفة: مفرد أو دبل */
   glassGlazing?: GlassGlazing;
+  /** نوع الزجاجة الأولى لهذه الضلفة */
+  glassPane1Kind?: GlassPaneKind;
+  /** نوع الزجاجة الثانية لهذه الضلفة (في الدبل فقط) */
+  glassPane2Kind?: GlassPaneKind;
   /** جورجيا لهذه الضلفة (يتجاوز إعداد النظام) */
   glassGeorgian?: boolean;
 };
@@ -124,7 +128,12 @@ export function normalizePaneConfig(
   const base = defaultPaneConfig(config);
   const count = gridCellCount(base.grid);
   const cells = (base.panelCells ?? []).filter((i) => i >= 0 && i < count);
-  return { ...base, panelCells: cells };
+  return {
+    ...base,
+    panelCells: cells,
+    glassPane2Kind: base.glassGlazing === "double" ? base.glassPane2Kind : undefined,
+    glassGeorgian: base.glassGlazing === "double" ? base.glassGeorgian : undefined,
+  };
 }
 
 export type FrameColorId =

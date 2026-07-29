@@ -9,7 +9,9 @@ import { gridLines } from "@/lib/pane-grid";
 import type { LayoutNode } from "@/lib/window-layout";
 import {
   glassGlazingCostPerSqm,
+  glassPaneKindLabel,
   glassSystemHasPricing,
+  type GlassPaneKind,
   type GlassSystemDetails,
 } from "@/lib/material-systems";
 
@@ -621,6 +623,8 @@ export type PaneGlassLine = {
   areaSqm: number;
   /** نوع الزجاج المطبق (مفرد/دبل) */
   glazing: "single" | "double";
+  /** ملخص نوع الزجاجة/الزجاجتين */
+  glassLabel: string;
   /** جورجيا */
   georgian: boolean;
   /** تكلفة متر مربع الزجاج لهذه الضلفة */
@@ -674,15 +678,30 @@ export function calcGlassBreakdown(
     const cfg = normalizePaneConfig(panes[box.id]);
     const glazing = cfg.glassGlazing ?? glassDetails.glazing;
     const georgian =
+      glazing === "double" &&
       cfg.glassGeorgian !== undefined
         ? cfg.glassGeorgian
-        : glassDetails.georgian;
+        : glazing === "double"
+          ? glassDetails.georgian
+          : false;
+    const pane1Kind: GlassPaneKind =
+      cfg.glassPane1Kind ?? glassDetails.pane1.kind;
+    const pane2Kind: GlassPaneKind =
+      glazing === "double"
+        ? (cfg.glassPane2Kind ??
+          glassDetails.pane2?.kind ??
+          glassDetails.pane1.kind)
+        : pane1Kind;
     const costPerSqm = glassGlazingCostPerSqm(glassDetails, glazing, georgian);
     const areaSqm = roundM((box.w * box.h) / 1_000_000);
     return {
       paneId: box.id,
       areaSqm,
       glazing,
+      glassLabel:
+        glazing === "double"
+          ? `${glassPaneKindLabel(pane1Kind)} + ${glassPaneKindLabel(pane2Kind)}`
+          : glassPaneKindLabel(pane1Kind),
       georgian,
       costPerSqm,
       totalCost: roundM(areaSqm * costPerSqm),

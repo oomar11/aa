@@ -54,7 +54,11 @@ import { fromMm, toMm } from "@/lib/units";
 import type { LayoutNode } from "@/lib/window-layout";
 import { cloneLayout, ensurePaneIds, listPaneIds } from "@/lib/window-layout";
 import { getTemplateById } from "@/lib/window-templates";
-import { findSystem, loadMaterialCatalog } from "@/lib/material-systems";
+import {
+  findSystem,
+  getDefaultSystemId,
+  loadMaterialCatalog,
+} from "@/lib/material-systems";
 
 type Props = {
   customerId: string;
@@ -213,7 +217,10 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   const glassBreakdown = useMemo((): GlassBreakdown | null => {
     if (!item) return null;
     const catalog = loadMaterialCatalog();
-    const glassDetails = findSystem("glass", item.glassId, catalog)?.glass;
+    const selectedGlass = findSystem("glass", item.glassId, catalog)?.glass;
+    const defaultGlass =
+      findSystem("glass", getDefaultSystemId("glass", catalog), catalog)?.glass;
+    const glassDetails = selectedGlass ?? defaultGlass;
     return calcGlassBreakdown(item, glassDetails);
   }, [item]);
 

@@ -78,6 +78,7 @@ export type ProfileSystemDetails = {
 /** نوع الزجاجة الواحدة */
 export type GlassPaneKind =
   | "clear"
+  | "frosted"
   | "tinted"
   | "reflective"
   | "tempered"
@@ -87,6 +88,7 @@ export type GlassPaneKind =
 
 export const GLASS_PANE_KINDS: { id: GlassPaneKind; label: string }[] = [
   { id: "clear", label: "شفاف عادي" },
+  { id: "frosted", label: "مصنفر" },
   { id: "tinted", label: "ملون" },
   { id: "reflective", label: "عاكس" },
   { id: "tempered", label: "سيكوريت" },
