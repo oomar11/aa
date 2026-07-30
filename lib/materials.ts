@@ -562,14 +562,11 @@ function paneGlassAreaMm2(
 
 function totalGlassAreaSqm(
   boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined,
-  item: DesignItem
+  panes: Record<string, PaneConfig> | undefined
 ): number {
   let mm2 = 0;
   for (const box of boxes) {
     const cfg = normalizePaneConfig(panes?.[box.id]);
-    const glass = resolvePaneGlass(cfg, item);
-    if (!glass.pane1Id) continue;
     mm2 += paneGlassAreaMm2(box.w, box.h, box.opening, cfg);
   }
   return roundM(mm2 / 1_000_000);
@@ -677,7 +674,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const mullionSashMm = sashMullionMm(boxes, panes);
   const sashMm = sashProfileMm(boxes, panes);
   const beadMm = beadProfileMm(boxes, panes);
-  const glassAreaSqm = totalGlassAreaSqm(boxes, panes, item);
+  const glassAreaSqm = totalGlassAreaSqm(boxes, panes);
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
@@ -813,8 +810,7 @@ export function calcGlassBreakdown(
 
   for (const box of boxes) {
     const cfg = normalizePaneConfig(panes[box.id]);
-    const glass = resolvePaneGlass(cfg, item);
-    if (!glass.pane1Id) continue;
+    const glass = resolvePaneGlass(cfg, item, cat);
     if (!paneGlassHasPricing(glass.pane1Id, cat)) continue;
 
     const glazing: "single" | "double" = glass.pane2Id ? "double" : "single";
