@@ -15,6 +15,7 @@ const DEFAULT_FOR_OPTIONS: {
 }[] = [
   { value: "", label: "بدون اختيار تلقائي" },
   { value: "sliding", label: "تلقائي لضلف الجرار" },
+  { value: "tilt", label: "تلقائي للقلاب" },
   { value: "hinged", label: "تلقائي للمفصلي/الباب" },
   { value: "fixed", label: "تلقائي للثابت" },
 ];

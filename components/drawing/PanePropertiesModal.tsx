@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  applyOpeningMeshDefaults,
   defaultPaneConfig,
   gridCellCount,
   inferMeshKind,
@@ -14,7 +15,10 @@ import {
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { MeshTypePicker } from "@/components/MeshTypePicker";
-import { meshCategoryOptions, meshTypeOptions } from "@/lib/material-systems";
+import {
+  meshCategoryOptions,
+  meshTypeOptions,
+} from "@/lib/material-systems";
 
 type Props = {
   open: boolean;
@@ -154,7 +158,7 @@ export function PanePropertiesModal({
 
   useEffect(() => {
     if (!open) return;
-    setDraft(normalizePaneConfig(initial));
+    setDraft(applyOpeningMeshDefaults(normalizePaneConfig(initial)));
     setExpandedExtra(null);
   }, [open, initial]);
 
@@ -226,6 +230,7 @@ export function PanePropertiesModal({
       }
       if (key === "mesh") {
         if (value) {
+          next.meshOffManual = false;
           const kind = inferMeshKind(d.opening);
           next.meshKind = kind;
           next.meshKindManual = false;
@@ -235,6 +240,7 @@ export function PanePropertiesModal({
             meshOpts[0];
           if (match) next.meshTypeId = match.id;
         } else {
+          next.meshOffManual = true;
           next.meshTypeId = undefined;
           next.meshKind = undefined;
           next.meshKindManual = undefined;
@@ -365,7 +371,7 @@ export function PanePropertiesModal({
                       meshKindManual={draft.meshKindManual}
                       categoryOpts={meshCategoryOpts}
                       meshOpts={meshOpts}
-                      hint="الشبكة بتتحط على أجزاء الزجاج بس (مش على البنل). سلك الجرار بيتحسب قطاع زي ضلفة جرار + مساحة السلك."
+                      hint="الشبكة بتتحط على أجزاء الزجاج بس (مش على البنل). القلاب والجرار بيفعّلوا السلك تلقائياً."
                       onChange={(next) =>
                         setDraft((d) => ({ ...d, ...next }))
                       }
@@ -446,18 +452,12 @@ export function PanePropertiesModal({
                             label={o.label}
                             active={active}
                             onClick={() =>
-                              setDraft((d) => {
-                                const next = { ...d, opening: o.id };
-                                if (d.mesh && !d.meshKindManual) {
-                                  const kind = inferMeshKind(o.id);
-                                  next.meshKind = kind;
-                                  const match = meshOpts.find(
-                                    (m) => m.kind === kind
-                                  );
-                                  if (match) next.meshTypeId = match.id;
-                                }
-                                return next;
-                              })
+                              setDraft((d) =>
+                                applyOpeningMeshDefaults({
+                                  ...d,
+                                  opening: o.id,
+                                })
+                              )
                             }
                           >
                             <OpeningIcon type={o.id} />

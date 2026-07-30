@@ -1,4 +1,5 @@
 import {
+  applyOpeningMeshDefaults,
   normalizePaneConfig,
   type PaneConfig,
   type PaneOpening,
@@ -172,12 +173,10 @@ export function setPaneOpening(
   paneId: string,
   opening: PaneOpening
 ): Record<string, PaneConfig> {
+  const prev = normalizePaneConfig(panes[paneId]);
   return {
     ...panes,
-    [paneId]: {
-      ...normalizePaneConfig(panes[paneId]),
-      opening,
-    },
+    [paneId]: applyOpeningMeshDefaults({ ...prev, opening }),
   };
 }
 

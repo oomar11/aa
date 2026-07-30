@@ -6,6 +6,8 @@ import {
   listPaneIds,
 } from "@/lib/window-layout";
 import {
+  defaultMeshTypeForKind,
+  findMeshType,
   getDefaultGlassBottleId,
   getMeshCategories,
   resolveGlassBottleId,
@@ -64,6 +66,20 @@ export type PaneGrid =
 export type MeshKind = string;
 
 /** يحدد تصنيف السلك الافتراضي من نوع الفتح */
+export function openingWantsAutoMesh(opening: PaneOpening): boolean {
+  return (
+    opening === "tilt" ||
+    opening === "tilt-inverted" ||
+    opening === "tilt-turn" ||
+    opening === "tilt-turn-left" ||
+    opening === "sliding-left" ||
+    opening === "sliding-right" ||
+    opening === "drawer-left" ||
+    opening === "drawer-right"
+  );
+}
+
+/** يحدد تصنيف السلك الافتراضي من نوع الفتح */
 export function inferMeshKind(
   opening: PaneOpening,
   catalog?: MaterialCatalog
@@ -73,13 +89,22 @@ export function inferMeshKind(
   const match = cats.find((c) => c.defaultFor === tag);
   if (match) return match.id;
   if (tag === "sliding") return "sliding";
+  if (tag === "tilt") return "tilt";
   if (tag === "hinged") return "hinged";
   return "fixed";
 }
 
 function openingMeshDefaultTag(
   opening: PaneOpening
-): "sliding" | "hinged" | "fixed" {
+): "sliding" | "hinged" | "fixed" | "tilt" {
+  if (
+    opening === "tilt" ||
+    opening === "tilt-inverted" ||
+    opening === "tilt-turn" ||
+    opening === "tilt-turn-left"
+  ) {
+    return "tilt";
+  }
   if (
     opening === "drawer-left" ||
     opening === "drawer-right" ||
@@ -92,13 +117,40 @@ function openingMeshDefaultTag(
     opening === "casement-left" ||
     opening === "casement-right" ||
     opening === "door-left" ||
-    opening === "door-right" ||
-    opening === "tilt-turn" ||
-    opening === "tilt-turn-left"
+    opening === "door-right"
   ) {
     return "hinged";
   }
   return "fixed";
+}
+
+/** يفعّل السلك تلقائياً للقلاب والجرار ما لم يوقفه المستخدم يدوياً */
+export function applyOpeningMeshDefaults(
+  config: PaneConfig,
+  catalog?: MaterialCatalog
+): PaneConfig {
+  if (!openingWantsAutoMesh(config.opening) || config.meshOffManual) {
+    return config;
+  }
+
+  const kind = config.meshKindManual
+    ? (config.meshKind ?? inferMeshKind(config.opening, catalog))
+    : inferMeshKind(config.opening, catalog);
+
+  const current = config.meshTypeId
+    ? findMeshType(config.meshTypeId, catalog)
+    : undefined;
+  const meshTypeId =
+    current?.kind === kind
+      ? current.id
+      : defaultMeshTypeForKind(kind, catalog)?.id ?? config.meshTypeId;
+
+  return {
+    ...config,
+    mesh: true,
+    meshKind: kind,
+    meshTypeId,
+  };
 }
 
 export function resolvePaneMeshKind(
@@ -130,6 +182,8 @@ export type PaneConfig = {
   meshKind?: MeshKind;
   /** المستخدم غيّر التصنيف يدوياً — متعملش auto من نوع الفتح */
   meshKindManual?: boolean;
+  /** المستخدم أوقف السلك يدوياً — متفعّلوش تلقائي للقلاب/الجرار */
+  meshOffManual?: boolean;
   /** باب بدل شباك عادي */
   isDoor?: boolean;
   /** الزجاجة الأولى — مفرد */

@@ -164,7 +164,7 @@ export type MeshCategory = {
   /** يتحسب قطاع ضلفة زي الجرار */
   calcProfile: boolean;
   /** يُختار تلقائياً لنوع الفتح المناسب */
-  defaultFor?: "sliding" | "hinged" | "fixed";
+  defaultFor?: "sliding" | "hinged" | "fixed" | "tilt";
 };
 
 /** نوع سلك في كتالوج الخامات */
@@ -359,6 +359,12 @@ export function defaultMeshCategories(): MeshCategory[] {
       defaultFor: "sliding",
     },
     {
+      id: "tilt",
+      label: "سلك قلاب",
+      calcProfile: false,
+      defaultFor: "tilt",
+    },
+    {
       id: "fixed",
       label: "سلك ثابت",
       calcProfile: false,
@@ -422,28 +428,58 @@ export function meshCategoryCalcProfile(
 export function defaultMeshTypes(): MeshType[] {
   return [
     {
-      id: "mesh-sliding",
+      id: "mesh-sliding-fiber",
       name: "سلك جرار فايبر",
       kind: "sliding",
       pricePerSqm: 45,
     },
     {
-      id: "mesh-fixed",
+      id: "mesh-sliding-alum",
+      name: "سلك جرار ألومنيوم",
+      kind: "sliding",
+      pricePerSqm: 55,
+    },
+    {
+      id: "mesh-tilt-fiber",
+      name: "سلك قلاب فايبر",
+      kind: "tilt",
+      pricePerSqm: 42,
+    },
+    {
+      id: "mesh-tilt-micro",
+      name: "سلك قلاب مايكرو",
+      kind: "tilt",
+      pricePerSqm: 50,
+    },
+    {
+      id: "mesh-fixed-fiber",
       name: "سلك ثابت فايبر",
       kind: "fixed",
       pricePerSqm: 35,
     },
     {
-      id: "mesh-roll",
-      name: "سلك رول",
+      id: "mesh-fixed-pet",
+      name: "سلك ثابت PET",
+      kind: "fixed",
+      pricePerSqm: 30,
+    },
+    {
+      id: "mesh-roll-std",
+      name: "سلك رول قياسي",
       kind: "roll",
       pricePerSqm: 40,
     },
     {
-      id: "mesh-hinged",
-      name: "سلك مفصلي",
+      id: "mesh-hinged-fiber",
+      name: "سلك مفصلي فايبر",
       kind: "hinged",
       pricePerSqm: 38,
+    },
+    {
+      id: "mesh-hinged-alum",
+      name: "سلك مفصلي ألومنيوم",
+      kind: "hinged",
+      pricePerSqm: 48,
     },
   ];
 }
@@ -458,7 +494,14 @@ export function findMeshType(
   catalog?: MaterialCatalog
 ): MeshType | undefined {
   if (!id) return undefined;
-  return getMeshTypes(catalog).find((m) => m.id === id);
+  const aliases: Record<string, string> = {
+    "mesh-sliding": "mesh-sliding-fiber",
+    "mesh-fixed": "mesh-fixed-fiber",
+    "mesh-roll": "mesh-roll-std",
+    "mesh-hinged": "mesh-hinged-fiber",
+  };
+  const resolved = aliases[id] ?? id;
+  return getMeshTypes(catalog).find((m) => m.id === resolved);
 }
 
 export function meshTypeOptions(
@@ -470,6 +513,13 @@ export function meshTypeOptions(
     kind: m.kind,
     pricePerSqm: m.pricePerSqm,
   }));
+}
+
+export function meshTypesForCategory(
+  kind: MeshKind,
+  catalog?: MaterialCatalog
+): MeshType[] {
+  return getMeshTypes(catalog).filter((t) => t.kind === kind);
 }
 
 export function meshTypeHasPricing(
@@ -1175,7 +1225,7 @@ function normalizeMeshCategories(raw: unknown): MeshCategory[] {
   if (!Array.isArray(raw) || raw.length === 0) return defaultMeshCategories();
   const out: MeshCategory[] = [];
   const seen = new Set<string>();
-  const defaultTags = new Set(["sliding", "hinged", "fixed"]);
+  const defaultTags = new Set(["sliding", "hinged", "fixed", "tilt"]);
 
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
@@ -1195,7 +1245,18 @@ function normalizeMeshCategories(raw: unknown): MeshCategory[] {
     });
   }
 
-  return out.length > 0 ? out : defaultMeshCategories();
+  return out.length > 0 ? mergeMeshCategories(out) : defaultMeshCategories();
+}
+
+function mergeMeshCategories(stored: MeshCategory[]): MeshCategory[] {
+  const byId = new Map(stored.map((c) => [c.id, c]));
+  for (const d of defaultMeshCategories()) {
+    if (!byId.has(d.id)) byId.set(d.id, d);
+  }
+  const order = defaultMeshCategories().map((c) => c.id);
+  return order
+    .map((id) => byId.get(id))
+    .filter((c): c is MeshCategory => Boolean(c));
 }
 
 function normalizeMeshTypes(raw: unknown, categories: MeshCategory[]): MeshType[] {
@@ -1224,7 +1285,20 @@ function normalizeMeshTypes(raw: unknown, categories: MeshCategory[]): MeshType[
     });
   }
 
-  return out.length > 0 ? out : defaultMeshTypes();
+  return out.length > 0 ? mergeMeshTypes(out, categories) : defaultMeshTypes();
+}
+
+function mergeMeshTypes(stored: MeshType[], categories: MeshCategory[]): MeshType[] {
+  const byId = new Map(stored.map((t) => [t.id, t]));
+  for (const d of defaultMeshTypes()) {
+    if (!byId.has(d.id)) byId.set(d.id, d);
+  }
+  const kindIds = new Set(categories.map((c) => c.id));
+  const fallbackKind = categories[0]?.id ?? "fixed";
+  return Array.from(byId.values()).map((t) => ({
+    ...t,
+    kind: kindIds.has(t.kind) ? t.kind : fallbackKind,
+  }));
 }
 
 export function loadMaterialCatalog(): MaterialCatalog {
