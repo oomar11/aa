@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
 import { ScreenBack } from "@/components/ScreenBack";
-import { MATERIAL_CATEGORIES } from "@/lib/material-systems";
+import { MATERIAL_HUB_ITEMS } from "@/lib/material-systems";
 
 export default function MaterialsPage() {
   return (
@@ -15,41 +15,30 @@ export default function MaterialsPage() {
           </ScreenBack>
           <h1 className="text-xl font-bold">الخامات</h1>
           <p className="mt-1 text-xs text-muted">
-            أدِر أنظمة القطاعات والاكسسوار والزجاج والحديد — وربطها بالتصميمات
+            قطاعات · اكسسوار · زجاج · سلك · حديد — وربطها بالتصميمات
           </p>
         </div>
 
         <section className="grid grid-cols-2 gap-3">
-          {MATERIAL_CATEGORIES.map((cat) => (
+          {MATERIAL_HUB_ITEMS.map((item) => (
             <Link
-              key={cat.id}
-              href={`/materials/${cat.id}`}
+              key={item.id}
+              href={item.href}
               className="flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-2xl p-4 text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
               style={{
-                background: cat.accent,
-                boxShadow: `0 6px 20px ${cat.shadow}`,
+                background: item.accent,
+                boxShadow: `0 6px 20px ${item.shadow}`,
               }}
             >
-              <CategoryIcon category={cat.id} />
-              <span className="text-base font-semibold">{cat.label}</span>
+              <HubIcon id={item.id} />
+              <span className="text-base font-semibold">{item.label}</span>
             </Link>
           ))}
-          <Link
-            href="/materials/mesh"
-            className="flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-2xl p-4 text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
-            style={{
-              background: "#5B9A6F",
-              boxShadow: "0 6px 20px rgba(91,154,111,0.35)",
-            }}
-          >
-            <MeshCategoryIcon />
-            <span className="text-base font-semibold">سلك</span>
-          </Link>
         </section>
 
         <p className="px-1 text-center text-[11px] leading-relaxed text-muted">
-          كل تصميم يختار نظام قطاعات واكسسوار وزجاج وسلك. الحديد غالباً بيفضل
-          على الافتراضي.
+          السلك له صفحة خاصة — مش داخل الاكسسوار. كل تصميم يختار القطاعات
+          والاكسسوار والزجاج والسلك.
         </p>
       </main>
       <BottomNav />
@@ -57,9 +46,9 @@ export default function MaterialsPage() {
   );
 }
 
-function CategoryIcon({ category }: { category: string }) {
+function HubIcon({ id }: { id: string }) {
   const cls = "h-10 w-10";
-  if (category === "profiles") {
+  if (id === "profiles") {
     return (
       <svg viewBox="0 0 40 40" className={cls} fill="none" aria-hidden>
         <rect x="6" y="8" width="10" height="24" rx="2" fill="currentColor" />
@@ -80,7 +69,7 @@ function CategoryIcon({ category }: { category: string }) {
       </svg>
     );
   }
-  if (category === "accessories") {
+  if (id === "accessories") {
     return (
       <svg viewBox="0 0 40 40" className={cls} fill="none" aria-hidden>
         <circle cx="20" cy="14" r="6" fill="currentColor" />
@@ -94,7 +83,7 @@ function CategoryIcon({ category }: { category: string }) {
       </svg>
     );
   }
-  if (category === "glass") {
+  if (id === "glass") {
     return (
       <svg viewBox="0 0 40 40" className={cls} fill="none" aria-hidden>
         <rect
@@ -111,6 +100,26 @@ function CategoryIcon({ category }: { category: string }) {
           stroke="rgba(255,255,255,0.45)"
           strokeWidth="2.5"
           strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+  if (id === "mesh") {
+    return (
+      <svg viewBox="0 0 40 40" className={cls} fill="none" aria-hidden>
+        <rect
+          x="7"
+          y="7"
+          width="26"
+          height="26"
+          rx="3"
+          fill="currentColor"
+          opacity="0.85"
+        />
+        <path
+          d="M10 13h20M10 20h20M10 27h20M13 10v20M20 10v20M27 10v20"
+          stroke="rgba(0,0,0,0.2)"
+          strokeWidth="1.2"
         />
       </svg>
     );
@@ -135,28 +144,6 @@ function CategoryIcon({ category }: { category: string }) {
         rx="1"
         fill="currentColor"
         opacity="0.75"
-      />
-    </svg>
-  );
-}
-
-function MeshCategoryIcon() {
-  const cls = "h-10 w-10";
-  return (
-    <svg viewBox="0 0 40 40" className={cls} fill="none" aria-hidden>
-      <rect
-        x="7"
-        y="7"
-        width="26"
-        height="26"
-        rx="3"
-        fill="currentColor"
-        opacity="0.85"
-      />
-      <path
-        d="M10 13h20M10 20h20M10 27h20M13 10v20M20 10v20M27 10v20"
-        stroke="rgba(0,0,0,0.2)"
-        strokeWidth="1.2"
       />
     </svg>
   );
