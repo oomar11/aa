@@ -8,13 +8,13 @@ import {
   type FormEvent,
 } from "react";
 import {
-  defaultGlassDetails,
+  defaultGlassRates,
   defaultProfileDetails,
   deleteSystem,
   frameHeightFormula,
   frameWidthFormula,
   getCategoryMeta,
-  glassCompositionLabel,
+  getGlassBottlePrice,
   glassPaneKindLabel,
   loadMaterialCatalog,
   newSystemId,
@@ -24,6 +24,7 @@ import {
   saveMaterialCatalog,
   setDefaultSystem,
   upsertSystem,
+  type GlassRates,
   type MaterialCatalog,
   type MaterialCategory,
   type MaterialSystem,
@@ -42,9 +43,14 @@ export function MaterialSystemsEditor({ category }: Props) {
   const [notes, setNotes] = useState("");
   const [asDefault, setAsDefault] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [glassRates, setGlassRates] = useState<GlassRates>(defaultGlassRates());
 
   useEffect(() => {
-    queueMicrotask(() => setCatalog(loadMaterialCatalog()));
+    queueMicrotask(() => {
+      const cat = loadMaterialCatalog();
+      setCatalog(cat);
+      setGlassRates(cat.glassRates ?? defaultGlassRates());
+    });
   }, []);
 
   const systems = catalog?.[category] ?? [];
@@ -59,6 +65,15 @@ export function MaterialSystemsEditor({ category }: Props) {
   function persist(next: MaterialCatalog) {
     const saved = saveMaterialCatalog(next);
     setCatalog(saved);
+    setGlassRates(saved.glassRates ?? defaultGlassRates());
+  }
+
+  function saveGlassRates(patch: Partial<GlassRates>) {
+    if (!catalog) return;
+    const nextRates = { ...glassRates, ...patch };
+    setGlassRates(nextRates);
+    persist({ ...catalog, glassRates: nextRates });
+    showFlash("تم حفظ أسعار التدبيل والجورجيا");
   }
 
   function openCreate() {
@@ -102,7 +117,15 @@ export function MaterialSystemsEditor({ category }: Props) {
           : undefined,
       glass:
         category === "glass"
-          ? editing?.glass ?? defaultGlassDetails("double")
+          ? {
+              glazing: "single",
+              pane1: {
+                label: trimmed,
+                thicknessMm: 4,
+                kind: "clear",
+              },
+              georgian: false,
+            }
           : undefined,
     };
 
@@ -147,7 +170,7 @@ export function MaterialSystemsEditor({ category }: Props) {
           onClick={openCreate}
           className="shrink-0 rounded-xl bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
         >
-          + نظام جديد
+          + {isGlass ? "زجاجة جديدة" : "نظام جديد"}
         </button>
       </div>
 
@@ -176,10 +199,52 @@ export function MaterialSystemsEditor({ category }: Props) {
       ) : null}
 
       {isGlass ? (
-        <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          اضغط «تفاصيل» عشان تحدد مفرد أو دبل، الزجاجة الأولى والثانية، ولو
-          بينهم جورجيا.
-        </p>
+        <div className="space-y-3">
+          <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
+            كل زجاجة ليها سعر بالمتر المربع. في التصميم بتختار الزجاجة لكل
+            ضلفة — زجاجة واحدة = مفرد، زجاجتين = دبل + تدبيل.
+          </p>
+          <section className="space-y-2 rounded-2xl border border-border bg-card p-3">
+            <h3 className="text-xs font-bold text-foreground">
+              أسعار التدبيل والجورجيا
+            </h3>
+            <p className="text-[11px] text-muted">
+              الأسعار دي عامة — بتتضاف لما الضلفة تبقى دبل أو فيها جورجيا
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block text-[11px] text-muted">
+                تدبيل (ج.م/م²)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={glassRates.doublingCostPerSqm}
+                  onChange={(e) =>
+                    saveGlassRates({
+                      doublingCostPerSqm: Math.max(0, Number(e.target.value) || 0),
+                    })
+                  }
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </label>
+              <label className="block text-[11px] text-muted">
+                جورجيا (ج.م/م²)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={glassRates.georgianCostPerSqm}
+                  onChange={(e) =>
+                    saveGlassRates({
+                      georgianCostPerSqm: Math.max(0, Number(e.target.value) || 0),
+                    })
+                  }
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </label>
+            </div>
+          </section>
+        </div>
       ) : null}
 
       {formOpen ? (
@@ -188,13 +253,13 @@ export function MaterialSystemsEditor({ category }: Props) {
           className="space-y-3 rounded-2xl border border-primary/40 bg-card p-3 shadow-sm"
         >
           <p className="text-xs font-bold text-primary">
-            {editing ? "تعديل النظام" : "نظام جديد"}
+            {editing ? (isGlass ? "تعديل الزجاجة" : "تعديل النظام") : isGlass ? "زجاجة جديدة" : "نظام جديد"}
           </p>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={`اسم نظام ال${meta.label}`}
+            placeholder={isGlass ? "اسم الزجاجة" : `اسم نظام ال${meta.label}`}
             required
             autoFocus
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
@@ -302,35 +367,14 @@ export function MaterialSystemsEditor({ category }: Props) {
                     {isGlass && glass ? (
                       <div className="mt-2 space-y-1 rounded-xl border border-border/80 bg-background/70 p-2.5 text-[11px] text-muted">
                         <p className="font-semibold text-foreground">
-                          {glassCompositionLabel(glass)}
+                          {glassPaneKindLabel(glass.pane1.kind)} —{" "}
+                          {glass.pane1.thicknessMm} مم
                         </p>
-                        <p>
-                          الأولى:{" "}
-                          {glass.pane1.label ||
-                            glassPaneKindLabel(glass.pane1.kind)}{" "}
-                          — {glass.pane1.thicknessMm} مم
-                        </p>
-                        {glass.glazing === "double" ? (
-                          <>
-                            <p>فاصل: {glass.spacerMm ?? 0} مم</p>
-                            <p>
-                              الثانية:{" "}
-                              {glass.pane2?.label ||
-                                glassPaneKindLabel(
-                                  glass.pane2?.kind ?? "clear"
-                                )}{" "}
-                              — {glass.pane2?.thicknessMm ?? "—"} مم
-                            </p>
-                            <p>
-                              جورجيا:{" "}
-                              {glass.georgian
-                                ? glass.georgianNote
-                                  ? `نعم — ${glass.georgianNote}`
-                                  : "نعم"
-                                : "لا"}
-                            </p>
-                          </>
-                        ) : null}
+                        {getGlassBottlePrice(system) > 0 ? (
+                          <p>{getGlassBottlePrice(system)} ج.م / م²</p>
+                        ) : (
+                          <p>السعر مش متحدد</p>
+                        )}
                       </div>
                     ) : null}
 
@@ -384,7 +428,9 @@ export function MaterialSystemsEditor({ category }: Props) {
       </ul>
 
       <p className="px-1 text-center text-[11px] text-muted">
-        الأنظمة دي بتظهر في تفاصيل البند وقت التصميم
+        {isGlass
+          ? "الزجاجات دي بتظهر في خصائص الضلفة وقت التصميم"
+          : "الأنظمة دي بتظهر في تفاصيل البند وقت التصميم"}
       </p>
     </div>
   );

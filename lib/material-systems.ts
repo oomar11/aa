@@ -78,6 +78,7 @@ export type ProfileSystemDetails = {
 /** نوع الزجاجة الواحدة */
 export type GlassPaneKind =
   | "clear"
+  | "satin"
   | "tinted"
   | "reflective"
   | "tempered"
@@ -87,6 +88,7 @@ export type GlassPaneKind =
 
 export const GLASS_PANE_KINDS: { id: GlassPaneKind; label: string }[] = [
   { id: "clear", label: "شفاف عادي" },
+  { id: "satin", label: "مصنفر" },
   { id: "tinted", label: "ملون" },
   { id: "reflective", label: "عاكس" },
   { id: "tempered", label: "سيكوريت" },
@@ -148,7 +150,15 @@ export type MaterialSystem = {
   glass?: GlassSystemDetails;
 };
 
-export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]>;
+/** أسعار التدبيل والجورجيا — عامة لكل الضلف */
+export type GlassRates = {
+  doublingCostPerSqm: number;
+  georgianCostPerSqm: number;
+};
+
+export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]> & {
+  glassRates?: GlassRates;
+};
 
 export const MATERIALS_STORAGE_KEY = "upvc-material-systems";
 
@@ -179,7 +189,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "glass",
     label: "زجاج",
-    description: "مفرد / دبل · الزجاجات · جورجيا",
+    description: "كتالوج الزجاجات · التدبيل · جورجيا",
     accent: "#4BA3F5",
     shadow: "rgba(75,163,245,0.35)",
   },
@@ -280,6 +290,92 @@ function withDefaultProfile(system: MaterialSystem): MaterialSystem {
 function withDefaultGlass(system: MaterialSystem): MaterialSystem {
   if (system.glass) return system;
   return { ...system, glass: defaultGlassDetails("double") };
+}
+
+export function defaultGlassRates(): GlassRates {
+  return {
+    doublingCostPerSqm: 50,
+    georgianCostPerSqm: 100,
+  };
+}
+
+/** زجاجة واحدة في كتالوج الخامات */
+export function defaultGlassBottle(opts: {
+  id: string;
+  name: string;
+  kind: GlassPaneKind;
+  thicknessMm: number;
+  pricePerSqm: number;
+  notes?: string;
+}): MaterialSystem {
+  return {
+    id: opts.id,
+    name: opts.name,
+    notes: opts.notes,
+    glass: {
+      glazing: "single",
+      pane1: defaultGlassPane({
+        label: opts.name,
+        thicknessMm: opts.thicknessMm,
+        kind: opts.kind,
+      }),
+      georgian: false,
+      pane1PricePerSqm: opts.pricePerSqm,
+    },
+  };
+}
+
+export function getGlassBottlePrice(system: MaterialSystem | undefined): number {
+  return system?.glass?.pane1PricePerSqm ?? 0;
+}
+
+export function findGlassBottle(
+  id: string | undefined | null,
+  catalog?: MaterialCatalog
+): MaterialSystem | undefined {
+  if (!id) return undefined;
+  return getSystemsForCategory("glass", catalog).find((s) => s.id === id);
+}
+
+export function glassBottleOptions(
+  catalog?: MaterialCatalog
+): { id: string; label: string; pricePerSqm: number }[] {
+  return getSystemsForCategory("glass", catalog).map((s) => ({
+    id: s.id,
+    label: s.name,
+    pricePerSqm: getGlassBottlePrice(s),
+  }));
+}
+
+/**
+ * حساب تكلفة الزجاج لكل م² لضلفة واحدة:
+ * زجاجة واحدة = سعرها · زجاجتين = السعرين + تدبيل · جورجيا إضافية للدبل
+ */
+export function calcPaneGlassCostPerSqm(
+  pane1Id: string | undefined,
+  pane2Id: string | undefined,
+  georgian: boolean,
+  catalog?: MaterialCatalog
+): number {
+  if (!pane1Id) return 0;
+  const cat = catalog ?? (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  const bottle1 = findGlassBottle(pane1Id, cat);
+  const p1 = getGlassBottlePrice(bottle1);
+  if (!pane2Id) return p1;
+
+  const bottle2 = findGlassBottle(pane2Id, cat);
+  const p2 = getGlassBottlePrice(bottle2);
+  const rates = cat.glassRates ?? defaultGlassRates();
+  const geo = georgian ? rates.georgianCostPerSqm : 0;
+  return p1 + p2 + rates.doublingCostPerSqm + geo;
+}
+
+export function paneGlassHasPricing(
+  pane1Id: string | undefined,
+  catalog?: MaterialCatalog
+): boolean {
+  if (!pane1Id) return false;
+  return getGlassBottlePrice(findGlassBottle(pane1Id, catalog)) > 0;
 }
 
 /** القيم الافتراضية — متوافقة مع الاختيارات القديمة في التصميم */
@@ -395,79 +491,33 @@ export function getDefaultCatalog(): MaterialCatalog {
       { id: "acc-economy", name: "اكسسوار اقتصادي" },
     ],
     glass: [
-      withDefaultGlass({
-        id: "g464",
-        name: "زجاج دبل 4-6-4",
-        notes: "دبل قياسي",
-        glass: {
-          glazing: "double",
-          pane1: defaultGlassPane({
-            label: "الزجاجة الأولى — شفاف 4 مم",
-            thicknessMm: 4,
-            kind: "clear",
-          }),
-          pane2: defaultGlassPane({
-            label: "الزجاجة الثانية — شفاف 4 مم",
-            thicknessMm: 4,
-            kind: "clear",
-          }),
-          spacerMm: 6,
-          georgian: false,
-        },
+      defaultGlassBottle({
+        id: "bottle-clear-4",
+        name: "شفاف 4 مم",
+        kind: "clear",
+        thicknessMm: 4,
+        pricePerSqm: 80,
       }),
-      withDefaultGlass({
-        id: "g464-geo",
-        name: "زجاج دبل 4-6-4 بجورجيا",
-        notes: "دبل مع جورجيا",
-        glass: {
-          glazing: "double",
-          pane1: defaultGlassPane({
-            label: "الزجاجة الأولى — شفاف 4 مم",
-            thicknessMm: 4,
-            kind: "clear",
-          }),
-          pane2: defaultGlassPane({
-            label: "الزجاجة الثانية — شفاف 4 مم",
-            thicknessMm: 4,
-            kind: "clear",
-          }),
-          spacerMm: 6,
-          georgian: true,
-          georgianNote: "جورجيا أبيض",
-        },
+      defaultGlassBottle({
+        id: "bottle-satin-4",
+        name: "مصنفر 4 مم",
+        kind: "satin",
+        thicknessMm: 4,
+        pricePerSqm: 120,
       }),
-      withDefaultGlass({
-        id: "g-tempered",
-        name: "زجاج سيكوريت مفرد",
-        glass: {
-          glazing: "single",
-          pane1: defaultGlassPane({
-            label: "سيكوريت 6 مم",
-            thicknessMm: 6,
-            kind: "tempered",
-          }),
-          georgian: false,
-        },
+      defaultGlassBottle({
+        id: "bottle-tempered-6",
+        name: "سيكوريت 6 مم",
+        kind: "tempered",
+        thicknessMm: 6,
+        pricePerSqm: 150,
       }),
-      withDefaultGlass({
-        id: "g46464",
-        name: "زجاج دبل عاكس",
-        notes: "زجاجة أولى عاكس",
-        glass: {
-          glazing: "double",
-          pane1: defaultGlassPane({
-            label: "الزجاجة الأولى — عاكس 4 مم",
-            thicknessMm: 4,
-            kind: "reflective",
-          }),
-          pane2: defaultGlassPane({
-            label: "الزجاجة الثانية — شفاف 4 مم",
-            thicknessMm: 4,
-            kind: "clear",
-          }),
-          spacerMm: 6,
-          georgian: false,
-        },
+      defaultGlassBottle({
+        id: "bottle-reflective-4",
+        name: "عاكس 4 مم",
+        kind: "reflective",
+        thicknessMm: 4,
+        pricePerSqm: 100,
       }),
     ],
     iron: [
@@ -479,6 +529,7 @@ export function getDefaultCatalog(): MaterialCatalog {
       },
       { id: "iron-heavy", name: "حديد تسليح ثقيل" },
     ],
+    glassRates: defaultGlassRates(),
   };
 }
 
@@ -593,6 +644,20 @@ function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
         "sash"
       ),
     },
+  };
+}
+
+function normalizeGlassRates(raw: unknown): GlassRates {
+  const fallback = defaultGlassRates();
+  if (!raw || typeof raw !== "object") return fallback;
+  const g = raw as Record<string, unknown>;
+  const doubling = Number(g.doublingCostPerSqm);
+  const georgian = Number(g.georgianCostPerSqm);
+  return {
+    doublingCostPerSqm:
+      Number.isFinite(doubling) && doubling >= 0 ? doubling : fallback.doublingCostPerSqm,
+    georgianCostPerSqm:
+      Number.isFinite(georgian) && georgian >= 0 ? georgian : fallback.georgianCostPerSqm,
   };
 }
 
@@ -724,7 +789,14 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
           enriched = { ...enriched, profile: defaultProfileDetails() };
         }
         if (cat.id === "glass" && !enriched.glass) {
-          enriched = { ...enriched, glass: defaultGlassDetails("double") };
+          enriched = {
+            ...enriched,
+            glass: {
+              glazing: "single",
+              pane1: defaultGlassPane({ label: enriched.name }),
+              georgian: false,
+            },
+          };
         }
         if (enriched.isDefault && !foundDefault) {
           foundDefault = true;
@@ -734,6 +806,8 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       });
     }
   }
+
+  next.glassRates = normalizeGlassRates(raw.glassRates);
 
   return next;
 }
@@ -870,7 +944,14 @@ export function upsertSystem(
     toSave = { ...toSave, profile: defaultProfileDetails() };
   }
   if (category === "glass" && !toSave.glass) {
-    toSave = { ...toSave, glass: defaultGlassDetails("double") };
+    toSave = {
+      ...toSave,
+      glass: {
+        glazing: "single",
+        pane1: defaultGlassPane({ label: toSave.name }),
+        georgian: false,
+      },
+    };
   }
 
   const list = [...(catalog[category] ?? [])];
@@ -888,7 +969,11 @@ export function upsertSystem(
           : undefined,
       glass:
         category === "glass"
-          ? toSave.glass ?? prev.glass ?? defaultGlassDetails("double")
+          ? toSave.glass ?? prev.glass ?? {
+              glazing: "single",
+              pane1: defaultGlassPane({ label: toSave.name }),
+              georgian: false,
+            }
           : undefined,
     };
     nextList = list.map((s, i) => (i === idx ? merged : s));
@@ -953,8 +1038,9 @@ export function catalogOptionsFor(
     { id: "none", label: "تجاهل" },
     ...systems.map((s) => {
       let label = s.isDefault ? `${s.name} (افتراضي)` : s.name;
-      if (category === "glass" && s.glass) {
-        label = `${label} — ${glassCompositionLabel(s.glass)}`;
+      if (category === "glass") {
+        const price = getGlassBottlePrice(s);
+        if (price > 0) label = `${label} — ${price} ج.م/م²`;
       }
       return { id: s.id, label };
     }),

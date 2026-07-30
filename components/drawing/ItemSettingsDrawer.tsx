@@ -9,7 +9,6 @@ import {
 import {
   DISCOUNT_OPTIONS,
   loadAccessoryOptions,
-  loadGlassOptions,
   loadIronOptions,
   loadSystemOptions,
   type DiscountId,
@@ -26,7 +25,6 @@ export type ItemSettingsPatch = {
   discountId: DiscountId;
   systemId: string;
   accessoryId: string;
-  glassId: string;
   ironId: string;
   frameColor: FrameColorId;
 };
@@ -58,7 +56,6 @@ function toDraft(item: DesignItem): ItemSettingsPatch {
     discountId: (item.discountId as DiscountId) || "none",
     systemId: item.systemId || "none",
     accessoryId: item.accessoryId || "none",
-    glassId: item.glassId || "none",
     ironId: resolveIronId(item),
     frameColor: (item.frameColor as FrameColorId) || "white",
   };
@@ -73,7 +70,6 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
   );
   const [systemOpts, setSystemOpts] = useState<CatalogOpts>([]);
   const [accessoryOpts, setAccessoryOpts] = useState<CatalogOpts>([]);
-  const [glassOpts, setGlassOpts] = useState<CatalogOpts>([]);
   const [ironOpts, setIronOpts] = useState<CatalogOpts>([]);
 
   useEffect(() => {
@@ -87,7 +83,6 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
     );
     setSystemOpts(loadSystemOptions());
     setAccessoryOpts(loadAccessoryOptions());
-    setGlassOpts(loadGlassOptions());
     setIronOpts(loadIronOptions());
   }, [open, item]);
 
@@ -290,15 +285,6 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
               options={accessoryOpts}
               value={draft.accessoryId}
               onChange={(id) => setDraft((d) => ({ ...d, accessoryId: id }))}
-            />
-          </Section>
-
-          <Section title="نوع الزجاج">
-            <RadioList
-              name="glass"
-              options={glassOpts}
-              value={draft.glassId}
-              onChange={(id) => setDraft((d) => ({ ...d, glassId: id }))}
             />
           </Section>
 
