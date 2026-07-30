@@ -12,15 +12,15 @@ import {
   defaultGlassRates,
   defaultIronDetails,
   defaultProfileDetails,
+  defaultProfileSystemRates,
   deleteSystem,
-  findProfileBrand,
   getCategoryMeta,
   getGlassBottlePrice,
   glassPaneKindLabel,
   ironDeductionSummary,
   loadMaterialCatalog,
   newSystemId,
-  profileBrandOptions,
+  countProfilePricedCategories,
   saveMaterialCatalog,
   setDefaultSystem,
   upsertSystem,
@@ -46,17 +46,14 @@ function systemDetailHref(category: MaterialCategory, id: string): string {
 
 function systemSummary(
   category: MaterialCategory,
-  system: MaterialSystem,
-  catalog: MaterialCatalog
+  system: MaterialSystem
 ): string {
   if (category === "profiles") {
-    const brand = system.profileBrandId
-      ? findProfileBrand(system.profileBrandId, catalog)?.name
-      : null;
     const pieces = system.profile?.pieces.length ?? 0;
+    const priced = countProfilePricedCategories(system);
     const parts = [
-      brand ? `براند ${brand}` : "بدون براند",
       pieces > 0 ? `${pieces} عود` : "مفيش عيدان لسه",
+      priced > 0 ? `${priced} سعر` : "مفيش أسعار",
     ];
     return parts.join(" · ");
   }
@@ -87,7 +84,6 @@ export function MaterialSystemsEditor({ category }: Props) {
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [asDefault, setAsDefault] = useState(false);
-  const [profileBrandId, setProfileBrandId] = useState("");
   const [flash, setFlash] = useState<string | null>(null);
   const [glassRates, setGlassRates] = useState<GlassRates>(defaultGlassRates());
 
@@ -107,7 +103,7 @@ export function MaterialSystemsEditor({ category }: Props) {
   const listTitle = isGlass
     ? "قائمة الزجاجات"
     : isProfiles
-      ? "أنظمة القطع"
+      ? "أنظمة القطاعات"
       : "قائمة الأنظمة";
   const createLabel = isGlass ? "زجاجة جديدة" : "نظام جديد";
 
@@ -135,7 +131,6 @@ export function MaterialSystemsEditor({ category }: Props) {
     setCreating(true);
     setName("");
     setNotes("");
-    setProfileBrandId("");
     setAsDefault(category === "iron" && systems.length === 0);
   }
 
@@ -144,7 +139,6 @@ export function MaterialSystemsEditor({ category }: Props) {
     setEditing(system);
     setName(system.name);
     setNotes(system.notes ?? "");
-    setProfileBrandId(system.profileBrandId ?? "");
     setAsDefault(Boolean(system.isDefault));
   }
 
@@ -153,7 +147,6 @@ export function MaterialSystemsEditor({ category }: Props) {
     setEditing(null);
     setName("");
     setNotes("");
-    setProfileBrandId("");
     setAsDefault(false);
   }
 
@@ -168,13 +161,12 @@ export function MaterialSystemsEditor({ category }: Props) {
       name: trimmed,
       notes: notes.trim() || undefined,
       isDefault: asDefault || (category === "iron" && systems.length === 0),
-      profileBrandId:
-        category === "profiles" && profileBrandId.trim()
-          ? profileBrandId.trim()
-          : undefined,
       profile:
         category === "profiles"
-          ? editing?.profile ?? defaultProfileDetails()
+          ? editing?.profile ?? {
+              ...defaultProfileDetails(),
+              rates: defaultProfileSystemRates(),
+            }
           : undefined,
       glass:
         category === "glass"
@@ -251,10 +243,8 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isProfiles && !formOpen ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          كل نظام = طريقة تقطيع (عيدان + تخصيم). اختار{" "}
-          <span className="font-semibold text-foreground">براند الأسعار</span>{" "}
-          اللي هتجيب منه سعر الحلق والضلفة. من «تفاصيل» تضبط العيدان ومعادلات
-          التخصيم.
+          كل نظام = قطاعاته بأسعارها + العيدان والتخصيم. من «تفاصيل» تضبط
+          الأسعار والعيدان ومعادلات التقطيع.
         </p>
       ) : null}
 
@@ -331,30 +321,6 @@ export function MaterialSystemsEditor({ category }: Props) {
             rows={2}
             className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
-          {isProfiles ? (
-            <div className="space-y-1">
-              <label className="block text-[11px] text-muted">
-                براند الأسعار (من تبويب أسعار البراندات)
-                <select
-                  value={profileBrandId}
-                  onChange={(e) => setProfileBrandId(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-                >
-                  <option value="">— اختار براند —</option>
-                  {profileBrandOptions(catalog).map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {profileBrandOptions(catalog).length === 0 ? (
-                <p className="text-[10px] text-amber-700 dark:text-amber-400">
-                  مفيش براندات — روح لتبويب «أسعار البراندات» الأول
-                </p>
-              ) : null}
-            </div>
-          ) : null}
           <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
             <input
               type="checkbox"
@@ -418,7 +384,7 @@ export function MaterialSystemsEditor({ category }: Props) {
                     <p className="mt-0.5 text-xs text-muted">{system.notes}</p>
                   ) : null}
                   <p className="mt-1 text-[11px] leading-relaxed text-muted">
-                    {systemSummary(category, system, catalog)}
+                    {systemSummary(category, system)}
                   </p>
 
                   <div className="mt-2.5 flex flex-wrap justify-end gap-1.5">

@@ -19,17 +19,15 @@ import {
   findGlassBottle,
   findMeshType,
   findSystem,
-  getProfileBrandRate,
+  getProfileSystemRate,
   loadMaterialCatalog,
   meshCategoryCalcProfile,
   meshKindLabel,
   paneGlassHasPricing,
   profileBarPricePerM,
-  profileBrandHasPricing,
+  profileSystemHasPricing,
   profilePriceCategoryLabel,
-  resolveProfileBrandForSystem,
   type MaterialCatalog,
-  type ProfileBrand,
   type ProfileDeductions,
   type ProfilePriceCategory,
 } from "@/lib/material-systems";
@@ -1555,16 +1553,15 @@ export function calcProfileCostBreakdown(
   if (!cat || !item.systemId || item.systemId === "none") return empty;
 
   const system = findSystem("profiles", item.systemId, cat);
-  const brand: ProfileBrand | undefined = resolveProfileBrandForSystem(system, cat);
   const kitPrice = system?.profile?.bouclierCapKitPrice ?? 0;
-  const hasBarPricing = brand != null && profileBrandHasPricing(brand);
+  const hasBarPricing = profileSystemHasPricing(system);
   const hasKitPricing = kitPrice > 0 && materials.bouclierCapQty > 0;
   if (!hasBarPricing && !hasKitPricing) return empty;
 
   const lines: ProfileCostLine[] = [];
-  if (hasBarPricing && brand) {
+  if (hasBarPricing && system) {
     for (const entry of profileCostEntries(materials)) {
-      const rate = getProfileBrandRate(brand, entry.category);
+      const rate = getProfileSystemRate(system, entry.category);
       if (!rate) continue;
       const pricePerM = profileBarPricePerM(rate.barPrice, rate.barLengthM);
       if (pricePerM <= 0) continue;
@@ -1607,7 +1604,7 @@ export function calcProfileCostBreakdown(
 
   return {
     hasPricing: true,
-    brandName: brand?.name ?? system?.name ?? null,
+    brandName: system?.name ?? null,
     lines,
     totalUnitCost,
     totalCost: roundM(totalUnitCost * qty),

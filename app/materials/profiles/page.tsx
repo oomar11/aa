@@ -6,7 +6,7 @@ export default function ProfilesMaterialsPage() {
   return (
     <MaterialCategoryShell
       title="القطاعات"
-      description="تبويبين: أسعار البراندات (كم سعر العود) ثم أنظمة القطع (التقطيع والتخصيم)"
+      description="كل سيستم فيه قطاعاته بأسعارها + العيدان والتخصيم"
       breadcrumb={materialsProfilesBreadcrumb()}
     >
       <ProfilesMaterialsView />

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 
-/** البراندات بقت داخل صفحة القطاعات — توجيه للتبويب المناسب */
+/** البراندات اتشالت — الأسعار بقت جوه كل نظام */
 export default function ProfileBrandsPage() {
-  redirect(`${ROUTES.materials.profiles}?tab=brands`);
+  redirect(ROUTES.materials.profiles);
 }

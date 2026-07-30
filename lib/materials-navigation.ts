@@ -15,12 +15,9 @@ export function materialsProfilesBreadcrumb(): Crumb[] {
   return [MATERIALS_HUB_CRUMB, { label: "القطاعات" }];
 }
 
+/** @deprecated الأسعار بقت جوه النظام — بيرجع لمسار القطاعات */
 export function materialsProfileBrandsBreadcrumb(): Crumb[] {
-  return [
-    MATERIALS_HUB_CRUMB,
-    { label: "القطاعات", href: ROUTES.materials.profiles },
-    { label: "البراندات" },
-  ];
+  return materialsProfilesBreadcrumb();
 }
 
 export function materialsProfileSystemBreadcrumb(systemName?: string): Crumb[] {
@@ -88,21 +85,17 @@ export type MaterialWorkflowStep = {
   active?: boolean;
 };
 
-export function profileWorkflowSteps(active: "brands" | "systems"): MaterialWorkflowStep[] {
+/** @deprecated القطاعات بقت أنظمة فقط بدون خطوة براندات */
+export function profileWorkflowSteps(
+  _active: "brands" | "systems" = "systems"
+): MaterialWorkflowStep[] {
   return [
     {
       step: 1,
-      title: "أسعار البراندات",
-      description: "سعر عود الحلق والضلفة والباكتة",
-      href: `${ROUTES.materials.profiles}?tab=brands`,
-      active: active === "brands",
-    },
-    {
-      step: 2,
-      title: "أنظمة القطع",
-      description: "العيدان + التخصيم + ربط البراند",
-      href: `${ROUTES.materials.profiles}?tab=systems`,
-      active: active === "systems",
+      title: "أنظمة القطاعات",
+      description: "كل سيستم فيه أسعاره + العيدان والتخصيم",
+      href: ROUTES.materials.profiles,
+      active: true,
     },
   ];
 }

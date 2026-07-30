@@ -190,6 +190,11 @@ export type ProfileSystemDetails = {
   pieces: ProfilePiece[];
   deductions: ProfileDeductions;
   /**
+   * قائمة أسعار النظام بالعود: سعر العود + طول العود.
+   * سعر المتر = barPrice ÷ barLengthM
+   */
+  rates?: Partial<Record<ProfilePriceCategory, ProfileBarRate>>;
+  /**
    * سعر طقم طبة البوكلير (ج.م/طقم).
    * طقم بيركب لكل حتة بوكلير — مش بالعود، وبيختلف من سيستم للتاني.
    */
@@ -459,9 +464,11 @@ export type MaterialSystem = {
   notes?: string;
   /** النظام الافتراضي (خصوصاً للحديد الثابت غالباً) */
   isDefault?: boolean;
-  /** براند القطاعات المرتبط — قائمة أسعار الحلق والضلفة والباكتة … */
+  /**
+   * @deprecated الأسعار بقت داخل `profile.rates` — يُستخدم فقط للترحيل من البيانات القديمة
+   */
   profileBrandId?: string;
-  /** تفاصيل نظام القطاعات: العيدان + التخصيمات */
+  /** تفاصيل نظام القطاعات: العيدان + التخصيمات + الأسعار */
   profile?: ProfileSystemDetails;
   /** تفاصيل نظام الزجاج: مفرد/دبل + جورجيا */
   glass?: GlassSystemDetails;
@@ -502,7 +509,9 @@ export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]> & {
   meshTypes?: MeshType[];
   /** كتالوج براندات الاكسسوار حسب الفئة */
   accessoryBrands?: AccessoryBrand[];
-  /** كتالوج براندات القطاعات مع قوائم الأسعار */
+  /**
+   * @deprecated أسعار القطاعات بقت على كل نظام (`profile.rates`) — للترحيل فقط
+   */
   profileBrands?: ProfileBrand[];
 };
 
@@ -549,7 +558,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "profiles",
     label: "القطاعات",
-    description: "براندات + أنظمة · العيدان · التخصيمات",
+    description: "أنظمة · أسعار العود · العيدان · التخصيمات",
     accent: "#E8956F",
     shadow: "rgba(232,149,111,0.35)",
   },
@@ -592,8 +601,8 @@ export const MATERIAL_HUB_GROUPS: {
 }[] = [
   {
     id: "systems",
-    title: "أنظمة وبراندات",
-    hint: "أولاً البراندات (الأسعار) · بعدين الأنظمة اللي بتستخدمها في التصميم",
+    title: "أنظمة الخامات",
+    hint: "كل نظام فيه قواعده وأسعاره — اختاره وقت التصميم",
   },
   {
     id: "other",
@@ -614,7 +623,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "profiles",
     label: "القطاعات",
-    description: "أنظمة البروفيل + براندات أسعار العود (سيتي · بريمير…)",
+    description: "كل سيستم فيه قطاعاته وأسعار العود + التخصيم",
     accent: "#E8956F",
     shadow: "rgba(232,149,111,0.35)",
     href: "/materials/profiles",
@@ -803,7 +812,15 @@ export function defaultProfileDetails(): ProfileSystemDetails {
   return {
     pieces: defaultProfilePieces(),
     deductions: defaultDeductions(),
+    rates: {},
   };
+}
+
+/** قالب أسعار لنظام جديد — يبدأ من قائمة السيتي بريمير (بالعود) */
+export function defaultProfileSystemRates(): Partial<
+  Record<ProfilePriceCategory, ProfileBarRate>
+> {
+  return cityPremierProfileBarRates();
 }
 
 export function defaultGlassPane(
@@ -1518,6 +1535,51 @@ export function resolveProfileBrandForSystem(
   return undefined;
 }
 
+export function profileRatesHasPricing(
+  rates: Partial<Record<ProfilePriceCategory, ProfileBarRate>> | undefined
+): boolean {
+  if (!rates) return false;
+  return Object.values(rates).some(
+    (r) => r != null && r.barPrice > 0 && r.barLengthM > 0
+  );
+}
+
+export function getProfileSystemRate(
+  system: MaterialSystem | undefined | null,
+  category: ProfilePriceCategory
+): ProfileBarRate | undefined {
+  const rate = system?.profile?.rates?.[category];
+  if (!rate || rate.barPrice <= 0 || rate.barLengthM <= 0) return undefined;
+  return rate;
+}
+
+/** سعر المتر الطولي من قائمة أسعار النظام */
+export function getProfileSystemPrice(
+  system: MaterialSystem | undefined | null,
+  category: ProfilePriceCategory
+): number {
+  const rate = getProfileSystemRate(system, category);
+  if (!rate) return 0;
+  return profileBarPricePerM(rate.barPrice, rate.barLengthM);
+}
+
+export function profileSystemHasPricing(
+  system: MaterialSystem | undefined | null
+): boolean {
+  return profileRatesHasPricing(system?.profile?.rates);
+}
+
+export function countProfilePricedCategories(
+  system: MaterialSystem | undefined | null
+): number {
+  const rates = system?.profile?.rates;
+  if (!rates) return 0;
+  return PROFILE_PRICE_CATEGORIES.filter((c) => {
+    const r = rates[c.id];
+    return r != null && r.barPrice > 0 && r.barLengthM > 0;
+  }).length;
+}
+
 export function getProfileBrandRate(
   brand: ProfileBrand | undefined,
   category: ProfilePriceCategory
@@ -1529,9 +1591,7 @@ export function getProfileBrandRate(
 
 export function profileBrandHasPricing(brand: ProfileBrand | undefined): boolean {
   if (!brand) return false;
-  return Object.values(brand.rates ?? {}).some(
-    (r) => r != null && r.barPrice > 0 && r.barLengthM > 0
-  );
+  return profileRatesHasPricing(brand.rates);
 }
 
 /** سعر المتر الطولي المشتق من سعر العود ÷ طول العود */
@@ -1967,9 +2027,8 @@ export function getDefaultCatalog(): MaterialCatalog {
         id: "pvc1",
         name: "بريمير سيتي",
         notes:
-          "سيستم بريمير سيتي — تكلفة القطاعات من قائمة أسعار سيتي بريمير (فبراير 2025)",
+          "سيستم بريمير سيتي — أسعار القطاعات من قائمة سيتي بريمير (فبراير 2025)",
         isDefault: true,
-        profileBrandId: "brand-city",
         profile: {
           pieces: [
             ...standardHingedProfilePieces().map((p) => ({
@@ -1981,14 +2040,14 @@ export function getDefaultCatalog(): MaterialCatalog {
             frame: { width: "=W", height: "=H" },
             sash: { width: "=FW-10", height: "=FH-10" },
           },
+          rates: cityPremierProfileBarRates(),
         },
       }),
       withDefaultProfile({
         id: "pvc2",
         name: "بريمير سلايد",
         notes:
-          "سيستم جرار — تكلفة القطاعات من قائمة أسعار سيتي بريمير (فبراير 2025)",
-        profileBrandId: "brand-city",
+          "سيستم جرار — أسعار القطاعات من قائمة سيتي بريمير (فبراير 2025)",
         profile: {
           pieces: standardSlidingProfilePieces().map((p) => ({
             ...p,
@@ -1998,6 +2057,7 @@ export function getDefaultCatalog(): MaterialCatalog {
             frame: { width: "=W", height: "=H" },
             sash: { width: "=FW-40", height: "=FH-60" },
           },
+          rates: cityPremierProfileBarRates(),
         },
       }),
       withDefaultProfile({
@@ -2341,6 +2401,7 @@ function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
         "sash"
       ),
     },
+    rates: normalizeProfileBrandRates(d.rates),
     bouclierCapKitPrice: (() => {
       const n = Number(d.bouclierCapKitPrice);
       return Number.isFinite(n) && n >= 0 ? n : undefined;
@@ -2759,21 +2820,19 @@ function normalizeSystem(
 function migrateProfileSystemLabels(systems: MaterialSystem[]): MaterialSystem[] {
   const renames: Record<
     string,
-    { fromNames: string[]; name: string; notes: string; brandId: string }
+    { fromNames: string[]; name: string; notes: string }
   > = {
     pvc1: {
       fromNames: ["نظام PVC مخصص 1"],
       name: "بريمير سيتي",
       notes:
-        "سيستم بريمير سيتي — تكلفة القطاعات من قائمة أسعار سيتي بريمير (فبراير 2025)",
-      brandId: "brand-city",
+        "سيستم بريمير سيتي — أسعار القطاعات من قائمة سيتي بريمير (فبراير 2025)",
     },
     pvc2: {
       fromNames: ["نظام PVC مخصص 2"],
       name: "بريمير سلايد",
       notes:
-        "سيستم جرار — تكلفة القطاعات من قائمة أسعار سيتي بريمير (فبراير 2025)",
-      brandId: "brand-city",
+        "سيستم جرار — أسعار القطاعات من قائمة سيتي بريمير (فبراير 2025)",
     },
   };
 
@@ -2784,18 +2843,8 @@ function migrateProfileSystemLabels(systems: MaterialSystem[]): MaterialSystem[]
         ...s,
         name: rule.name,
         notes: s.notes && !rule.fromNames.includes(s.notes) ? s.notes : rule.notes,
-        profileBrandId: s.profileBrandId ?? rule.brandId,
       };
     }
-
-    // pvc1/pvc2 أو أي سيستم اسمه سيتي/بريمير سيتي → لازم يبقى مربوط ببراند الأسعار
-    if (
-      (s.id === "pvc1" || s.id === "pvc2" || systemLooksLikeCityPremier(s)) &&
-      !s.profileBrandId
-    ) {
-      return { ...s, profileBrandId: "brand-city" };
-    }
-
     return s;
   });
 
@@ -2804,6 +2853,56 @@ function migrateProfileSystemLabels(systems: MaterialSystem[]): MaterialSystem[]
   }
 
   return list;
+}
+
+/**
+ * ينقل أسعار البراند القديم إلى داخل كل نظام (`profile.rates`)
+ * ويشيل ربط `profileBrandId`.
+ */
+function foldProfileBrandRatesIntoSystems(
+  systems: MaterialSystem[],
+  brands: ProfileBrand[]
+): MaterialSystem[] {
+  const brandById = new Map(brands.map((b) => [b.id, b]));
+  const cityBrand =
+    brandById.get("brand-city") ??
+    brands.find((b) => b.name === "سيتي بريمير" || b.name === "سيتي") ??
+    brands.find((b) => profileBrandHasPricing(b));
+
+  return systems.map((s) => {
+    const profile = s.profile ?? defaultProfileDetails();
+    if (profileRatesHasPricing(profile.rates)) {
+      if (!s.profileBrandId) return { ...s, profile };
+      return { ...s, profileBrandId: undefined, profile };
+    }
+
+    let rates: Partial<Record<ProfilePriceCategory, ProfileBarRate>> = {};
+
+    if (s.profileBrandId) {
+      const linked = brandById.get(s.profileBrandId);
+      if (linked && profileBrandHasPricing(linked)) {
+        rates = { ...linked.rates };
+      }
+    }
+
+    if (
+      !profileRatesHasPricing(rates) &&
+      (s.id === "pvc1" || s.id === "pvc2" || systemLooksLikeCityPremier(s))
+    ) {
+      rates = {
+        ...(cityBrand?.rates ?? cityPremierProfileBarRates()),
+      };
+    }
+
+    return {
+      ...s,
+      profileBrandId: undefined,
+      profile: {
+        ...profile,
+        rates: profileRatesHasPricing(rates) ? rates : profile.rates ?? {},
+      },
+    };
+  });
 }
 
 function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
@@ -2821,8 +2920,6 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       ? defaults.profileBrands ?? defaultProfileBrands()
       : normalizeProfileBrands(raw.profileBrands)
   );
-
-  const profileBrandIds = new Set(profileBrands.map((b) => b.id));
 
   for (const cat of MATERIAL_CATEGORIES) {
     const list = Array.isArray(raw[cat.id]) ? raw[cat.id] : [];
@@ -2844,13 +2941,6 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
         let enriched = s;
         if (cat.id === "profiles" && !enriched.profile) {
           enriched = { ...enriched, profile: defaultProfileDetails() };
-        }
-        if (
-          cat.id === "profiles" &&
-          enriched.profileBrandId &&
-          !profileBrandIds.has(enriched.profileBrandId)
-        ) {
-          enriched = { ...enriched, profileBrandId: undefined };
         }
         if (cat.id === "glass" && !enriched.glass) {
           enriched = {
@@ -2884,6 +2974,7 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
 
       if (cat.id === "profiles") {
         merged = migrateProfileSystemLabels(merged);
+        merged = foldProfileBrandRatesIntoSystems(merged, profileBrands);
       }
 
       next[cat.id] = merged;
@@ -3208,9 +3299,9 @@ export function catalogOptionsFor(
     ...systems.map((s) => {
       let label = s.name;
       if (s.isDefault) label = `${label} (افتراضي)`;
-      if (category === "profiles" && s.profileBrandId) {
-        const brand = findProfileBrand(s.profileBrandId, cat);
-        if (brand) label = `${label} · أسعار ${brand.name}`;
+      if (category === "profiles") {
+        const n = countProfilePricedCategories(s);
+        if (n > 0) label = `${label} · ${n} سعر`;
       }
       if (category === "glass") {
         const price = getGlassBottlePrice(s);

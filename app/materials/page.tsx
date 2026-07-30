@@ -15,7 +15,7 @@ export default function MaterialsPage() {
       <PageHeader
         breadcrumb={materialsHubBreadcrumb()}
         title="الخامات"
-        description="من هنا بتظبط الأسعار والأنظمة اللي بتتحسب في الرسم — ابدأ بالقطاعات والاكسسوار"
+        description="من هنا بتظبط أنظمة وأسعار الخامات اللي بتتحسب في الرسم — ابدأ بالقطاعات"
       />
 
       <MaterialsHubIntro />

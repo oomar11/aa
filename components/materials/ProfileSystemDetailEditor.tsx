@@ -20,10 +20,13 @@ import {
   frameWidthFormula,
   getCutCalculationSteps,
   loadMaterialCatalog,
+  makeProfileBarRate,
   mergeStandardProfilePieces,
   newPieceId,
   PROFILE_PIECE_ROLES,
-  profileBrandOptions,
+  PROFILE_PRICE_CATEGORIES,
+  profileBarPricePerM,
+  profilePriceCategoryLabel,
   profileRoleDefaultName,
   profileRoleLabel,
   saveMaterialCatalog,
@@ -32,9 +35,11 @@ import {
   upsertSystem,
   type MaterialCatalog,
   type MaterialSystem,
+  type ProfileBarRate,
   type ProfileDeductions,
   type ProfilePiece,
   type ProfilePieceRole,
+  type ProfilePriceCategory,
   type ProfileSystemDetails,
 } from "@/lib/material-systems";
 import {
@@ -53,13 +58,20 @@ type Props = {
   systemId: string;
 };
 
-type ProfileDetailTab = "meta" | "pieces" | "cuts";
+type ProfileDetailTab = "meta" | "prices" | "pieces" | "cuts";
 
 const PROFILE_DETAIL_TABS: { id: ProfileDetailTab; label: string }[] = [
   { id: "meta", label: "بيانات" },
+  { id: "prices", label: "الأسعار" },
   { id: "pieces", label: "العيدان" },
   { id: "cuts", label: "التخصيم" },
 ];
+
+function rateSummary(rate: ProfileBarRate | undefined): string | null {
+  if (!rate || rate.barPrice <= 0 || rate.barLengthM <= 0) return null;
+  const perM = profileBarPricePerM(rate.barPrice, rate.barLengthM);
+  return `${rate.barPrice} ج.م/عود · ${rate.barLengthM} م ← ${perM} ج.م/م`;
+}
 
 
 type PieceDraft = {
@@ -179,8 +191,10 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   const [system, setSystem] = useState<MaterialSystem | null>(null);
   const [systemName, setSystemName] = useState("");
   const [systemNotes, setSystemNotes] = useState("");
-  const [profileBrandId, setProfileBrandId] = useState("");
   const [bouclierCapKitPrice, setBouclierCapKitPrice] = useState("");
+  const [rates, setRates] = useState<
+    Partial<Record<ProfilePriceCategory, ProfileBarRate>>
+  >({});
   const [pieces, setPieces] = useState<ProfilePiece[]>([]);
   const [deductions, setDeductions] =
     useState<ProfileDeductions>(defaultDeductions);
@@ -210,12 +224,12 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       setSystem(found);
       setSystemName(found.name);
       setSystemNotes(found.notes ?? "");
-      setProfileBrandId(found.profileBrandId ?? "");
       setBouclierCapKitPrice(
         details.bouclierCapKitPrice != null && details.bouclierCapKitPrice > 0
           ? String(details.bouclierCapKitPrice)
           : ""
       );
+      setRates(details.rates ?? {});
       setPieces(details.pieces);
       setDeductions(details.deductions);
       const formulas = [
@@ -233,7 +247,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     nextDeductions: ProfileDeductions,
     name = systemName,
     notes = systemNotes,
-    brandId = profileBrandId,
+    nextRates = rates,
     kitPriceRaw = bouclierCapKitPrice
   ) {
     if (!catalog || !system) return;
@@ -241,6 +255,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     const profile: ProfileSystemDetails = {
       pieces: nextPieces,
       deductions: nextDeductions,
+      rates: { ...nextRates },
       bouclierCapKitPrice:
         Number.isFinite(kitN) && kitN >= 0 ? kitN : undefined,
     };
@@ -248,7 +263,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       ...system,
       name: name.trim() || system.name,
       notes: notes.trim() || undefined,
-      profileBrandId: brandId.trim() || undefined,
+      profileBrandId: undefined,
       profile,
     };
     const saved = saveMaterialCatalog(
@@ -260,13 +275,13 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       setSystem(refreshed);
       setSystemName(refreshed.name);
       setSystemNotes(refreshed.notes ?? "");
-      setProfileBrandId(refreshed.profileBrandId ?? "");
       const details = refreshed.profile ?? defaultProfileDetails();
       setBouclierCapKitPrice(
         details.bouclierCapKitPrice != null && details.bouclierCapKitPrice > 0
           ? String(details.bouclierCapKitPrice)
           : ""
       );
+      setRates(details.rates ?? {});
       setPieces(details.pieces);
       setDeductions(details.deductions);
     }
@@ -276,6 +291,24 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     e.preventDefault();
     persistProfile(pieces, deductions);
     showFlash("تم حفظ بيانات النظام");
+  }
+
+  function setRateValue(
+    category: ProfilePriceCategory,
+    field: "barPrice" | "barLengthM",
+    value: number
+  ) {
+    const prev = rates[category] ?? makeProfileBarRate(0, 6);
+    setRates({
+      ...rates,
+      [category]: { ...prev, [field]: value },
+    });
+  }
+
+  function saveRates(e: FormEvent) {
+    e.preventDefault();
+    persistProfile(pieces, deductions, systemName, systemNotes, rates);
+    showFlash("تم حفظ أسعار النظام");
   }
 
   function saveDeductions(e: FormEvent) {
@@ -447,7 +480,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h1 className="text-xl font-bold text-foreground">{system.name}</h1>
         <p className="mt-0.5 text-xs text-muted">
-          استخدم التبويبات: بيانات النظام · العيدان · تخصيم مقاس القطع
+          استخدم التبويبات: بيانات · الأسعار · العيدان · التخصيم
         </p>
       </div>
 
@@ -476,7 +509,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       >
         <h3 className="text-xs font-bold text-foreground">بيانات النظام</h3>
         <p className="text-[11px] leading-relaxed text-muted">
-          اربط السيستم ببراند أسعار — مثال: بريمير سيتي ← براند سيتي
+          اسم النظام والملاحظات وسعر طبة البوكلير — الأسعار من تبويب «الأسعار»
         </p>
         <input
           type="text"
@@ -486,31 +519,6 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           required
           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
         />
-        <label className="block text-[11px] text-muted">
-          براند قائمة الأسعار
-          <select
-            value={profileBrandId}
-            onChange={(e) => setProfileBrandId(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-          >
-            <option value="">بدون براند</option>
-            {profileBrandOptions(catalog ?? undefined).map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        {profileBrandId ? (
-          <p className="rounded-xl bg-primary-soft/50 px-3 py-2 text-[11px] text-primary">
-            الشباك اللي بياخد السيستم ده هيتسعر من قائمة{" "}
-            <span className="font-bold">
-              {profileBrandOptions(catalog ?? undefined).find(
-                (b) => b.id === profileBrandId
-              )?.label ?? "—"}
-            </span>
-          </p>
-        ) : null}
         <label className="block text-[11px] text-muted">
           سعر طقم طبة البوكلير (ج.م/طقم)
           <input
@@ -542,6 +550,78 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         </button>
       </form>
       </>
+      ) : null}
+
+      {tab === "prices" ? (
+      <form
+        onSubmit={saveRates}
+        className="space-y-3 rounded-2xl border border-border bg-card p-3"
+      >
+        <div>
+          <h3 className="text-xs font-bold text-foreground">أسعار قطاعات النظام</h3>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+            لكل صنف: سعر العود (ج.م) + طول العود (م) — المتر = السعر ÷ الطول
+          </p>
+        </div>
+        <div className="space-y-2">
+          {PROFILE_PRICE_CATEGORIES.map((cat) => {
+            const rate = rates[cat.id] ?? makeProfileBarRate(0, 6);
+            const summary = rateSummary(rate.barPrice > 0 ? rate : undefined);
+            return (
+              <div
+                key={cat.id}
+                className="rounded-xl border border-border/70 bg-background/60 p-2"
+              >
+                <p className="text-[11px] font-semibold text-foreground">
+                  {profilePriceCategoryLabel(cat.id)}
+                </p>
+                {rate.productName ? (
+                  <p className="mt-0.5 text-[10px] text-muted">
+                    {rate.productName}
+                  </p>
+                ) : null}
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  <label className="block text-[10px] text-muted">
+                    سعر العود (ج.م)
+                    <NumericInput
+                      min={0}
+                      step={1}
+                      value={rate.barPrice}
+                      onChange={(v) => setRateValue(cat.id, "barPrice", v)}
+                      placeholder="0"
+                      className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                    />
+                  </label>
+                  <label className="block text-[10px] text-muted">
+                    طول العود (م)
+                    <NumericInput
+                      min={0.1}
+                      step={0.1}
+                      fallback={6}
+                      blankZero={false}
+                      value={rate.barLengthM}
+                      onChange={(v) => setRateValue(cat.id, "barLengthM", v)}
+                      placeholder="6"
+                      className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                    />
+                  </label>
+                </div>
+                {summary ? (
+                  <p className="mt-1 text-[10px] font-medium text-primary">
+                    {summary}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+        <button
+          type="submit"
+          className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+        >
+          حفظ الأسعار
+        </button>
+      </form>
       ) : null}
 
       {tab === "pieces" ? (

@@ -214,7 +214,7 @@ export function MaterialsBar({
         total={profileTotal}
         emptyHint={
           systemId && systemId !== "none"
-            ? "مفيش تكلفة قطاعات — تأكد إن السيستم مربوط ببراند أسعار"
+            ? "مفيش تكلفة قطاعات — اضبط أسعار العود من تفاصيل النظام"
             : "اختار نظام قطاعات للبند"
         }
       >
