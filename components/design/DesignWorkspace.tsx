@@ -14,6 +14,10 @@ import {
 } from "react";
 import { BackChevron } from "@/components/layout/BackChevron";
 import { NavBack } from "@/components/layout/NavBack";
+import {
+  ProjectPdfExporter,
+  type ProjectPdfExporterHandle,
+} from "@/components/design/ProjectPdfExporter";
 import { TemplatePickerModal } from "@/components/design/TemplatePickerModal";
 import { WindowPreview } from "@/components/design/WindowPreview";
 import {
@@ -102,6 +106,8 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   const [project, setProject] = useState<Project | undefined>();
   const [items, setItems] = useState<DesignItem[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [sharingPdf, setSharingPdf] = useState(false);
+  const pdfExporterRef = useRef<ProjectPdfExporterHandle>(null);
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragPoint, setDragPoint] = useState({ x: 0, y: 0 });
@@ -175,22 +181,17 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     router.push(drawHref(item.id));
   }
 
-  function handleShare() {
-    const text = items
-      .map(
-        (item, i) =>
-          `${i + 1}- ${item.name}: ${formatSizePair(item.widthMm, item.heightMm, unit)} · عدد ${item.qty} · ${formatCurrency(Math.round(itemTotalPrice(item)))} ج.م`
-      )
-      .join("\n");
-
-    const payload = `طلب تصميم UPVC${project ? ` — ${project.name}` : ""}${customerId ? ` (عميل ${customerId})` : ""}\n${text}\nالإجمالي: ${formatCurrency(Math.round(totals.price))} ج.م`;
-
-    if (navigator.share) {
-      void navigator.share({ title: "UPVC Design", text: payload });
-      return;
+  async function handleShare() {
+    if (!customerId || !projectId || sharingPdf) return;
+    setSharingPdf(true);
+    try {
+      await pdfExporterRef.current?.sharePdf();
+    } catch (err) {
+      console.error(err);
+      window.alert("تعذر تجهيز ملف PDF. حاول مرة أخرى.");
+    } finally {
+      setSharingPdf(false);
     }
-
-    void navigator.clipboard?.writeText(payload);
   }
 
   const clearLongPress = useCallback(() => {
@@ -734,26 +735,27 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
           >
             <SettingsIcon />
           </Link>
-          {customerId && projectId ? (
-            <Link
-              href={ROUTES.design.report(customerId, projectId)}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-              aria-label="تقرير المشروع"
-              title="تقرير للطباعة"
-            >
-              <ReportIcon />
-            </Link>
-          ) : null}
           <button
             type="button"
-            onClick={handleShare}
-            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-            aria-label="مشاركة"
+            onClick={() => void handleShare()}
+            disabled={sharingPdf || !customerId || !projectId}
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:opacity-60"
+            aria-label={sharingPdf ? "جاري تجهيز PDF" : "مشاركة PDF"}
+            title={sharingPdf ? "جاري تجهيز PDF…" : "مشاركة PDF"}
           >
             <ShareIcon />
           </button>
         </div>
       </header>
+
+      {customerId && projectId ? (
+        <ProjectPdfExporter
+          ref={pdfExporterRef}
+          customerId={customerId}
+          projectId={projectId}
+          projectName={project?.name}
+        />
+      ) : null}
 
       <ul
         className={`grid grid-cols-2 auto-rows-fr gap-3 ${
@@ -1099,22 +1101,4 @@ function ShareIcon() {
   );
 }
 
-function ReportIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
-      <path d="M14 3v5h5" />
-      <path d="M9 13h6M9 17h4" />
-    </svg>
-  );
-}
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { WindowPreview } from "@/components/design/WindowPreview";
 import { BackChevron } from "@/components/layout/BackChevron";
 import { NavBack } from "@/components/layout/NavBack";
@@ -15,6 +15,10 @@ import {
 import { itemAreaSqm, itemTotalPrice } from "@/lib/design-items";
 import { suggestItemName } from "@/lib/item-naming";
 import { loadMaterialCatalog } from "@/lib/material-systems";
+import {
+  buildProjectPdfFile,
+  shareOrDownloadPdf,
+} from "@/lib/project-pdf";
 import { reportMaterialRows } from "@/lib/project-report";
 import { getItemsForProject, getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
@@ -24,6 +28,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 type Props = {
   customerId: string;
   projectId: string;
+  /** رسم التقرير فقط (لتوليد PDF) بدون شريط الأدوات */
+  exportOnly?: boolean;
 };
 
 function mergeCustomers(): Customer[] {
@@ -46,8 +52,14 @@ function readReportData(customerId: string, projectId: string) {
   };
 }
 
-export function ProjectReport({ customerId, projectId }: Props) {
+export function ProjectReport({
+  customerId,
+  projectId,
+  exportOnly = false,
+}: Props) {
   const { unit } = useUnit();
+  const sheetRef = useRef<HTMLElement | null>(null);
+  const [sharingPdf, setSharingPdf] = useState(false);
   const [{ company, customer, project, items }] = useState(() =>
     readReportData(customerId, projectId)
   );
@@ -75,34 +87,21 @@ export function ProjectReport({ customerId, projectId }: Props) {
     window.print();
   }
 
-  function handleShare() {
-    const lines = items.map((item, i) => {
-      const name = item.name?.trim() || suggestItemName(item);
-      return `${i + 1}- ${name}: ${formatSizePair(item.widthMm, item.heightMm, unit)} · عدد ${item.qty} · ${formatCurrency(Math.round(itemTotalPrice(item)))} ج.م`;
-    });
-    const payload = [
-      company?.name ? company.name : "UPVC Design",
-      `تقرير مشروع${project ? ` — ${project.name}` : ""}`,
-      customer ? `العميل: ${customer.name}` : null,
-      customer?.phone ? `تليفون: ${customer.phone}` : null,
-      "",
-      ...lines,
-      "",
-      `إجمالي العدد: ${totals.qty}`,
-      `إجمالي المساحة: ${totals.area.toFixed(2)} م²`,
-      `الإجمالي: ${formatCurrency(Math.round(totals.price))} ج.م`,
-    ]
-      .filter((line) => line != null)
-      .join("\n");
-
-    if (navigator.share) {
-      void navigator.share({
+  async function handleSharePdf() {
+    if (exportOnly || sharingPdf || !sheetRef.current) return;
+    setSharingPdf(true);
+    try {
+      const file = await buildProjectPdfFile(sheetRef.current, project?.name);
+      await shareOrDownloadPdf(file, {
         title: `تقرير مشروع${project ? ` — ${project.name}` : ""}`,
-        text: payload,
+        text: `تقرير مشروع UPVC${project ? ` — ${project.name}` : ""}`,
       });
-      return;
+    } catch (err) {
+      console.error(err);
+      window.alert("تعذر تجهيز ملف PDF. حاول مرة أخرى.");
+    } finally {
+      setSharingPdf(false);
     }
-    void navigator.clipboard?.writeText(payload);
   }
 
   if (!project) {
@@ -118,40 +117,46 @@ export function ProjectReport({ customerId, projectId }: Props) {
 
   return (
     <div className="project-report mx-auto w-full max-w-[210mm] bg-white text-[#152033]">
-      <div className="report-actions sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-[#e4e8ee] bg-white/95 px-3 py-2.5 backdrop-blur print:hidden">
-        <NavBack
-          href={ROUTES.design.editor(customerId, projectId)}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e8f1fc] text-[#2b7de9] transition-colors hover:bg-[#d7e8fb]"
-          aria-label="رجوع لبنود المشروع"
-        >
-          <BackChevron className="h-5 w-5 text-[#2b7de9]" />
-        </NavBack>
-
-        <p className="min-w-0 flex-1 truncate text-center text-sm font-bold">
-          تقرير المشروع
-        </p>
-
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleShare}
-            className="flex h-9 items-center gap-1.5 rounded-full bg-[#e8f1fc] px-3 text-xs font-semibold text-[#2b7de9] transition-colors hover:bg-[#d7e8fb]"
+      {!exportOnly ? (
+        <div className="report-actions sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-[#e4e8ee] bg-white/95 px-3 py-2.5 backdrop-blur print:hidden">
+          <NavBack
+            href={ROUTES.design.editor(customerId, projectId)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e8f1fc] text-[#2b7de9] transition-colors hover:bg-[#d7e8fb]"
+            aria-label="رجوع لبنود المشروع"
           >
-            <ShareIcon />
-            مشاركة
-          </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="flex h-9 items-center gap-1.5 rounded-full bg-[#2b7de9] px-3 text-xs font-semibold text-white shadow-[0_4px_12px_rgba(43,125,233,0.28)] transition-colors hover:bg-[#2169c8]"
-          >
-            <PrintIcon />
-            طباعة
-          </button>
+            <BackChevron className="h-5 w-5 text-[#2b7de9]" />
+          </NavBack>
+
+          <p className="min-w-0 flex-1 truncate text-center text-sm font-bold">
+            تقرير المشروع
+          </p>
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => void handleSharePdf()}
+              disabled={sharingPdf}
+              className="flex h-9 items-center gap-1.5 rounded-full bg-[#e8f1fc] px-3 text-xs font-semibold text-[#2b7de9] transition-colors hover:bg-[#d7e8fb] disabled:opacity-60"
+            >
+              <ShareIcon />
+              {sharingPdf ? "جاري PDF…" : "مشاركة PDF"}
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="flex h-9 items-center gap-1.5 rounded-full bg-[#2b7de9] px-3 text-xs font-semibold text-white shadow-[0_4px_12px_rgba(43,125,233,0.28)] transition-colors hover:bg-[#2169c8]"
+            >
+              <PrintIcon />
+              طباعة
+            </button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <article className="report-sheet px-4 py-5 sm:px-6 sm:py-7">
+      <article
+        ref={sheetRef}
+        className="report-sheet px-4 py-5 sm:px-6 sm:py-7"
+      >
         <header className="border-b-2 border-[#2b7de9] pb-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 text-right">
