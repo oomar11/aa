@@ -280,6 +280,15 @@ function hingedLocksetGroups(boxes: PaneBox[]): {
   return { solo, bouclierPairs };
 }
 
+/** ارتفاع ناحية المقبض بعد تخصيم السبلونة (مم) */
+export function espagnoletteHeightFromSash(
+  sashHeightMm: number,
+  deductionMm: number
+): number {
+  const d = Math.max(0, deductionMm);
+  return Math.max(0, sashHeightMm - d);
+}
+
 /** ارتفاع ناحية المقبض — الضلفة الرأسية */
 function handleSideHeightMm(box: PaneBox): number {
   return box.h;
@@ -421,13 +430,14 @@ export function calcItemAccessories(
   let protrudingHandleQty = 0;
 
   const { solo, bouclierPairs } = hingedLocksetGroups(boxes);
+  const espDeduction = details.espagnoletteSashDeductionMm;
 
   for (const box of solo) {
     hingeQty += box.isDoor
       ? details.hingesPerDoor
       : details.hingesPerSash;
     const size = pickEspagnoletteSize(
-      handleSideHeightMm(box),
+      espagnoletteHeightFromSash(handleSideHeightMm(box), espDeduction),
       details.espagnoletteCatalog,
       "hinged"
     );
@@ -445,8 +455,8 @@ export function calcItemAccessories(
     }
     // سبلونة واحدة للزوج — المقاس من أطول ضلفة
     const height = Math.max(
-      handleSideHeightMm(pair.left),
-      handleSideHeightMm(pair.right)
+      espagnoletteHeightFromSash(handleSideHeightMm(pair.left), espDeduction),
+      espagnoletteHeightFromSash(handleSideHeightMm(pair.right), espDeduction)
     );
     const size = pickEspagnoletteSize(
       height,
@@ -494,7 +504,7 @@ export function calcItemAccessories(
         knifeH * details.brushKnifeHeightMultiplier;
 
       const size = pickEspagnoletteSize(
-        handleSideHeightMm(box),
+        espagnoletteHeightFromSash(handleSideHeightMm(box), espDeduction),
         details.espagnoletteCatalog,
         "sliding"
       );

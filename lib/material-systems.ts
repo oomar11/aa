@@ -246,6 +246,11 @@ export type AccessorySystemDetails = {
   hingesPerDoor: number;
   /** كتالوج مقاسات السبلونة — قابل للتعديل */
   espagnoletteCatalog: EspagnoletteCatalogEntry[];
+  /**
+   * تخصيم من ارتفاع الضلفة (مم) قبل اختيار مقاس السبلونة.
+   * الافتراضي ١٥٠ مم = ١٥ سم.
+   */
+  espagnoletteSashDeductionMm: number;
   /** سكاك مفصلي — طقم لكل سبلونة ضلفة واحدة */
   hingedLockPieces: AccessoryLockPiece[];
   /** سكاك بوكلير — بدل المفصلي لما فيه بوكلير */
@@ -539,6 +544,7 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     hingesPerSash: 2,
     hingesPerDoor: 3,
     espagnoletteCatalog: defaultEspagnoletteCatalog(),
+    espagnoletteSashDeductionMm: 150,
     hingedLockPieces: defaultHingedLockPieces(),
     bouclierLockPieces: defaultBouclierLockPieces(),
     boltsPerBouclier: 2,
@@ -1685,6 +1691,10 @@ export function normalizeAccessoryDetails(
     hingesPerSash: normalizePositiveInt(o.hingesPerSash, fallback.hingesPerSash),
     hingesPerDoor: normalizePositiveInt(o.hingesPerDoor, fallback.hingesPerDoor),
     espagnoletteCatalog,
+    espagnoletteSashDeductionMm: normalizePositiveInt(
+      o.espagnoletteSashDeductionMm,
+      fallback.espagnoletteSashDeductionMm
+    ),
     hingedLockPieces: normalizeLockPieces(
       o.hingedLockPieces,
       fallback.hingedLockPieces

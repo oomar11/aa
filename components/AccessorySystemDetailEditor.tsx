@@ -381,9 +381,16 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
           ))}
         </div>
         <p className="text-[10px] leading-relaxed text-muted">
-          الاختيار التلقائي: أصغر مقاس أقصى ارتفاعه ≥ ارتفاع الضلفة من ناحية
-          المقبض. مثال: ضلفة ١٤٠٠ مم → مقاس ١٤٠ لو العتبة ١٤٠٠.
+          الاختيار التلقائي: أصغر مقاس أقصى ارتفاعه ≥ (ارتفاع الضلفة − التخصيم)
+          من ناحية المقبض. مثال: ضلفة ١٤٠٠ مم مع تخصيم ١٥٠ → ١٢٥٠ مم → مقاس
+          ١٤٠.
         </p>
+        <NumberField
+          label="تخصيم من الضلفة لاختيار السبلونة (مم)"
+          value={details.espagnoletteSashDeductionMm}
+          onChange={(v) => patchDetails({ espagnoletteSashDeductionMm: v })}
+          hint="١٥٠ = ١٥ سم"
+        />
       </Section>
 
       <Section
