@@ -438,7 +438,7 @@ export function createItemFromTemplate(
     notes: "",
     specialPrice: null,
     discountId: "none",
-    systemId: "none",
+    systemId: getDefaultSystemId("profiles"),
     accessoryId: getDefaultSystemId("accessories"),
     glassPane1Id: getDefaultGlassBottleId(),
     /** الحديد ثابت غالباً — يُملأ بالافتراضي عند فتح الإعدادات إن لزم */

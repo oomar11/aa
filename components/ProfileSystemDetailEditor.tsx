@@ -20,6 +20,7 @@ import {
   loadMaterialCatalog,
   newPieceId,
   PROFILE_PIECE_ROLES,
+  profileBrandOptions,
   profileRoleLabel,
   saveMaterialCatalog,
   sashHeightFormula,
@@ -148,6 +149,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   const [system, setSystem] = useState<MaterialSystem | null>(null);
   const [systemName, setSystemName] = useState("");
   const [systemNotes, setSystemNotes] = useState("");
+  const [profileBrandId, setProfileBrandId] = useState("");
   const [pieces, setPieces] = useState<ProfilePiece[]>([]);
   const [deductions, setDeductions] =
     useState<ProfileDeductions>(defaultDeductions);
@@ -176,6 +178,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       setSystem(found);
       setSystemName(found.name);
       setSystemNotes(found.notes ?? "");
+      setProfileBrandId(found.profileBrandId ?? "");
       setPieces(details.pieces);
       setDeductions(details.deductions);
       const formulas = [
@@ -192,7 +195,8 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     nextPieces: ProfilePiece[],
     nextDeductions: ProfileDeductions,
     name = systemName,
-    notes = systemNotes
+    notes = systemNotes,
+    brandId = profileBrandId
   ) {
     if (!catalog || !system) return;
     const profile: ProfileSystemDetails = {
@@ -203,6 +207,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       ...system,
       name: name.trim() || system.name,
       notes: notes.trim() || undefined,
+      profileBrandId: brandId.trim() || undefined,
       profile,
     };
     const saved = saveMaterialCatalog(
@@ -214,6 +219,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       setSystem(refreshed);
       setSystemName(refreshed.name);
       setSystemNotes(refreshed.notes ?? "");
+      setProfileBrandId(refreshed.profileBrandId ?? "");
       const details = refreshed.profile ?? defaultProfileDetails();
       setPieces(details.pieces);
       setDeductions(details.deductions);
@@ -380,14 +386,45 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         className="space-y-3 rounded-2xl border border-border bg-card p-3"
       >
         <h3 className="text-xs font-bold text-foreground">بيانات النظام</h3>
+        <p className="text-[11px] leading-relaxed text-muted">
+          مثال: سيستم <span className="font-semibold text-foreground">بريمير سيتي</span>{" "}
+          مربوط ببراند أسعار{" "}
+          <span className="font-semibold text-foreground">سيتي</span> — الحلق
+          والضلفة والباكتة والسوقاس من قائمة السيتي.
+        </p>
         <input
           type="text"
           value={systemName}
           onChange={(e) => setSystemName(e.target.value)}
-          placeholder="اسم النظام"
+          placeholder="اسم السيستم (مثلاً: بريمير سيتي)"
           required
           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
         />
+        <label className="block text-[11px] text-muted">
+          براند قائمة الأسعار
+          <select
+            value={profileBrandId}
+            onChange={(e) => setProfileBrandId(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+          >
+            <option value="">بدون براند</option>
+            {profileBrandOptions(catalog ?? undefined).map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {profileBrandId ? (
+          <p className="rounded-xl bg-primary-soft/50 px-3 py-2 text-[11px] text-primary">
+            الشباك اللي بياخد السيستم ده هيتسعر من قائمة{" "}
+            <span className="font-bold">
+              {profileBrandOptions(catalog ?? undefined).find(
+                (b) => b.id === profileBrandId
+              )?.label ?? "—"}
+            </span>
+          </p>
+        ) : null}
         <textarea
           value={systemNotes}
           onChange={(e) => setSystemNotes(e.target.value)}
@@ -399,7 +436,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           type="submit"
           className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
         >
-          حفظ الاسم
+          حفظ البيانات
         </button>
       </form>
 

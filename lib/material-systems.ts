@@ -917,12 +917,14 @@ export function defaultProfileBrands(): ProfileBrand[] {
     {
       id: "brand-city",
       name: "سيتي",
-      notes: "نظام سيتي — قائمة أسعار قياسية",
+      notes:
+        "قائمة أسعار السيتي — للحلق والضلفة والباكتة والسوقاس (مثلاً سيستم بريمير سيتي)",
       prices: defaultProfileBrandPrices(),
     },
     {
       id: "brand-premier",
       name: "بريمير",
+      notes: "قائمة أسعار بريمير — لأي سيستم مربوط ببراند بريمير",
       prices: {
         "frame-hinged": 55,
         "frame-sliding": 62,
@@ -1442,8 +1444,10 @@ export function getDefaultCatalog(): MaterialCatalog {
     profiles: [
       withDefaultProfile({
         id: "pvc1",
-        name: "نظام PVC مخصص 1",
-        notes: "مفصلي قياسي",
+        name: "بريمير سيتي",
+        notes:
+          "سيستم بريمير سيتي — بياخد قائمة أسعار السيتي للحلق والضلفة والباكتة والسوقاس",
+        isDefault: true,
         profileBrandId: "brand-city",
         profile: {
           pieces: [
@@ -1484,8 +1488,8 @@ export function getDefaultCatalog(): MaterialCatalog {
       }),
       withDefaultProfile({
         id: "pvc2",
-        name: "نظام PVC مخصص 2",
-        notes: "جرار",
+        name: "بريمير سلايد",
+        notes: "سيستم جرار — قائمة أسعار السيتي",
         profileBrandId: "brand-city",
         profile: {
           pieces: [
@@ -2237,6 +2241,44 @@ function normalizeSystem(
   return base;
 }
 
+function migrateProfileSystemLabels(systems: MaterialSystem[]): MaterialSystem[] {
+  const renames: Record<
+    string,
+    { fromNames: string[]; name: string; notes: string; brandId: string }
+  > = {
+    pvc1: {
+      fromNames: ["نظام PVC مخصص 1"],
+      name: "بريمير سيتي",
+      notes:
+        "سيستم بريمير سيتي — بياخد قائمة أسعار السيتي للحلق والضلفة والباكتة والسوقاس",
+      brandId: "brand-city",
+    },
+    pvc2: {
+      fromNames: ["نظام PVC مخصص 2"],
+      name: "بريمير سلايد",
+      notes: "سيستم جرار — قائمة أسعار السيتي",
+      brandId: "brand-city",
+    },
+  };
+
+  let list = systems.map((s) => {
+    const rule = renames[s.id];
+    if (!rule || !rule.fromNames.includes(s.name)) return s;
+    return {
+      ...s,
+      name: rule.name,
+      notes: s.notes && !rule.fromNames.includes(s.notes) ? s.notes : rule.notes,
+      profileBrandId: s.profileBrandId ?? rule.brandId,
+    };
+  });
+
+  if (!list.some((s) => s.isDefault) && list.some((s) => s.id === "pvc1")) {
+    list = list.map((s) => ({ ...s, isDefault: s.id === "pvc1" }));
+  }
+
+  return list;
+}
+
 function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
   const defaults = getDefaultCatalog();
   const next = {} as MaterialCatalog;
@@ -2309,6 +2351,10 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
 
       if (cat.id === "glass") {
         merged = migrateGlassSystems(merged);
+      }
+
+      if (cat.id === "profiles") {
+        merged = migrateProfileSystemLabels(merged);
       }
 
       next[cat.id] = merged;
@@ -2631,10 +2677,11 @@ export function catalogOptionsFor(
   return [
     { id: "none", label: "تجاهل" },
     ...systems.map((s) => {
-      let label = s.isDefault ? `${s.name} (افتراضي)` : s.name;
+      let label = s.name;
+      if (s.isDefault) label = `${label} (افتراضي)`;
       if (category === "profiles" && s.profileBrandId) {
         const brand = findProfileBrand(s.profileBrandId, cat);
-        if (brand) label = `${label} · ${brand.name}`;
+        if (brand) label = `${label} · أسعار ${brand.name}`;
       }
       if (category === "glass") {
         const price = getGlassBottlePrice(s);
