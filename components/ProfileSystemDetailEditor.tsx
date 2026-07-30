@@ -414,7 +414,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
         <p className="mt-0.5 text-xs text-muted">
-          العيدان · الباكتة · البنل · ضلفة الشباك والباب · تعديلات مقاس القطع
+          العيدان · الباكتة · ضلفة الشباك والباب · تعديلات مقاس القطع
         </p>
       </div>
 
@@ -517,8 +517,8 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           </button>
         </div>
         <p className="border-b border-border px-3 py-2 text-[10px] leading-relaxed text-muted">
-          باكتة سنجل/دبل حسب نوع الزجاج · بنل منفصل · ضلفة شباك مفصلي منفصلة عن
-          ضلفة الباب
+          باكتة سنجل/دبل حسب نوع الزجاج — البنل باكتة دبل · ضلفة شباك مفصلي
+          منفصلة عن ضلفة باب مفصلي
         </p>
 
         {pieceDraft ? (
@@ -551,8 +551,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
             >
               <RoleOptionGroup label="حلق وضلف" roles={["frame-hinged", "frame-sliding", "sash-hinged", "sash-door", "sash-sliding"]} />
               <RoleOptionGroup label="باكتة" roles={["bead-single-hinged", "bead-double-hinged", "bead-single-sliding", "bead-double-sliding"]} />
-              <RoleOptionGroup label="بنل" roles={["panel"]} />
-              <RoleOptionGroup label="أخرى" roles={["mullion", "coupling", "knife", "four-leaf-meeting", "mesh-meeting", "bouclier-cap", "threshold", "other"]} />
+              <RoleOptionGroup label="أخرى" roles={["mullion", "coupling", "knife", "four-leaf-meeting", "mesh-meeting", "bouclier-cap", "other"]} />
             </select>
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-[11px] text-muted">

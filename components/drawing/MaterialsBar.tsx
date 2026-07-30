@@ -135,7 +135,7 @@ export function MaterialsBar({
     },
     {
       key: "sash-d",
-      label: "ضلفة باب",
+      label: "ضلفة باب مفصلي",
       value: formatMeters(materials.sashDoorM),
       accent: materials.sashDoorM > 0,
     },
@@ -161,25 +161,15 @@ export function MaterialsBar({
       key: "bead-dh",
       label: "باكتة دبل مفصلي",
       value: formatMeters(materials.beadDoubleHingedM),
+      hint: materials.beadDoubleHingedM > 0 ? "ومنها البنل" : undefined,
       accent: materials.beadDoubleHingedM > 0,
     },
     {
       key: "bead-ds",
       label: "باكتة دبل جرار",
       value: formatMeters(materials.beadDoubleSlidingM),
+      hint: materials.beadDoubleSlidingM > 0 ? "ومنها البنل" : undefined,
       accent: materials.beadDoubleSlidingM > 0,
-    },
-    {
-      key: "panel-h",
-      label: "بنل مفصلي",
-      value: formatMeters(materials.panelHingedM),
-      accent: materials.panelHingedM > 0,
-    },
-    {
-      key: "panel-s",
-      label: "بنل جرار",
-      value: formatMeters(materials.panelSlidingM),
-      accent: materials.panelSlidingM > 0,
     },
     {
       key: "glass-area",

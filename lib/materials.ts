@@ -72,18 +72,12 @@ export type MaterialsBreakdown = {
   beadSingleHingedM: number;
   /** باكتة سنجل جرار — متر طولي */
   beadSingleSlidingM: number;
-  /** باكتة دبل مفصلي — متر طولي */
+  /** باكتة دبل مفصلي — متر طولي (ومنها البنل) */
   beadDoubleHingedM: number;
-  /** باكتة دبل جرار — متر طولي */
+  /** باكتة دبل جرار — متر طولي (ومنها البنل) */
   beadDoubleSlidingM: number;
-  /** بنل مفصلي — متر طولي */
-  panelHingedM: number;
-  /** بنل جرار — متر طولي */
-  panelSlidingM: number;
   /** إجمالي الباكتة */
   beadM: number;
-  /** إجمالي البنل */
-  panelM: number;
   /** مساحة الزجاج الفعلية م² (بدون بنل) */
   glassAreaSqm: number;
   /** مساحة السلك م² */
@@ -164,10 +158,7 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     beadSingleSlidingM: 0,
     beadDoubleHingedM: 0,
     beadDoubleSlidingM: 0,
-    panelHingedM: 0,
-    panelSlidingM: 0,
     beadM: 0,
-    panelM: 0,
     glassAreaSqm: 0,
     meshAreaSqm: 0,
     meshSlidingProfileM: 0,
@@ -219,8 +210,6 @@ type BeadTotalsMm = {
   singleSlidingMm: number;
   doubleHingedMm: number;
   doubleSlidingMm: number;
-  panelHingedMm: number;
-  panelSlidingMm: number;
 };
 
 function addBeadMm(
@@ -239,13 +228,7 @@ function addBeadMm(
   }
 }
 
-function addPanelMm(totals: BeadTotalsMm, isSliding: boolean, mm: number) {
-  if (mm <= 0) return;
-  if (isSliding) totals.panelSlidingMm += mm;
-  else totals.panelHingedMm += mm;
-}
-
-/** باكتة وبنل حسب نوع الزجاج (سنجل/دبل) ونوع الضلفة (مفصلي/جرار) */
+/** باكتة حسب نوع الزجاج (سنجل/دبل) ونوع الضلفة — البنل باكتة دبل */
 function beadTotalsMm(
   boxes: PaneBox[],
   panes: Record<string, PaneConfig> | undefined,
@@ -260,8 +243,6 @@ function beadTotalsMm(
     singleSlidingMm: 0,
     doubleHingedMm: 0,
     doubleSlidingMm: 0,
-    panelHingedMm: 0,
-    panelSlidingMm: 0,
   };
 
   for (const box of boxes) {
@@ -279,7 +260,7 @@ function beadTotalsMm(
       box.opening === "panel-h" || box.opening === "panel-v";
 
     if (isLouver) {
-      addPanelMm(totals, isSliding, panePerimeterMm(box.w, box.h));
+      addBeadMm(totals, isSliding, true, panePerimeterMm(box.w, box.h));
       continue;
     }
 
@@ -291,7 +272,7 @@ function beadTotalsMm(
       hasPanels && cells.every((_, i) => panelSet.has(i));
 
     if (solidFullPanel || allCellsPanel) {
-      addPanelMm(totals, isSliding, panePerimeterMm(box.w, box.h));
+      addBeadMm(totals, isSliding, true, panePerimeterMm(box.w, box.h));
       continue;
     }
 
@@ -299,7 +280,7 @@ function beadTotalsMm(
       cells.forEach((cell, i) => {
         const peri = cellPerimeterMm(cell);
         if (panelSet.has(i)) {
-          addPanelMm(totals, isSliding, peri);
+          addBeadMm(totals, isSliding, true, peri);
         } else {
           addBeadMm(totals, isSliding, isDoubleGlass, peri);
         }
@@ -1103,15 +1084,12 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const beadSingleSlidingM = roundM(mmToM(beadMm.singleSlidingMm));
   const beadDoubleHingedM = roundM(mmToM(beadMm.doubleHingedMm));
   const beadDoubleSlidingM = roundM(mmToM(beadMm.doubleSlidingMm));
-  const panelHingedM = roundM(mmToM(beadMm.panelHingedMm));
-  const panelSlidingM = roundM(mmToM(beadMm.panelSlidingMm));
   const beadM = roundM(
     beadSingleHingedM +
       beadSingleSlidingM +
       beadDoubleHingedM +
       beadDoubleSlidingM
   );
-  const panelM = roundM(panelHingedM + panelSlidingM);
   const frameTotalM = roundM(frameHingedM + frameSlidingM);
   const mullionTotalM = roundM(mullionFrameM + mullionSashM);
 
@@ -1133,10 +1111,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     beadSingleSlidingM,
     beadDoubleHingedM,
     beadDoubleSlidingM,
-    panelHingedM,
-    panelSlidingM,
     beadM,
-    panelM,
     glassAreaSqm,
     meshAreaSqm,
     meshSlidingProfileM,
@@ -1180,10 +1155,7 @@ export function scaleMaterials(
     beadSingleSlidingM: roundM(m.beadSingleSlidingM * q),
     beadDoubleHingedM: roundM(m.beadDoubleHingedM * q),
     beadDoubleSlidingM: roundM(m.beadDoubleSlidingM * q),
-    panelHingedM: roundM(m.panelHingedM * q),
-    panelSlidingM: roundM(m.panelSlidingM * q),
     beadM: roundM(m.beadM * q),
-    panelM: roundM(m.panelM * q),
     glassAreaSqm: roundM(m.glassAreaSqm * q),
     meshAreaSqm: roundM(m.meshAreaSqm * q),
     meshSlidingProfileM: roundM(m.meshSlidingProfileM * q),
@@ -1488,8 +1460,6 @@ function profileCostEntries(m: MaterialsBreakdown): ProfileCostEntry[] {
     { category: "bead-single-sliding", lengthM: m.beadSingleSlidingM },
     { category: "bead-double-hinged", lengthM: m.beadDoubleHingedM },
     { category: "bead-double-sliding", lengthM: m.beadDoubleSlidingM },
-    { category: "panel-hinged", lengthM: m.panelHingedM },
-    { category: "panel-sliding", lengthM: m.panelSlidingM },
     { category: "mesh-sliding-profile", lengthM: m.meshSlidingProfileM },
     { category: "mullion", lengthM: m.mullionTotalM },
   ];

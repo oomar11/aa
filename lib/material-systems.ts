@@ -28,20 +28,18 @@ export type ProfilePieceRole =
   | "bead-double-hinged"
   | "bead-single-sliding"
   | "bead-double-sliding"
-  | "panel"
   | "bead"
-  | "threshold"
   | "other";
 
 export const PROFILE_PIECE_ROLES: {
   id: ProfilePieceRole;
   label: string;
-  group: "frame" | "sash" | "bead" | "panel" | "other";
+  group: "frame" | "sash" | "bead" | "other";
 }[] = [
   { id: "frame-hinged", label: "حلق مفصلي", group: "frame" },
   { id: "frame-sliding", label: "حلق جرار", group: "frame" },
   { id: "sash-hinged", label: "ضلفة شباك مفصلي", group: "sash" },
-  { id: "sash-door", label: "ضلفة باب", group: "sash" },
+  { id: "sash-door", label: "ضلفة باب مفصلي", group: "sash" },
   { id: "sash-sliding", label: "ضلفة جرار", group: "sash" },
   { id: "mullion", label: "سوقاس", group: "other" },
   { id: "coupling", label: "كوبلن", group: "other" },
@@ -53,8 +51,6 @@ export const PROFILE_PIECE_ROLES: {
   { id: "bead-double-hinged", label: "باكتة دبل مفصلي", group: "bead" },
   { id: "bead-single-sliding", label: "باكتة سنجل جرار", group: "bead" },
   { id: "bead-double-sliding", label: "باكتة دبل جرار", group: "bead" },
-  { id: "panel", label: "بنل / باكتة بنل", group: "panel" },
-  { id: "threshold", label: "عتبة", group: "other" },
   { id: "other", label: "أخرى", group: "other" },
 ];
 
@@ -67,6 +63,8 @@ const LEGACY_PROFILE_ROLE_MAP: Record<string, ProfilePieceRole> = {
   bead: "bead-single-hinged",
   "sash-sliding-protruding": "sash-sliding",
   "sash-sliding-recessed": "sash-sliding",
+  panel: "bead-double-hinged",
+  threshold: "other",
 };
 
 export function profileRoleLabel(role: ProfilePieceRole): string {
@@ -104,8 +102,6 @@ export type ProfilePriceCategory =
   | "bead-single-sliding"
   | "bead-double-hinged"
   | "bead-double-sliding"
-  | "panel-hinged"
-  | "panel-sliding"
   | "mesh-sliding-profile";
 
 export const PROFILE_PRICE_CATEGORIES: {
@@ -115,7 +111,7 @@ export const PROFILE_PRICE_CATEGORIES: {
   { id: "frame-hinged", label: "حلق مفصلي" },
   { id: "frame-sliding", label: "حلق جرار" },
   { id: "sash-hinged", label: "ضلفة شباك مفصلي" },
-  { id: "sash-door", label: "ضلفة باب" },
+  { id: "sash-door", label: "ضلفة باب مفصلي" },
   { id: "sash-sliding", label: "ضلفة جرار" },
   { id: "mullion", label: "سوقاس" },
   { id: "coupling", label: "كوبلن" },
@@ -126,8 +122,6 @@ export const PROFILE_PRICE_CATEGORIES: {
   { id: "bead-single-sliding", label: "باكتة سنجل جرار" },
   { id: "bead-double-hinged", label: "باكتة دبل مفصلي" },
   { id: "bead-double-sliding", label: "باكتة دبل جرار" },
-  { id: "panel-hinged", label: "بنل مفصلي" },
-  { id: "panel-sliding", label: "بنل جرار" },
   { id: "mesh-sliding-profile", label: "ضلفة سلك جرار" },
 ];
 
@@ -390,7 +384,7 @@ export const IRON_PIECE_ROLES: { id: IronPieceRole; label: string }[] = [
   { id: "frame-sliding", label: "حلق جرار" },
   { id: "sash-hinged", label: "ضلفة مفصلي" },
   { id: "sash-sliding", label: "ضلفة جرار" },
-  { id: "sash-door", label: "ضلفة باب" },
+  { id: "sash-door", label: "ضلفة باب مفصلي" },
   { id: "mullion", label: "سوقاس" },
 ];
 
@@ -615,7 +609,7 @@ export function standardHingedProfilePieces(): ProfilePiece[] {
     },
     {
       id: "piece-sash-door",
-      name: "ضلفة باب",
+      name: "ضلفة باب مفصلي",
       role: "sash-door",
       sectionWidthMm: 70,
       barLengthM: DEFAULT_BAR_LENGTH_M,
@@ -638,13 +632,6 @@ export function standardHingedProfilePieces(): ProfilePiece[] {
       id: "piece-bead-dh",
       name: "باكتة دبل مفصلي",
       role: "bead-double-hinged",
-      sectionWidthMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-    },
-    {
-      id: "piece-panel",
-      name: "بنل مفصلي",
-      role: "panel",
       sectionWidthMm: 20,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
@@ -707,13 +694,6 @@ export function standardSlidingProfilePieces(): ProfilePiece[] {
       id: "piece-bead-ds",
       name: "باكتة دبل جرار",
       role: "bead-double-sliding",
-      sectionWidthMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-    },
-    {
-      id: "piece-panel-s",
-      name: "بنل جرار",
-      role: "panel",
       sectionWidthMm: 20,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
@@ -1078,8 +1058,6 @@ export function defaultProfileBrandPrices(): Partial<
     "bead-single-sliding": 12,
     "bead-double-hinged": 18,
     "bead-double-sliding": 18,
-    "panel-hinged": 18,
-    "panel-sliding": 18,
     "mesh-sliding-profile": 38,
   };
 }
@@ -1112,8 +1090,6 @@ export function defaultProfileBrands(): ProfileBrand[] {
         "bead-single-sliding": 15,
         "bead-double-hinged": 22,
         "bead-double-sliding": 22,
-        "panel-hinged": 22,
-        "panel-sliding": 22,
         "mesh-sliding-profile": 48,
       },
     },
@@ -1791,7 +1767,17 @@ function normalizeRole(raw: unknown): ProfilePieceRole {
 }
 
 function migrateProfilePiece(piece: ProfilePiece): ProfilePiece {
-  const role = normalizeProfilePieceRole(piece.role);
+  const rawRole = piece.role as string;
+  let role = normalizeProfilePieceRole(piece.role);
+  if (
+    rawRole === "panel" ||
+    rawRole === "threshold" ||
+    /بنل|بانل|panel/i.test(piece.name)
+  ) {
+    role = /جرار|sliding/i.test(piece.name)
+      ? "bead-double-sliding"
+      : "bead-double-hinged";
+  }
   const legacyBead =
     piece.role === "bead" ||
     /بيادة|بياة/.test(piece.name) ||
