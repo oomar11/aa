@@ -122,9 +122,9 @@ export function MaterialsBar({
       label: "طبة بوكلير",
       value:
         materials.bouclierCapQty > 0
-          ? `${formatCount(materials.bouclierCapQty)} · ${formatMeters(materials.bouclierCapM)}`
-          : formatMeters(materials.bouclierCapM),
-      hint: materials.bouclierCapQty > 0 ? "قطاع" : undefined,
+          ? formatCount(materials.bouclierCapQty)
+          : "—",
+      hint: materials.bouclierCapQty > 0 ? "طقم لكل بوكلير" : undefined,
       accent: materials.bouclierCapQty > 0,
     },
     {
@@ -514,9 +514,9 @@ function ProfileCostBreakdownPanel({
         <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[10px]">
           <div className="grid grid-cols-5 border-b border-border text-center font-semibold text-muted">
             <span className="px-1.5 py-1.5 text-start">النوع</span>
-            <span className="px-1.5 py-1.5">الطول</span>
-            <span className="px-1.5 py-1.5">العود</span>
-            <span className="px-1.5 py-1.5">ج.م/م</span>
+            <span className="px-1.5 py-1.5">الكمية</span>
+            <span className="px-1.5 py-1.5">التسعير</span>
+            <span className="px-1.5 py-1.5">الوحدة</span>
             <span className="px-1.5 py-1.5">تكلفة</span>
           </div>
           {breakdown.lines.map((line, i) => (
@@ -535,13 +535,19 @@ function ProfileCostBreakdownPanel({
                 ) : null}
               </span>
               <span className="px-1.5 py-1.5 text-foreground">
-                {line.lengthM.toFixed(2)} م
+                {line.billing === "kit"
+                  ? `${line.qty ?? 0} طقم`
+                  : `${line.lengthM.toFixed(2)} م`}
               </span>
               <span className="px-1.5 py-1.5 text-foreground">
-                {line.barPrice}/{line.barLengthM}م
+                {line.billing === "kit"
+                  ? `${line.unitPrice ?? 0} ج.م/طقم`
+                  : `${line.barPrice}/${line.barLengthM}م`}
               </span>
               <span className="px-1.5 py-1.5 text-foreground">
-                {line.pricePerM}
+                {line.billing === "kit"
+                  ? (line.unitPrice ?? 0)
+                  : line.pricePerM}
               </span>
               <span className="px-1.5 py-1.5 font-semibold text-primary">
                 {formatCurrency(Math.round(line.totalCost))}

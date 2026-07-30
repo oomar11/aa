@@ -168,6 +168,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   const [systemName, setSystemName] = useState("");
   const [systemNotes, setSystemNotes] = useState("");
   const [profileBrandId, setProfileBrandId] = useState("");
+  const [bouclierCapKitPrice, setBouclierCapKitPrice] = useState("");
   const [pieces, setPieces] = useState<ProfilePiece[]>([]);
   const [deductions, setDeductions] =
     useState<ProfileDeductions>(defaultDeductions);
@@ -197,6 +198,11 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       setSystemName(found.name);
       setSystemNotes(found.notes ?? "");
       setProfileBrandId(found.profileBrandId ?? "");
+      setBouclierCapKitPrice(
+        details.bouclierCapKitPrice != null && details.bouclierCapKitPrice > 0
+          ? String(details.bouclierCapKitPrice)
+          : ""
+      );
       setPieces(details.pieces);
       setDeductions(details.deductions);
       const formulas = [
@@ -214,12 +220,16 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     nextDeductions: ProfileDeductions,
     name = systemName,
     notes = systemNotes,
-    brandId = profileBrandId
+    brandId = profileBrandId,
+    kitPriceRaw = bouclierCapKitPrice
   ) {
     if (!catalog || !system) return;
+    const kitN = Number(kitPriceRaw);
     const profile: ProfileSystemDetails = {
       pieces: nextPieces,
       deductions: nextDeductions,
+      bouclierCapKitPrice:
+        Number.isFinite(kitN) && kitN >= 0 ? kitN : undefined,
     };
     const nextSystem: MaterialSystem = {
       ...system,
@@ -239,6 +249,11 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       setSystemNotes(refreshed.notes ?? "");
       setProfileBrandId(refreshed.profileBrandId ?? "");
       const details = refreshed.profile ?? defaultProfileDetails();
+      setBouclierCapKitPrice(
+        details.bouclierCapKitPrice != null && details.bouclierCapKitPrice > 0
+          ? String(details.bouclierCapKitPrice)
+          : ""
+      );
       setPieces(details.pieces);
       setDeductions(details.deductions);
     }
@@ -472,6 +487,22 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
             </span>
           </p>
         ) : null}
+        <label className="block text-[11px] text-muted">
+          سعر طقم طبة البوكلير (ج.م/طقم)
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={bouclierCapKitPrice}
+            onChange={(e) => setBouclierCapKitPrice(e.target.value)}
+            placeholder="مثلاً: 45"
+            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+          />
+        </label>
+        <p className="text-[10px] leading-relaxed text-muted">
+          طبة البوكلير طقم بيركب لكل حتة بوكلير — مش بالعود، والسعر بيختلف من
+          سيستم للتاني.
+        </p>
         <textarea
           value={systemNotes}
           onChange={(e) => setSystemNotes(e.target.value)}

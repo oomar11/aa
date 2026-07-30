@@ -97,7 +97,6 @@ export type ProfilePriceCategory =
   | "coupling"
   | "knife"
   | "bouclier"
-  | "bouclier-cap"
   | "bead-single-hinged"
   | "bead-single-sliding"
   | "bead-double-hinged"
@@ -119,7 +118,6 @@ export const PROFILE_PRICE_CATEGORIES: {
   { id: "coupling", label: "كوبلن" },
   { id: "knife", label: "سكينة" },
   { id: "bouclier", label: "بوكلير" },
-  { id: "bouclier-cap", label: "طبة بوكلير" },
   { id: "bead-single-hinged", label: "باكتة سنجل مفصلي" },
   { id: "bead-single-sliding", label: "باكتة سنجل جرار" },
   { id: "bead-double-hinged", label: "باكتة دبل مفصلي" },
@@ -185,6 +183,11 @@ export type ProfileDeductions = {
 export type ProfileSystemDetails = {
   pieces: ProfilePiece[];
   deductions: ProfileDeductions;
+  /**
+   * سعر طقم طبة البوكلير (ج.م/طقم).
+   * طقم بيركب لكل حتة بوكلير — مش بالعود، وبيختلف من سيستم للتاني.
+   */
+  bouclierCapKitPrice?: number;
 };
 
 /** نوع الزجاجة الواحدة */
@@ -1156,7 +1159,6 @@ const LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES = {
   coupling: 45,
   knife: 28,
   bouclier: 35,
-  "bouclier-cap": 8,
   "bead-single-hinged": 12,
   "bead-single-sliding": 12,
   "bead-double-hinged": 18,
@@ -1345,7 +1347,6 @@ export function defaultProfileBrands(): ProfileBrand[] {
         coupling: makeProfileBarRate(348, 6),
         knife: makeProfileBarRate(210, 6),
         bouclier: makeProfileBarRate(252, 6),
-        "bouclier-cap": makeProfileBarRate(60, 6),
         "bead-single-hinged": makeProfileBarRate(90, 6),
         "bead-single-sliding": makeProfileBarRate(90, 6),
         "bead-double-hinged": makeProfileBarRate(132, 6),
@@ -2252,6 +2253,10 @@ function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
         "sash"
       ),
     },
+    bouclierCapKitPrice: (() => {
+      const n = Number(d.bouclierCapKitPrice);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    })(),
   };
 }
 

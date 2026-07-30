@@ -1426,15 +1426,21 @@ export function calcMeshBreakdown(
 // ─── حساب تكلفة القطاعات حسب البراند ───────────────────────────
 
 export type ProfileCostLine = {
-  category: ProfilePriceCategory;
+  category: string;
   label: string;
+  /** bar = بالعود/المتر · kit = طقم (طبة بوكلير) */
+  billing: "bar" | "kit";
   lengthM: number;
-  /** سعر العود من القائمة */
+  /** عدد الأطقم — لطبة البوكلير */
+  qty?: number;
+  /** سعر العود من القائمة (أو 0 للطقم) */
   barPrice: number;
-  /** طول العود بالمتر */
+  /** طول العود بالمتر (أو 0 للطقم) */
   barLengthM: number;
   /** سعر المتر المشتق = barPrice ÷ barLengthM */
   pricePerM: number;
+  /** سعر الوحدة للطقم */
+  unitPrice?: number;
   totalCost: number;
   productName?: string;
 };
@@ -1459,7 +1465,6 @@ function profileCostEntries(m: MaterialsBreakdown): ProfileCostEntry[] {
     { category: "coupling", lengthM: m.couplingM },
     { category: "knife", lengthM: m.knifeM },
     { category: "bouclier", lengthM: m.bouclierM },
-    { category: "bouclier-cap", lengthM: m.bouclierCapM },
     { category: "sash-hinged", lengthM: m.sashHingedM },
     { category: "sash-door", lengthM: m.sashDoorM },
     { category: "sash-sliding", lengthM: m.sashSlidingM },
@@ -1494,23 +1499,47 @@ export function calcProfileCostBreakdown(
 
   const system = findSystem("profiles", item.systemId, cat);
   const brand: ProfileBrand | undefined = resolveProfileBrandForSystem(system, cat);
-  if (!brand || !profileBrandHasPricing(brand)) return empty;
+  const kitPrice = system?.profile?.bouclierCapKitPrice ?? 0;
+  const hasBarPricing = brand != null && profileBrandHasPricing(brand);
+  const hasKitPricing = kitPrice > 0 && materials.bouclierCapQty > 0;
+  if (!hasBarPricing && !hasKitPricing) return empty;
 
   const lines: ProfileCostLine[] = [];
-  for (const entry of profileCostEntries(materials)) {
-    const rate = getProfileBrandRate(brand, entry.category);
-    if (!rate) continue;
-    const pricePerM = profileBarPricePerM(rate.barPrice, rate.barLengthM);
-    if (pricePerM <= 0) continue;
+  if (hasBarPricing && brand) {
+    for (const entry of profileCostEntries(materials)) {
+      const rate = getProfileBrandRate(brand, entry.category);
+      if (!rate) continue;
+      const pricePerM = profileBarPricePerM(rate.barPrice, rate.barLengthM);
+      if (pricePerM <= 0) continue;
+      lines.push({
+        category: entry.category,
+        label: profilePriceCategoryLabel(entry.category),
+        billing: "bar",
+        lengthM: entry.lengthM,
+        barPrice: rate.barPrice,
+        barLengthM: rate.barLengthM,
+        pricePerM,
+        totalCost: roundM(entry.lengthM * pricePerM),
+        productName: rate.productName,
+      });
+    }
+  }
+
+  // طبة بوكلير = طقم لكل حتة بوكلير (سعر على السيستم، مش بالعود)
+  if (hasKitPricing) {
+    const qty = materials.bouclierCapQty;
     lines.push({
-      category: entry.category,
-      label: profilePriceCategoryLabel(entry.category),
-      lengthM: entry.lengthM,
-      barPrice: rate.barPrice,
-      barLengthM: rate.barLengthM,
-      pricePerM,
-      totalCost: roundM(entry.lengthM * pricePerM),
-      productName: rate.productName,
+      category: "bouclier-cap",
+      label: "طبة بوكلير",
+      billing: "kit",
+      lengthM: 0,
+      qty,
+      barPrice: 0,
+      barLengthM: 0,
+      pricePerM: 0,
+      unitPrice: kitPrice,
+      totalCost: roundM(qty * kitPrice),
+      productName: "طقم لكل حتة بوكلير",
     });
   }
 
@@ -1521,7 +1550,7 @@ export function calcProfileCostBreakdown(
 
   return {
     hasPricing: true,
-    brandName: brand.name,
+    brandName: brand?.name ?? system?.name ?? null,
     lines,
     totalUnitCost,
     totalCost: roundM(totalUnitCost * qty),
