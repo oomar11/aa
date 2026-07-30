@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   defaultMeshCategories,
   loadMaterialCatalog,
+  MESH_CATALOG_UPDATED,
   saveMaterialCatalog,
   type MaterialCatalog,
   type MeshCategory,
@@ -32,13 +33,20 @@ export function MeshCategoriesEditor() {
   const [flash, setFlash] = useState<string | null>(null);
   const [draft, setDraft] = useState<MeshCategory | null>(null);
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      const cat = loadMaterialCatalog();
-      setCategories(cat.meshCategories ?? defaultMeshCategories());
-      setTypesCount(cat.meshTypes?.length ?? 0);
-    });
+  const reload = useCallback(() => {
+    const cat = loadMaterialCatalog();
+    setCategories(cat.meshCategories ?? defaultMeshCategories());
+    setTypesCount(cat.meshTypes?.length ?? 0);
   }, []);
+
+  useEffect(() => {
+    queueMicrotask(reload);
+  }, [reload]);
+
+  useEffect(() => {
+    window.addEventListener(MESH_CATALOG_UPDATED, reload);
+    return () => window.removeEventListener(MESH_CATALOG_UPDATED, reload);
+  }, [reload]);
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -53,7 +61,7 @@ export function MeshCategoriesEditor() {
     }));
     const next: MaterialCatalog = { ...cat, meshCategories: cleared };
     const saved = saveMaterialCatalog(next);
-    setCategories(saved.meshCategories ?? defaultMeshCategories());
+    setCategories(saved.meshCategories ?? []);
     setTypesCount(saved.meshTypes?.length ?? 0);
   }
 
@@ -99,14 +107,19 @@ export function MeshCategoriesEditor() {
   }
 
   function remove(id: string) {
-    const used = (loadMaterialCatalog().meshTypes ?? []).filter(
-      (t) => t.kind === id
-    ).length;
-    if (used > 0) {
-      window.alert(`التصنيف مستخدم في ${used} نوع سلك — انقلهم الأول`);
+    const catalog = loadMaterialCatalog();
+    const linkedTypes = (catalog.meshTypes ?? []).filter((t) => t.kind === id);
+    if (linkedTypes.length > 0) {
+      const ok = window.confirm(
+        `التصنيف فيه ${linkedTypes.length} نوع سلك — هتتحذف مع التصنيف. متأكد؟`
+      );
+      if (!ok) return;
+      const nextTypes = (catalog.meshTypes ?? []).filter((t) => t.kind !== id);
+      saveMaterialCatalog({ ...catalog, meshTypes: nextTypes });
+    } else if (!window.confirm("حذف التصنيف؟")) {
       return;
     }
-    if (!window.confirm("حذف التصنيف؟")) return;
+
     persist(categories.filter((c) => c.id !== id));
     if (draft?.id === id) setDraft(null);
     showFlash("تم الحذف");
@@ -137,53 +150,60 @@ export function MeshCategoriesEditor() {
         </p>
       ) : null}
 
-      <ul className="space-y-1.5">
-        {categories.map((c) => {
-          const used = (loadMaterialCatalog().meshTypes ?? []).filter(
-            (t) => t.kind === c.id
-          ).length;
-          return (
-            <li
-              key={c.id}
-              className="flex items-center justify-between gap-2 rounded-xl border border-border bg-background px-2.5 py-2"
-            >
-              <div className="min-w-0 text-start">
-                <p className="truncate text-[12px] font-semibold text-foreground">
-                  {c.label}
-                </p>
-                <p className="text-[10px] text-muted">
-                  {c.calcProfile
-                    ? "ضلفة + سلك + عجل + مقبض"
-                    : "مساحة سلك فقط"}
-                  {c.defaultFor
-                    ? ` · تلقائي: ${
-                        DEFAULT_FOR_OPTIONS.find((o) => o.value === c.defaultFor)
-                          ?.label ?? c.defaultFor
-                      }`
-                    : ""}
-                  {used > 0 ? ` · ${used} نوع` : ""}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-1">
-                <button
-                  type="button"
-                  onClick={() => openEdit(c)}
-                  className="rounded-lg border border-border px-2 py-1 text-[10px] font-semibold"
-                >
-                  تعديل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => remove(c.id)}
-                  className="rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-red-600"
-                >
-                  حذف
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      {categories.length === 0 ? (
+        <p className="rounded-lg border border-border bg-background px-2 py-2 text-center text-[11px] text-muted">
+          مفيش تصنيفات — اضغط «+ تصنيف»
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {categories.map((c) => {
+            const used = (loadMaterialCatalog().meshTypes ?? []).filter(
+              (t) => t.kind === c.id
+            ).length;
+            return (
+              <li
+                key={c.id}
+                className="flex items-center justify-between gap-2 rounded-xl border border-border bg-background px-2.5 py-2"
+              >
+                <div className="min-w-0 text-start">
+                  <p className="truncate text-[12px] font-semibold text-foreground">
+                    {c.label}
+                  </p>
+                  <p className="text-[10px] text-muted">
+                    {c.calcProfile
+                      ? "ضلفة + سلك + عجل + مقبض"
+                      : "مساحة سلك فقط"}
+                    {c.defaultFor
+                      ? ` · تلقائي: ${
+                          DEFAULT_FOR_OPTIONS.find(
+                            (o) => o.value === c.defaultFor
+                          )?.label ?? c.defaultFor
+                        }`
+                      : ""}
+                    {used > 0 ? ` · ${used} نوع` : ""}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(c)}
+                    className="rounded-lg border border-border px-2 py-1 text-[10px] font-semibold"
+                  >
+                    تعديل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(c.id)}
+                    className="rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-red-600"
+                  >
+                    حذف
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {typesCount > 0 ? (
         <p className="text-center text-[10px] text-muted">

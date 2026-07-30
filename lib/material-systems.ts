@@ -184,6 +184,15 @@ export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]> & {
 
 export const MATERIALS_STORAGE_KEY = "upvc-material-systems";
 
+/** يُبث بعد حفظ تصنيفات/أنواع السلك — لمزامنة المحررات */
+export const MESH_CATALOG_UPDATED = "upvc-mesh-catalog-updated";
+
+export function notifyMeshCatalogUpdated() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(MESH_CATALOG_UPDATED));
+  }
+}
+
 /** طول العود الافتراضي بالمتر */
 export const DEFAULT_BAR_LENGTH_M = 5.8;
 
@@ -1215,14 +1224,20 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
   }
 
   next.glassRates = normalizeGlassRates(raw.glassRates);
-  next.meshCategories = normalizeMeshCategories(raw.meshCategories);
-  next.meshTypes = normalizeMeshTypes(raw.meshTypes, next.meshCategories);
+  next.meshCategories =
+    raw.meshCategories === undefined
+      ? defaultMeshCategories()
+      : normalizeMeshCategories(raw.meshCategories);
+  next.meshTypes =
+    raw.meshTypes === undefined
+      ? defaultMeshTypes()
+      : normalizeMeshTypes(raw.meshTypes, next.meshCategories);
 
   return next;
 }
 
 function normalizeMeshCategories(raw: unknown): MeshCategory[] {
-  if (!Array.isArray(raw) || raw.length === 0) return defaultMeshCategories();
+  if (!Array.isArray(raw)) return [];
   const out: MeshCategory[] = [];
   const seen = new Set<string>();
   const defaultTags = new Set(["sliding", "hinged", "fixed", "tilt"]);
@@ -1245,24 +1260,11 @@ function normalizeMeshCategories(raw: unknown): MeshCategory[] {
     });
   }
 
-  return out.length > 0 ? mergeMeshCategories(out) : defaultMeshCategories();
-}
-
-function mergeMeshCategories(stored: MeshCategory[]): MeshCategory[] {
-  const byId = new Map(stored.map((c) => [c.id, c]));
-  for (const d of defaultMeshCategories()) {
-    if (!byId.has(d.id)) byId.set(d.id, d);
-  }
-  const defaultOrder = defaultMeshCategories().map((c) => c.id);
-  const defaults = defaultOrder
-    .map((id) => byId.get(id))
-    .filter((c): c is MeshCategory => Boolean(c));
-  const customs = stored.filter((c) => !defaultOrder.includes(c.id));
-  return [...defaults, ...customs];
+  return out;
 }
 
 function normalizeMeshTypes(raw: unknown, categories: MeshCategory[]): MeshType[] {
-  if (!Array.isArray(raw) || raw.length === 0) return defaultMeshTypes();
+  if (!Array.isArray(raw)) return [];
   const out: MeshType[] = [];
   const seen = new Set<string>();
   const kindIds = new Set(categories.map((c) => c.id));
@@ -1287,20 +1289,7 @@ function normalizeMeshTypes(raw: unknown, categories: MeshCategory[]): MeshType[
     });
   }
 
-  return out.length > 0 ? mergeMeshTypes(out, categories) : defaultMeshTypes();
-}
-
-function mergeMeshTypes(stored: MeshType[], categories: MeshCategory[]): MeshType[] {
-  const byId = new Map(stored.map((t) => [t.id, t]));
-  for (const d of defaultMeshTypes()) {
-    if (!byId.has(d.id)) byId.set(d.id, d);
-  }
-  const kindIds = new Set(categories.map((c) => c.id));
-  const fallbackKind = categories[0]?.id ?? "fixed";
-  return Array.from(byId.values()).map((t) => ({
-    ...t,
-    kind: kindIds.has(t.kind) ? t.kind : fallbackKind,
-  }));
+  return out;
 }
 
 export function loadMaterialCatalog(): MaterialCatalog {
@@ -1311,8 +1300,7 @@ export function loadMaterialCatalog(): MaterialCatalog {
     const parsed: unknown = JSON.parse(raw);
     if (!isCatalog(parsed)) return getDefaultCatalog();
     const normalized = normalizeCatalog(parsed);
-    const beforeGlass = (parsed as MaterialCatalog).glass;
-    if (JSON.stringify(beforeGlass) !== JSON.stringify(normalized.glass)) {
+    if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
       localStorage.setItem(MATERIALS_STORAGE_KEY, JSON.stringify(normalized));
     }
     return normalized;
@@ -1325,6 +1313,7 @@ export function saveMaterialCatalog(catalog: MaterialCatalog): MaterialCatalog {
   const normalized = normalizeCatalog(catalog);
   if (typeof window !== "undefined") {
     localStorage.setItem(MATERIALS_STORAGE_KEY, JSON.stringify(normalized));
+    notifyMeshCatalogUpdated();
   }
   return normalized;
 }

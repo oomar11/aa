@@ -5,6 +5,7 @@ import {
   defaultMeshCategories,
   defaultMeshTypes,
   loadMaterialCatalog,
+  MESH_CATALOG_UPDATED,
   saveMaterialCatalog,
   type MaterialCatalog,
   type MeshType,
@@ -37,6 +38,11 @@ export function MeshTypesEditor() {
     queueMicrotask(reload);
   }, [reload]);
 
+  useEffect(() => {
+    window.addEventListener(MESH_CATALOG_UPDATED, reload);
+    return () => window.removeEventListener(MESH_CATALOG_UPDATED, reload);
+  }, [reload]);
+
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
     window.setTimeout(() => setFlash(null), 1800);
@@ -46,7 +52,13 @@ export function MeshTypesEditor() {
     const cat = loadMaterialCatalog();
     const next: MaterialCatalog = { ...cat, meshTypes: nextTypes };
     const saved = saveMaterialCatalog(next);
-    setTypes(saved.meshTypes ?? defaultMeshTypes());
+    setTypes(saved.meshTypes ?? []);
+    setCategoryOpts(
+      (saved.meshCategories ?? defaultMeshCategories()).map((c) => ({
+        id: c.id,
+        label: c.label,
+      }))
+    );
   }
 
   function openCreate(kind: string) {
@@ -65,7 +77,10 @@ export function MeshTypesEditor() {
   function saveDraft() {
     if (!draft) return;
     const name = draft.name.trim();
-    if (!name) return;
+    if (!name) {
+      showFlash("اكتب اسم السلك");
+      return;
+    }
     const price = Math.max(0, Number(draft.pricePerSqm) || 0);
     const item: MeshType = {
       ...draft,
