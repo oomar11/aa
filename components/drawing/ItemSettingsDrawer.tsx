@@ -323,7 +323,8 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
 
           <Section title="الحديد">
             <p className="mb-2 text-[11px] text-muted">
-              غالباً ثابت — الافتراضي بيتحدد من شاشة الخامات
+              نظام التسليح — من الخامات ← حديد ← تفاصيل: عيّن نوع الحديد لكل
+              حلق/ضلفة/سوقاس (مفصلي أو جرار) والتخصيم ١٠ سم
             </p>
             <RadioList
               name="iron"
