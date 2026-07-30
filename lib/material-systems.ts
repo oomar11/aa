@@ -139,6 +139,75 @@ export type GlassSystemDetails = {
   georgianCostPerSqm?: number;
 };
 
+/** مقاسات السبلونة القياسية (سم تقريباً حسب ارتفاع ناحية المقبض) */
+export type EspagnoletteSize = 40 | 60 | 80 | 100 | 140 | 160 | 180;
+
+export const ESPAGNOLETTE_SIZES: EspagnoletteSize[] = [
+  40, 60, 80, 100, 140, 160, 180,
+];
+
+/** عتبة اختيار مقاس السبلونة حسب ارتفاع الضلفة من ناحية المقبض */
+export type EspagnoletteSizeRule = {
+  size: EspagnoletteSize;
+  /**
+   * أقصى ارتفاع ضلفة (مم) لهذا المقاس.
+   * الاختيار: أصغر مقاس قاعدته ≥ الارتفاع، وإلا الأكبر المتاح.
+   */
+  maxHeightMm: number;
+};
+
+/** قطعة سكاك داخل طقم السبلونة */
+export type AccessoryLockPiece = {
+  id: string;
+  name: string;
+  /** العدد لكل سبلونة / ضلفة */
+  qtyPerLockset: number;
+};
+
+/**
+ * تفاصيل نظام الاكسسوار — قواعد الكميات للمفصلي والجرار.
+ * تتعدّل من شاشة تفاصيل نظام الاكسسوار.
+ */
+export type AccessorySystemDetails = {
+  // ── مفصلي ──────────────────────────────────────────
+  /** مفصلات لكل ضلفة شباك مفصلي */
+  hingesPerSash: number;
+  /** مفصلات لكل ضلفة باب */
+  hingesPerDoor: number;
+  /** مقاسات السبلونة المفصلي المتاحة */
+  hingedEspagnoletteSizes: EspagnoletteSize[];
+  /** قواعد اختيار المقاس حسب ارتفاع ناحية المقبض */
+  espagnoletteSizeRules: EspagnoletteSizeRule[];
+  /** سكاك مفصلي — طقم لكل سبلونة ضلفة واحدة */
+  hingedLockPieces: AccessoryLockPiece[];
+  /** سكاك بوكلير — بدل المفصلي لما فيه بوكلير */
+  bouclierLockPieces: AccessoryLockPiece[];
+  /** ترباس لكل بوكلير */
+  boltsPerBouclier: number;
+  /** طقم طبة بوكلير لكل بوكلير */
+  bouclierCapKitsPerBouclier: number;
+  /** مقبض بارز لكل سبلونة */
+  protrudingHandlesPerLockset: number;
+
+  // ── جرار ───────────────────────────────────────────
+  /** عدد قطع التراك على الحلق (٢ بعرض الحلق) */
+  tracksPerFrame: number;
+  /** عجل لكل ضلفة جرار */
+  rollersPerSlidingSash: number;
+  /** مضاعف محيط الضلفة للفرش (افتراضي ٢) */
+  brushSashPerimeterMultiplier: number;
+  /** مضاعف ارتفاع السكينة للفرش (افتراضي ١) */
+  brushKnifeHeightMultiplier: number;
+  /** مقاسات سبلونة الجرار */
+  slidingEspagnoletteSizes: EspagnoletteSize[];
+  /** سكاك جرار — مكان المفصلي */
+  slidingLockPieces: AccessoryLockPiece[];
+  /** تفعيل تقابل ٤ ضلفة */
+  fourLeafMeetingEnabled: boolean;
+  /** تفعيل تقابل سلك جرار (ضلفتين في نفس الفتحة) */
+  meshSlidingMeetingEnabled: boolean;
+};
+
 export type MaterialSystem = {
   id: string;
   name: string;
@@ -149,6 +218,8 @@ export type MaterialSystem = {
   profile?: ProfileSystemDetails;
   /** تفاصيل نظام الزجاج: مفرد/دبل + جورجيا */
   glass?: GlassSystemDetails;
+  /** تفاصيل نظام الاكسسوار: مفصلي · جرار · سبلونة · سكاك */
+  accessory?: AccessorySystemDetails;
 };
 
 /** أسعار التدبيل والجورجيا — عامة لكل الضلف */
@@ -213,7 +284,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "accessories",
     label: "اكسسوار",
-    description: "المقابض · المفصلات · الإكسسوارات",
+    description: "مفصلي · جرار · سبلونة · سكاك · تراك · فرش",
     accent: "#6B8AD8",
     shadow: "rgba(107,138,216,0.35)",
   },
@@ -340,6 +411,97 @@ export function defaultGlassDetails(
     spacerMm: 6,
     georgian: false,
   };
+}
+
+function newLockPieceId(prefix: string): string {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export function defaultEspagnoletteSizeRules(): EspagnoletteSizeRule[] {
+  // المقاس ≈ ارتفاع ناحية المقبض بالسم — العتبة بالمم = المقاس × ١٠
+  return ESPAGNOLETTE_SIZES.map((size) => ({
+    size,
+    maxHeightMm: size * 10,
+  }));
+}
+
+export function defaultHingedLockPieces(): AccessoryLockPiece[] {
+  return [
+    { id: "hl-keeper-main", name: "سكة رئيسية", qtyPerLockset: 1 },
+    { id: "hl-keeper-mid", name: "سكة وسط", qtyPerLockset: 2 },
+  ];
+}
+
+export function defaultBouclierLockPieces(): AccessoryLockPiece[] {
+  return [
+    { id: "bl-keeper", name: "سكة بوكلير", qtyPerLockset: 1 },
+    { id: "bl-strike", name: "لقمة بوكلير", qtyPerLockset: 1 },
+  ];
+}
+
+export function defaultSlidingLockPieces(): AccessoryLockPiece[] {
+  return [
+    { id: "sl-keeper-main", name: "سكة جرار", qtyPerLockset: 1 },
+    { id: "sl-keeper-mid", name: "سكة وسط جرار", qtyPerLockset: 1 },
+  ];
+}
+
+export function defaultAccessoryDetails(): AccessorySystemDetails {
+  return {
+    hingesPerSash: 2,
+    hingesPerDoor: 3,
+    hingedEspagnoletteSizes: [...ESPAGNOLETTE_SIZES],
+    espagnoletteSizeRules: defaultEspagnoletteSizeRules(),
+    hingedLockPieces: defaultHingedLockPieces(),
+    bouclierLockPieces: defaultBouclierLockPieces(),
+    boltsPerBouclier: 2,
+    bouclierCapKitsPerBouclier: 1,
+    protrudingHandlesPerLockset: 1,
+    tracksPerFrame: 2,
+    rollersPerSlidingSash: 2,
+    brushSashPerimeterMultiplier: 2,
+    brushKnifeHeightMultiplier: 1,
+    slidingEspagnoletteSizes: [...ESPAGNOLETTE_SIZES],
+    slidingLockPieces: defaultSlidingLockPieces(),
+    fourLeafMeetingEnabled: true,
+    meshSlidingMeetingEnabled: true,
+  };
+}
+
+export function getDefaultAccessoryDetails(): AccessorySystemDetails {
+  return defaultAccessoryDetails();
+}
+
+/**
+ * يختار مقاس السبلونة حسب ارتفاع ناحية المقبض (مم).
+ * أصغر مقاس قاعدته ≥ الارتفاع، وإلا أكبر مقاس متاح.
+ */
+export function pickEspagnoletteSize(
+  handleSideHeightMm: number,
+  rules: EspagnoletteSizeRule[],
+  allowed: EspagnoletteSize[]
+): EspagnoletteSize {
+  const allowedSet = new Set(allowed.length > 0 ? allowed : ESPAGNOLETTE_SIZES);
+  const sorted = [...rules]
+    .filter((r) => allowedSet.has(r.size))
+    .sort((a, b) => a.maxHeightMm - b.maxHeightMm);
+
+  if (sorted.length === 0) {
+    const fallback = [...allowedSet].sort((a, b) => a - b);
+    return fallback[fallback.length - 1] ?? 100;
+  }
+
+  const h = Math.max(0, handleSideHeightMm);
+  for (const rule of sorted) {
+    if (h <= rule.maxHeightMm) return rule.size;
+  }
+  return sorted[sorted.length - 1]!.size;
+}
+
+export function newAccessoryLockPieceId(kind: "hinged" | "bouclier" | "sliding"): string {
+  const prefix =
+    kind === "hinged" ? "hl" : kind === "bouclier" ? "bl" : "sl";
+  return newLockPieceId(prefix);
 }
 
 function withDefaultProfile(system: MaterialSystem): MaterialSystem {
@@ -865,9 +1027,22 @@ export function getDefaultCatalog(): MaterialCatalog {
       }),
     ],
     accessories: [
-      { id: "acc-std", name: "اكسسوار قياسي", isDefault: true },
-      { id: "acc-premium", name: "اكسسوار فاخر" },
-      { id: "acc-economy", name: "اكسسوار اقتصادي" },
+      {
+        id: "acc-std",
+        name: "اكسسوار قياسي",
+        isDefault: true,
+        accessory: defaultAccessoryDetails(),
+      },
+      {
+        id: "acc-premium",
+        name: "اكسسوار فاخر",
+        accessory: defaultAccessoryDetails(),
+      },
+      {
+        id: "acc-economy",
+        name: "اكسسوار اقتصادي",
+        accessory: defaultAccessoryDetails(),
+      },
     ],
     glass: [
       defaultGlassBottle({
@@ -1150,6 +1325,168 @@ function normalizeGlassDetails(raw: unknown): GlassSystemDetails {
   };
 }
 
+function normalizeEspagnoletteSize(raw: unknown): EspagnoletteSize | null {
+  const n = Number(raw);
+  if (!ESPAGNOLETTE_SIZES.includes(n as EspagnoletteSize)) return null;
+  return n as EspagnoletteSize;
+}
+
+function normalizeLockPieces(
+  raw: unknown,
+  fallback: AccessoryLockPiece[]
+): AccessoryLockPiece[] {
+  if (!Array.isArray(raw)) return fallback.map((p) => ({ ...p }));
+  const out: AccessoryLockPiece[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const id = typeof o.id === "string" ? o.id.trim() : "";
+    const name = typeof o.name === "string" ? o.name.trim() : "";
+    if (!id || !name || seen.has(id)) continue;
+    const qty = Number(o.qtyPerLockset);
+    seen.add(id);
+    out.push({
+      id,
+      name,
+      qtyPerLockset:
+        Number.isFinite(qty) && qty >= 0 ? Math.round(qty) : 1,
+    });
+  }
+  return out.length > 0 ? out : fallback.map((p) => ({ ...p }));
+}
+
+function normalizeEspagnoletteSizes(
+  raw: unknown,
+  fallback: EspagnoletteSize[]
+): EspagnoletteSize[] {
+  if (!Array.isArray(raw)) return [...fallback];
+  const out: EspagnoletteSize[] = [];
+  const seen = new Set<number>();
+  for (const item of raw) {
+    const size = normalizeEspagnoletteSize(item);
+    if (!size || seen.has(size)) continue;
+    seen.add(size);
+    out.push(size);
+  }
+  return out.length > 0 ? out : [...fallback];
+}
+
+function normalizeEspagnoletteRules(
+  raw: unknown,
+  sizes: EspagnoletteSize[]
+): EspagnoletteSizeRule[] {
+  const defaults = defaultEspagnoletteSizeRules().filter((r) =>
+    sizes.includes(r.size)
+  );
+  if (!Array.isArray(raw)) return defaults;
+  const bySize = new Map<EspagnoletteSize, number>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const size = normalizeEspagnoletteSize(o.size);
+    if (!size || !sizes.includes(size)) continue;
+    const maxH = Number(o.maxHeightMm);
+    bySize.set(
+      size,
+      Number.isFinite(maxH) && maxH > 0 ? maxH : size * 10
+    );
+  }
+  if (bySize.size === 0) return defaults;
+  return sizes.map((size) => ({
+    size,
+    maxHeightMm: bySize.get(size) ?? size * 10,
+  }));
+}
+
+function normalizePositiveInt(raw: unknown, fallback: number): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.round(n);
+}
+
+function normalizeMultiplier(raw: unknown, fallback: number): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return n;
+}
+
+export function normalizeAccessoryDetails(
+  raw: unknown
+): AccessorySystemDetails {
+  const fallback = defaultAccessoryDetails();
+  if (!raw || typeof raw !== "object") return fallback;
+  const o = raw as Record<string, unknown>;
+
+  const hingedEspagnoletteSizes = normalizeEspagnoletteSizes(
+    o.hingedEspagnoletteSizes,
+    fallback.hingedEspagnoletteSizes
+  );
+  const slidingEspagnoletteSizes = normalizeEspagnoletteSizes(
+    o.slidingEspagnoletteSizes,
+    fallback.slidingEspagnoletteSizes
+  );
+  const ruleSizes = [
+    ...new Set([...hingedEspagnoletteSizes, ...slidingEspagnoletteSizes]),
+  ].sort((a, b) => a - b) as EspagnoletteSize[];
+
+  return {
+    hingesPerSash: normalizePositiveInt(o.hingesPerSash, fallback.hingesPerSash),
+    hingesPerDoor: normalizePositiveInt(o.hingesPerDoor, fallback.hingesPerDoor),
+    hingedEspagnoletteSizes,
+    espagnoletteSizeRules: normalizeEspagnoletteRules(
+      o.espagnoletteSizeRules,
+      ruleSizes
+    ),
+    hingedLockPieces: normalizeLockPieces(
+      o.hingedLockPieces,
+      fallback.hingedLockPieces
+    ),
+    bouclierLockPieces: normalizeLockPieces(
+      o.bouclierLockPieces,
+      fallback.bouclierLockPieces
+    ),
+    boltsPerBouclier: normalizePositiveInt(
+      o.boltsPerBouclier,
+      fallback.boltsPerBouclier
+    ),
+    bouclierCapKitsPerBouclier: normalizePositiveInt(
+      o.bouclierCapKitsPerBouclier,
+      fallback.bouclierCapKitsPerBouclier
+    ),
+    protrudingHandlesPerLockset: normalizePositiveInt(
+      o.protrudingHandlesPerLockset,
+      fallback.protrudingHandlesPerLockset
+    ),
+    tracksPerFrame: normalizePositiveInt(o.tracksPerFrame, fallback.tracksPerFrame),
+    rollersPerSlidingSash: normalizePositiveInt(
+      o.rollersPerSlidingSash,
+      fallback.rollersPerSlidingSash
+    ),
+    brushSashPerimeterMultiplier: normalizeMultiplier(
+      o.brushSashPerimeterMultiplier,
+      fallback.brushSashPerimeterMultiplier
+    ),
+    brushKnifeHeightMultiplier: normalizeMultiplier(
+      o.brushKnifeHeightMultiplier,
+      fallback.brushKnifeHeightMultiplier
+    ),
+    slidingEspagnoletteSizes,
+    slidingLockPieces: normalizeLockPieces(
+      o.slidingLockPieces,
+      fallback.slidingLockPieces
+    ),
+    fourLeafMeetingEnabled:
+      o.fourLeafMeetingEnabled === undefined
+        ? fallback.fourLeafMeetingEnabled
+        : Boolean(o.fourLeafMeetingEnabled),
+    meshSlidingMeetingEnabled:
+      o.meshSlidingMeetingEnabled === undefined
+        ? fallback.meshSlidingMeetingEnabled
+        : Boolean(o.meshSlidingMeetingEnabled),
+  };
+}
+
 function normalizeSystem(
   raw: unknown,
   category: MaterialCategory
@@ -1169,6 +1506,9 @@ function normalizeSystem(
   }
   if (category === "glass") {
     base.glass = normalizeGlassBottleDetails(s.glass, base.name);
+  }
+  if (category === "accessories") {
+    base.accessory = normalizeAccessoryDetails(s.accessory);
   }
   return base;
 }
@@ -1206,6 +1546,12 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
               pane1: defaultGlassPane({ label: enriched.name }),
               georgian: false,
             },
+          };
+        }
+        if (cat.id === "accessories" && !enriched.accessory) {
+          enriched = {
+            ...enriched,
+            accessory: defaultAccessoryDetails(),
           };
         }
         if (enriched.isDefault && !foundDefault) {
@@ -1438,6 +1784,9 @@ export function upsertSystem(
       },
     };
   }
+  if (category === "accessories" && !toSave.accessory) {
+    toSave = { ...toSave, accessory: defaultAccessoryDetails() };
+  }
 
   const list = [...(catalog[category] ?? [])];
   const idx = list.findIndex((s) => s.id === toSave.id);
@@ -1459,6 +1808,10 @@ export function upsertSystem(
               pane1: defaultGlassPane({ label: toSave.name }),
               georgian: false,
             }
+          : undefined,
+      accessory:
+        category === "accessories"
+          ? toSave.accessory ?? prev.accessory ?? defaultAccessoryDetails()
           : undefined,
     };
     nextList = list.map((s, i) => (i === idx ? merged : s));

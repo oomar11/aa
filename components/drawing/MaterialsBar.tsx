@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { AccessoriesBreakdown } from "@/lib/accessories";
+import {
+  formatEspagnoletteSummary,
+  formatLockPiecesSummary,
+} from "@/lib/accessories";
 import type { GlassBreakdown, MaterialsBreakdown, MeshBreakdown } from "@/lib/materials";
 import { formatArea, formatCount, formatMeters } from "@/lib/materials";
 import {
@@ -21,6 +26,7 @@ type Props = {
   materials: MaterialsBreakdown;
   glassBreakdown?: GlassBreakdown | null;
   meshBreakdown?: MeshBreakdown | null;
+  accessoriesBreakdown?: AccessoriesBreakdown | null;
   partLabel?: string;
   /** مقاس الفتحة للبند */
   widthMm?: number;
@@ -41,6 +47,7 @@ export function MaterialsBar({
   materials,
   glassBreakdown,
   meshBreakdown,
+  accessoriesBreakdown,
   partLabel = "شباك",
   widthMm,
   heightMm,
@@ -262,6 +269,10 @@ export function MaterialsBar({
 
       {meshBreakdown && meshBreakdown.lines.length > 0 ? (
         <MeshBreakdownPanel breakdown={meshBreakdown} />
+      ) : null}
+
+      {accessoriesBreakdown?.hasAccessories ? (
+        <AccessoriesBreakdownPanel breakdown={accessoriesBreakdown} />
       ) : null}
     </section>
   );
@@ -517,6 +528,151 @@ function MeshBreakdownPanel({ breakdown }: { breakdown: MeshBreakdown }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AccessoriesBreakdownPanel({
+  breakdown,
+}: {
+  breakdown: AccessoriesBreakdown;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const hasHinged =
+    breakdown.hingeQty > 0 ||
+    breakdown.hingedEspagnolettes.length > 0 ||
+    breakdown.boltQty > 0 ||
+    breakdown.protrudingHandleQty > 0;
+  const hasSliding =
+    breakdown.trackQty > 0 ||
+    breakdown.rollerQty > 0 ||
+    breakdown.brushLengthM > 0.0005 ||
+    breakdown.slidingEspagnolettes.length > 0 ||
+    breakdown.fourLeafMeetingQty > 0 ||
+    breakdown.meshMeetingQty > 0;
+
+  return (
+    <div className="border-t border-border bg-background/40 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-primary">
+          حساب الاكسسوار
+          {breakdown.systemName ? `: ${breakdown.systemName}` : ""}
+        </p>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
+        >
+          {expanded ? "إخفاء" : "تفاصيل"}
+        </button>
+      </div>
+
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
+        {breakdown.hingeQty > 0 ? (
+          <span>مفصلات: {formatCount(breakdown.hingeQty)}</span>
+        ) : null}
+        {breakdown.hingedEspagnolettes.length > 0 ? (
+          <span>
+            سبلونة مفصلي:{" "}
+            {formatEspagnoletteSummary(breakdown.hingedEspagnolettes)}
+          </span>
+        ) : null}
+        {breakdown.protrudingHandleQty > 0 ? (
+          <span>مقبض بارز: {formatCount(breakdown.protrudingHandleQty)}</span>
+        ) : null}
+        {breakdown.trackQty > 0 ? (
+          <span>
+            تراك: {formatCount(breakdown.trackQty)} ·{" "}
+            {formatMeters(breakdown.trackLengthM)}
+          </span>
+        ) : null}
+        {breakdown.rollerQty > 0 ? (
+          <span>عجل جرار: {formatCount(breakdown.rollerQty)}</span>
+        ) : null}
+        {breakdown.brushLengthM > 0.0005 ? (
+          <span>فرش: {formatMeters(breakdown.brushLengthM)}</span>
+        ) : null}
+        {breakdown.slidingEspagnolettes.length > 0 ? (
+          <span>
+            سبلونة جرار:{" "}
+            {formatEspagnoletteSummary(breakdown.slidingEspagnolettes)}
+          </span>
+        ) : null}
+      </div>
+
+      {expanded ? (
+        <div className="mt-2 space-y-2 text-[10px] leading-relaxed text-muted">
+          {hasHinged ? (
+            <div className="rounded-xl border border-border bg-card p-2.5">
+              <p className="font-semibold text-foreground">مفصلي</p>
+              <p>مفصلات: {formatCount(breakdown.hingeQty)}</p>
+              <p>
+                سبلونة:{" "}
+                {formatEspagnoletteSummary(breakdown.hingedEspagnolettes)}
+              </p>
+              <p>
+                سكاك مفصلي:{" "}
+                {formatLockPiecesSummary(breakdown.hingedLockPieces)}
+              </p>
+              {breakdown.bouclierLockPieces.length > 0 ? (
+                <p>
+                  سكاك بوكلير:{" "}
+                  {formatLockPiecesSummary(breakdown.bouclierLockPieces)}
+                </p>
+              ) : null}
+              {breakdown.boltQty > 0 ? (
+                <p>ترباس: {formatCount(breakdown.boltQty)}</p>
+              ) : null}
+              {breakdown.bouclierCapKitQty > 0 ? (
+                <p>طقم طبة بوكلير: {formatCount(breakdown.bouclierCapKitQty)}</p>
+              ) : null}
+              {breakdown.protrudingHandleQty > 0 ? (
+                <p>
+                  مقبض بارز: {formatCount(breakdown.protrudingHandleQty)}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {hasSliding ? (
+            <div className="rounded-xl border border-border bg-card p-2.5">
+              <p className="font-semibold text-foreground">جرار</p>
+              {breakdown.trackQty > 0 ? (
+                <p>
+                  تراك: {formatCount(breakdown.trackQty)} قطعة ·{" "}
+                  {formatMeters(breakdown.trackLengthM)}
+                </p>
+              ) : null}
+              {breakdown.rollerQty > 0 ? (
+                <p>عجل: {formatCount(breakdown.rollerQty)}</p>
+              ) : null}
+              {breakdown.brushLengthM > 0.0005 ? (
+                <p>فرش: {formatMeters(breakdown.brushLengthM)}</p>
+              ) : null}
+              <p>
+                سبلونة:{" "}
+                {formatEspagnoletteSummary(breakdown.slidingEspagnolettes)}
+              </p>
+              <p>
+                سكاك جرار:{" "}
+                {formatLockPiecesSummary(breakdown.slidingLockPieces)}
+              </p>
+              {breakdown.fourLeafMeetingQty > 0 ? (
+                <p>
+                  تقابل ٤ ضلفة: {formatCount(breakdown.fourLeafMeetingQty)} ·{" "}
+                  {formatMeters(breakdown.fourLeafMeetingLengthM)}
+                </p>
+              ) : null}
+              {breakdown.meshMeetingQty > 0 ? (
+                <p>
+                  تقابل سلك جرار: {formatCount(breakdown.meshMeetingQty)} ·{" "}
+                  {formatMeters(breakdown.meshMeetingLengthM)}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
