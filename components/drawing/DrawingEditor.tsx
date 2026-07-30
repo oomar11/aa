@@ -25,6 +25,11 @@ import { MaterialsBar } from "@/components/drawing/MaterialsBar";
 import { TemplatePickerModal } from "@/components/TemplatePickerModal";
 import { useUnit } from "@/components/UnitProvider";
 import {
+  calcItemAccessories,
+  scaleAccessories,
+  type AccessoriesBreakdown,
+} from "@/lib/accessories";
+import {
   createItemFromTemplate,
   normalizePaneConfig,
   type DesignItem,
@@ -223,6 +228,11 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   const meshBreakdown = useMemo((): MeshBreakdown | null => {
     if (!item) return null;
     return calcMeshBreakdown(item);
+  }, [item]);
+
+  const accessoriesBreakdown = useMemo((): AccessoriesBreakdown | null => {
+    if (!item) return null;
+    return scaleAccessories(calcItemAccessories(item), item.qty);
   }, [item]);
 
   const activeOpening = useMemo(() => {
@@ -486,6 +496,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
             materials={materials}
             glassBreakdown={glassBreakdown}
             meshBreakdown={meshBreakdown}
+            accessoriesBreakdown={accessoriesBreakdown}
             partLabel={item.name || "شباك"}
             widthMm={item.widthMm}
             heightMm={item.heightMm}

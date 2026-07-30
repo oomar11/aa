@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import {
+  defaultAccessoryDetails,
   defaultGlassRates,
   defaultProfileDetails,
   deleteSystem,
@@ -56,6 +57,7 @@ export function MaterialSystemsEditor({ category }: Props) {
   const systems = catalog?.[category] ?? [];
   const isProfiles = category === "profiles";
   const isGlass = category === "glass";
+  const isAccessories = category === "accessories";
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -127,6 +129,10 @@ export function MaterialSystemsEditor({ category }: Props) {
               georgian: false,
             }
           : undefined,
+      accessory:
+        category === "accessories"
+          ? editing?.accessory ?? defaultAccessoryDetails()
+          : undefined,
     };
 
     persist(upsertSystem(catalog, category, system));
@@ -195,6 +201,13 @@ export function MaterialSystemsEditor({ category }: Props) {
           اضغط «تفاصيل» عشان تدخل العيدان ومعادلات التخصيم بصيغة إكسل (مثل{" "}
           <span className="font-mono text-foreground">=W-10</span> أو{" "}
           <span className="font-mono text-foreground">=FW-2*60</span>).
+        </p>
+      ) : null}
+
+      {isAccessories ? (
+        <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
+          اضغط «تفاصيل» لضبط اكسسوار المفصلي والجرار: مفصلات · سبلونة · سكاك ·
+          تراك · عجل · فرش · تقابل.
         </p>
       ) : null}
 
@@ -378,6 +391,23 @@ export function MaterialSystemsEditor({ category }: Props) {
                       </div>
                     ) : null}
 
+                    {isAccessories && system.accessory ? (
+                      <div className="mt-2 space-y-1 rounded-xl border border-border/80 bg-background/70 p-2.5 text-[11px] text-muted">
+                        <p className="font-semibold text-foreground">
+                          مفصلي: {system.accessory.hingesPerSash} مفصلات · باب:{" "}
+                          {system.accessory.hingesPerDoor}
+                        </p>
+                        <p>
+                          سبلونة:{" "}
+                          {system.accessory.hingedEspagnoletteSizes.join(" · ")}
+                        </p>
+                        <p>
+                          جرار: تراك {system.accessory.tracksPerFrame} · عجل{" "}
+                          {system.accessory.rollersPerSlidingSash}/ضلفة
+                        </p>
+                      </div>
+                    ) : null}
+
                     <div className="mt-2 flex flex-wrap justify-end gap-1.5">
                       {isProfiles ? (
                         <Link
@@ -390,6 +420,14 @@ export function MaterialSystemsEditor({ category }: Props) {
                       {isGlass ? (
                         <Link
                           href={`/materials/glass/${system.id}`}
+                          className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
+                        >
+                          تفاصيل
+                        </Link>
+                      ) : null}
+                      {isAccessories ? (
+                        <Link
+                          href={`/materials/accessories/${system.id}`}
                           className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
                         >
                           تفاصيل

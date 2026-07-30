@@ -9,6 +9,7 @@ import {
   defaultMeshTypeForKind,
   findMeshType,
   getDefaultGlassBottleId,
+  getDefaultSystemId,
   getMeshCategories,
   resolveGlassBottleId,
   type MaterialCatalog,
@@ -412,7 +413,7 @@ export function createItemFromTemplate(
     specialPrice: null,
     discountId: "none",
     systemId: "none",
-    accessoryId: "none",
+    accessoryId: getDefaultSystemId("accessories"),
     glassPane1Id: getDefaultGlassBottleId(),
     /** الحديد ثابت غالباً — يُملأ بالافتراضي عند فتح الإعدادات إن لزم */
     ironId: "iron-std",
