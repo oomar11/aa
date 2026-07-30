@@ -371,38 +371,54 @@ export function ensureEqualsPrefix(formula: string): string {
   return t.startsWith("=") ? t : `=${t}`;
 }
 
-/** يحول خصم ثابت قديم لمعادلة */
+/** يحول خصم ثابت قديم لمعادلة (خصم موجب = نقصان من المقاس) */
 export function deductToFormula(
   baseVar: "W" | "H" | "FW" | "FH",
   deductMm: number
 ): string {
   const d = Number(deductMm) || 0;
   if (d <= 0) return `=${baseVar}`;
-  return `=${baseVar}-${d}`;
+  return offsetToFormula(baseVar, -d);
 }
 
 export type FormulaBaseVar = "W" | "H" | "FW" | "FH";
 
 /**
- * وضع بسيط: تخصيم ثابت من متغير واحد.
- * يقبل: =W  |  =W-10  |  =FW-2*60 (يُعتبر متقدم)
+ * وضع بسيط: تعديل ثابت على متغير واحد.
+ * offsetMm موجب = زيادة (زي بار الحلق)، سالب = تخصيم/نقصان.
+ * يقبل: =W  |  =W-10  |  =W+50  |  =FW-2*60 (يُعتبر متقدم)
  */
 export type SimpleDeduct =
-  | { simple: true; baseVar: FormulaBaseVar; deductMm: number }
+  | { simple: true; baseVar: FormulaBaseVar; offsetMm: number }
   | { simple: false };
 
-const SIMPLE_DEDUCT_RE =
-  /^=?\s*(W|H|FW|FH)\s*(?:-\s*(\d+(?:\.\d+)?))?\s*$/i;
+/** معادلة بسيطة: متغير ± رقم */
+export function offsetToFormula(
+  baseVar: FormulaBaseVar,
+  offsetMm: number
+): string {
+  const n = Number(offsetMm);
+  if (!Number.isFinite(n) || n === 0) return `=${baseVar}`;
+  if (n > 0) return `=${baseVar}+${n}`;
+  return `=${baseVar}${n}`; // n already has leading minus
+}
 
-/** هل المعادلة تخصيم بسيط (متغير − رقم)؟ */
+const SIMPLE_OFFSET_RE =
+  /^=?\s*(W|H|FW|FH)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?\s*$/i;
+
+/** هل المعادلة تعديل بسيط (متغير ± رقم)؟ */
 export function parseSimpleDeduct(formula: string): SimpleDeduct {
   const t = formula.trim();
-  const m = t.match(SIMPLE_DEDUCT_RE);
+  const m = t.match(SIMPLE_OFFSET_RE);
   if (!m) return { simple: false };
   const baseVar = m[1]!.toUpperCase() as FormulaBaseVar;
-  const deductMm = m[2] ? Number(m[2]) : 0;
-  if (!Number.isFinite(deductMm) || deductMm < 0) return { simple: false };
-  return { simple: true, baseVar, deductMm };
+  if (!m[2] || !m[3]) {
+    return { simple: true, baseVar, offsetMm: 0 };
+  }
+  const amount = Number(m[3]);
+  if (!Number.isFinite(amount) || amount < 0) return { simple: false };
+  const offsetMm = m[2] === "+" ? amount : -amount;
+  return { simple: true, baseVar, offsetMm };
 }
 
 /** هل كل معادلات التخصيم بسيطة؟ */
@@ -417,7 +433,7 @@ const BASE_VAR_AR: Record<FormulaBaseVar, string> = {
   FH: "ارتفاع الحلق",
 };
 
-/** نص عربي قصير لشرح معادلة تخصيم */
+/** نص عربي قصير لشرح معادلة تخصيم/زيادة */
 export function describeFormulaAr(
   formula: string,
   axisLabel: string
@@ -425,10 +441,13 @@ export function describeFormulaAr(
   const parsed = parseSimpleDeduct(formula);
   if (parsed.simple) {
     const from = BASE_VAR_AR[parsed.baseVar];
-    if (parsed.deductMm <= 0) {
-      return `${axisLabel} = ${from} (بدون تخصيم)`;
+    if (parsed.offsetMm === 0) {
+      return `${axisLabel} = ${from} (بدون تعديل)`;
     }
-    return `${axisLabel} = ${from} − ${parsed.deductMm} مم`;
+    if (parsed.offsetMm > 0) {
+      return `${axisLabel} = ${from} + ${parsed.offsetMm} مم (أكبر)`;
+    }
+    return `${axisLabel} = ${from} − ${Math.abs(parsed.offsetMm)} مم (أصغر)`;
   }
   return `${axisLabel} ${ensureEqualsPrefix(formula)}`;
 }

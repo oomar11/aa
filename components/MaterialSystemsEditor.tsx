@@ -209,9 +209,9 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isProfiles ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          اضغط «تفاصيل» عشان تدخل العيدان وتخصيمات مقاس القطع. الوضع الافتراضي
-          سهل: تدخل رقم الخصم بالمم (مثلاً ضلفة −١٠). في وضع متقدم لو حابب
-          معادلات حرة. البراندات وقوائم الأسعار من{" "}
+          اضغط «تفاصيل» عشان تدخل العيدان وتعديلات مقاس القطع. الوضع الافتراضي
+          سهل: تزود أو تنقص بالمم (مثلاً حلق +٥٠ بار، أو ضلفة −١٠). في وضع
+          متقدم لو حابب معادلات حرة. البراندات وقوائم الأسعار من{" "}
           <Link
             href="/materials/profiles/brands"
             className="font-semibold text-primary underline-offset-2 hover:underline"
