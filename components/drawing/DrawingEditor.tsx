@@ -47,6 +47,7 @@ import {
 import {
   findSystem,
   loadMaterialCatalog,
+  PROFILE_BRANDS_UPDATED,
 } from "@/lib/material-systems";
 import {
   equalizeSplitRatios,
@@ -262,10 +263,18 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
     );
   }, [calcItem, item, projectMaterials]);
 
+  const [catalogTick, setCatalogTick] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setCatalogTick((n) => n + 1);
+    window.addEventListener(PROFILE_BRANDS_UPDATED, bump);
+    return () => window.removeEventListener(PROFILE_BRANDS_UPDATED, bump);
+  }, []);
+
   const profileCostBreakdown = useMemo((): ProfileCostBreakdown | null => {
     if (!calcItem) return null;
     return calcProfileCostBreakdown(calcItem, calcItemMaterials(calcItem));
-  }, [calcItem]);
+  }, [calcItem, catalogTick]);
 
   const ironBreakdown = useMemo((): IronBreakdown | null => {
     if (!calcItem || !calcItem.ironId || calcItem.ironId === "none") return null;
@@ -459,6 +468,9 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
               </p>
               <p className="truncate text-[11px] text-muted">
                 {item.nameIsCustom ? "اسم مخصص" : "تسمية ذكية"} · بند {itemIndex}
+                {profileCostBreakdown?.hasPricing
+                  ? ` · قطاعات ${Math.round(profileCostBreakdown.totalCost).toLocaleString("en-US")} ج.م`
+                  : ""}
               </p>
             </div>
           </div>

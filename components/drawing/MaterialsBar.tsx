@@ -259,6 +259,41 @@ export function MaterialsBar({
         </p>
       </div>
 
+      {profileCostBreakdown?.hasPricing &&
+      profileCostBreakdown.lines.length > 0 ? (
+        <div className="flex items-center justify-between gap-2 border-b border-primary/20 bg-primary-soft/40 px-3 py-2.5">
+          <div className="min-w-0 text-right">
+            <p className="text-[11px] font-bold text-primary">تكلفة القطاعات</p>
+            <p className="mt-0.5 truncate text-[10px] text-muted">
+              {profileCostBreakdown.brandName
+                ? `قائمة ${profileCostBreakdown.brandName}`
+                : "من قائمة أسعار السيستم"}
+              {profileCostBreakdown.lines.length > 1
+                ? ` · ${profileCostBreakdown.lines.length} أصناف`
+                : ""}
+            </p>
+          </div>
+          <div className="shrink-0 text-left">
+            <p className="text-base font-bold tabular-nums text-foreground">
+              {formatCurrency(Math.round(profileCostBreakdown.totalCost))} ج.م
+            </p>
+            {profileCostBreakdown.totalCost !==
+            profileCostBreakdown.totalUnitCost ? (
+              <p className="text-[10px] text-muted">
+                للقطعة:{" "}
+                {formatCurrency(Math.round(profileCostBreakdown.totalUnitCost))}{" "}
+                ج.م
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : systemId && systemId !== "none" ? (
+        <div className="border-b border-border bg-background/50 px-3 py-2 text-[10px] leading-relaxed text-muted">
+          مفيش تكلفة قطاعات ظاهرة — تأكد إن السيستم مربوط ببراند أسعار (خامات →
+          قطاعات → براندات).
+        </div>
+      ) : null}
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1080px] border-collapse text-center">
           <thead>
@@ -313,17 +348,17 @@ export function MaterialsBar({
         </table>
       </div>
 
+      {profileCostBreakdown?.hasPricing &&
+      profileCostBreakdown.lines.length > 0 ? (
+        <ProfileCostBreakdownPanel breakdown={profileCostBreakdown} />
+      ) : null}
+
       {profile ? (
         <ProfileCutsPanel
           systemName={profileSystem!.name}
           profile={profile}
           cuts={cuts}
         />
-      ) : null}
-
-      {profileCostBreakdown?.hasPricing &&
-      profileCostBreakdown.lines.length > 0 ? (
-        <ProfileCostBreakdownPanel breakdown={profileCostBreakdown} />
       ) : null}
 
       {glassBreakdown?.hasPricing && glassBreakdown.lines.length > 0 ? (
@@ -354,6 +389,7 @@ function ProfileCutsPanel({
   profile: ProfileSystemDetails;
   cuts: CutSizes | null;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const steps =
     cuts != null
       ? getCutCalculationSteps(
@@ -365,9 +401,26 @@ function ProfileCutsPanel({
 
   return (
     <div className="border-t border-border bg-background/40 px-3 py-2.5">
-      <p className="text-[11px] font-semibold text-primary">
-        نظام القطاعات: {systemName}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-primary">
+          نظام القطاعات: {systemName}
+        </p>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
+        >
+          {expanded ? "إخفاء" : "مقاسات القطع"}
+        </button>
+      </div>
+      {!expanded ? (
+        <p className="mt-0.5 text-[10px] leading-relaxed text-muted">
+          مقاس القطع بعد التخصيم — اضغط «مقاسات القطع» للتفاصيل.
+        </p>
+      ) : null}
+
+      {expanded ? (
+        <>
       <p className="mt-0.5 text-[10px] leading-relaxed text-muted">
         مقاس القطع بعد التخصيم — الأمتار في الجدول فوق من تقسيمات الرسم.
       </p>
@@ -433,6 +486,8 @@ function ProfileCutsPanel({
           </div>
         </div>
       ) : null}
+        </>
+      ) : null}
     </div>
   );
 }
@@ -475,14 +530,14 @@ function ProfileCostBreakdownPanel({
 }: {
   breakdown: ProfileCostBreakdown;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const showExpand = breakdown.lines.length > 3;
 
   return (
     <div className="border-t border-border bg-background/40 px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-semibold text-primary">
-          تكلفة القطاعات
+          تفصيل تكلفة القطاعات
           {breakdown.brandName ? `: ${breakdown.brandName}` : ""}
         </p>
         <div className="flex items-center gap-2">
@@ -554,6 +609,14 @@ function ProfileCostBreakdownPanel({
               </span>
             </div>
           ))}
+          <div className="grid grid-cols-5 border-t border-border bg-primary-soft/30 text-center font-semibold">
+            <span className="col-span-4 px-1.5 py-1.5 text-start text-foreground">
+              إجمالي تكلفة القطاعات
+            </span>
+            <span className="px-1.5 py-1.5 text-primary">
+              {formatCurrency(Math.round(breakdown.totalUnitCost))}
+            </span>
+          </div>
         </div>
       )}
     </div>
