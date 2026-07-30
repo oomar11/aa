@@ -1,5 +1,4 @@
 import {
-  gridCellCount,
   isExhaustPane,
   itemUnitAreaSqm,
   normalizePaneConfig,
@@ -57,7 +56,15 @@ export type MaterialsBreakdown = {
   sashDoorM: number;
   /** ضلفة جرار — متر طولي */
   sashSlidingM: number;
-  /** باكتة تثبيت الزجاج — متر طولي */
+  /** باكتة سنجل مفصلي — متر طولي */
+  beadSingleHingedM: number;
+  /** باكتة سنجل جرار — متر طولي */
+  beadSingleSlidingM: number;
+  /** باكتة دبل مفصلي — متر طولي (ومنها البنل) */
+  beadDoubleHingedM: number;
+  /** باكتة دبل جرار — متر طولي (ومنها البنل) */
+  beadDoubleSlidingM: number;
+  /** إجمالي الباكتة */
   beadM: number;
   /** مساحة الزجاج الفعلية م² (بدون بنل) */
   glassAreaSqm: number;
@@ -125,6 +132,10 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     sashHingedM: 0,
     sashDoorM: 0,
     sashSlidingM: 0,
+    beadSingleHingedM: 0,
+    beadSingleSlidingM: 0,
+    beadDoubleHingedM: 0,
+    beadDoubleSlidingM: 0,
     beadM: 0,
     glassAreaSqm: 0,
     meshAreaSqm: 0,
@@ -160,28 +171,108 @@ function panePerimeterMm(w: number, h: number): number {
   return 2 * (w + h);
 }
 
+function cellPerimeterMm(cell: { w: number; h: number }): number {
+  return 2 * (cell.w + cell.h);
+}
+
+type BeadTotalsMm = {
+  singleHingedMm: number;
+  singleSlidingMm: number;
+  doubleHingedMm: number;
+  doubleSlidingMm: number;
+};
+
+function addBeadMm(
+  totals: BeadTotalsMm,
+  isSliding: boolean,
+  isDouble: boolean,
+  mm: number
+) {
+  if (mm <= 0) return;
+  if (isDouble) {
+    if (isSliding) totals.doubleSlidingMm += mm;
+    else totals.doubleHingedMm += mm;
+  } else {
+    if (isSliding) totals.singleSlidingMm += mm;
+    else totals.singleHingedMm += mm;
+  }
+}
+
+/** باكتة حسب نوع الزجاج (سنجل/دبل) ونوع الضلفة (مفصلي/جرار) — البنل باكتة دبل */
+function beadTotalsMm(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined,
+  item: DesignItem,
+  catalog?: MaterialCatalog
+): BeadTotalsMm {
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
+  const totals: BeadTotalsMm = {
+    singleHingedMm: 0,
+    singleSlidingMm: 0,
+    doubleHingedMm: 0,
+    doubleSlidingMm: 0,
+  };
+
+  for (const box of boxes) {
+    const cfg = normalizePaneConfig(panes?.[box.id]);
+    if (isExhaustPane(box.opening)) continue;
+    if (meshReplacesPaneGlass(cfg, box.opening, cat)) continue;
+
+    const isSliding = box.kind === "sliding";
+    const isDoubleGlass = Boolean(resolvePaneGlass(cfg, item, cat).pane2Id);
+    const grid = cfg.grid ?? "solid";
+    const cells = getGridCells(grid, 0, 0, box.w, box.h);
+    const panelSet = new Set(cfg.panelCells ?? []);
+    const hasPanels = Boolean(cfg.sandwichPanels);
+    const isLouver =
+      box.opening === "panel-h" || box.opening === "panel-v";
+
+    if (isLouver) {
+      addBeadMm(totals, isSliding, true, panePerimeterMm(box.w, box.h));
+      continue;
+    }
+
+    const solidFullPanel =
+      hasPanels &&
+      (grid === "solid" || grid === "diamond") &&
+      panelSet.has(0);
+    const allCellsPanel =
+      hasPanels && cells.every((_, i) => panelSet.has(i));
+
+    if (solidFullPanel || allCellsPanel) {
+      addBeadMm(totals, isSliding, true, panePerimeterMm(box.w, box.h));
+      continue;
+    }
+
+    if (hasPanels && cells.length > 1) {
+      cells.forEach((cell, i) => {
+        const peri = cellPerimeterMm(cell);
+        if (panelSet.has(i)) {
+          addBeadMm(totals, isSliding, true, peri);
+        } else {
+          addBeadMm(totals, isSliding, isDoubleGlass, peri);
+        }
+      });
+      continue;
+    }
+
+    addBeadMm(
+      totals,
+      isSliding,
+      isDoubleGlass,
+      panePerimeterMm(box.w, box.h)
+    );
+  }
+
+  return totals;
+}
+
 /** ضلفة باب — من العلامة أو نوع الفتح door-left / door-right */
 export function isDoorPane(opening: PaneOpening, cfg: PaneConfig): boolean {
   if (cfg.isDoor) return true;
   return opening === "door-left" || opening === "door-right";
-}
-
-/** هل الضلفة فيها زجاج يحتاج باكتة */
-function paneNeedsBead(
-  opening: PaneOpening,
-  cfg: PaneConfig,
-  catalog?: MaterialCatalog
-): boolean {
-  if (isExhaustPane(opening)) return false;
-  if (opening === "panel-h" || opening === "panel-v") return false;
-  if (meshReplacesPaneGlass(cfg, opening, catalog)) return false;
-  const norm = normalizePaneConfig(cfg);
-  if (norm.sandwichPanels) {
-    const count = gridCellCount(norm.grid);
-    const panelCells = norm.panelCells ?? [];
-    if (panelCells.length >= count) return false;
-  }
-  return true;
 }
 
 /**
@@ -558,21 +649,6 @@ function sashProfileMm(
   return { hinged, sliding, door };
 }
 
-/** باكتة تثبيت الزجاج — محيط كل ضلفة فيها زجاج */
-function beadProfileMm(
-  boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined,
-  catalog?: MaterialCatalog
-): number {
-  let total = 0;
-  for (const box of boxes) {
-    const cfg = normalizePaneConfig(panes?.[box.id]);
-    if (!paneNeedsBead(box.opening, cfg, catalog)) continue;
-    total += panePerimeterMm(box.w, box.h);
-  }
-  return total;
-}
-
 /** مساحة ملء الضلفة (زجاج أو سلك) بدون بنل — مم² */
 function paneFillAreaMm2(
   w: number,
@@ -793,7 +869,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
 
   const mullionSashMm = sashMullionMm(boxes, panes);
   const sashMm = sashProfileMm(boxes, panes);
-  const beadMm = beadProfileMm(boxes, panes);
+  const beadMm = beadTotalsMm(boxes, panes, item);
   const glassAreaSqm = totalGlassAreaSqm(boxes, panes);
   const meshAreaSqm = totalMeshAreaSqm(boxes, panes);
   const slidingMesh = slidingMeshSashStats(boxes, panes);
@@ -812,7 +888,16 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const sashHingedM = roundM(mmToM(sashMm.hinged));
   const sashDoorM = roundM(mmToM(sashMm.door));
   const sashSlidingM = roundM(mmToM(sashMm.sliding));
-  const beadM = roundM(mmToM(beadMm));
+  const beadSingleHingedM = roundM(mmToM(beadMm.singleHingedMm));
+  const beadSingleSlidingM = roundM(mmToM(beadMm.singleSlidingMm));
+  const beadDoubleHingedM = roundM(mmToM(beadMm.doubleHingedMm));
+  const beadDoubleSlidingM = roundM(mmToM(beadMm.doubleSlidingMm));
+  const beadM = roundM(
+    beadSingleHingedM +
+      beadSingleSlidingM +
+      beadDoubleHingedM +
+      beadDoubleSlidingM
+  );
   const frameTotalM = roundM(frameHingedM + frameSlidingM);
   const mullionTotalM = roundM(mullionFrameM + mullionSashM);
 
@@ -828,6 +913,10 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     sashHingedM,
     sashDoorM,
     sashSlidingM,
+    beadSingleHingedM,
+    beadSingleSlidingM,
+    beadDoubleHingedM,
+    beadDoubleSlidingM,
     beadM,
     glassAreaSqm,
     meshAreaSqm,
@@ -862,6 +951,10 @@ export function scaleMaterials(
     sashHingedM: roundM(m.sashHingedM * q),
     sashDoorM: roundM(m.sashDoorM * q),
     sashSlidingM: roundM(m.sashSlidingM * q),
+    beadSingleHingedM: roundM(m.beadSingleHingedM * q),
+    beadSingleSlidingM: roundM(m.beadSingleSlidingM * q),
+    beadDoubleHingedM: roundM(m.beadDoubleHingedM * q),
+    beadDoubleSlidingM: roundM(m.beadDoubleSlidingM * q),
     beadM: roundM(m.beadM * q),
     glassAreaSqm: roundM(m.glassAreaSqm * q),
     meshAreaSqm: roundM(m.meshAreaSqm * q),

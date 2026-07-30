@@ -274,9 +274,9 @@ export function normalizePaneConfig(
   return { ...base, panelCells: cells };
 }
 
-/** زجاج البند — يُطبَّق على كل الضلف، مع افتراضي تلقائي من كتالوج الخامات */
+/** زجاج الضلفة — من إعداد الضلفة أو الافتراضي على البند */
 export function resolvePaneGlass(
-  _cfg: PaneConfig,
+  cfg: PaneConfig,
   item: Pick<DesignItem, "glassPane1Id" | "glassPane2Id" | "glassGeorgian">,
   catalog?: MaterialCatalog
 ): {
@@ -285,12 +285,17 @@ export function resolvePaneGlass(
   georgian: boolean;
 } {
   const pane1Id =
-    resolveGlassBottleId(item.glassPane1Id) ?? getDefaultGlassBottleId(catalog);
-  const pane2Id = resolveGlassBottleId(item.glassPane2Id);
+    resolveGlassBottleId(cfg.glassPane1Id) ??
+    resolveGlassBottleId(item.glassPane1Id) ??
+    getDefaultGlassBottleId(catalog);
+  const pane2Id =
+    resolveGlassBottleId(cfg.glassPane2Id) ??
+    resolveGlassBottleId(item.glassPane2Id);
+  const georgianFlag = cfg.glassGeorgian ?? item.glassGeorgian;
   return {
     pane1Id,
     pane2Id,
-    georgian: Boolean(item.glassGeorgian && pane2Id),
+    georgian: Boolean(georgianFlag && pane2Id),
   };
 }
 
