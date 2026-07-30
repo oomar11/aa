@@ -157,6 +157,16 @@ export type GlassRates = {
   georgianCostPerSqm: number;
 };
 
+/** تصنيف السلك (جرار / ثابت / …) */
+export type MeshCategory = {
+  id: string;
+  label: string;
+  /** يتحسب قطاع ضلفة زي الجرار */
+  calcProfile: boolean;
+  /** يُختار تلقائياً لنوع الفتح المناسب */
+  defaultFor?: "sliding" | "hinged" | "fixed";
+};
+
 /** نوع سلك في كتالوج الخامات */
 export type MeshType = {
   id: string;
@@ -168,6 +178,7 @@ export type MeshType = {
 
 export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]> & {
   glassRates?: GlassRates;
+  meshCategories?: MeshCategory[];
   meshTypes?: MeshType[];
 };
 
@@ -308,6 +319,75 @@ export function defaultGlassRates(): GlassRates {
     doublingCostPerSqm: 50,
     georgianCostPerSqm: 100,
   };
+}
+
+export function defaultMeshCategories(): MeshCategory[] {
+  return [
+    {
+      id: "sliding",
+      label: "سلك جرار",
+      calcProfile: true,
+      defaultFor: "sliding",
+    },
+    {
+      id: "fixed",
+      label: "سلك ثابت",
+      calcProfile: false,
+      defaultFor: "fixed",
+    },
+    {
+      id: "roll",
+      label: "سلك رول",
+      calcProfile: false,
+    },
+    {
+      id: "hinged",
+      label: "سلك مفصلي",
+      calcProfile: false,
+      defaultFor: "hinged",
+    },
+  ];
+}
+
+export function getMeshCategories(catalog?: MaterialCatalog): MeshCategory[] {
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  return cat.meshCategories ?? defaultMeshCategories();
+}
+
+export function findMeshCategory(
+  id: string | undefined | null,
+  catalog?: MaterialCatalog
+): MeshCategory | undefined {
+  if (!id) return undefined;
+  return getMeshCategories(catalog).find((c) => c.id === id);
+}
+
+export function meshCategoryOptions(
+  catalog?: MaterialCatalog
+): { id: string; label: string; calcProfile: boolean }[] {
+  return getMeshCategories(catalog).map((c) => ({
+    id: c.id,
+    label: c.label,
+    calcProfile: c.calcProfile,
+  }));
+}
+
+export function meshKindLabel(
+  kind: MeshKind,
+  catalog?: MaterialCatalog
+): string {
+  return findMeshCategory(kind, catalog)?.label ?? kind;
+}
+
+export function meshCategoryCalcProfile(
+  kind: MeshKind,
+  catalog?: MaterialCatalog
+): boolean {
+  const cat = findMeshCategory(kind, catalog);
+  if (cat) return cat.calcProfile;
+  return kind === "sliding";
 }
 
 export function defaultMeshTypes(): MeshType[] {
@@ -617,6 +697,7 @@ export function getDefaultCatalog(): MaterialCatalog {
       { id: "iron-heavy", name: "حديد تسليح ثقيل" },
     ],
     glassRates: defaultGlassRates(),
+    meshCategories: defaultMeshCategories(),
     meshTypes: defaultMeshTypes(),
   };
 }
@@ -896,16 +977,45 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
   }
 
   next.glassRates = normalizeGlassRates(raw.glassRates);
-  next.meshTypes = normalizeMeshTypes(raw.meshTypes);
+  next.meshCategories = normalizeMeshCategories(raw.meshCategories);
+  next.meshTypes = normalizeMeshTypes(raw.meshTypes, next.meshCategories);
 
   return next;
 }
 
-function normalizeMeshTypes(raw: unknown): MeshType[] {
+function normalizeMeshCategories(raw: unknown): MeshCategory[] {
+  if (!Array.isArray(raw) || raw.length === 0) return defaultMeshCategories();
+  const out: MeshCategory[] = [];
+  const seen = new Set<string>();
+  const defaultTags = new Set(["sliding", "hinged", "fixed"]);
+
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const id = typeof o.id === "string" ? o.id.trim() : "";
+    const label = typeof o.label === "string" ? o.label.trim() : "";
+    if (!id || !label || seen.has(id)) continue;
+    const defaultFor = defaultTags.has(o.defaultFor as string)
+      ? (o.defaultFor as MeshCategory["defaultFor"])
+      : undefined;
+    seen.add(id);
+    out.push({
+      id,
+      label,
+      calcProfile: Boolean(o.calcProfile),
+      defaultFor,
+    });
+  }
+
+  return out.length > 0 ? out : defaultMeshCategories();
+}
+
+function normalizeMeshTypes(raw: unknown, categories: MeshCategory[]): MeshType[] {
   if (!Array.isArray(raw) || raw.length === 0) return defaultMeshTypes();
   const out: MeshType[] = [];
   const seen = new Set<string>();
-  const kinds = new Set(["sliding", "fixed", "roll", "hinged"]);
+  const kindIds = new Set(categories.map((c) => c.id));
+  const fallbackKind = categories[0]?.id ?? "fixed";
 
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
@@ -913,9 +1023,8 @@ function normalizeMeshTypes(raw: unknown): MeshType[] {
     const id = typeof o.id === "string" ? o.id.trim() : "";
     const name = typeof o.name === "string" ? o.name.trim() : "";
     if (!id || !name || seen.has(id)) continue;
-    const kind = kinds.has(o.kind as string)
-      ? (o.kind as MeshType["kind"])
-      : "fixed";
+    const kindRaw = typeof o.kind === "string" ? o.kind.trim() : fallbackKind;
+    const kind = kindIds.has(kindRaw) ? kindRaw : fallbackKind;
     const price = Number(o.pricePerSqm);
     seen.add(id);
     out.push({

@@ -1,10 +1,13 @@
 "use client";
 
-import {
-  MESH_KINDS,
-  meshKindLabel,
-  type MeshKind,
-} from "@/lib/design-items";
+import type { MeshKind } from "@/lib/design-items";
+import { meshKindLabel } from "@/lib/material-systems";
+
+type CategoryOpt = {
+  id: string;
+  label: string;
+  calcProfile: boolean;
+};
 
 type MeshOpt = {
   id: string;
@@ -17,6 +20,7 @@ type Props = {
   meshTypeId?: string;
   meshKind: MeshKind;
   meshKindManual?: boolean;
+  categoryOpts: CategoryOpt[];
   meshOpts: MeshOpt[];
   onChange: (next: {
     meshTypeId?: string;
@@ -30,6 +34,7 @@ export function MeshTypePicker({
   meshTypeId,
   meshKind,
   meshKindManual,
+  categoryOpts,
   meshOpts,
   onChange,
   hint,
@@ -45,7 +50,7 @@ export function MeshTypePicker({
           تصنيف السلك
         </p>
         <div className="grid grid-cols-2 gap-1.5">
-          {MESH_KINDS.map((k) => {
+          {categoryOpts.map((k) => {
             const active = meshKind === k.id;
             return (
               <button
@@ -64,7 +69,12 @@ export function MeshTypePicker({
                     : "border-border bg-background text-foreground"
                 }`}
               >
-                {k.label}
+                <span className="block">{k.label}</span>
+                {k.calcProfile ? (
+                  <span className="mt-0.5 block text-[9px] font-normal opacity-80">
+                    قطاع + مساحة
+                  </span>
+                ) : null}
               </button>
             );
           })}

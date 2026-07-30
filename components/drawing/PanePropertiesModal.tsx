@@ -14,7 +14,7 @@ import {
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { MeshTypePicker } from "@/components/MeshTypePicker";
-import { meshTypeOptions } from "@/lib/material-systems";
+import { meshCategoryOptions, meshTypeOptions } from "@/lib/material-systems";
 
 type Props = {
   open: boolean;
@@ -142,10 +142,14 @@ export function PanePropertiesModal({
   const [meshOpts, setMeshOpts] = useState<
     { id: string; label: string; kind: MeshKind; pricePerSqm: number }[]
   >([]);
+  const [meshCategoryOpts, setMeshCategoryOpts] = useState<
+    { id: string; label: string; calcProfile: boolean }[]
+  >([]);
 
   useEffect(() => {
     if (!open) return;
     setMeshOpts(meshTypeOptions());
+    setMeshCategoryOpts(meshCategoryOptions());
   }, [open]);
 
   useEffect(() => {
@@ -225,7 +229,10 @@ export function PanePropertiesModal({
           const kind = inferMeshKind(d.opening);
           next.meshKind = kind;
           next.meshKindManual = false;
-          const match = meshOpts.find((m) => m.kind === kind) ?? meshOpts[0];
+          const match =
+            meshOpts.find((m) => m.kind === kind) ??
+            meshOpts.find((m) => m.kind === meshCategoryOpts[0]?.id) ??
+            meshOpts[0];
           if (match) next.meshTypeId = match.id;
         } else {
           next.meshTypeId = undefined;
@@ -356,6 +363,7 @@ export function PanePropertiesModal({
                       meshTypeId={draft.meshTypeId}
                       meshKind={resolvePaneMeshKind(draft, draft.opening)}
                       meshKindManual={draft.meshKindManual}
+                      categoryOpts={meshCategoryOpts}
                       meshOpts={meshOpts}
                       hint="الشبكة بتتحط على أجزاء الزجاج بس (مش على البنل). سلك الجرار بيتحسب قطاع زي ضلفة جرار + مساحة السلك."
                       onChange={(next) =>

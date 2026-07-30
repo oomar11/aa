@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { MESH_KINDS, meshKindLabel } from "@/lib/design-items";
 import {
+  defaultMeshCategories,
   defaultMeshTypes,
   loadMaterialCatalog,
+  meshKindLabel,
   saveMaterialCatalog,
   type MaterialCatalog,
   type MeshType,
@@ -16,15 +17,26 @@ function newMeshId(): string {
 
 export function MeshTypesEditor() {
   const [types, setTypes] = useState<MeshType[]>(defaultMeshTypes());
+  const [categoryOpts, setCategoryOpts] = useState(
+    defaultMeshCategories().map((c) => ({ id: c.id, label: c.label }))
+  );
   const [flash, setFlash] = useState<string | null>(null);
   const [draft, setDraft] = useState<MeshType | null>(null);
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      const cat = loadMaterialCatalog();
-      setTypes(cat.meshTypes ?? defaultMeshTypes());
-    });
+  const reload = useCallback(() => {
+    const cat = loadMaterialCatalog();
+    setTypes(cat.meshTypes ?? defaultMeshTypes());
+    setCategoryOpts(
+      (cat.meshCategories ?? defaultMeshCategories()).map((c) => ({
+        id: c.id,
+        label: c.label,
+      }))
+    );
   }, []);
+
+  useEffect(() => {
+    queueMicrotask(reload);
+  }, [reload]);
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -42,7 +54,7 @@ export function MeshTypesEditor() {
     setDraft({
       id: newMeshId(),
       name: "",
-      kind: "fixed",
+      kind: categoryOpts[0]?.id ?? "fixed",
       pricePerSqm: 0,
     });
   }
@@ -60,6 +72,9 @@ export function MeshTypesEditor() {
       ...draft,
       name,
       pricePerSqm: price,
+      kind: categoryOpts.some((c) => c.id === draft.kind)
+        ? draft.kind
+        : categoryOpts[0]?.id ?? "fixed",
     };
     const exists = types.some((t) => t.id === item.id);
     const next = exists
@@ -77,23 +92,32 @@ export function MeshTypesEditor() {
     showFlash("تم الحذف");
   }
 
+  const catalog = typeof window !== "undefined" ? loadMaterialCatalog() : undefined;
+
   return (
     <section className="space-y-3 rounded-2xl border border-border bg-card p-3">
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="text-xs font-bold text-foreground">أنواع السلك</h3>
           <p className="mt-0.5 text-[11px] text-muted">
-            سلك الجرار بيتحسب قطاع + مساحة. الباقي مساحة بس.
+            كل نوع مربوط بتصنيف. السعر بالمتر المربع.
           </p>
         </div>
         <button
           type="button"
           onClick={openCreate}
-          className="shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground"
+          disabled={categoryOpts.length === 0}
+          className="shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground disabled:opacity-50"
         >
           + نوع
         </button>
       </div>
+
+      {categoryOpts.length === 0 ? (
+        <p className="rounded-lg border border-border bg-background px-2 py-2 text-center text-[11px] text-muted">
+          أضف تصنيف سلك الأول
+        </p>
+      ) : null}
 
       {flash ? (
         <p className="rounded-lg border border-primary/30 bg-primary-soft px-2 py-1.5 text-center text-[11px] font-semibold text-primary">
@@ -112,7 +136,7 @@ export function MeshTypesEditor() {
                 {t.name}
               </p>
               <p className="text-[10px] text-muted">
-                {meshKindLabel(t.kind)} · {t.pricePerSqm} ج.م/م²
+                {meshKindLabel(t.kind, catalog)} · {t.pricePerSqm} ج.م/م²
               </p>
             </div>
             <div className="flex shrink-0 gap-1">
@@ -154,12 +178,12 @@ export function MeshTypesEditor() {
               onChange={(e) =>
                 setDraft({
                   ...draft,
-                  kind: e.target.value as MeshType["kind"],
+                  kind: e.target.value,
                 })
               }
               className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
             >
-              {MESH_KINDS.map((k) => (
+              {categoryOpts.map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.label}
                 </option>
