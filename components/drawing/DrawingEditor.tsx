@@ -40,6 +40,15 @@ import {
 import { withSuggestedName } from "@/lib/item-naming";
 import { calcGlassBreakdown, calcItemMaterials, calcMeshBreakdown, calcProfileCostBreakdown, scaleMaterials, type GlassBreakdown, type MeshBreakdown, type ProfileCostBreakdown } from "@/lib/materials";
 import {
+  calcIronBreakdown,
+  scaleIronBreakdown,
+  type IronBreakdown,
+} from "@/lib/iron";
+import {
+  findSystem,
+  loadMaterialCatalog,
+} from "@/lib/material-systems";
+import {
   equalizeSplitRatios,
   ratioFromMm,
   removeMullionAfter,
@@ -238,6 +247,19 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   const profileCostBreakdown = useMemo((): ProfileCostBreakdown | null => {
     if (!item) return null;
     return calcProfileCostBreakdown(item, calcItemMaterials(item));
+  }, [item]);
+
+  const ironBreakdown = useMemo((): IronBreakdown | null => {
+    if (!item || !item.ironId || item.ironId === "none") return null;
+    const catalog = loadMaterialCatalog();
+    const ironSystem = findSystem("iron", item.ironId, catalog);
+    const profileSystem =
+      item.systemId && item.systemId !== "none"
+        ? findSystem("profiles", item.systemId, catalog)
+        : null;
+    const raw = calcIronBreakdown(item, ironSystem, profileSystem);
+    if (!raw) return null;
+    return scaleIronBreakdown(raw, item.qty);
   }, [item]);
 
   const activeOpening = useMemo(() => {
@@ -503,6 +525,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
             meshBreakdown={meshBreakdown}
             accessoriesBreakdown={accessoriesBreakdown}
             profileCostBreakdown={profileCostBreakdown}
+            ironBreakdown={ironBreakdown}
             partLabel={item.name || "شباك"}
             widthMm={item.widthMm}
             heightMm={item.heightMm}

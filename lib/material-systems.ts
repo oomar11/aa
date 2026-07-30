@@ -325,6 +325,60 @@ export type AccessorySystemDetails = {
   slidingLockPieces: AccessoryLockPiece[];
 };
 
+/** دور عود الحديد داخل القطاع */
+export type IronPieceRole =
+  | "frame-hinged"
+  | "frame-sliding"
+  | "sash-hinged"
+  | "sash-sliding"
+  | "sash-door"
+  | "mullion";
+
+export const IRON_PIECE_ROLES: { id: IronPieceRole; label: string }[] = [
+  { id: "frame-hinged", label: "حلق مفصلي" },
+  { id: "frame-sliding", label: "حلق جرار" },
+  { id: "sash-hinged", label: "ضلفة مفصلي" },
+  { id: "sash-sliding", label: "ضلفة جرار" },
+  { id: "sash-door", label: "ضلفة باب" },
+  { id: "mullion", label: "سوقاس" },
+];
+
+export function ironRoleLabel(role: IronPieceRole): string {
+  return IRON_PIECE_ROLES.find((r) => r.id === role)?.label ?? role;
+}
+
+/** عود حديد داخل نظام التسليح */
+export type IronPiece = {
+  id: string;
+  name: string;
+  role: IronPieceRole;
+  /** عرض مقطع الحديد (مم) */
+  sectionWidthMm: number;
+  /** ارتفاع مقطع الحديد (مم) */
+  sectionHeightMm: number;
+  /** طول العود بالمتر (المخزون) */
+  barLengthM: number;
+  /** يُحسب له حديد في التصميم */
+  enabled: boolean;
+  notes?: string;
+};
+
+/**
+ * معادلات تخصيم الحديد عن القطاع.
+ * الحلق/الضلفة: FW · FH · SW · SH — السوقاس: L طول القطعة.
+ */
+export type IronDeductions = {
+  frame: ProfileAxisFormulas;
+  sash: ProfileAxisFormulas;
+  /** صيغة طول سوقاس الحديد — المتغير L */
+  mullion: string;
+};
+
+export type IronSystemDetails = {
+  pieces: IronPiece[];
+  deductions: IronDeductions;
+};
+
 export type MaterialSystem = {
   id: string;
   name: string;
@@ -339,6 +393,8 @@ export type MaterialSystem = {
   glass?: GlassSystemDetails;
   /** تفاصيل نظام الاكسسوار: مفصلي · جرار · سبلونة · سكاك */
   accessory?: AccessorySystemDetails;
+  /** تفاصيل نظام الحديد: عيدان + تخصيم عن الحلق والضلفة والسوقاس */
+  iron?: IronSystemDetails;
 };
 
 /** أسعار التدبيل والجورجيا — عامة لكل الضلف */
@@ -439,7 +495,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "iron",
     label: "حديد",
-    description: "تسليح الحديد — غالباً ثابت",
+    description: "تسليح الحلق · الضلفة · السوقاس — مفصلي وجرار",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
   },
@@ -619,6 +675,95 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
 
 export function getDefaultAccessoryDetails(): AccessorySystemDetails {
   return defaultAccessoryDetails();
+}
+
+export function defaultIronDeductions(): IronDeductions {
+  return {
+    frame: { width: "=FW-100", height: "=FH-100" },
+    sash: { width: "=SW-100", height: "=SH-100" },
+    mullion: "=L-100",
+  };
+}
+
+export function defaultIronPieces(): IronPiece[] {
+  return [
+    {
+      id: "iron-frame-h",
+      name: "حديد حلق مفصلي",
+      role: "frame-hinged",
+      sectionWidthMm: 40,
+      sectionHeightMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+    {
+      id: "iron-frame-s",
+      name: "حديد حلق جرار",
+      role: "frame-sliding",
+      sectionWidthMm: 40,
+      sectionHeightMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+    {
+      id: "iron-sash-h",
+      name: "حديد ضلفة مفصلي",
+      role: "sash-hinged",
+      sectionWidthMm: 35,
+      sectionHeightMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+    {
+      id: "iron-sash-s",
+      name: "حديد ضلفة جرار",
+      role: "sash-sliding",
+      sectionWidthMm: 35,
+      sectionHeightMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+    {
+      id: "iron-sash-door",
+      name: "حديد ضلفة باب",
+      role: "sash-door",
+      sectionWidthMm: 45,
+      sectionHeightMm: 25,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+    {
+      id: "iron-mullion",
+      name: "حديد سوقاس",
+      role: "mullion",
+      sectionWidthMm: 30,
+      sectionHeightMm: 15,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+  ];
+}
+
+export function defaultIronDetails(): IronSystemDetails {
+  return {
+    pieces: defaultIronPieces(),
+    deductions: defaultIronDeductions(),
+  };
+}
+
+export function newIronPieceId(): string {
+  return `iron-piece-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+}
+
+export function ironPieceForRole(
+  details: IronSystemDetails,
+  role: IronPieceRole
+): IronPiece | undefined {
+  return details.pieces.find((p) => p.role === role && p.enabled);
+}
+
+export function ironDeductionSummary(d: IronDeductions): string {
+  return `حلق ${ensureEqualsPrefix(d.frame.width)} · ضلفة ${ensureEqualsPrefix(d.sash.width)} · سوقاس ${ensureEqualsPrefix(d.mullion)}`;
 }
 
 /**
@@ -1485,10 +1630,22 @@ export function getDefaultCatalog(): MaterialCatalog {
       {
         id: "iron-std",
         name: "حديد تسليح قياسي",
-        notes: "ثابت في أغلب التصميمات",
+        notes: "الحديد أصغر ١٠ سم من الحلق والضلفة والسوقاس",
         isDefault: true,
+        iron: defaultIronDetails(),
       },
-      { id: "iron-heavy", name: "حديد تسليح ثقيل" },
+      {
+        id: "iron-heavy",
+        name: "حديد تسليح ثقيل",
+        iron: {
+          ...defaultIronDetails(),
+          pieces: defaultIronPieces().map((p) => ({
+            ...p,
+            sectionWidthMm: p.sectionWidthMm + 5,
+            sectionHeightMm: p.sectionHeightMm + 5,
+          })),
+        },
+      },
     ],
     glassRates: defaultGlassRates(),
     meshCategories: defaultMeshCategories(),
@@ -1529,6 +1686,75 @@ function normalizePiece(raw: unknown): ProfilePiece | null {
         ? barLengthM
         : DEFAULT_BAR_LENGTH_M,
     notes: typeof p.notes === "string" ? p.notes : undefined,
+  };
+}
+
+function normalizeIronRole(raw: unknown): IronPieceRole {
+  const ok = IRON_PIECE_ROLES.some((r) => r.id === raw);
+  return ok ? (raw as IronPieceRole) : "frame-hinged";
+}
+
+function normalizeIronPiece(raw: unknown): IronPiece | null {
+  if (!raw || typeof raw !== "object") return null;
+  const p = raw as Record<string, unknown>;
+  if (typeof p.id !== "string" || typeof p.name !== "string") return null;
+  if (!p.id.trim() || !p.name.trim()) return null;
+  const sectionWidthMm = Number(p.sectionWidthMm);
+  const sectionHeightMm = Number(p.sectionHeightMm);
+  const barLengthM = Number(p.barLengthM);
+  return {
+    id: p.id.trim(),
+    name: p.name.trim(),
+    role: normalizeIronRole(p.role),
+    sectionWidthMm:
+      Number.isFinite(sectionWidthMm) && sectionWidthMm >= 0
+        ? sectionWidthMm
+        : 40,
+    sectionHeightMm:
+      Number.isFinite(sectionHeightMm) && sectionHeightMm >= 0
+        ? sectionHeightMm
+        : 20,
+    barLengthM:
+      Number.isFinite(barLengthM) && barLengthM > 0
+        ? barLengthM
+        : DEFAULT_BAR_LENGTH_M,
+    enabled: p.enabled !== false,
+    notes: typeof p.notes === "string" ? p.notes : undefined,
+  };
+}
+
+function normalizeIronDeductions(raw: unknown): IronDeductions {
+  const fallback = defaultIronDeductions();
+  if (!raw || typeof raw !== "object") return fallback;
+  const d = raw as Record<string, unknown>;
+  const frame = normalizeAxisFormulas(d.frame, fallback.frame, "frame");
+  const sash = normalizeAxisFormulas(d.sash, fallback.sash, "sash");
+  let mullion = fallback.mullion;
+  if (typeof d.mullion === "string" && d.mullion.trim()) {
+    const formula = ensureEqualsPrefix(d.mullion);
+    const check = validateFormula(formula);
+    if (check.ok) mullion = formula;
+  }
+  return { frame, sash, mullion };
+}
+
+function normalizeIronDetails(raw: unknown): IronSystemDetails {
+  const fallback = defaultIronDetails();
+  if (!raw || typeof raw !== "object") return fallback;
+  const d = raw as Record<string, unknown>;
+  const pieces: IronPiece[] = [];
+  const seen = new Set<string>();
+  if (Array.isArray(d.pieces)) {
+    for (const item of d.pieces) {
+      const piece = normalizeIronPiece(item);
+      if (!piece || seen.has(piece.id)) continue;
+      seen.add(piece.id);
+      pieces.push(piece);
+    }
+  }
+  return {
+    pieces: pieces.length > 0 ? pieces : fallback.pieces,
+    deductions: normalizeIronDeductions(d.deductions),
   };
 }
 
@@ -1984,6 +2210,9 @@ function normalizeSystem(
   if (category === "accessories") {
     base.accessory = normalizeAccessoryDetails(s.accessory, accessoryBrands);
   }
+  if (category === "iron") {
+    base.iron = normalizeIronDetails(s.iron);
+  }
   return base;
 }
 
@@ -2046,6 +2275,9 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
             ...enriched,
             accessory: defaultAccessoryDetails(),
           };
+        }
+        if (cat.id === "iron" && !enriched.iron) {
+          enriched = { ...enriched, iron: defaultIronDetails() };
         }
         if (enriched.isDefault && !foundDefault) {
           foundDefault = true;
@@ -2282,6 +2514,9 @@ export function upsertSystem(
   if (category === "accessories" && !toSave.accessory) {
     toSave = { ...toSave, accessory: defaultAccessoryDetails() };
   }
+  if (category === "iron" && !toSave.iron) {
+    toSave = { ...toSave, iron: defaultIronDetails() };
+  }
 
   const list = [...(catalog[category] ?? [])];
   const idx = list.findIndex((s) => s.id === toSave.id);
@@ -2307,6 +2542,10 @@ export function upsertSystem(
       accessory:
         category === "accessories"
           ? toSave.accessory ?? prev.accessory ?? defaultAccessoryDetails()
+          : undefined,
+      iron:
+        category === "iron"
+          ? toSave.iron ?? prev.iron ?? defaultIronDetails()
           : undefined,
     };
     nextList = list.map((s, i) => (i === idx ? merged : s));

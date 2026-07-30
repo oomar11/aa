@@ -9,6 +9,7 @@ import {
 } from "@/lib/accessories";
 import type { GlassBreakdown, MaterialsBreakdown, MeshBreakdown, ProfileCostBreakdown } from "@/lib/materials";
 import { formatArea, formatCount, formatMeters } from "@/lib/materials";
+import type { IronBreakdown } from "@/lib/iron";
 import {
   calcCutSizes,
   findSystem,
@@ -32,6 +33,7 @@ type Props = {
   meshBreakdown?: MeshBreakdown | null;
   accessoriesBreakdown?: AccessoriesBreakdown | null;
   profileCostBreakdown?: ProfileCostBreakdown | null;
+  ironBreakdown?: IronBreakdown | null;
   partLabel?: string;
   /** مقاس الفتحة للبند */
   widthMm?: number;
@@ -54,6 +56,7 @@ export function MaterialsBar({
   meshBreakdown,
   accessoriesBreakdown,
   profileCostBreakdown,
+  ironBreakdown,
   partLabel = "شباك",
   widthMm,
   heightMm,
@@ -323,6 +326,10 @@ export function MaterialsBar({
 
       {accessoriesBreakdown?.hasAccessories ? (
         <AccessoriesBreakdownPanel breakdown={accessoriesBreakdown} />
+      ) : null}
+
+      {ironBreakdown && ironBreakdown.totalM > 0.0005 ? (
+        <IronBreakdownPanel breakdown={ironBreakdown} />
       ) : null}
     </section>
   );
@@ -870,6 +877,80 @@ function AccessoriesBreakdownPanel({
               </p>
             </div>
           ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function IronBreakdownPanel({ breakdown }: { breakdown: IronBreakdown }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="border-t border-border bg-background/40 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-primary">
+          حساب الحديد
+          {breakdown.systemName ? `: ${breakdown.systemName}` : ""}
+        </p>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
+        >
+          {expanded ? "إخفاء" : "تفاصيل"}
+        </button>
+      </div>
+
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
+        <span className="font-semibold text-foreground">
+          إجمالي: {formatMeters(breakdown.totalM)}
+        </span>
+        {breakdown.frameHingedM > 0.0005 ? (
+          <span>حلق مفصلي: {formatMeters(breakdown.frameHingedM)}</span>
+        ) : null}
+        {breakdown.frameSlidingM > 0.0005 ? (
+          <span>حلق جرار: {formatMeters(breakdown.frameSlidingM)}</span>
+        ) : null}
+        {breakdown.sashHingedM > 0.0005 ? (
+          <span>ضلفة مفصلي: {formatMeters(breakdown.sashHingedM)}</span>
+        ) : null}
+        {breakdown.sashSlidingM > 0.0005 ? (
+          <span>ضلفة جرار: {formatMeters(breakdown.sashSlidingM)}</span>
+        ) : null}
+        {breakdown.sashDoorM > 0.0005 ? (
+          <span>ضلفة باب: {formatMeters(breakdown.sashDoorM)}</span>
+        ) : null}
+        {breakdown.mullionM > 0.0005 ? (
+          <span>سوقاس: {formatMeters(breakdown.mullionM)}</span>
+        ) : null}
+      </div>
+
+      {expanded ? (
+        <div className="mt-2 overflow-hidden rounded-xl border border-border/80">
+          <div className="grid grid-cols-3 gap-px bg-border text-[10px] font-semibold text-muted">
+            <span className="bg-card px-2 py-1.5 text-start">النوع</span>
+            <span className="bg-card px-2 py-1.5">المقطع</span>
+            <span className="bg-card px-2 py-1.5">الطول</span>
+          </div>
+          {breakdown.lines.map((line) => (
+            <div
+              key={line.role}
+              className="grid grid-cols-3 gap-px border-t border-border/60 bg-border text-[10px]"
+            >
+              <span className="bg-card px-2 py-1.5 text-start text-foreground">
+                {line.pieceName ?? line.label}
+              </span>
+              <span className="bg-card px-2 py-1.5 text-foreground">
+                {line.sectionWidthMm && line.sectionHeightMm
+                  ? `${line.sectionWidthMm}×${line.sectionHeightMm} مم`
+                  : "—"}
+              </span>
+              <span className="bg-card px-2 py-1.5 font-semibold text-primary">
+                {formatMeters(line.lengthM)}
+              </span>
+            </div>
+          ))}
         </div>
       ) : null}
     </div>
