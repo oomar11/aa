@@ -15,6 +15,7 @@ import {
 } from "@/lib/item-catalogs";
 import { getDefaultGlassBottleId, getDefaultSystemId, glassBottleOptions, loadMaterialCatalog, findSystem, resolveGlassBottleId } from "@/lib/material-systems";
 import {
+  projectAccessoryDisplayName,
   resolveItemGlassPane1Id,
   resolveItemGlassPane2Id,
   resolveItemGlassGeorgian,
@@ -144,9 +145,10 @@ export function ItemSettingsDrawer({
   const projectSystemLabel = projectDefaults?.systemId
     ? findSystem("profiles", projectDefaults.systemId, catalog)?.name
     : null;
-  const projectAccessoryLabel = projectDefaults?.accessoryId
-    ? findSystem("accessories", projectDefaults.accessoryId, catalog)?.name
-    : null;
+  const projectAccessoryLabel = projectAccessoryDisplayName(
+    projectDefaults,
+    catalog
+  );
   const systemOptions = projectSystemLabel
     ? [{ id: PROJECT_INHERIT_ID, label: `من المشروع (${projectSystemLabel})` }, ...systemOpts]
     : systemOpts;

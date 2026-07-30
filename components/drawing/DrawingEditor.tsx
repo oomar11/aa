@@ -255,9 +255,12 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   }, [calcItem]);
 
   const accessoriesBreakdown = useMemo((): AccessoriesBreakdown | null => {
-    if (!calcItem) return null;
-    return scaleAccessories(calcItemAccessories(calcItem), calcItem.qty);
-  }, [calcItem]);
+    if (!calcItem || !item) return null;
+    return scaleAccessories(
+      calcItemAccessories(item, undefined, projectMaterials),
+      calcItem.qty
+    );
+  }, [calcItem, item, projectMaterials]);
 
   const profileCostBreakdown = useMemo((): ProfileCostBreakdown | null => {
     if (!calcItem) return null;

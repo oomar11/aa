@@ -29,6 +29,11 @@ import {
   type FrameKind,
 } from "@/lib/materials";
 import {
+  itemHasOwnAccessory,
+  resolveProjectAccessoryDetails,
+  type ProjectMaterialDefaults,
+} from "@/lib/project-materials";
+import {
   ACCESSORY_BRAND_CATEGORIES,
   findSystem,
   getDefaultAccessoryDetails,
@@ -322,13 +327,37 @@ export function accessoryBrandTag(
 
 function resolveAccessoryDetails(
   item: DesignItem,
-  catalog?: MaterialCatalog
+  catalog?: MaterialCatalog,
+  project?: ProjectMaterialDefaults | null
 ): { details: AccessorySystemDetails; systemName: string | null } | null {
   const cat =
     catalog ??
     (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
+
+  if (!itemHasOwnAccessory(item)) {
+    const custom = resolveProjectAccessoryDetails(project, cat);
+    if (custom) {
+      return {
+        details: custom.details,
+        systemName: custom.systemName,
+      };
+    }
+  }
+
   const id = item.accessoryId;
-  if (!id || id === "none") return null;
+  if (!id || id === "none") {
+    if (project?.accessoryId && project.accessoryId !== "none") {
+      const system = findSystem("accessories", project.accessoryId, cat);
+      if (system) {
+        return {
+          details: system.accessory ?? getDefaultAccessoryDetails(),
+          systemName: system.name,
+        };
+      }
+    }
+    return null;
+  }
+
   const system = findSystem("accessories", id, cat);
   if (!system) return null;
   return {
@@ -343,9 +372,10 @@ function resolveAccessoryDetails(
  */
 export function calcItemAccessories(
   item: DesignItem,
-  catalog?: MaterialCatalog
+  catalog?: MaterialCatalog,
+  project?: ProjectMaterialDefaults | null
 ): AccessoriesBreakdown {
-  const resolved = resolveAccessoryDetails(item, catalog);
+  const resolved = resolveAccessoryDetails(item, catalog, project);
   if (!resolved) return emptyBreakdown(null);
   const { details, systemName } = resolved;
   const widthMm = Math.max(0, item.widthMm || 0);

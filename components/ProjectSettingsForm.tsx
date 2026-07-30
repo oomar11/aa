@@ -6,9 +6,11 @@ import { ScreenBack } from "@/components/ScreenBack";
 import { ProjectMaterialDefaultsFields } from "@/components/ProjectMaterialDefaultsFields";
 import {
   defaultProjectMaterialDefaults,
+  normalizeProjectAccessoryDetails,
+  projectUsesCustomAccessory,
   type ProjectMaterialDefaults,
 } from "@/lib/project-materials";
-import { loadMaterialCatalog } from "@/lib/material-systems";
+import { defaultAccessoryDetails, loadMaterialCatalog } from "@/lib/material-systems";
 import {
   getProjectById,
   upsertProjectOverride,
@@ -42,6 +44,16 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
     setMaterials({
       systemId: found.systemId ?? defaults.systemId,
       accessoryId: found.accessoryId ?? defaults.accessoryId,
+      accessorySource: found.accessorySource ?? defaults.accessorySource,
+      accessoryCustomName: found.accessoryCustomName,
+      accessoryDetails: found.accessoryDetails
+        ? normalizeProjectAccessoryDetails(
+            found.accessoryDetails,
+            catalog
+          )
+        : projectUsesCustomAccessory(found)
+          ? defaultAccessoryDetails()
+          : undefined,
       glassPane1Id: found.glassPane1Id ?? defaults.glassPane1Id,
       glassPane2Id: found.glassPane2Id,
       glassGeorgian: found.glassGeorgian ?? defaults.glassGeorgian,
