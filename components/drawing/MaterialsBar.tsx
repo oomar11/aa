@@ -365,8 +365,7 @@ function ProfileCutsPanel({
         نظام القطاعات: {systemName}
       </p>
       <p className="mt-0.5 text-[10px] leading-relaxed text-muted">
-        مقاس القطع بعد التخصيم (من المعادلات) — الأمتار في الجدول فوق من تقسيمات
-        الرسم.
+        مقاس القطع بعد التخصيم — الأمتار في الجدول فوق من تقسيمات الرسم.
       </p>
 
       {profile.pieces.length > 0 ? (
@@ -383,10 +382,10 @@ function ProfileCutsPanel({
       ) : null}
 
       <div className="mt-2 grid gap-1 text-[11px] leading-relaxed text-muted">
-        <p className="font-mono">{frameWidthFormula(profile.deductions)}</p>
-        <p className="font-mono">{frameHeightFormula(profile.deductions)}</p>
-        <p className="font-mono">{sashWidthFormula(profile.deductions)}</p>
-        <p className="font-mono">{sashHeightFormula(profile.deductions)}</p>
+        <p>{frameWidthFormula(profile.deductions)}</p>
+        <p>{frameHeightFormula(profile.deductions)}</p>
+        <p>{sashWidthFormula(profile.deductions)}</p>
+        <p>{sashHeightFormula(profile.deductions)}</p>
       </div>
 
       {steps && cuts ? (

@@ -380,3 +380,55 @@ export function deductToFormula(
   if (d <= 0) return `=${baseVar}`;
   return `=${baseVar}-${d}`;
 }
+
+export type FormulaBaseVar = "W" | "H" | "FW" | "FH";
+
+/**
+ * وضع بسيط: تخصيم ثابت من متغير واحد.
+ * يقبل: =W  |  =W-10  |  =FW-2*60 (يُعتبر متقدم)
+ */
+export type SimpleDeduct =
+  | { simple: true; baseVar: FormulaBaseVar; deductMm: number }
+  | { simple: false };
+
+const SIMPLE_DEDUCT_RE =
+  /^=?\s*(W|H|FW|FH)\s*(?:-\s*(\d+(?:\.\d+)?))?\s*$/i;
+
+/** هل المعادلة تخصيم بسيط (متغير − رقم)؟ */
+export function parseSimpleDeduct(formula: string): SimpleDeduct {
+  const t = formula.trim();
+  const m = t.match(SIMPLE_DEDUCT_RE);
+  if (!m) return { simple: false };
+  const baseVar = m[1]!.toUpperCase() as FormulaBaseVar;
+  const deductMm = m[2] ? Number(m[2]) : 0;
+  if (!Number.isFinite(deductMm) || deductMm < 0) return { simple: false };
+  return { simple: true, baseVar, deductMm };
+}
+
+/** هل كل معادلات التخصيم بسيطة؟ */
+export function areAllDeductionsSimple(formulas: string[]): boolean {
+  return formulas.every((f) => parseSimpleDeduct(f).simple);
+}
+
+const BASE_VAR_AR: Record<FormulaBaseVar, string> = {
+  W: "عرض الفتحة",
+  H: "ارتفاع الفتحة",
+  FW: "عرض الحلق",
+  FH: "ارتفاع الحلق",
+};
+
+/** نص عربي قصير لشرح معادلة تخصيم */
+export function describeFormulaAr(
+  formula: string,
+  axisLabel: string
+): string {
+  const parsed = parseSimpleDeduct(formula);
+  if (parsed.simple) {
+    const from = BASE_VAR_AR[parsed.baseVar];
+    if (parsed.deductMm <= 0) {
+      return `${axisLabel} = ${from} (بدون تخصيم)`;
+    }
+    return `${axisLabel} = ${from} − ${parsed.deductMm} مم`;
+  }
+  return `${axisLabel} ${ensureEqualsPrefix(formula)}`;
+}

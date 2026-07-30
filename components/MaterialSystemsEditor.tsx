@@ -209,10 +209,9 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isProfiles ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          اضغط «تفاصيل» عشان تدخل العيدان ومعادلات التخصيم بصيغة إكسل (مثل{" "}
-          <span className="font-mono text-foreground">=W-10</span> أو{" "}
-          <span className="font-mono text-foreground">=FW-2*60</span>). البراندات
-          وقوائم الأسعار من{" "}
+          اضغط «تفاصيل» عشان تدخل العيدان وتخصيمات مقاس القطع. الوضع الافتراضي
+          سهل: تدخل رقم الخصم بالمم (مثلاً ضلفة −١٠). في وضع متقدم لو حابب
+          معادلات حرة. البراندات وقوائم الأسعار من{" "}
           <Link
             href="/materials/profiles/brands"
             className="font-semibold text-primary underline-offset-2 hover:underline"

@@ -3,6 +3,7 @@
 import type { MeshKind } from "@/lib/design-items";
 import {
   deductToFormula,
+  describeFormulaAr,
   ensureEqualsPrefix,
   evaluateFormula,
   validateFormula,
@@ -115,9 +116,9 @@ export type ProfilePiece = {
 };
 
 /**
- * معادلات التخصيم (صيغة إكسل).
- * متغيرات: W عرض الفتحة، H ارتفاع الفتحة، FW عرض الحلق، FH ارتفاع الحلق.
- * مثال: =W   |   =W-10   |   =FW-2*5   |   =MAX(H-20,0)
+ * تخصيمات القطع (تخزين داخلي بصيغة معادلة).
+ * الواجهة الافتراضية: رقم خصم بالمم → يتحول لـ =W-10 مثلاً.
+ * الوضع المتقدم: معادلة حرة (W/H/FW/FH + MIN/MAX/IF…).
  */
 export type ProfileAxisFormulas = {
   width: string;
@@ -2591,21 +2592,21 @@ export function formatCutStepSummary(step: CutCalculationStep): string {
   return `${step.label}: ${step.formula} (${varsText}) → ${step.resultMm} مم`;
 }
 
-/** نصوص معادلات التخصيم للعرض */
+/** نصوص مقاس القطع للعرض (عربي بسيط لو التخصيم ثابت) */
 export function frameWidthFormula(d: ProfileDeductions): string {
-  return `عرض الحلق ${ensureEqualsPrefix(d.frame.width)}`;
+  return describeFormulaAr(d.frame.width, "عرض الحلق");
 }
 
 export function frameHeightFormula(d: ProfileDeductions): string {
-  return `ارتفاع الحلق ${ensureEqualsPrefix(d.frame.height)}`;
+  return describeFormulaAr(d.frame.height, "ارتفاع الحلق");
 }
 
 export function sashWidthFormula(d: ProfileDeductions): string {
-  return `عرض الضلفة ${ensureEqualsPrefix(d.sash.width)}`;
+  return describeFormulaAr(d.sash.width, "عرض الضلفة");
 }
 
 export function sashHeightFormula(d: ProfileDeductions): string {
-  return `ارتفاع الضلفة ${ensureEqualsPrefix(d.sash.height)}`;
+  return describeFormulaAr(d.sash.height, "ارتفاع الضلفة");
 }
 
 export function formatBarLength(m: number): string {

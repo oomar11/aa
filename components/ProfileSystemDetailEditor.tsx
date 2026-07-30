@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ScreenBack } from "@/components/ScreenBack";
 import {
   useCallback,
@@ -35,8 +34,13 @@ import {
 } from "@/lib/material-systems";
 import {
   FORMULA_VAR_HELP,
+  areAllDeductionsSimple,
+  deductToFormula,
+  describeFormulaAr,
   ensureEqualsPrefix,
+  parseSimpleDeduct,
   validateFormula,
+  type FormulaBaseVar,
 } from "@/lib/excel-formula";
 
 type Props = {
@@ -51,6 +55,61 @@ type PieceDraft = {
   barLengthM: string;
   notes: string;
 };
+
+type FormulaMode = "simple" | "advanced";
+
+type DeductPreset = {
+  id: string;
+  label: string;
+  frameW: number;
+  frameH: number;
+  sashW: number;
+  sashH: number;
+};
+
+const DEDUCT_PRESETS: DeductPreset[] = [
+  { id: "none", label: "بدون تخصيم", frameW: 0, frameH: 0, sashW: 0, sashH: 0 },
+  { id: "sash10", label: "ضلفة −١٠", frameW: 0, frameH: 0, sashW: 10, sashH: 10 },
+  {
+    id: "frame5-sash10",
+    label: "حلق −٥ · ضلفة −١٠",
+    frameW: 5,
+    frameH: 5,
+    sashW: 10,
+    sashH: 10,
+  },
+  {
+    id: "frame10-sash20",
+    label: "حلق −١٠ · ضلفة −٢٠",
+    frameW: 10,
+    frameH: 10,
+    sashW: 20,
+    sashH: 20,
+  },
+];
+
+function deductMmFromFormula(formula: string): number {
+  const parsed = parseSimpleDeduct(formula);
+  return parsed.simple ? parsed.deductMm : 0;
+}
+
+function deductionsFromSimpleMm(mm: {
+  frameW: number;
+  frameH: number;
+  sashW: number;
+  sashH: number;
+}): ProfileDeductions {
+  return {
+    frame: {
+      width: deductToFormula("W", mm.frameW),
+      height: deductToFormula("H", mm.frameH),
+    },
+    sash: {
+      width: deductToFormula("FW", mm.sashW),
+      height: deductToFormula("FH", mm.sashH),
+    },
+  };
+}
 
 function toPieceDraft(p?: ProfilePiece): PieceDraft {
   return {
@@ -92,6 +151,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   const [pieces, setPieces] = useState<ProfilePiece[]>([]);
   const [deductions, setDeductions] =
     useState<ProfileDeductions>(defaultDeductions);
+  const [formulaMode, setFormulaMode] = useState<FormulaMode>("simple");
   const [pieceDraft, setPieceDraft] = useState<PieceDraft | null>(null);
   const [previewW, setPreviewW] = useState("1200");
   const [previewH, setPreviewH] = useState("1400");
@@ -118,6 +178,13 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       setSystemNotes(found.notes ?? "");
       setPieces(details.pieces);
       setDeductions(details.deductions);
+      const formulas = [
+        details.deductions.frame.width,
+        details.deductions.frame.height,
+        details.deductions.sash.width,
+        details.deductions.sash.height,
+      ];
+      setFormulaMode(areAllDeductionsSimple(formulas) ? "simple" : "advanced");
     });
   }, [systemId]);
 
@@ -173,7 +240,63 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     };
     setDeductions(normalized);
     persistProfile(pieces, normalized);
-    showFlash("تم حفظ المعادلات");
+    showFlash("تم حفظ التخصيمات");
+  }
+
+  function setSimpleDeduct(
+    part: "frame" | "sash",
+    axis: "width" | "height",
+    raw: string
+  ) {
+    const n = Math.max(0, Number(raw) || 0);
+    const base: FormulaBaseVar =
+      part === "frame"
+        ? axis === "width"
+          ? "W"
+          : "H"
+        : axis === "width"
+          ? "FW"
+          : "FH";
+    setDeductions((d) => ({
+      ...d,
+      [part]: {
+        ...d[part],
+        [axis]: deductToFormula(base, n),
+      },
+    }));
+  }
+
+  function applyPreset(preset: DeductPreset) {
+    const next = deductionsFromSimpleMm(preset);
+    setDeductions(next);
+    setFormulaMode("simple");
+    persistProfile(pieces, next);
+    showFlash(`تم تطبيق: ${preset.label}`);
+  }
+
+  function switchMode(mode: FormulaMode) {
+    if (mode === "simple") {
+      const formulas = [
+        deductions.frame.width,
+        deductions.frame.height,
+        deductions.sash.width,
+        deductions.sash.height,
+      ];
+      if (!areAllDeductionsSimple(formulas)) {
+        const ok = window.confirm(
+          "في معادلات متقدمة. التحويل للوضع السهل هيخلّي التخصيم أرقام ثابتة بس. كمّل؟"
+        );
+        if (!ok) return;
+        const next = deductionsFromSimpleMm({
+          frameW: deductMmFromFormula(deductions.frame.width),
+          frameH: deductMmFromFormula(deductions.frame.height),
+          sashW: deductMmFromFormula(deductions.sash.width),
+          sashH: deductMmFromFormula(deductions.sash.height),
+        });
+        setDeductions(next);
+      }
+    }
+    setFormulaMode(mode);
   }
 
   function openNewPiece() {
@@ -238,7 +361,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
         <p className="mt-0.5 text-xs text-muted">
-          العيدان · أطوال العود · معادلات مقاس الحلق والضلفة
+          العيدان · أطوال العود · تخصيمات مقاس القطع
         </p>
       </div>
 
@@ -442,156 +565,255 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         )}
       </section>
 
-      {/* معادلات المقاس */}
+      {/* تخصيمات مقاس القطع */}
       <form
         onSubmit={saveDeductions}
         className="space-y-3 rounded-2xl border border-border bg-card p-3"
       >
         <div>
           <h3 className="text-xs font-bold text-foreground">
-            معادلات مقاس القطع
+            تخصيمات مقاس القطع
           </h3>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-            المعادلات تحسب <strong className="text-foreground">مقاس القطع</strong>{" "}
-            (عرض وارتفاع الحلق والضلفة) من مقاس الفتحة — زي إكسل.
+            التخصيم = كام مليمتر نخصم عشان نطلع مقاس قطع الحلق والضلفة من مقاس
+            الفتحة.
           </p>
         </div>
 
         <div className="rounded-xl border border-primary/25 bg-primary-soft/30 px-3 py-2.5 text-[11px] leading-relaxed text-foreground">
-          <p className="font-bold text-primary">كيف تشتغل؟ (خطوتين)</p>
+          <p className="font-bold text-primary">بالبلدي كده (خطوتين)</p>
           <ol className="mt-1.5 list-inside list-decimal space-y-1 text-muted">
             <li>
-              <span className="text-foreground">الخطوة ١ — الحلق:</span> من مقاس
-              الفتحة <span className="font-mono">W</span> و{" "}
-              <span className="font-mono">H</span> نحسب عرض وارتفاع الحلق (
-              <span className="font-mono">FW</span> و{" "}
-              <span className="font-mono">FH</span>).
+              <span className="text-foreground">الحلق</span> بيتقص من الفتحة بعد
+              خصم العرض/الارتفاع
             </li>
             <li>
-              <span className="text-foreground">الخطوة ٢ — الضلفة:</span> بعد ما
-              الحلق يتحسب، نستخدم <span className="font-mono">FW</span> و{" "}
-              <span className="font-mono">FH</span> (أو{" "}
-              <span className="font-mono">W</span> و{" "}
-              <span className="font-mono">H</span> لو محتاج) لحساب مقاس الضلفة.
+              <span className="text-foreground">الضلفة</span> بتتقص من الحلق بعد
+              خصم العرض/الارتفاع
             </li>
           </ol>
           <p className="mt-2 border-t border-primary/20 pt-2 text-[10px] text-muted">
-            أمتار الخامات في الرسم (حلق مفصلي، ضلفة جرار…) تتحسب من تقسيمات
-            الرسم. المعادلات هنا تعرض <strong className="text-foreground">مقاس
-            القطع</strong> بعد التخصيم — مش الأمتار مباشرة.
+            أمتار الخامات في الرسم تتحسب من تقسيمات الرسم. التخصيمات هنا لمقاس
+            القطع فقط.
           </p>
         </div>
 
-        <div className="rounded-xl border border-border bg-background p-3">
-          <p className="mb-1 text-[11px] font-bold text-primary">
-            الخطوة ١ — معادلات الحلق
-          </p>
-          <p className="mb-2 text-[10px] text-muted">
-            استخدم <span className="font-mono text-foreground">W</span> و{" "}
-            <span className="font-mono text-foreground">H</span> (مقاس الفتحة)
-          </p>
-          <div className="space-y-2.5">
-            <FormulaField
-              label="عرض الحلق → FW"
-              value={deductions.frame.width}
-              onChange={(width) =>
-                setDeductions((d) => ({
-                  ...d,
-                  frame: { ...d.frame, width },
-                }))
-              }
-              hint="مثال: =W أو =W-10"
-              preferredVars={["W", "H"]}
-            />
-            <FormulaField
-              label="ارتفاع الحلق → FH"
-              value={deductions.frame.height}
-              onChange={(height) =>
-                setDeductions((d) => ({
-                  ...d,
-                  frame: { ...d.frame, height },
-                }))
-              }
-              hint="مثال: =H أو =H-5"
-              preferredVars={["W", "H"]}
-            />
-          </div>
-          <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
-            <p>{frameWidthFormula(deductions)}</p>
-            <p>{frameHeightFormula(deductions)}</p>
-          </div>
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1">
+          <button
+            type="button"
+            onClick={() => switchMode("simple")}
+            className={`h-9 rounded-lg text-xs font-semibold transition-colors ${
+              formulaMode === "simple"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted hover:bg-card"
+            }`}
+          >
+            سهل — أرقام
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMode("advanced")}
+            className={`h-9 rounded-lg text-xs font-semibold transition-colors ${
+              formulaMode === "advanced"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted hover:bg-card"
+            }`}
+          >
+            متقدم — معادلة
+          </button>
         </div>
 
-        <div className="rounded-xl border border-border bg-background p-3">
-          <p className="mb-1 text-[11px] font-bold text-primary">
-            الخطوة ٢ — معادلات الضلفة
-          </p>
-          <p className="mb-2 text-[10px] text-muted">
-            بعد حساب الحلق، استخدم{" "}
-            <span className="font-mono text-foreground">FW</span> و{" "}
-            <span className="font-mono text-foreground">FH</span> — أو{" "}
-            <span className="font-mono text-foreground">W</span> و{" "}
-            <span className="font-mono text-foreground">H</span> لو المعادلة
-            محتاجة مقاس الفتحة
-          </p>
-          <div className="space-y-2.5">
-            <FormulaField
-              label="عرض الضلفة"
-              value={deductions.sash.width}
-              onChange={(width) =>
-                setDeductions((d) => ({
-                  ...d,
-                  sash: { ...d.sash, width },
-                }))
-              }
-              hint="مثال: =FW-10 (بعد ما الحلق يتحسب)"
-              preferredVars={["FW", "FH", "W", "H"]}
-            />
-            <FormulaField
-              label="ارتفاع الضلفة"
-              value={deductions.sash.height}
-              onChange={(height) =>
-                setDeductions((d) => ({
-                  ...d,
-                  sash: { ...d.sash, height },
-                }))
-              }
-              hint="مثال: =FH-10 أو =H-2*35"
-              preferredVars={["FW", "FH", "W", "H"]}
-            />
-          </div>
-          <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
-            <p>{sashWidthFormula(deductions)}</p>
-            <p>{sashHeightFormula(deductions)}</p>
-          </div>
-        </div>
+        {formulaMode === "simple" ? (
+          <>
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold text-muted">
+                قوالب جاهزة
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {DEDUCT_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyPreset(preset)}
+                    className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-[11px] font-medium text-foreground hover:border-primary hover:text-primary"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-2 text-[10px] leading-relaxed text-muted">
-          <p className="font-semibold text-foreground">المتغيرات المتاحة</p>
-          {FORMULA_VAR_HELP.map((v) => (
-            <p key={v.key}>
-              <span className="font-mono text-primary">{v.key}</span> — {v.label}
+            <div className="rounded-xl border border-border bg-background p-3">
+              <p className="mb-1 text-[11px] font-bold text-primary">
+                الخطوة ١ — خصم الحلق من الفتحة
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <SimpleDeductField
+                  label="خصم العرض"
+                  value={deductMmFromFormula(deductions.frame.width)}
+                  onChange={(v) => setSimpleDeduct("frame", "width", v)}
+                  explain="عرض الحلق = عرض الفتحة − الخصم"
+                />
+                <SimpleDeductField
+                  label="خصم الارتفاع"
+                  value={deductMmFromFormula(deductions.frame.height)}
+                  onChange={(v) => setSimpleDeduct("frame", "height", v)}
+                  explain="ارتفاع الحلق = ارتفاع الفتحة − الخصم"
+                />
+              </div>
+              <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
+                <p>{describeFormulaAr(deductions.frame.width, "عرض الحلق")}</p>
+                <p>
+                  {describeFormulaAr(deductions.frame.height, "ارتفاع الحلق")}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-background p-3">
+              <p className="mb-1 text-[11px] font-bold text-primary">
+                الخطوة ٢ — خصم الضلفة من الحلق
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <SimpleDeductField
+                  label="خصم العرض"
+                  value={deductMmFromFormula(deductions.sash.width)}
+                  onChange={(v) => setSimpleDeduct("sash", "width", v)}
+                  explain="عرض الضلفة = عرض الحلق − الخصم"
+                />
+                <SimpleDeductField
+                  label="خصم الارتفاع"
+                  value={deductMmFromFormula(deductions.sash.height)}
+                  onChange={(v) => setSimpleDeduct("sash", "height", v)}
+                  explain="ارتفاع الضلفة = ارتفاع الحلق − الخصم"
+                />
+              </div>
+              <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
+                <p>{describeFormulaAr(deductions.sash.width, "عرض الضلفة")}</p>
+                <p>
+                  {describeFormulaAr(deductions.sash.height, "ارتفاع الضلفة")}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-2 text-[11px] leading-relaxed text-muted">
+              الوضع المتقدم للمعادلات الحرة زي إكسل. الخطوة ١ تحسب الحلق من{" "}
+              <span className="font-mono text-foreground">W/H</span>، والخطوة ٢
+              تحسب الضلفة من{" "}
+              <span className="font-mono text-foreground">FW/FH</span>.
             </p>
-          ))}
-          <p className="mt-1.5 border-t border-border/60 pt-1.5">
-            دوال: MIN MAX ABS ROUND FLOOR CEIL IF · مثال:{" "}
-            <span className="font-mono text-foreground">=W-2*60</span>
-          </p>
-        </div>
+
+            <div className="rounded-xl border border-border bg-background p-3">
+              <p className="mb-1 text-[11px] font-bold text-primary">
+                الخطوة ١ — معادلات الحلق
+              </p>
+              <p className="mb-2 text-[10px] text-muted">
+                استخدم <span className="font-mono text-foreground">W</span> و{" "}
+                <span className="font-mono text-foreground">H</span> (مقاس الفتحة)
+              </p>
+              <div className="space-y-2.5">
+                <FormulaField
+                  label="عرض الحلق → FW"
+                  value={deductions.frame.width}
+                  onChange={(width) =>
+                    setDeductions((d) => ({
+                      ...d,
+                      frame: { ...d.frame, width },
+                    }))
+                  }
+                  hint="مثال: =W أو =W-10"
+                  preferredVars={["W", "H"]}
+                />
+                <FormulaField
+                  label="ارتفاع الحلق → FH"
+                  value={deductions.frame.height}
+                  onChange={(height) =>
+                    setDeductions((d) => ({
+                      ...d,
+                      frame: { ...d.frame, height },
+                    }))
+                  }
+                  hint="مثال: =H أو =H-5"
+                  preferredVars={["W", "H"]}
+                />
+              </div>
+              <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
+                <p>{frameWidthFormula(deductions)}</p>
+                <p>{frameHeightFormula(deductions)}</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-background p-3">
+              <p className="mb-1 text-[11px] font-bold text-primary">
+                الخطوة ٢ — معادلات الضلفة
+              </p>
+              <p className="mb-2 text-[10px] text-muted">
+                بعد حساب الحلق، استخدم{" "}
+                <span className="font-mono text-foreground">FW</span> و{" "}
+                <span className="font-mono text-foreground">FH</span>
+              </p>
+              <div className="space-y-2.5">
+                <FormulaField
+                  label="عرض الضلفة"
+                  value={deductions.sash.width}
+                  onChange={(width) =>
+                    setDeductions((d) => ({
+                      ...d,
+                      sash: { ...d.sash, width },
+                    }))
+                  }
+                  hint="مثال: =FW-10"
+                  preferredVars={["FW", "FH", "W", "H"]}
+                />
+                <FormulaField
+                  label="ارتفاع الضلفة"
+                  value={deductions.sash.height}
+                  onChange={(height) =>
+                    setDeductions((d) => ({
+                      ...d,
+                      sash: { ...d.sash, height },
+                    }))
+                  }
+                  hint="مثال: =FH-10 أو =H-2*35"
+                  preferredVars={["FW", "FH", "W", "H"]}
+                />
+              </div>
+              <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
+                <p>{sashWidthFormula(deductions)}</p>
+                <p>{sashHeightFormula(deductions)}</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-2 text-[10px] leading-relaxed text-muted">
+              <p className="font-semibold text-foreground">المتغيرات المتاحة</p>
+              {FORMULA_VAR_HELP.map((v) => (
+                <p key={v.key}>
+                  <span className="font-mono text-primary">{v.key}</span> —{" "}
+                  {v.label}
+                </p>
+              ))}
+              <p className="mt-1.5 border-t border-border/60 pt-1.5">
+                دوال: MIN MAX ABS ROUND FLOOR CEIL IF · مثال:{" "}
+                <span className="font-mono text-foreground">=W-2*60</span>
+              </p>
+            </div>
+          </>
+        )}
 
         <button
           type="submit"
           className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
         >
-          حفظ المعادلات
+          حفظ التخصيمات
         </button>
       </form>
 
-      {/* معاينة معادلات على مقاس */}
+      {/* معاينة على مقاس */}
       <section className="space-y-2 rounded-2xl border border-border bg-card p-3">
-        <h3 className="text-xs font-bold text-foreground">معاينة الحساب خطوة بخطوة</h3>
+        <h3 className="text-xs font-bold text-foreground">جرّب على مقاس فتحة</h3>
         <p className="text-[10px] leading-relaxed text-muted">
-          غيّر مقاس الفتحة وشوف كل معادلة بتتحسب إزاي قبل ما تطبّق على الرسم.
+          اكتب أي مقاس فتحة وشوف مقاس قطع الحلق والضلفة بعد التخصيم خطوة بخطوة.
         </p>
         <div className="grid grid-cols-2 gap-2">
           <label className="block text-[11px] text-muted">
@@ -717,6 +939,35 @@ function CutStepsList({
         </li>
       ))}
     </ol>
+  );
+}
+
+
+function SimpleDeductField({
+  label,
+  value,
+  onChange,
+  explain,
+}: {
+  label: string;
+  value: number;
+  onChange: (next: string) => void;
+  explain: string;
+}) {
+  return (
+    <label className="block text-[11px] text-muted">
+      {label} (مم)
+      <input
+        type="number"
+        min={0}
+        step={1}
+        inputMode="decimal"
+        value={Number.isFinite(value) ? value : 0}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm tabular-nums text-foreground outline-none focus:border-primary"
+      />
+      <p className="mt-0.5 text-[10px] leading-snug text-muted">{explain}</p>
+    </label>
   );
 }
 
