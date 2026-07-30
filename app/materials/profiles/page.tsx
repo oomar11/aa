@@ -1,18 +1,17 @@
 import { MaterialCategoryShell } from "@/components/materials/MaterialCategoryShell";
 import { MaterialSystemsEditor } from "@/components/materials/MaterialSystemsEditor";
-import { ROUTES } from "@/lib/routes";
+import {
+  materialsProfilesBreadcrumb,
+  profileWorkflowSteps,
+} from "@/lib/materials-navigation";
 
 export default function ProfilesMaterialsPage() {
   return (
     <MaterialCategoryShell
       title="القطاعات"
-      description="تسعير بالعود بعد تخصيم مقاس القطع (سعر العود ÷ طوله) — معادلات التخصيم في تفاصيل السيستم"
-      brandLink={{
-        href: ROUTES.materials.profileBrands,
-        title: "براندات القطاعات",
-        description:
-          "سيتي · بريمير · … — أسعار الحلق والضلفة والباكتة والسوقاس",
-      }}
+      description="أنظمة البروفيل — العيدان ومعادلات التخصيم — مرتبطة بأسعار البراندات"
+      breadcrumb={materialsProfilesBreadcrumb()}
+      workflowSteps={profileWorkflowSteps("systems")}
     >
       <MaterialSystemsEditor category="profiles" />
     </MaterialCategoryShell>

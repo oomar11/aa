@@ -7,6 +7,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { ROUTES } from "@/lib/routes";
 import {
   defaultAccessoryDetails,
   defaultGlassRates,
@@ -184,11 +185,10 @@ export function MaterialSystemsEditor({ category }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-3 px-1">
-        <div className="min-w-0 text-right">
-          <h2 className="text-lg font-bold text-foreground">{meta.label}</h2>
-          <p className="mt-0.5 text-xs text-muted">{meta.description}</p>
-        </div>
+      <div className="flex items-center justify-between gap-3 px-1">
+        <h2 className="text-sm font-bold text-foreground">
+          {isGlass ? "قائمة الزجاجات" : "قائمة الأنظمة"}
+        </h2>
         <button
           type="button"
           onClick={openCreate}
@@ -216,17 +216,15 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isProfiles ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          كل سيستم بيتربط ببراند أسعار. مثال: سيستم{" "}
+          كل نظام بيتربط ببراند أسعار. مثال: نظام{" "}
           <span className="font-semibold text-foreground">بريمير سيتي</span> +
-          براند <span className="font-semibold text-foreground">سيتي</span> =
-          قائمة أسعار سيتي بريمير للحلق والضلفة والباكتة والسوقاس. من «تفاصيل»
-          تقدر تزود أو تنقص مقاس القطع بالمم (مثلاً حلق +٥٠ بار، أو ضلفة −١٠).
-          البراندات من{" "}
+          براند <span className="font-semibold text-foreground">سيتي</span>.
+          من «تفاصيل» تضبط العيدان ومعادلات التخصيم. البراندات من{" "}
           <Link
-            href="/materials/profiles/brands"
+            href={ROUTES.materials.profileBrands}
             className="font-semibold text-primary underline-offset-2 hover:underline"
           >
-            صفحة البراندات
+            الخطوة ١ — البراندات
           </Link>
           .
         </p>
@@ -234,12 +232,12 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isAccessories ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          اضغط «تفاصيل» لضبط المفصلي والجرار. البراندات من{" "}
+          اضغط «تفاصيل» لضبط المفصلي والجرار. الأسعار من{" "}
           <Link
-            href="/materials/accessories/brands"
+            href={ROUTES.materials.accessoryBrands}
             className="font-semibold text-primary underline-offset-2 hover:underline"
           >
-            صفحة البراندات
+            الخطوة ١ — البراندات
           </Link>
           .
         </p>
@@ -481,7 +479,7 @@ export function MaterialSystemsEditor({ category }: Props) {
                     <div className="mt-2 flex flex-wrap justify-end gap-1.5">
                       {isProfiles ? (
                         <Link
-                          href={`/materials/profiles/${system.id}`}
+                          href={ROUTES.materials.profileSystem(system.id)}
                           className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
                         >
                           تفاصيل
@@ -489,7 +487,7 @@ export function MaterialSystemsEditor({ category }: Props) {
                       ) : null}
                       {isGlass ? (
                         <Link
-                          href={`/materials/glass/${system.id}`}
+                          href={ROUTES.materials.glassSystem(system.id)}
                           className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
                         >
                           تفاصيل
@@ -497,7 +495,7 @@ export function MaterialSystemsEditor({ category }: Props) {
                       ) : null}
                       {isAccessories ? (
                         <Link
-                          href={`/materials/accessories/${system.id}`}
+                          href={ROUTES.materials.accessorySystem(system.id)}
                           className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
                         >
                           تفاصيل
@@ -505,7 +503,7 @@ export function MaterialSystemsEditor({ category }: Props) {
                       ) : null}
                       {isIron ? (
                         <Link
-                          href={`/materials/iron/${system.id}`}
+                          href={ROUTES.materials.ironSystem(system.id)}
                           className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
                         >
                           تفاصيل

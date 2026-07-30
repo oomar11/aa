@@ -1,6 +1,9 @@
 import Link from "next/link";
+import type { Crumb } from "@/components/layout/AppBreadcrumb";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { MaterialWorkflowGuide } from "@/components/materials/MaterialWorkflowGuide";
+import type { MaterialWorkflowStep } from "@/lib/materials-navigation";
 import { ROUTES } from "@/lib/routes";
 
 type BrandLinkProps = {
@@ -31,6 +34,8 @@ function BrandLink({ href, title, description }: BrandLinkProps) {
 type MaterialCategoryShellProps = {
   title: string;
   description: string;
+  breadcrumb?: Crumb[];
+  workflowSteps?: MaterialWorkflowStep[];
   brandLink?: BrandLinkProps;
   children: React.ReactNode;
 };
@@ -39,6 +44,8 @@ type MaterialCategoryShellProps = {
 export function MaterialCategoryShell({
   title,
   description,
+  breadcrumb,
+  workflowSteps,
   brandLink,
   children,
 }: MaterialCategoryShellProps) {
@@ -47,10 +54,14 @@ export function MaterialCategoryShell({
       <PageHeader
         backHref={ROUTES.materials.hub}
         backLabel="رجوع للخامات"
+        breadcrumb={breadcrumb}
         title={title}
         description={description}
       />
-      {brandLink && <BrandLink {...brandLink} />}
+      {workflowSteps ? (
+        <MaterialWorkflowGuide steps={workflowSteps} />
+      ) : null}
+      {brandLink && !workflowSteps ? <BrandLink {...brandLink} /> : null}
       {children}
     </AppShell>
   );

@@ -1,6 +1,11 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { MaterialWorkflowGuide } from "@/components/materials/MaterialWorkflowGuide";
 import { ProfileBrandsEditor } from "@/components/materials/ProfileBrandsEditor";
+import {
+  materialsProfileBrandsBreadcrumb,
+  profileWorkflowSteps,
+} from "@/lib/materials-navigation";
 import { ROUTES } from "@/lib/routes";
 
 export default function ProfileBrandsPage() {
@@ -9,9 +14,11 @@ export default function ProfileBrandsPage() {
       <PageHeader
         backHref={ROUTES.materials.profiles}
         backLabel="رجوع للقطاعات"
+        breadcrumb={materialsProfileBrandsBreadcrumb()}
         title="براندات القطاعات"
-        description="سيتي بريمير (فبراير 2025) بالعود: سعر العود + طول العود — لأي براند"
+        description="أسعار الحلق والضلفة والباكتة والسوقاس بالعود — سعر العود ÷ طوله"
       />
+      <MaterialWorkflowGuide steps={profileWorkflowSteps("brands")} />
       <ProfileBrandsEditor embedded />
     </AppShell>
   );

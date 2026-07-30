@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import { MaterialCategoryShell } from "@/components/materials/MaterialCategoryShell";
 import { MaterialSystemsEditor } from "@/components/materials/MaterialSystemsEditor";
 import {
+  materialsGlassBreadcrumb,
+  materialsIronBreadcrumb,
+} from "@/lib/materials-navigation";
+import {
   MATERIAL_CATEGORIES,
   type MaterialCategory,
 } from "@/lib/material-systems";
@@ -14,11 +18,11 @@ const CATEGORY_META: Record<
 > = {
   glass: {
     title: "الزجاج",
-    description: "كتالوج الزجاجات · التدبيل · جورجيا",
+    description: "كتالوج الزجاجات — التدبيل والجورجيا — يُختار لكل ضلفة في التصميم",
   },
   iron: {
     title: "الحديد",
-    description: "تسليح الحلق · الضلفة · السوقاس — مفصلي وجرار",
+    description: "تسليح الحلق والضلفة والسوقاس — مفصلي وجرار",
   },
 };
 
@@ -32,9 +36,17 @@ export default async function MaterialCategoryPage({ params }: Props) {
   if (category === "accessories" || category === "profiles") notFound();
 
   const meta = CATEGORY_META[category as keyof typeof CATEGORY_META];
+  const breadcrumb =
+    category === "glass"
+      ? materialsGlassBreadcrumb()
+      : materialsIronBreadcrumb();
 
   return (
-    <MaterialCategoryShell title={meta.title} description={meta.description}>
+    <MaterialCategoryShell
+      title={meta.title}
+      description={meta.description}
+      breadcrumb={breadcrumb}
+    >
       <MaterialSystemsEditor category={category as MaterialCategory} />
     </MaterialCategoryShell>
   );

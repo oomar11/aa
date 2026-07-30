@@ -548,28 +548,28 @@ export const MATERIAL_CATEGORIES: {
 }[] = [
   {
     id: "profiles",
-    label: "قطاعات",
-    description: "أنظمة البروفيل · العيدان · التخصيمات",
+    label: "القطاعات",
+    description: "براندات + أنظمة · العيدان · التخصيمات",
     accent: "#E8956F",
     shadow: "rgba(232,149,111,0.35)",
   },
   {
     id: "accessories",
-    label: "اكسسوار",
-    description: "مفصلي · جرار · سبلونة · سكاك · تراك · فرش",
+    label: "الاكسسوار",
+    description: "براندات + أنظمة · مفصلي · جرار · سبلونة",
     accent: "#6B8AD8",
     shadow: "rgba(107,138,216,0.35)",
   },
   {
     id: "glass",
-    label: "زجاج",
+    label: "الزجاج",
     description: "كتالوج الزجاجات · التدبيل · جورجيا",
     accent: "#4BA3F5",
     shadow: "rgba(75,163,245,0.35)",
   },
   {
     id: "iron",
-    label: "حديد",
+    label: "الحديد",
     description: "تسليح الحلق · الضلفة · السوقاس — مفصلي وجرار",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
@@ -597,7 +597,7 @@ export const MATERIAL_HUB_ITEMS: {
   })),
   {
     id: "mesh",
-    label: "سلك",
+    label: "السلك",
     description: "تصنيفات وأنواع السلك · الأسعار والحساب",
     accent: "#5B9A6F",
     shadow: "rgba(91,154,111,0.35)",

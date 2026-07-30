@@ -74,7 +74,7 @@ const items = [
   },
   {
     href: ROUTES.materials.hub,
-    label: "خامات",
+    label: "الخامات",
     Icon: MaterialsIcon,
     match: (p: string) => p.startsWith("/materials"),
   },

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { MaterialDetailShell } from "@/components/layout/MaterialDetailShell";
 import { AccessorySystemDetailEditor } from "@/components/materials/AccessorySystemDetailEditor";
+import { materialsAccessorySystemBreadcrumb } from "@/lib/materials-navigation";
 import { ROUTES } from "@/lib/routes";
 
 type Props = {
@@ -15,6 +16,7 @@ export default async function AccessorySystemPage({ params }: Props) {
     <MaterialDetailShell
       backHref={ROUTES.materials.accessories}
       backLabel="رجوع للاكسسوار"
+      breadcrumb={materialsAccessorySystemBreadcrumb()}
     >
       <AccessorySystemDetailEditor systemId={systemId} />
     </MaterialDetailShell>

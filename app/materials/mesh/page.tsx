@@ -2,6 +2,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MeshCategoriesEditor } from "@/components/materials/MeshCategoriesEditor";
 import { MeshTypesEditor } from "@/components/materials/MeshTypesEditor";
+import { materialsMeshBreadcrumb } from "@/lib/materials-navigation";
 import { ROUTES } from "@/lib/routes";
 
 export default function MeshMaterialsPage() {
@@ -10,8 +11,9 @@ export default function MeshMaterialsPage() {
       <PageHeader
         backHref={ROUTES.materials.hub}
         backLabel="رجوع للخامات"
+        breadcrumb={materialsMeshBreadcrumb()}
         title="السلك"
-        description="تصنيفات وأنواع السلك — الأسعار والحساب في التصميم وشريط الخامات"
+        description="تصنيفات وأنواع السلك — الأسعار والحساب في التصميم"
       />
       <MeshCategoriesEditor />
       <MeshTypesEditor />

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { MaterialDetailShell } from "@/components/layout/MaterialDetailShell";
 import { ProfileSystemDetailEditor } from "@/components/materials/ProfileSystemDetailEditor";
+import { materialsProfileSystemBreadcrumb } from "@/lib/materials-navigation";
 import { ROUTES } from "@/lib/routes";
 
 type Props = {
@@ -15,6 +16,7 @@ export default async function ProfileSystemPage({ params }: Props) {
     <MaterialDetailShell
       backHref={ROUTES.materials.profiles}
       backLabel="رجوع للقطاعات"
+      breadcrumb={materialsProfileSystemBreadcrumb()}
     >
       <ProfileSystemDetailEditor systemId={systemId} />
     </MaterialDetailShell>

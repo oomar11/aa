@@ -1,0 +1,125 @@
+import type { Crumb } from "@/components/layout/AppBreadcrumb";
+import { ROUTES } from "@/lib/routes";
+
+/** مسار التنقل لقسم الخامات — مرجع واحد لكل الصفحات */
+export const MATERIALS_HUB_CRUMB: Crumb = {
+  label: "الخامات",
+  href: ROUTES.materials.hub,
+};
+
+export function materialsHubBreadcrumb(): Crumb[] {
+  return [MATERIALS_HUB_CRUMB];
+}
+
+export function materialsProfilesBreadcrumb(): Crumb[] {
+  return [MATERIALS_HUB_CRUMB, { label: "القطاعات" }];
+}
+
+export function materialsProfileBrandsBreadcrumb(): Crumb[] {
+  return [
+    MATERIALS_HUB_CRUMB,
+    { label: "القطاعات", href: ROUTES.materials.profiles },
+    { label: "البراندات" },
+  ];
+}
+
+export function materialsProfileSystemBreadcrumb(systemName?: string): Crumb[] {
+  return [
+    MATERIALS_HUB_CRUMB,
+    { label: "القطاعات", href: ROUTES.materials.profiles },
+    { label: systemName?.trim() || "تفاصيل النظام" },
+  ];
+}
+
+export function materialsAccessoriesBreadcrumb(): Crumb[] {
+  return [MATERIALS_HUB_CRUMB, { label: "الاكسسوار" }];
+}
+
+export function materialsAccessoryBrandsBreadcrumb(): Crumb[] {
+  return [
+    MATERIALS_HUB_CRUMB,
+    { label: "الاكسسوار", href: ROUTES.materials.accessories },
+    { label: "البراندات" },
+  ];
+}
+
+export function materialsAccessorySystemBreadcrumb(systemName?: string): Crumb[] {
+  return [
+    MATERIALS_HUB_CRUMB,
+    { label: "الاكسسوار", href: ROUTES.materials.accessories },
+    { label: systemName?.trim() || "تفاصيل النظام" },
+  ];
+}
+
+export function materialsGlassBreadcrumb(): Crumb[] {
+  return [MATERIALS_HUB_CRUMB, { label: "الزجاج" }];
+}
+
+export function materialsGlassSystemBreadcrumb(systemName?: string): Crumb[] {
+  return [
+    MATERIALS_HUB_CRUMB,
+    { label: "الزجاج", href: ROUTES.materials.glass },
+    { label: systemName?.trim() || "تفاصيل الزجاجة" },
+  ];
+}
+
+export function materialsIronBreadcrumb(): Crumb[] {
+  return [MATERIALS_HUB_CRUMB, { label: "الحديد" }];
+}
+
+export function materialsIronSystemBreadcrumb(systemName?: string): Crumb[] {
+  return [
+    MATERIALS_HUB_CRUMB,
+    { label: "الحديد", href: ROUTES.materials.iron },
+    { label: systemName?.trim() || "تفاصيل النظام" },
+  ];
+}
+
+export function materialsMeshBreadcrumb(): Crumb[] {
+  return [MATERIALS_HUB_CRUMB, { label: "السلك" }];
+}
+
+/** خطوات العمل لصفحات فيها براندات + أنظمة */
+export type MaterialWorkflowStep = {
+  step: number;
+  title: string;
+  description: string;
+  href?: string;
+  active?: boolean;
+};
+
+export function profileWorkflowSteps(active: "brands" | "systems"): MaterialWorkflowStep[] {
+  return [
+    {
+      step: 1,
+      title: "البراندات",
+      description: "أسعار الحلق والضلفة والباكتة بالعود",
+      href: ROUTES.materials.profileBrands,
+      active: active === "brands",
+    },
+    {
+      step: 2,
+      title: "الأنظمة",
+      description: "ربط البراند + العيدان ومعادلات التخصيم",
+      active: active === "systems",
+    },
+  ];
+}
+
+export function accessoryWorkflowSteps(active: "brands" | "systems"): MaterialWorkflowStep[] {
+  return [
+    {
+      step: 1,
+      title: "البراندات",
+      description: "أسعار المفصلات والسبلونة والسكاك والتراك",
+      href: ROUTES.materials.accessoryBrands,
+      active: active === "brands",
+    },
+    {
+      step: 2,
+      title: "الأنظمة",
+      description: "قواعد المفصلي والجرار لكل نظام",
+      active: active === "systems",
+    },
+  ];
+}

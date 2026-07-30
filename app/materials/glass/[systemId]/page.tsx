@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { MaterialDetailShell } from "@/components/layout/MaterialDetailShell";
 import { GlassSystemDetailEditor } from "@/components/materials/GlassSystemDetailEditor";
+import { materialsGlassSystemBreadcrumb } from "@/lib/materials-navigation";
 import { ROUTES } from "@/lib/routes";
 
 type Props = {
@@ -15,6 +16,7 @@ export default async function GlassSystemPage({ params }: Props) {
     <MaterialDetailShell
       backHref={ROUTES.materials.glass}
       backLabel="رجوع للزجاج"
+      breadcrumb={materialsGlassSystemBreadcrumb()}
     >
       <GlassSystemDetailEditor systemId={systemId} />
     </MaterialDetailShell>

@@ -1,6 +1,11 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AccessoryBrandsEditor } from "@/components/materials/AccessoryBrandsEditor";
+import { MaterialWorkflowGuide } from "@/components/materials/MaterialWorkflowGuide";
+import {
+  accessoryWorkflowSteps,
+  materialsAccessoryBrandsBreadcrumb,
+} from "@/lib/materials-navigation";
 import { ROUTES } from "@/lib/routes";
 
 export default function AccessoryBrandsPage() {
@@ -9,9 +14,11 @@ export default function AccessoryBrandsPage() {
       <PageHeader
         backHref={ROUTES.materials.accessories}
         backLabel="رجوع للاكسسوار"
+        breadcrumb={materialsAccessoryBrandsBreadcrumb()}
         title="براندات الاكسسوار"
-        description="قائمة أسعار فورنا يوليو 2026 مُحمّلة افتراضياً — عدّل الأسعار أو أضف براندات جديدة، ثم اختارها داخل تفاصيل كل نظام اكسسوار."
+        description="أسعار المفصلات والسبلونة والسكاك والتراك والعجل والفرش — قائمة فورنا 2026 مُحمّلة افتراضياً"
       />
+      <MaterialWorkflowGuide steps={accessoryWorkflowSteps("brands")} />
       <AccessoryBrandsEditor embedded />
     </AppShell>
   );
