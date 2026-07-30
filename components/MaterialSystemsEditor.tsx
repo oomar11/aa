@@ -10,6 +10,7 @@ import {
 import {
   defaultGlassRates,
   defaultProfileDetails,
+  defaultAccessoryDetails,
   deleteSystem,
   frameHeightFormula,
   frameWidthFormula,
@@ -56,6 +57,7 @@ export function MaterialSystemsEditor({ category }: Props) {
   const systems = catalog?.[category] ?? [];
   const isProfiles = category === "profiles";
   const isGlass = category === "glass";
+  const isAccessories = category === "accessories";
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -127,6 +129,10 @@ export function MaterialSystemsEditor({ category }: Props) {
               georgian: false,
             }
           : undefined,
+      accessory:
+        category === "accessories"
+          ? editing?.accessory ?? defaultAccessoryDetails()
+          : undefined,
     };
 
     persist(upsertSystem(catalog, category, system));
@@ -187,6 +193,13 @@ export function MaterialSystemsEditor({ category }: Props) {
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
           الحديد غالباً ثابت — اختَر نظاماً افتراضياً وهيتحط تلقائي على
           التصميمات الجديدة.
+        </p>
+      ) : null}
+
+      {isAccessories ? (
+        <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
+          اضغط «تفاصيل» لضبط قواعد المفصلي والجرار والبوكلير — المفصلات،
+          السبلونات، السكاك، التراك، العجل، الفرش، والتقابل.
         </p>
       ) : null}
 
@@ -310,6 +323,7 @@ export function MaterialSystemsEditor({ category }: Props) {
           systems.map((system, i) => {
             const profile = system.profile;
             const glass = system.glass;
+            const accessory = system.accessory;
             const pieceCount = profile?.pieces.length ?? 0;
             return (
               <li
@@ -378,6 +392,25 @@ export function MaterialSystemsEditor({ category }: Props) {
                       </div>
                     ) : null}
 
+                    {isAccessories && accessory ? (
+                      <div className="mt-2 space-y-1 rounded-xl border border-border/80 bg-background/70 p-2.5 text-[11px] text-muted">
+                        <p className="font-semibold text-foreground">
+                          مفصلي: {accessory.hinged.hingesPerSash} مفصلة/ضلفة
+                        </p>
+                        <p>
+                          سبلونة:{" "}
+                          {accessory.hinged.espagnoletteSizesCm.join("، ")} سم
+                        </p>
+                        <p>
+                          جرار: {accessory.sliding.tracksPerFrameWidth} تراك ·{" "}
+                          {accessory.sliding.wheelsPerSash} عجل/ضلفة
+                        </p>
+                        {accessory.hinged.bouclierSharedEspagnolette ? (
+                          <p>بوكلير: سبلونة مشتركة + ترباس + طبة</p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     <div className="mt-2 flex flex-wrap justify-end gap-1.5">
                       {isProfiles ? (
                         <Link
@@ -390,6 +423,14 @@ export function MaterialSystemsEditor({ category }: Props) {
                       {isGlass ? (
                         <Link
                           href={`/materials/glass/${system.id}`}
+                          className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
+                        >
+                          تفاصيل
+                        </Link>
+                      ) : null}
+                      {isAccessories ? (
+                        <Link
+                          href={`/materials/accessories/${system.id}`}
                           className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
                         >
                           تفاصيل

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { AccessoryBreakdown } from "@/lib/accessories";
 import type { GlassBreakdown, MaterialsBreakdown, MeshBreakdown } from "@/lib/materials";
 import { formatArea, formatCount, formatMeters } from "@/lib/materials";
 import {
@@ -21,6 +22,7 @@ type Props = {
   materials: MaterialsBreakdown;
   glassBreakdown?: GlassBreakdown | null;
   meshBreakdown?: MeshBreakdown | null;
+  accessoryBreakdown?: AccessoryBreakdown | null;
   partLabel?: string;
   /** مقاس الفتحة للبند */
   widthMm?: number;
@@ -41,6 +43,7 @@ export function MaterialsBar({
   materials,
   glassBreakdown,
   meshBreakdown,
+  accessoryBreakdown,
   partLabel = "شباك",
   widthMm,
   heightMm,
@@ -263,6 +266,10 @@ export function MaterialsBar({
       {meshBreakdown && meshBreakdown.lines.length > 0 ? (
         <MeshBreakdownPanel breakdown={meshBreakdown} />
       ) : null}
+
+      {accessoryBreakdown && accessoryBreakdown.lines.length > 0 ? (
+        <AccessoryBreakdownPanel breakdown={accessoryBreakdown} />
+      ) : null}
     </section>
   );
 }
@@ -406,6 +413,158 @@ function GlassBreakdownPanel({ breakdown }: { breakdown: GlassBreakdown }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AccessoryBreakdownPanel({
+  breakdown,
+}: {
+  breakdown: AccessoryBreakdown;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const showExpand = breakdown.lines.length > 3;
+  const showCost = breakdown.hasPricing;
+
+  const hingedLines = breakdown.lines.filter((l) =>
+    [
+      "hinge",
+      "hinged-espagnolette",
+      "hinged-screw",
+      "protruding-handle",
+      "bouclier-screw",
+      "bouclier-bolt",
+      "bouclier-cap",
+    ].includes(l.role)
+  );
+  const slidingLines = breakdown.lines.filter((l) =>
+    [
+      "sliding-track",
+      "sliding-wheel",
+      "sliding-brush",
+      "sliding-espagnolette",
+      "sliding-screw",
+      "meeting-4-sash",
+      "meeting-mesh-sliding",
+    ].includes(l.role)
+  );
+
+  return (
+    <div className="border-t border-border bg-background/40 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-primary">حساب الاكسسوار</p>
+        <div className="flex items-center gap-2">
+          {breakdown.hingedSashCount > 0 ? (
+            <span className="text-[10px] text-muted">
+              {breakdown.hingedSashCount} مفصلي
+            </span>
+          ) : null}
+          {breakdown.slidingSashCount > 0 ? (
+            <span className="text-[10px] text-muted">
+              {breakdown.slidingSashCount} جرار
+            </span>
+          ) : null}
+          {showCost ? (
+            <span className="text-[11px] font-bold text-foreground">
+              {formatCurrency(Math.round(breakdown.totalCost))} ج.م
+            </span>
+          ) : null}
+          {showExpand ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
+            >
+              {expanded ? "إخفاء" : "تفاصيل"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
+        {hingedLines.slice(0, expanded ? undefined : 3).map((l) => (
+          <span key={l.role + (l.sizeCm ?? "")}>
+            {l.label}: {l.lengthM != null ? `${l.lengthM.toFixed(2)} م` : l.qty}
+            {l.sizeCm ? ` (${l.sizeCm} سم)` : ""}
+          </span>
+        ))}
+        {!expanded && slidingLines.length > 0 ? (
+          <span>+ {slidingLines.length} جرار</span>
+        ) : null}
+      </div>
+
+      {(expanded || breakdown.lines.length <= 3) && (
+        <div className="mt-2 space-y-2">
+          {hingedLines.length > 0 ? (
+            <AccessoryLinesTable
+              title="مفصلي / بوكلير"
+              lines={hingedLines}
+              showCost={showCost}
+            />
+          ) : null}
+          {slidingLines.length > 0 ? (
+            <AccessoryLinesTable
+              title="جرار"
+              lines={slidingLines}
+              showCost={showCost}
+            />
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AccessoryLinesTable({
+  title,
+  lines,
+  showCost,
+}: {
+  title: string;
+  lines: AccessoryBreakdown["lines"];
+  showCost: boolean;
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card text-[10px]">
+      <p className="border-b border-border bg-background/60 px-2 py-1.5 text-[11px] font-semibold text-foreground">
+        {title}
+      </p>
+      <div
+        className={`grid border-b border-border text-center font-semibold text-muted ${
+          showCost ? "grid-cols-4" : "grid-cols-3"
+        }`}
+      >
+        <span className="px-2 py-1.5 text-start">القطعة</span>
+        <span className="px-2 py-1.5">الكمية</span>
+        <span className="px-2 py-1.5">ملاحظة</span>
+        {showCost ? <span className="px-2 py-1.5">تكلفة</span> : null}
+      </div>
+      {lines.map((line, i) => (
+        <div
+          key={`${line.role}-${line.sizeCm ?? ""}-${i}`}
+          className={`grid text-center tabular-nums ${
+            showCost ? "grid-cols-4" : "grid-cols-3"
+          } ${i > 0 ? "border-t border-border/60" : ""}`}
+        >
+          <span className="px-2 py-1.5 text-start font-medium text-foreground">
+            {line.label}
+            {line.sizeCm ? ` ${line.sizeCm}` : ""}
+          </span>
+          <span className="px-2 py-1.5 text-foreground">
+            {line.lengthM != null
+              ? `${line.lengthM.toFixed(2)} م`
+              : line.qty}
+          </span>
+          <span className="px-2 py-1.5 text-muted">{line.hint ?? "—"}</span>
+          {showCost ? (
+            <span className="px-2 py-1.5 font-semibold text-primary">
+              {line.totalCost > 0
+                ? formatCurrency(Math.round(line.totalCost))
+                : "—"}
+            </span>
+          ) : null}
+        </div>
+      ))}
     </div>
   );
 }
