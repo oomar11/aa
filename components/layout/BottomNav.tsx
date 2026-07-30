@@ -39,6 +39,24 @@ function OrdersIcon({ active }: { active: boolean }) {
   );
 }
 
+function AccountingIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h5M8 16h3" />
+    </svg>
+  );
+}
+
 function MaterialsIcon({ active }: { active: boolean }) {
   return (
     <svg
@@ -73,6 +91,13 @@ const items = [
     match: (p: string) => p.startsWith("/orders") || p.startsWith("/design"),
   },
   {
+    href: ROUTES.accounting.hub,
+    label: "الحسابات",
+    Icon: AccountingIcon,
+    match: (p: string) =>
+      p.startsWith("/accounting") || p.startsWith("/settings/company"),
+  },
+  {
     href: ROUTES.materials.hub,
     label: "الخامات",
     Icon: MaterialsIcon,
@@ -86,14 +111,14 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-20">
       <div className="mx-auto w-full max-w-md border-t border-border bg-card/95 backdrop-blur-sm">
-        <div className="flex h-14 items-center justify-around px-4">
+        <div className="flex h-14 items-center justify-around px-2">
           {items.map(({ href, label, Icon, match }) => {
             const active = match(pathname);
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex min-w-16 flex-col items-center gap-0.5 transition-colors duration-300 ${
+                className={`flex min-w-14 flex-col items-center gap-0.5 transition-colors duration-300 ${
                   active ? "text-primary" : "text-muted"
                 }`}
                 aria-label={label}

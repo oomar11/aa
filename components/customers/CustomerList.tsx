@@ -3,15 +3,37 @@
 import Link from "next/link";
 import { useDeferredValue, useEffect, useState } from "react";
 import { customers, loadLocalCustomers, type Customer } from "@/lib/customers";
+import { resolveCustomerBalance } from "@/lib/customer-balance";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
+
+function mergeCustomers(): Customer[] {
+  if (typeof window === "undefined") return customers;
+  return [...loadLocalCustomers(), ...customers];
+}
+
+function balanceMap(list: Customer[]): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  const next: Record<string, number> = {};
+  for (const customer of list) {
+    next[customer.id] = resolveCustomerBalance(customer);
+  }
+  return next;
+}
 
 export function CustomerList() {
   const [query, setQuery] = useState("");
-  const [allCustomers, setAllCustomers] = useState<Customer[]>(customers);
+  const [allCustomers, setAllCustomers] = useState(mergeCustomers);
+  const [balances, setBalances] = useState(() => balanceMap(mergeCustomers()));
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
-    setAllCustomers([...loadLocalCustomers(), ...customers]);
+    function refresh() {
+      const merged = mergeCustomers();
+      setAllCustomers(merged);
+      setBalances(balanceMap(merged));
+    }
+    window.addEventListener("upvc-accounting-updated", refresh);
+    return () => window.removeEventListener("upvc-accounting-updated", refresh);
   }, []);
 
   const filtered = allCustomers.filter((customer) =>
@@ -54,7 +76,8 @@ export function CustomerList() {
       ) : (
         <ul className="flex flex-col gap-3">
           {filtered.map((customer) => {
-            const owes = customer.balance > 0;
+            const balance = balances[customer.id] ?? customer.balance;
+            const owes = balance > 0;
             return (
               <li key={customer.id}>
                 <Link
@@ -94,7 +117,7 @@ export function CustomerList() {
                         }`}
                       >
                         {owes
-                          ? `${formatCurrency(customer.balance)} ج.م`
+                          ? `${formatCurrency(balance)} ج.م`
                           : "مفيش"}
                       </p>
                     </div>

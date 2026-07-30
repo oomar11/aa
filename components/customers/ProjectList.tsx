@@ -7,6 +7,7 @@ import {
   loadLocalCustomers,
   type Customer,
 } from "@/lib/customers";
+import { resolveCustomerBalance } from "@/lib/customer-balance";
 import { getProjectsForCustomer, type Project } from "@/lib/projects";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -14,14 +15,51 @@ type Props = {
   customerId: string;
 };
 
+function readCustomer(customerId: string): Customer | null {
+  if (typeof window === "undefined") {
+    return customers.find((c) => c.id === customerId) ?? null;
+  }
+  const all = [...loadLocalCustomers(), ...customers];
+  return all.find((c) => c.id === customerId) ?? null;
+}
+
+function snapshot(customerId: string) {
+  const found = readCustomer(customerId);
+  return {
+    customer: found,
+    balance:
+      found && typeof window !== "undefined"
+        ? resolveCustomerBalance(found)
+        : found?.balance ?? 0,
+    projectList:
+      typeof window === "undefined" ? [] : getProjectsForCustomer(customerId),
+  };
+}
+
 export function ProjectList({ customerId }: Props) {
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [projectList, setProjectList] = useState<Project[]>([]);
+  const initial = snapshot(customerId);
+  const [activeCustomerId, setActiveCustomerId] = useState(customerId);
+  const [customer, setCustomer] = useState<Customer | null>(initial.customer);
+  const [balance, setBalance] = useState(initial.balance);
+  const [projectList, setProjectList] = useState<Project[]>(initial.projectList);
+
+  if (customerId !== activeCustomerId) {
+    const next = snapshot(customerId);
+    setActiveCustomerId(customerId);
+    setCustomer(next.customer);
+    setBalance(next.balance);
+    setProjectList(next.projectList);
+  }
 
   useEffect(() => {
-    const all = [...loadLocalCustomers(), ...customers];
-    setCustomer(all.find((c) => c.id === customerId) ?? null);
-    setProjectList(getProjectsForCustomer(customerId));
+    function refresh() {
+      const next = snapshot(customerId);
+      setCustomer(next.customer);
+      setBalance(next.balance);
+      setProjectList(next.projectList);
+    }
+    window.addEventListener("upvc-accounting-updated", refresh);
+    return () => window.removeEventListener("upvc-accounting-updated", refresh);
   }, [customerId]);
 
   const openCount = useMemo(
@@ -54,11 +92,11 @@ export function ProjectList({ customerId }: Props) {
               باقي عليه:{" "}
               <strong
                 className={
-                  customer.balance > 0 ? "text-[#E85A8A]" : "text-foreground"
+                  balance > 0 ? "text-[#E85A8A]" : "text-foreground"
                 }
               >
-                {customer.balance > 0
-                  ? `${formatCurrency(customer.balance)} ج.م`
+                {balance > 0
+                  ? `${formatCurrency(balance)} ج.م`
                   : "مفيش"}
               </strong>
             </span>

@@ -4,6 +4,7 @@
  * التدفق الرئيسي:
  *   الرئيسية → آخر المشاريع + طلب جديد
  *   الطلبات → العملاء/المشاريع + طلب جديد → عميل → مشروع → بنود → رسم
+ *   الحسابات → فواتير · تحصيل · مصروفات (+ بيانات الشركة)
  *   الخامات → (قطاعات | اكسسوار | زجاج | سلك | حديد)
  */
 
@@ -12,6 +13,7 @@ export const ROUTES = {
   profile: "/profile",
   settings: "/settings",
   settingsDesign: "/settings/design",
+  settingsCompany: "/settings/company",
   orders: "/orders",
 
   design: {
@@ -28,6 +30,17 @@ export const ROUTES = {
       `/design/draw?customer=${customerId}&project=${projectId}&item=${itemId}`,
     projectSettings: (customerId: string, projectId: string) =>
       `/design/project-settings?customer=${customerId}&project=${projectId}`,
+  },
+
+  accounting: {
+    hub: "/accounting",
+    invoices: "/accounting/invoices",
+    newInvoice: "/accounting/invoices/new",
+    invoice: (id: string) => `/accounting/invoices/${id}`,
+    payments: "/accounting/payments",
+    newPayment: "/accounting/payments/new",
+    expenses: "/accounting/expenses",
+    newExpense: "/accounting/expenses/new",
   },
 
   materials: {
@@ -62,6 +75,13 @@ export const APP_SECTIONS = [
     description: "كل العملاء والمشاريع + طلب جديد",
     href: ROUTES.orders,
     color: "#E85A8A",
+  },
+  {
+    id: "accounting",
+    label: "الحسابات",
+    description: "فواتير · تحصيل · مصروفات",
+    href: ROUTES.accounting.hub,
+    color: "#2F9B7A",
   },
   {
     id: "materials",

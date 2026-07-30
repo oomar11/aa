@@ -7,6 +7,7 @@ import {
   loadLocalCustomers,
   type Customer,
 } from "@/lib/customers";
+import { resolveCustomerBalance } from "@/lib/customer-balance";
 import { itemTotalPrice } from "@/lib/design-items";
 import {
   getItemsForProject,
@@ -110,6 +111,35 @@ function statusLabel(status: Project["status"]): string {
   return status === "open" ? "مفتوح" : "مكتمل";
 }
 
+function mergeCustomers(): Customer[] {
+  if (typeof window === "undefined") return customers;
+  const localCustomers = loadLocalCustomers();
+  const localIds = new Set(localCustomers.map((c) => c.id));
+  return [
+    ...localCustomers,
+    ...customers.filter((c) => !localIds.has(c.id)),
+  ];
+}
+
+function mergeProjects(): Project[] {
+  if (typeof window === "undefined") return seedProjects;
+  const localProjects = loadLocalProjects();
+  const localProjectIds = new Set(localProjects.map((p) => p.id));
+  return [
+    ...localProjects,
+    ...seedProjects.filter((p) => !localProjectIds.has(p.id)),
+  ];
+}
+
+function balanceMap(list: Customer[]): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  const next: Record<string, number> = {};
+  for (const customer of list) {
+    next[customer.id] = resolveCustomerBalance(customer);
+  }
+  return next;
+}
+
 export function OrdersBrowser() {
   const [tab, setTab] = useState<Tab>("customers");
   const [query, setQuery] = useState("");
@@ -117,24 +147,20 @@ export function OrdersBrowser() {
   const [collapsedOverride, setCollapsedOverride] = useState<Set<string>>(
     () => new Set()
   );
-  const [allCustomers, setAllCustomers] = useState<Customer[]>(customers);
-  const [allProjects, setAllProjects] = useState<Project[]>(seedProjects);
+  const [allCustomers, setAllCustomers] = useState(mergeCustomers);
+  const [allProjects, setAllProjects] = useState(mergeProjects);
+  const [balances, setBalances] = useState(() => balanceMap(mergeCustomers()));
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
-    const localCustomers = loadLocalCustomers();
-    const localIds = new Set(localCustomers.map((c) => c.id));
-    setAllCustomers([
-      ...localCustomers,
-      ...customers.filter((c) => !localIds.has(c.id)),
-    ]);
-
-    const localProjects = loadLocalProjects();
-    const localProjectIds = new Set(localProjects.map((p) => p.id));
-    setAllProjects([
-      ...localProjects,
-      ...seedProjects.filter((p) => !localProjectIds.has(p.id)),
-    ]);
+    function refresh() {
+      const mergedCustomers = mergeCustomers();
+      setAllCustomers(mergedCustomers);
+      setBalances(balanceMap(mergedCustomers));
+      setAllProjects(mergeProjects());
+    }
+    window.addEventListener("upvc-accounting-updated", refresh);
+    return () => window.removeEventListener("upvc-accounting-updated", refresh);
   }, []);
 
   const customerById = useMemo(() => {
@@ -327,7 +353,8 @@ export function OrdersBrowser() {
               const linked = projectsByCustomer.get(customer.id) ?? [];
               const open = isExpanded(customer.id);
               const sale = customerSaleTotal(customer.id);
-              const owes = customer.balance > 0;
+              const balance = balances[customer.id] ?? customer.balance;
+              const owes = balance > 0;
 
               return (
                 <li
@@ -354,7 +381,7 @@ export function OrdersBrowser() {
                       <p className="mt-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                         صافي:{" "}
                         {owes
-                          ? `${formatCurrency(customer.balance)} ج.م`
+                          ? `${formatCurrency(balance)} ج.م`
                           : "مفيش"}{" "}
                         • بيع: {formatCurrency(sale)} ج.م
                       </p>

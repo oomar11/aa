@@ -8,6 +8,10 @@ export const STORAGE_KEYS = {
   projectItems: "upvc-project-items",
   materialSystems: "upvc-material-systems",
   templateOrder: "upvc-template-order",
+  company: "upvc-company",
+  invoices: "upvc-invoices",
+  payments: "upvc-payments",
+  expenses: "upvc-expenses",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
