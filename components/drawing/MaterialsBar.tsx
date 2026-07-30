@@ -737,6 +737,7 @@ function AccessoriesBreakdownPanel({
     breakdown.hingeQty > 0 ||
     breakdown.hingedEspagnolettes.length > 0 ||
     breakdown.boltQty > 0 ||
+    breakdown.bouclierBoltLockPieces.length > 0 ||
     breakdown.protrudingHandleQty > 0;
   const hasSliding =
     breakdown.trackQty > 0 ||
@@ -845,6 +846,13 @@ function AccessoriesBreakdownPanel({
                 <p>
                   ترباس: {formatCount(breakdown.boltQty)}
                   {accessoryBrandTag(breakdown.brandLabels, "bouclier-bolt")}
+                </p>
+              ) : null}
+              {breakdown.bouclierBoltLockPieces.length > 0 ? (
+                <p>
+                  سكاك ترباس:{" "}
+                  {formatLockPiecesSummary(breakdown.bouclierBoltLockPieces)}
+                  {accessoryBrandTag(breakdown.brandLabels, "bouclier-bolt-lock")}
                 </p>
               ) : null}
               {breakdown.bouclierCapKitQty > 0 ? (

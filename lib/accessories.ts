@@ -5,7 +5,7 @@
  * - مفصلات لكل ضلفة (٢ شباك / ٣ باب — من الإعدادات)
  * - سبلونة مفصلي حسب ارتفاع ناحية المقبض
  * - سكاك مفصلي لكل سبلونة (كميات قابلة للتعديل)
- * - ضلفتين + بوكلير: سبلونة واحدة، سكاك بوكلير، ترباس، طبة، مقبض بارز
+ * - ضلفتين + بوكلير: سبلونة واحدة، سكاك بوكلير، ترباس + سكاك ترباس، طبة، مقبض بارز
  *
  * جرار:
  * - تراك ×٢ بعرض الحلق
@@ -65,6 +65,7 @@ export type AccessoriesBreakdown = {
   hingedLockPieces: LockPieceLine[];
   bouclierLockPieces: LockPieceLine[];
   boltQty: number;
+  bouclierBoltLockPieces: LockPieceLine[];
   bouclierCapKitQty: number;
   protrudingHandleQty: number;
 
@@ -132,6 +133,7 @@ function emptyBreakdown(systemName: string | null): AccessoriesBreakdown {
     hingedLockPieces: [],
     bouclierLockPieces: [],
     boltQty: 0,
+    bouclierBoltLockPieces: [],
     bouclierCapKitQty: 0,
     protrudingHandleQty: 0,
     trackQty: 0,
@@ -424,6 +426,10 @@ export function calcItemAccessories(
     details.bouclierLockPieces,
     bouclierLocksetCount
   );
+  const bouclierBoltLockPieces = lockPieceLines(
+    details.bouclierBoltLockPieces,
+    boltQty
+  );
 
   // ── جرار ─────────────────────────────────────────────────
   const slidingBoxes = boxes.filter((b) => isSlidingOpening(b.opening));
@@ -480,6 +486,7 @@ export function calcItemAccessories(
     hingedLockPieces.length > 0 ||
     bouclierLockPieces.length > 0 ||
     boltQty > 0 ||
+    bouclierBoltLockPieces.length > 0 ||
     bouclierCapKitQty > 0 ||
     protrudingHandleQty > 0 ||
     trackQty > 0 ||
@@ -497,6 +504,7 @@ export function calcItemAccessories(
     hingedLockPieces,
     bouclierLockPieces,
     boltQty,
+    bouclierBoltLockPieces,
     bouclierCapKitQty,
     protrudingHandleQty,
     trackQty,
@@ -528,6 +536,7 @@ export function scaleAccessories(
     hingedLockPieces: scaleLines(a.hingedLockPieces),
     bouclierLockPieces: scaleLines(a.bouclierLockPieces),
     boltQty: a.boltQty * q,
+    bouclierBoltLockPieces: scaleLines(a.bouclierBoltLockPieces),
     bouclierCapKitQty: a.bouclierCapKitQty * q,
     protrudingHandleQty: a.protrudingHandleQty * q,
     trackQty: a.trackQty * q,

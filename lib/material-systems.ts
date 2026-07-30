@@ -247,6 +247,7 @@ export type AccessoryBrandCategory =
   | "protruding-handle"
   | "bouclier-lock"
   | "bouclier-bolt"
+  | "bouclier-bolt-lock"
   | "bouclier-cap"
   | "track"
   | "roller"
@@ -266,6 +267,7 @@ export const ACCESSORY_BRAND_CATEGORIES: {
   { id: "protruding-handle", label: "مقبض بارز", group: "hinged" },
   { id: "bouclier-lock", label: "سكاك بوكلير", group: "bouclier" },
   { id: "bouclier-bolt", label: "ترباس بوكلير", group: "bouclier" },
+  { id: "bouclier-bolt-lock", label: "سكاك ترباس", group: "bouclier" },
   { id: "bouclier-cap", label: "طبة بوكلير", group: "bouclier" },
   { id: "track", label: "تراك جرار", group: "sliding" },
   { id: "roller", label: "عجل جرار", group: "sliding" },
@@ -314,6 +316,8 @@ export type AccessorySystemDetails = {
   bouclierLockPieces: AccessoryLockPiece[];
   /** ترباس لكل بوكلير */
   boltsPerBouclier: number;
+  /** سكاك ترباس — لكل ترباس */
+  bouclierBoltLockPieces: AccessoryLockPiece[];
   /** طقم طبة بوكلير لكل بوكلير */
   bouclierCapKitsPerBouclier: number;
   /** مقبض بارز لكل سبلونة */
@@ -655,6 +659,10 @@ export function defaultBouclierLockPieces(): AccessoryLockPiece[] {
   ];
 }
 
+export function defaultBouclierBoltLockPieces(): AccessoryLockPiece[] {
+  return [{ id: "bb-keeper", name: "سكة ترباس", qtyPerLockset: 1 }];
+}
+
 export function defaultSlidingLockPieces(): AccessoryLockPiece[] {
   return [
     { id: "sl-keeper-main", name: "سكة جرار", qtyPerLockset: 1 },
@@ -672,6 +680,7 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     hingedLockPieces: defaultHingedLockPieces(),
     bouclierLockPieces: defaultBouclierLockPieces(),
     boltsPerBouclier: 2,
+    bouclierBoltLockPieces: defaultBouclierBoltLockPieces(),
     bouclierCapKitsPerBouclier: 1,
     protrudingHandlesPerLockset: 1,
     tracksPerFrame: 2,
@@ -817,9 +826,17 @@ export function newEspagnoletteCatalogId(): string {
   return `esp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
 }
 
-export function newAccessoryLockPieceId(kind: "hinged" | "bouclier" | "sliding"): string {
+export function newAccessoryLockPieceId(
+  kind: "hinged" | "bouclier" | "bouclier-bolt" | "sliding"
+): string {
   const prefix =
-    kind === "hinged" ? "hl" : kind === "bouclier" ? "bl" : "sl";
+    kind === "hinged"
+      ? "hl"
+      : kind === "bouclier"
+        ? "bl"
+        : kind === "bouclier-bolt"
+          ? "bb"
+          : "sl";
   return newLockPieceId(prefix);
 }
 
@@ -2174,6 +2191,10 @@ export function normalizeAccessoryDetails(
     boltsPerBouclier: normalizePositiveInt(
       o.boltsPerBouclier,
       fallback.boltsPerBouclier
+    ),
+    bouclierBoltLockPieces: normalizeLockPieces(
+      o.bouclierBoltLockPieces,
+      fallback.bouclierBoltLockPieces
     ),
     bouclierCapKitsPerBouclier: normalizePositiveInt(
       o.bouclierCapKitsPerBouclier,

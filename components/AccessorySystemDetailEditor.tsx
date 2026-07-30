@@ -33,7 +33,29 @@ type Props = {
   systemId: string;
 };
 
-type LockKind = "hinged" | "bouclier" | "sliding";
+type LockKind = "hinged" | "bouclier" | "bouclier-bolt" | "sliding";
+
+function lockPieceKey(
+  kind: LockKind
+): keyof Pick<
+  AccessorySystemDetails,
+  | "hingedLockPieces"
+  | "bouclierLockPieces"
+  | "bouclierBoltLockPieces"
+  | "slidingLockPieces"
+> {
+  if (kind === "hinged") return "hingedLockPieces";
+  if (kind === "bouclier") return "bouclierLockPieces";
+  if (kind === "bouclier-bolt") return "bouclierBoltLockPieces";
+  return "slidingLockPieces";
+}
+
+function defaultLockPieceName(kind: LockKind): string {
+  if (kind === "bouclier") return "سكة بوكلير";
+  if (kind === "bouclier-bolt") return "سكة ترباس";
+  if (kind === "sliding") return "سكة جرار";
+  return "سكة";
+}
 
 export function AccessorySystemDetailEditor({ systemId }: Props) {
   const [catalog, setCatalog] = useState<MaterialCatalog | null>(null);
@@ -173,12 +195,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
     id: string,
     patch: Partial<AccessoryLockPiece>
   ) {
-    const key =
-      kind === "hinged"
-        ? "hingedLockPieces"
-        : kind === "bouclier"
-          ? "bouclierLockPieces"
-          : "slidingLockPieces";
+    const key = lockPieceKey(kind);
     const list = details[key].map((p) =>
       p.id === id ? { ...p, ...patch } : p
     );
@@ -186,27 +203,17 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
   }
 
   function addLockPiece(kind: LockKind) {
-    const key =
-      kind === "hinged"
-        ? "hingedLockPieces"
-        : kind === "bouclier"
-          ? "bouclierLockPieces"
-          : "slidingLockPieces";
+    const key = lockPieceKey(kind);
     const piece: AccessoryLockPiece = {
       id: newAccessoryLockPieceId(kind),
-      name: kind === "bouclier" ? "سكة بوكلير" : kind === "sliding" ? "سكة جرار" : "سكة",
+      name: defaultLockPieceName(kind),
       qtyPerLockset: 1,
     };
     patchDetails({ [key]: [...details[key], piece] });
   }
 
   function removeLockPiece(kind: LockKind, id: string) {
-    const key =
-      kind === "hinged"
-        ? "hingedLockPieces"
-        : kind === "bouclier"
-          ? "bouclierLockPieces"
-          : "slidingLockPieces";
+    const key = lockPieceKey(kind);
     const list = details[key].filter((p) => p.id !== id);
     if (list.length === 0) {
       showFlash("لازم قطعة سكاك واحدة على الأقل");
@@ -477,6 +484,19 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
           onAdd={() => addLockPiece("bouclier")}
           onRemove={(id) => removeLockPiece("bouclier", id)}
         />
+
+        <LockPiecesEditor
+          title="سكاك ترباس (لكل ترباس)"
+          pieces={details.bouclierBoltLockPieces}
+          onChangeName={(id, name) =>
+            updateLockPiece("bouclier-bolt", id, { name })
+          }
+          onChangeQty={(id, qty) =>
+            updateLockPiece("bouclier-bolt", id, { qtyPerLockset: qty })
+          }
+          onAdd={() => addLockPiece("bouclier-bolt")}
+          onRemove={(id) => removeLockPiece("bouclier-bolt", id)}
+        />
       </Section>
 
       {/* ── جرار ── */}
@@ -529,7 +549,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
       </Section>
 
       <p className="px-1 pb-2 text-center text-[11px] leading-relaxed text-muted">
-        ضلفتين مفصلي + بوكلير = سبلونة واحدة + سكاك بوكلير + ترباس + طبة.
+        ضلفتين مفصلي + بوكلير = سبلونة واحدة + سكاك بوكلير + ترباس + سكاك ترباس + طبة.
         الجرار: تراك ٢ بعرض الحلق · عجل ٢/ضلفة · فرش محيط×٢ + سكينة×١ · مقبض غاطس على الضلفة الغاطسة.
       </p>
     </div>
