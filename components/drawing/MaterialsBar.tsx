@@ -12,12 +12,15 @@ import { formatArea, formatCount, formatMeters } from "@/lib/materials";
 import {
   calcCutSizes,
   findSystem,
+  formatFormulaVars,
   frameHeightFormula,
   frameWidthFormula,
+  getCutCalculationSteps,
   loadMaterialCatalog,
   sashHeightFormula,
   sashWidthFormula,
   type CutSizes,
+  type CutCalculationStep,
   type MaterialSystem,
   type ProfileSystemDetails,
 } from "@/lib/material-systems";
@@ -327,10 +330,23 @@ function ProfileCutsPanel({
   profile: ProfileSystemDetails;
   cuts: CutSizes | null;
 }) {
+  const steps =
+    cuts != null
+      ? getCutCalculationSteps(
+          cuts.openingWidthMm,
+          cuts.openingHeightMm,
+          profile.deductions
+        )
+      : null;
+
   return (
     <div className="border-t border-border bg-background/40 px-3 py-2.5">
       <p className="text-[11px] font-semibold text-primary">
         نظام القطاعات: {systemName}
+      </p>
+      <p className="mt-0.5 text-[10px] leading-relaxed text-muted">
+        مقاس القطع بعد التخصيم (من المعادلات) — الأمتار في الجدول فوق من تقسيمات
+        الرسم.
       </p>
 
       {profile.pieces.length > 0 ? (
@@ -353,34 +369,72 @@ function ProfileCutsPanel({
         <p className="font-mono">{sashHeightFormula(profile.deductions)}</p>
       </div>
 
-      {cuts ? (
-        <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[11px]">
-          <div className="grid grid-cols-3 border-b border-border text-center font-semibold text-muted">
-            <span className="px-2 py-1.5 text-start">بعد التخصيم</span>
-            <span className="px-2 py-1.5">العرض</span>
-            <span className="px-2 py-1.5">الارتفاع</span>
-          </div>
-          <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
-            <span className="px-2 py-1.5 text-start font-medium">الحلق</span>
-            <span className="px-2 py-1.5 font-semibold text-primary">
-              {cuts.errors.frameWidth ? "خطأ" : `${cuts.frameWidthMm} مم`}
-            </span>
-            <span className="px-2 py-1.5 font-semibold text-primary">
-              {cuts.errors.frameHeight ? "خطأ" : `${cuts.frameHeightMm} مم`}
-            </span>
-          </div>
-          <div className="grid grid-cols-3 text-center tabular-nums">
-            <span className="px-2 py-1.5 text-start font-medium">الضلفة</span>
-            <span className="px-2 py-1.5 font-semibold text-primary">
-              {cuts.errors.sashWidth ? "خطأ" : `${cuts.sashWidthMm} مم`}
-            </span>
-            <span className="px-2 py-1.5 font-semibold text-primary">
-              {cuts.errors.sashHeight ? "خطأ" : `${cuts.sashHeightMm} مم`}
-            </span>
+      {steps && cuts ? (
+        <div className="mt-2 space-y-2">
+          <ol className="space-y-1 rounded-xl border border-border bg-card p-2 text-[10px] leading-relaxed">
+            {steps.map((s) => (
+              <CutStepLine key={s.step} step={s} />
+            ))}
+          </ol>
+          <div className="overflow-hidden rounded-xl border border-border bg-card text-[11px]">
+            <div className="grid grid-cols-3 border-b border-border text-center font-semibold text-muted">
+              <span className="px-2 py-1.5 text-start">النتيجة</span>
+              <span className="px-2 py-1.5">العرض</span>
+              <span className="px-2 py-1.5">الارتفاع</span>
+            </div>
+            <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
+              <span className="px-2 py-1.5 text-start text-[10px] text-muted">
+                فتحة {cuts.openingWidthMm}×{cuts.openingHeightMm}
+              </span>
+              <span className="px-2 py-1.5">{cuts.openingWidthMm}</span>
+              <span className="px-2 py-1.5">{cuts.openingHeightMm}</span>
+            </div>
+            <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
+              <span className="px-2 py-1.5 text-start font-medium">الحلق</span>
+              <span className="px-2 py-1.5 font-semibold text-primary">
+                {cuts.errors.frameWidth ? "خطأ" : `${cuts.frameWidthMm} مم`}
+              </span>
+              <span className="px-2 py-1.5 font-semibold text-primary">
+                {cuts.errors.frameHeight ? "خطأ" : `${cuts.frameHeightMm} مم`}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 text-center tabular-nums">
+              <span className="px-2 py-1.5 text-start font-medium">الضلفة</span>
+              <span className="px-2 py-1.5 font-semibold text-primary">
+                {cuts.errors.sashWidth ? "خطأ" : `${cuts.sashWidthMm} مم`}
+              </span>
+              <span className="px-2 py-1.5 font-semibold text-primary">
+                {cuts.errors.sashHeight ? "خطأ" : `${cuts.sashHeightMm} مم`}
+              </span>
+            </div>
           </div>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function CutStepLine({ step }: { step: CutCalculationStep }) {
+  const varKeys =
+    step.phase === "frame"
+      ? (["W", "H"] as const)
+      : (["W", "H", "FW", "FH"] as const);
+  return (
+    <li>
+      <span className="font-semibold text-foreground">
+        {step.step}. {step.label}
+      </span>
+      <span className="font-mono text-muted"> {step.formula}</span>
+      {step.error ? (
+        <span className="text-red-600"> — {step.error}</span>
+      ) : (
+        <span className="text-muted">
+          {" "}
+          ({formatFormulaVars(step.vars, [...varKeys])}) →{" "}
+          <span className="font-semibold text-primary">{step.resultMm} مم</span>
+        </span>
+      )}
+    </li>
   );
 }
 

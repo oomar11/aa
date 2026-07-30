@@ -199,7 +199,7 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isProfiles ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          اضغط «تفاصيل» عشان تدخل العيدان ومعادلات التخصيم بصيغة إكسل (مثل{" "}
+          اضغط «تفاصيل» عشان تدخل العيدان ومعادلات مقاس الحلق والضلفة بصيغة إكسل (مثل{" "}
           <span className="font-mono text-foreground">=W-10</span> أو{" "}
           <span className="font-mono text-foreground">=FW-2*60</span>).
         </p>
@@ -374,7 +374,7 @@ export function MaterialSystemsEditor({ category }: Props) {
                         ) : null}
                         <div className="border-t border-border/70 pt-1.5 leading-relaxed">
                           <p className="font-semibold text-foreground">
-                            التخصيمات
+                            معادلات المقاس
                           </p>
                           <p>{frameWidthFormula(profile.deductions)}</p>
                           <p>{frameHeightFormula(profile.deductions)}</p>

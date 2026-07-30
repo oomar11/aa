@@ -2215,6 +2215,125 @@ export function calcCutSizes(
   };
 }
 
+/** خطوة واحدة في سلسلة حساب مقاس القطع */
+export type CutCalculationStep = {
+  step: number;
+  phase: "frame" | "sash";
+  label: string;
+  formula: string;
+  /** المتغيرات المستخدمة في هذه الخطوة */
+  vars: { W: number; H: number; FW: number; FH: number };
+  resultMm: number;
+  error?: string;
+};
+
+const VAR_LABELS: Record<string, string> = {
+  W: "W",
+  H: "H",
+  FW: "FW",
+  FH: "FH",
+};
+
+/** يعرض المتغيرات المستخدمة في المعادلة بصيغة W=1200 · H=1400 */
+export function formatFormulaVars(
+  vars: { W: number; H: number; FW: number; FH: number },
+  keys: ("W" | "H" | "FW" | "FH")[]
+): string {
+  return keys.map((k) => `${VAR_LABELS[k]}=${vars[k]}`).join(" · ");
+}
+
+/** يستخرج المتغيرات المستخدمة فعلياً من صيغة المعادلة */
+function varsUsedInFormula(formula: string): ("W" | "H" | "FW" | "FH")[] {
+  const body = formula.trim().replace(/^=/, "").toUpperCase();
+  const found: ("W" | "H" | "FW" | "FH")[] = [];
+  let masked = body;
+  for (const k of ["FW", "FH"] as const) {
+    if (masked.includes(k)) {
+      found.push(k);
+      masked = masked.split(k).join("");
+    }
+  }
+  for (const k of ["W", "H"] as const) {
+    if (masked.includes(k)) found.push(k);
+  }
+  return found;
+}
+
+/** سلسلة خطوات حساب مقاس الحلق والضلفة — للشرح والمعاينة */
+export function getCutCalculationSteps(
+  openingWidthMm: number,
+  openingHeightMm: number,
+  deductions: ProfileDeductions
+): CutCalculationStep[] {
+  const base = {
+    W: openingWidthMm,
+    H: openingHeightMm,
+    FW: openingWidthMm,
+    FH: openingHeightMm,
+  };
+
+  const frameW = evalCut(deductions.frame.width, base);
+  const frameH = evalCut(deductions.frame.height, base);
+
+  const withFrame = {
+    ...base,
+    FW: frameW.value,
+    FH: frameH.value,
+  };
+
+  const sashW = evalCut(deductions.sash.width, withFrame);
+  const sashH = evalCut(deductions.sash.height, withFrame);
+
+  const steps: CutCalculationStep[] = [
+    {
+      step: 1,
+      phase: "frame",
+      label: "عرض الحلق",
+      formula: ensureEqualsPrefix(deductions.frame.width),
+      vars: base,
+      resultMm: frameW.value,
+      error: frameW.error,
+    },
+    {
+      step: 2,
+      phase: "frame",
+      label: "ارتفاع الحلق",
+      formula: ensureEqualsPrefix(deductions.frame.height),
+      vars: base,
+      resultMm: frameH.value,
+      error: frameH.error,
+    },
+    {
+      step: 3,
+      phase: "sash",
+      label: "عرض الضلفة",
+      formula: ensureEqualsPrefix(deductions.sash.width),
+      vars: withFrame,
+      resultMm: sashW.value,
+      error: sashW.error,
+    },
+    {
+      step: 4,
+      phase: "sash",
+      label: "ارتفاع الضلفة",
+      formula: ensureEqualsPrefix(deductions.sash.height),
+      vars: withFrame,
+      resultMm: sashH.value,
+      error: sashH.error,
+    },
+  ];
+
+  return steps;
+}
+
+/** نص مختصر لخطوة حساب واحدة */
+export function formatCutStepSummary(step: CutCalculationStep): string {
+  if (step.error) return `${step.label}: خطأ — ${step.error}`;
+  const keys = varsUsedInFormula(step.formula);
+  const varsText = formatFormulaVars(step.vars, keys);
+  return `${step.label}: ${step.formula} (${varsText}) → ${step.resultMm} مم`;
+}
+
 /** نصوص معادلات التخصيم للعرض */
 export function frameWidthFormula(d: ProfileDeductions): string {
   return `عرض الحلق ${ensureEqualsPrefix(d.frame.width)}`;

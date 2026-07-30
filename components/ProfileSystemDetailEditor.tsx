@@ -14,8 +14,10 @@ import {
   defaultDeductions,
   defaultProfileDetails,
   findSystem,
+  formatFormulaVars,
   frameHeightFormula,
   frameWidthFormula,
+  getCutCalculationSteps,
   loadMaterialCatalog,
   newPieceId,
   PROFILE_PIECE_ROLES,
@@ -236,7 +238,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
         <p className="mt-0.5 text-xs text-muted">
-          العيدان · أطوال العود · تخصيمات الحلق والضلفة
+          العيدان · أطوال العود · معادلات مقاس الحلق والضلفة
         </p>
       </div>
 
@@ -440,28 +442,57 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         )}
       </section>
 
-      {/* التخصيمات — معادلات إكسل */}
+      {/* معادلات المقاس */}
       <form
         onSubmit={saveDeductions}
         className="space-y-3 rounded-2xl border border-border bg-card p-3"
       >
         <div>
           <h3 className="text-xs font-bold text-foreground">
-            معادلات التخصيم (زي إكسل)
+            معادلات مقاس القطع
           </h3>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-            اكتب أي معادلة بحرية. المتغيرات:{" "}
-            {FORMULA_VAR_HELP.map((v) => v.key).join(" · ")}. دوال: MIN MAX ABS
-            ROUND FLOOR CEIL IF. مثال:{" "}
-            <span className="font-mono text-foreground">=W-2*60</span>
+            المعادلات تحسب <strong className="text-foreground">مقاس القطع</strong>{" "}
+            (عرض وارتفاع الحلق والضلفة) من مقاس الفتحة — زي إكسل.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-primary/25 bg-primary-soft/30 px-3 py-2.5 text-[11px] leading-relaxed text-foreground">
+          <p className="font-bold text-primary">كيف تشتغل؟ (خطوتين)</p>
+          <ol className="mt-1.5 list-inside list-decimal space-y-1 text-muted">
+            <li>
+              <span className="text-foreground">الخطوة ١ — الحلق:</span> من مقاس
+              الفتحة <span className="font-mono">W</span> و{" "}
+              <span className="font-mono">H</span> نحسب عرض وارتفاع الحلق (
+              <span className="font-mono">FW</span> و{" "}
+              <span className="font-mono">FH</span>).
+            </li>
+            <li>
+              <span className="text-foreground">الخطوة ٢ — الضلفة:</span> بعد ما
+              الحلق يتحسب، نستخدم <span className="font-mono">FW</span> و{" "}
+              <span className="font-mono">FH</span> (أو{" "}
+              <span className="font-mono">W</span> و{" "}
+              <span className="font-mono">H</span> لو محتاج) لحساب مقاس الضلفة.
+            </li>
+          </ol>
+          <p className="mt-2 border-t border-primary/20 pt-2 text-[10px] text-muted">
+            أمتار الخامات في الرسم (حلق مفصلي، ضلفة جرار…) تتحسب من تقسيمات
+            الرسم. المعادلات هنا تعرض <strong className="text-foreground">مقاس
+            القطع</strong> بعد التخصيم — مش الأمتار مباشرة.
           </p>
         </div>
 
         <div className="rounded-xl border border-border bg-background p-3">
-          <p className="mb-2 text-[11px] font-bold text-primary">الحلق</p>
+          <p className="mb-1 text-[11px] font-bold text-primary">
+            الخطوة ١ — معادلات الحلق
+          </p>
+          <p className="mb-2 text-[10px] text-muted">
+            استخدم <span className="font-mono text-foreground">W</span> و{" "}
+            <span className="font-mono text-foreground">H</span> (مقاس الفتحة)
+          </p>
           <div className="space-y-2.5">
             <FormulaField
-              label="عرض الحلق"
+              label="عرض الحلق → FW"
               value={deductions.frame.width}
               onChange={(width) =>
                 setDeductions((d) => ({
@@ -470,9 +501,10 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
                 }))
               }
               hint="مثال: =W أو =W-10"
+              preferredVars={["W", "H"]}
             />
             <FormulaField
-              label="ارتفاع الحلق"
+              label="ارتفاع الحلق → FH"
               value={deductions.frame.height}
               onChange={(height) =>
                 setDeductions((d) => ({
@@ -481,6 +513,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
                 }))
               }
               hint="مثال: =H أو =H-5"
+              preferredVars={["W", "H"]}
             />
           </div>
           <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
@@ -490,7 +523,17 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         </div>
 
         <div className="rounded-xl border border-border bg-background p-3">
-          <p className="mb-2 text-[11px] font-bold text-primary">الضلفة</p>
+          <p className="mb-1 text-[11px] font-bold text-primary">
+            الخطوة ٢ — معادلات الضلفة
+          </p>
+          <p className="mb-2 text-[10px] text-muted">
+            بعد حساب الحلق، استخدم{" "}
+            <span className="font-mono text-foreground">FW</span> و{" "}
+            <span className="font-mono text-foreground">FH</span> — أو{" "}
+            <span className="font-mono text-foreground">W</span> و{" "}
+            <span className="font-mono text-foreground">H</span> لو المعادلة
+            محتاجة مقاس الفتحة
+          </p>
           <div className="space-y-2.5">
             <FormulaField
               label="عرض الضلفة"
@@ -501,7 +544,8 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
                   sash: { ...d.sash, width },
                 }))
               }
-              hint="مثال: =FW-10 أو =W-70"
+              hint="مثال: =FW-10 (بعد ما الحلق يتحسب)"
+              preferredVars={["FW", "FH", "W", "H"]}
             />
             <FormulaField
               label="ارتفاع الضلفة"
@@ -513,6 +557,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
                 }))
               }
               hint="مثال: =FH-10 أو =H-2*35"
+              preferredVars={["FW", "FH", "W", "H"]}
             />
           </div>
           <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
@@ -522,12 +567,16 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         </div>
 
         <div className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-2 text-[10px] leading-relaxed text-muted">
-          <p className="font-semibold text-foreground">المتغيرات</p>
+          <p className="font-semibold text-foreground">المتغيرات المتاحة</p>
           {FORMULA_VAR_HELP.map((v) => (
             <p key={v.key}>
               <span className="font-mono text-primary">{v.key}</span> — {v.label}
             </p>
           ))}
+          <p className="mt-1.5 border-t border-border/60 pt-1.5">
+            دوال: MIN MAX ABS ROUND FLOOR CEIL IF · مثال:{" "}
+            <span className="font-mono text-foreground">=W-2*60</span>
+          </p>
         </div>
 
         <button
@@ -540,7 +589,10 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
 
       {/* معاينة معادلات على مقاس */}
       <section className="space-y-2 rounded-2xl border border-border bg-card p-3">
-        <h3 className="text-xs font-bold text-foreground">معاينة على مقاس</h3>
+        <h3 className="text-xs font-bold text-foreground">معاينة الحساب خطوة بخطوة</h3>
+        <p className="text-[10px] leading-relaxed text-muted">
+          غيّر مقاس الفتحة وشوف كل معادلة بتتحسب إزاي قبل ما تطبّق على الرسم.
+        </p>
         <div className="grid grid-cols-2 gap-2">
           <label className="block text-[11px] text-muted">
             عرض الفتحة W (مم)
@@ -563,6 +615,15 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
             />
           </label>
         </div>
+
+        <CutStepsList
+          steps={getCutCalculationSteps(
+            Math.max(0, Number(previewW) || 0),
+            Math.max(0, Number(previewH) || 0),
+            deductions
+          )}
+        />
+
         <div className="overflow-hidden rounded-xl border border-border bg-background text-sm">
           <div className="grid grid-cols-3 border-b border-border text-center text-[11px] font-semibold text-muted">
             <span className="px-2 py-2">الجزء</span>
@@ -578,7 +639,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           </div>
           <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
             <span className="px-2 py-2.5 text-start text-xs font-semibold text-primary">
-              الحلق
+              الحلق (FW × FH)
             </span>
             <span className="px-2 py-2.5 font-semibold text-primary">
               {previewCuts.errors.frameWidth
@@ -624,18 +685,59 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   );
 }
 
+function CutStepsList({
+  steps,
+}: {
+  steps: ReturnType<typeof getCutCalculationSteps>;
+}) {
+  return (
+    <ol className="space-y-1.5 rounded-xl border border-border bg-background/80 p-2.5 text-[11px]">
+      {steps.map((s) => (
+        <li key={s.step} className="leading-relaxed">
+          <span
+            className={`font-semibold ${
+              s.phase === "frame" ? "text-primary" : "text-foreground"
+            }`}
+          >
+            {s.step}. {s.label}
+          </span>
+          <span className="mx-1 font-mono text-muted">{s.formula}</span>
+          {s.error ? (
+            <span className="text-red-600"> — {s.error}</span>
+          ) : (
+            <span className="text-muted">
+              {" "}
+              ({formatFormulaVars(
+                s.vars,
+                s.phase === "frame" ? ["W", "H"] : ["W", "H", "FW", "FH"]
+              )}) →{" "}
+              <strong className="text-primary">{s.resultMm} مم</strong>
+            </span>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function FormulaField({
   label,
   value,
   onChange,
   hint,
+  preferredVars,
 }: {
   label: string;
   value: string;
   onChange: (next: string) => void;
   hint?: string;
+  preferredVars?: ("W" | "H" | "FW" | "FH")[];
 }) {
   const check = validateFormula(value || "=");
+  const varsHint =
+    preferredVars && preferredVars.length > 0
+      ? `المتغيرات: ${preferredVars.join(" · ")}`
+      : null;
   return (
     <label className="block text-[11px] text-muted">
       {label}
@@ -651,6 +753,9 @@ function FormulaField({
           check.ok ? "border-border" : "border-red-400"
         }`}
       />
+      {varsHint ? (
+        <p className="mt-0.5 text-[10px] text-muted">{varsHint}</p>
+      ) : null}
       {hint ? <p className="mt-0.5 text-[10px] text-muted">{hint}</p> : null}
       {!check.ok ? (
         <p className="mt-0.5 text-[10px] text-red-600">{check.error}</p>

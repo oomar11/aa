@@ -60,7 +60,6 @@ function normalizeId(raw: string): string {
     ارتفاع: "H",
     حلق_عرض: "FW",
     حلق_ارتفاع: "FH",
-    ضلفة_عرض: "FW", // not ideal — keep FW/FH for sash formulas
   };
   const upper = s.toUpperCase();
   if (map[upper]) return map[upper];
