@@ -43,3 +43,49 @@ body {
   font-family: var(--font-cairo), system-ui, sans-serif;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
+
+/* تقرير المشروع — طباعة / حفظ PDF */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #152033 !important;
+  }
+
+  .print\:hidden,
+  header,
+  nav,
+  .report-actions {
+    display: none !important;
+  }
+
+  .project-report {
+    max-width: none !important;
+    background: #ffffff !important;
+    color: #152033 !important;
+  }
+
+  .report-sheet {
+    padding: 0 !important;
+  }
+
+  .report-item {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-totals {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+}

@@ -38,6 +38,8 @@ type Props = {
   widthMm?: number;
   heightMm?: number;
   className?: string;
+  /** فرض ألوان فاتحة (تقارير الطباعة) بغض النظر عن الثيم */
+  forceLight?: boolean;
 };
 
 function sum(nums: number[]) {
@@ -83,9 +85,10 @@ export function WindowPreview({
   widthMm,
   heightMm,
   className = "",
+  forceLight = false,
 }: Props) {
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = forceLight ? false : theme === "dark";
   const uid = useId().replace(/:/g, "");
 
   const resolved =

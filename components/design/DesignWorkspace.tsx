@@ -34,6 +34,7 @@ import { formatCurrency } from "@/lib/utils";
 import { formatSizePair, type LengthUnit } from "@/lib/units";
 import { useUnit } from "@/components/settings/UnitProvider";
 import type { LayoutNode } from "@/lib/window-layout";
+import { ROUTES } from "@/lib/routes";
 
 const LONG_PRESS_MS = 320;
 const MOVE_CANCEL_PX = 14;
@@ -725,7 +726,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
           <Link
             href={
               customerId && projectId
-                ? `/design/project-settings?customer=${customerId}&project=${projectId}`
+                ? ROUTES.design.projectSettings(customerId, projectId)
                 : "/settings"
             }
             className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
@@ -733,6 +734,16 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
           >
             <SettingsIcon />
           </Link>
+          {customerId && projectId ? (
+            <Link
+              href={ROUTES.design.report(customerId, projectId)}
+              className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+              aria-label="تقرير المشروع"
+              title="تقرير للطباعة"
+            >
+              <ReportIcon />
+            </Link>
+          ) : null}
           <button
             type="button"
             onClick={handleShare}
@@ -1084,6 +1095,25 @@ function ShareIcon() {
       <circle cx="6" cy="12" r="2.5" />
       <circle cx="18" cy="19" r="2.5" />
       <path d="M8.4 13.2l7.2 4.1M15.6 6.7l-7.2 4.1" />
+    </svg>
+  );
+}
+
+function ReportIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 13h6M9 17h4" />
     </svg>
   );
 }
