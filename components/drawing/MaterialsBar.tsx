@@ -91,7 +91,7 @@ export function MaterialsBar({
       key: "knife",
       label: "سكينة",
       value: formatMeters(materials.knifeM),
-      hint: materials.knifeM > 0 ? "بين الجرار" : undefined,
+      hint: materials.knifeM > 0 ? "لكل ضلفة جرار" : undefined,
       accent: materials.knifeM > 0,
     },
     {
