@@ -644,7 +644,7 @@ export function standardHingedProfilePieces(): ProfilePiece[] {
       id: "piece-bead-sh",
       name: "باكتة سنجل مفصلي",
       role: "bead-single-hinged",
-      sectionWidthMm: 20,
+      sectionWidthMm: 35,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
     {
@@ -713,7 +713,7 @@ export function standardSlidingProfilePieces(): ProfilePiece[] {
       id: "piece-bead-ds",
       name: "باكتة دبل جرار",
       role: "bead-double-sliding",
-      sectionWidthMm: 20,
+      sectionWidthMm: 9,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
   ];
@@ -1105,15 +1105,15 @@ export function cityPremierProfileBarRates(): Partial<
     "sash-door": r(980, 6, "ضلفة باب مفصلي"),
     bouclier: r(710, 6.5, "قائم متحرك بوكلير"),
     mullion: r(875, 6.5, "قائم ثابت سوقاس"),
-    "bead-single-hinged": r(165, 6, "باكتة 20مم"),
-    "bead-double-hinged": r(208, 6, "باكتة 35مم"),
+    "bead-single-hinged": r(208, 6, "باكتة 35مم"),
+    "bead-double-hinged": r(165, 6, "باكتة 20مم"),
     coupling: r(240, 6, "كوبلن تجميع مفصلي/جرار"),
     // جرار
     "frame-sliding": r(1000, 6.5, "حلق جرار 3 سكة ببار 6سم"),
     "sash-sliding": r(750, 6, "ضلفة شباك جرار"),
     knife: r(255, 6.5, "طبة وسكينة شباك جرار"),
     "bead-single-sliding": r(165, 6, "باكتة 20مم"),
-    "bead-double-sliding": r(208, 6, "باكتة 35مم"),
+    "bead-double-sliding": r(140, 6, "باكتة 9مم"),
     "mesh-sliding-profile": r(380, 6, "ضلفة سلك جرار"),
     "four-leaf-meeting": r(190, 6, "تقابل 4 ضلفة جرار"),
     "mesh-meeting": r(140, 6, "تقابل سلك"),
@@ -1271,14 +1271,32 @@ export function migrateCityPremierProfileBrandPrices(
     const merged = { ...brand.rates };
     let changed = false;
 
-    // إصلاح باكتة دبل لو كانت مربوطة بسعر البانل (750/6.5)
-    const bead = merged["bead-double-hinged"];
+    // إصلاح ربط الباكتات الغلط من ترحيلات سابقة
+    // (كان 35 على دبل و 20 على سنجل — الصح: 35 سنجل مفصلي · 20 دبل مفصلي/سنجل جرار · 9 دبل جرار)
+    const wrongSingleH = merged["bead-single-hinged"];
     if (
-      bead &&
-      Math.abs(bead.barPrice - 750) < 0.01 &&
-      Math.abs(bead.barLengthM - 6.5) < 0.01
+      wrongSingleH &&
+      Math.abs(wrongSingleH.barPrice - 165) < 0.01 &&
+      (wrongSingleH.productName === "باكتة 20مم" || !wrongSingleH.productName)
+    ) {
+      merged["bead-single-hinged"] = official["bead-single-hinged"];
+      changed = true;
+    }
+    const wrongDoubleH = merged["bead-double-hinged"];
+    if (
+      wrongDoubleH &&
+      (Math.abs(wrongDoubleH.barPrice - 208) < 0.01 ||
+        Math.abs(wrongDoubleH.barPrice - 750) < 0.01)
     ) {
       merged["bead-double-hinged"] = official["bead-double-hinged"];
+      changed = true;
+    }
+    const wrongDoubleS = merged["bead-double-sliding"];
+    if (
+      wrongDoubleS &&
+      Math.abs(wrongDoubleS.barPrice - 208) < 0.01
+    ) {
+      merged["bead-double-sliding"] = official["bead-double-sliding"];
       changed = true;
     }
 
