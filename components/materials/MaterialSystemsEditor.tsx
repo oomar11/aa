@@ -103,6 +103,12 @@ export function MaterialSystemsEditor({ category }: Props) {
   const isGlass = category === "glass";
   const isIron = category === "iron";
   const itemLabel = isGlass ? "زجاجة" : "نظام";
+  const listTitle = isGlass
+    ? "قائمة الزجاجات"
+    : isProfiles
+      ? "أنظمة القطع"
+      : "قائمة الأنظمة";
+  const createLabel = isGlass ? "زجاجة جديدة" : "نظام جديد";
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -223,15 +229,13 @@ export function MaterialSystemsEditor({ category }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3 px-1">
-        <h2 className="text-sm font-bold text-foreground">
-          {isGlass ? "قائمة الزجاجات" : "قائمة الأنظمة"}
-        </h2>
+        <h2 className="text-sm font-bold text-foreground">{listTitle}</h2>
         <button
           type="button"
           onClick={openCreate}
           className="shrink-0 rounded-xl bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
         >
-          + {isGlass ? "زجاجة جديدة" : "نظام جديد"}
+          + {createLabel}
         </button>
       </div>
 
@@ -241,6 +245,15 @@ export function MaterialSystemsEditor({ category }: Props) {
           role="status"
         >
           {flash}
+        </p>
+      ) : null}
+
+      {isProfiles && !formOpen ? (
+        <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
+          كل نظام = طريقة تقطيع (عيدان + تخصيم). اختار{" "}
+          <span className="font-semibold text-foreground">براند الأسعار</span>{" "}
+          اللي هتجيب منه سعر الحلق والضلفة. من «تفاصيل» تضبط العيدان ومعادلات
+          التخصيم.
         </p>
       ) : null}
 
@@ -330,21 +343,28 @@ export function MaterialSystemsEditor({ category }: Props) {
             className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
           {isProfiles ? (
-            <label className="block text-[11px] text-muted">
-              براند القطاعات (قائمة الأسعار)
-              <select
-                value={profileBrandId}
-                onChange={(e) => setProfileBrandId(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-              >
-                <option value="">بدون براند</option>
-                {profileBrandOptions(catalog).map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="space-y-1">
+              <label className="block text-[11px] text-muted">
+                براند الأسعار (من تبويب أسعار البراندات)
+                <select
+                  value={profileBrandId}
+                  onChange={(e) => setProfileBrandId(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+                >
+                  <option value="">— اختار براند —</option>
+                  {profileBrandOptions(catalog).map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {profileBrandOptions(catalog).length === 0 ? (
+                <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                  مفيش براندات — روح لتبويب «أسعار البراندات» الأول
+                </p>
+              ) : null}
+            </div>
           ) : null}
           <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
             <input

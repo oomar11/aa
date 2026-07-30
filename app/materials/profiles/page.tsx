@@ -1,19 +1,15 @@
 import { MaterialCategoryShell } from "@/components/materials/MaterialCategoryShell";
-import { MaterialSystemsEditor } from "@/components/materials/MaterialSystemsEditor";
-import {
-  materialsProfilesBreadcrumb,
-  profileWorkflowSteps,
-} from "@/lib/materials-navigation";
+import { ProfilesMaterialsView } from "@/components/materials/ProfilesMaterialsView";
+import { materialsProfilesBreadcrumb } from "@/lib/materials-navigation";
 
 export default function ProfilesMaterialsPage() {
   return (
     <MaterialCategoryShell
       title="القطاعات"
-      description="خطوتين: براندات الأسعار → أنظمة البروفيل. كل نظام بيتربط ببراند عشان التسعير في الرسم."
+      description="تبويبين: أسعار البراندات (كم سعر العود) ثم أنظمة القطع (التقطيع والتخصيم)"
       breadcrumb={materialsProfilesBreadcrumb()}
-      workflowSteps={profileWorkflowSteps("systems")}
     >
-      <MaterialSystemsEditor category="profiles" />
+      <ProfilesMaterialsView />
     </MaterialCategoryShell>
   );
 }

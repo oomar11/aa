@@ -126,7 +126,15 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
 
   return (
     <section className="space-y-3 rounded-2xl border border-border bg-card p-3">
-      {!embedded ? (
+      {embedded ? (
+        <div>
+          <h3 className="text-xs font-bold text-foreground">قائمة أسعار البراندات</h3>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+            اكتب سعر العود وطوله — السعر للمتر = سعر العود ÷ الطول. بعد الحفظ،
+            اربط البراند من تبويب «أنظمة القطع».
+          </p>
+        </div>
+      ) : (
         <div>
           <h3 className="text-xs font-bold text-foreground">براندات القطاعات</h3>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
@@ -134,7 +142,7 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
             بيتحسب تلقائي (سعر العود ÷ الطول). سيتي بريمير من قائمة فبراير 2025.
           </p>
         </div>
-      ) : null}
+      )}
 
       {flash ? (
         <p

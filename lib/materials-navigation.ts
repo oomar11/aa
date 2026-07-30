@@ -92,15 +92,16 @@ export function profileWorkflowSteps(active: "brands" | "systems"): MaterialWork
   return [
     {
       step: 1,
-      title: "البراندات",
-      description: "أسعار الحلق والضلفة والباكتة بالعود",
-      href: ROUTES.materials.profileBrands,
+      title: "أسعار البراندات",
+      description: "سعر عود الحلق والضلفة والباكتة",
+      href: `${ROUTES.materials.profiles}?tab=brands`,
       active: active === "brands",
     },
     {
       step: 2,
-      title: "الأنظمة",
-      description: "ربط البراند + العيدان ومعادلات التخصيم",
+      title: "أنظمة القطع",
+      description: "العيدان + التخصيم + ربط البراند",
+      href: `${ROUTES.materials.profiles}?tab=systems`,
       active: active === "systems",
     },
   ];
