@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { MaterialSectionTabs } from "@/components/materials/MaterialSectionTabs";
+import { NumericInput } from "@/components/ui/NumericInput";
 import {
   ACCESSORY_BRAND_CATEGORIES,
   accessoryBrandCategoryLabel,
@@ -210,35 +211,28 @@ export function AccessoryDetailsForm({
               }`}
             >
               <div className="p-1.5">
-                <input
-                  type="number"
+                <NumericInput
                   min={1}
                   max={999}
                   step={1}
+                  round
+                  fallback={1}
+                  blankZero={false}
                   value={entry.size}
-                  onChange={(e) => {
-                    const size = Math.max(
-                      1,
-                      Math.min(999, Math.round(Number(e.target.value) || 1))
-                    );
-                    updateCatalogEntry(entry.id, { size });
-                  }}
+                  onChange={(size) => updateCatalogEntry(entry.id, { size })}
                   className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm font-bold text-foreground outline-none focus:border-primary"
                 />
               </div>
               <div className="p-1.5">
-                <input
-                  type="number"
+                <NumericInput
                   min={1}
                   step={10}
+                  round
+                  fallback={1}
+                  blankZero={false}
                   value={entry.maxHeightMm}
-                  onChange={(e) =>
-                    updateCatalogEntry(entry.id, {
-                      maxHeightMm: Math.max(
-                        1,
-                        Math.round(Number(e.target.value) || 1)
-                      ),
-                    })
+                  onChange={(maxHeightMm) =>
+                    updateCatalogEntry(entry.id, { maxHeightMm })
                   }
                   className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
                 />
@@ -533,12 +527,11 @@ function NumberField({
       {hint ? (
         <span className="mr-1 text-[10px] opacity-70">({hint})</span>
       ) : null}
-      <input
-        type="number"
+      <NumericInput
         min={0}
         step={step}
         value={value}
-        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+        onChange={onChange}
         className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
       />
     </label>
@@ -583,14 +576,12 @@ function LockPiecesEditor({
             onChange={(e) => onChangeName(p.id, e.target.value)}
             className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-sm outline-none focus:border-primary"
           />
-          <input
-            type="number"
+          <NumericInput
             min={0}
             step={1}
+            round
             value={p.qtyPerLockset}
-            onChange={(e) =>
-              onChangeQty(p.id, Math.max(0, Math.round(Number(e.target.value) || 0)))
-            }
+            onChange={(qty) => onChangeQty(p.id, qty)}
             className="w-16 rounded-lg border border-border bg-card px-2 py-1.5 text-center text-sm outline-none focus:border-primary"
             title="العدد لكل سبلونة"
           />

@@ -30,6 +30,7 @@ import {
   type MaterialCategory,
   type MaterialSystem,
 } from "@/lib/material-systems";
+import { NumericInput } from "@/components/ui/NumericInput";
 import { ROUTES } from "@/lib/routes";
 
 type Props = {
@@ -274,36 +275,24 @@ export function MaterialSystemsEditor({ category }: Props) {
           <div className="grid grid-cols-2 gap-2">
             <label className="block text-[11px] text-muted">
               تدبيل (ج.م/م²)
-              <input
-                type="number"
+              <NumericInput
                 min={0}
                 step={0.01}
                 value={glassRates.doublingCostPerSqm}
-                onChange={(e) =>
-                  saveGlassRates({
-                    doublingCostPerSqm: Math.max(
-                      0,
-                      Number(e.target.value) || 0
-                    ),
-                  })
+                onChange={(v) =>
+                  saveGlassRates({ doublingCostPerSqm: v })
                 }
                 className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
             </label>
             <label className="block text-[11px] text-muted">
               جورجيا (ج.م/م²)
-              <input
-                type="number"
+              <NumericInput
                 min={0}
                 step={0.01}
                 value={glassRates.georgianCostPerSqm}
-                onChange={(e) =>
-                  saveGlassRates({
-                    georgianCostPerSqm: Math.max(
-                      0,
-                      Number(e.target.value) || 0
-                    ),
-                  })
+                onChange={(v) =>
+                  saveGlassRates({ georgianCostPerSqm: v })
                 }
                 className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />

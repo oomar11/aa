@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { NumericInput } from "@/components/ui/NumericInput";
 import {
   PROFILE_BRANDS_UPDATED,
   PROFILE_PRICE_CATEGORIES,
@@ -76,22 +77,19 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
     });
   }
 
-  function setDraftRate(
+  function setDraftRateValue(
     category: ProfilePriceCategory,
     field: "barPrice" | "barLengthM",
-    raw: string
+    value: number
   ) {
     if (!draft) return;
-    const n = Number(raw);
     const prev = draft.rates[category] ?? makeProfileBarRate(0, 6);
-    const nextVal = Number.isFinite(n) && n >= 0 ? n : 0;
-    const next: ProfileBarRate = {
-      ...prev,
-      [field]: field === "barLengthM" ? (nextVal > 0 ? nextVal : 6) : nextVal,
-    };
     setDraft({
       ...draft,
-      rates: { ...draft.rates, [category]: next },
+      rates: {
+        ...draft.rates,
+        [category]: { ...prev, [field]: value },
+      },
     });
   }
 
@@ -269,13 +267,12 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
                     <div className="mt-1.5 grid grid-cols-2 gap-2">
                       <label className="block text-[10px] text-muted">
                         سعر العود (ج.م)
-                        <input
-                          type="number"
+                        <NumericInput
                           min={0}
                           step={1}
-                          value={rate.barPrice || ""}
-                          onChange={(e) =>
-                            setDraftRate(cat.id, "barPrice", e.target.value)
+                          value={rate.barPrice}
+                          onChange={(v) =>
+                            setDraftRateValue(cat.id, "barPrice", v)
                           }
                           placeholder="0"
                           className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
@@ -283,13 +280,14 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
                       </label>
                       <label className="block text-[10px] text-muted">
                         طول العود (م)
-                        <input
-                          type="number"
+                        <NumericInput
                           min={0.1}
                           step={0.1}
-                          value={rate.barLengthM || ""}
-                          onChange={(e) =>
-                            setDraftRate(cat.id, "barLengthM", e.target.value)
+                          fallback={6}
+                          blankZero={false}
+                          value={rate.barLengthM}
+                          onChange={(v) =>
+                            setDraftRateValue(cat.id, "barLengthM", v)
                           }
                           placeholder="6"
                           className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"

@@ -1,6 +1,7 @@
 "use client";
 
 import { ScreenBack } from "@/components/layout/ScreenBack";
+import { NumericInput } from "@/components/ui/NumericInput";
 import {
   useCallback,
   useEffect,
@@ -177,14 +178,14 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
             </label>
             <label className="block text-[11px] text-muted">
               السمك (مم)
-              <input
-                type="number"
+              <NumericInput
                 min={1}
                 step={1}
+                round
+                fallback={4}
+                blankZero={false}
                 value={thicknessMm}
-                onChange={(e) =>
-                  setThicknessMm(Math.max(1, Number(e.target.value) || 1))
-                }
+                onChange={setThicknessMm}
                 className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
               />
             </label>
@@ -200,16 +201,11 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
           </div>
           <label className="block text-[11px] text-muted">
             سعر م²
-            <input
-              type="number"
+            <NumericInput
               min={0}
               step={0.01}
-              value={pricePerSqm}
-              onChange={(e) =>
-                setPricePerSqm(
-                  e.target.value === "" ? "" : Math.max(0, Number(e.target.value) || 0)
-                )
-              }
+              value={pricePerSqm === "" ? 0 : pricePerSqm}
+              onChange={(v) => setPricePerSqm(v > 0 ? v : "")}
               placeholder="0.00"
               className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
             />

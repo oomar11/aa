@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { NumericInput } from "@/components/ui/NumericInput";
 import {
   defaultMeshCategories,
   defaultMeshTypes,
@@ -213,16 +214,12 @@ export function MeshTypesEditor() {
           />
           <label className="block text-[11px] text-muted">
             السعر (ج.م/م²)
-            <input
-              type="number"
+            <NumericInput
               min={0}
               step={0.01}
               value={draft.pricePerSqm}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  pricePerSqm: Math.max(0, Number(e.target.value) || 0),
-                })
+              onChange={(pricePerSqm) =>
+                setDraft({ ...draft, pricePerSqm })
               }
               className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
             />

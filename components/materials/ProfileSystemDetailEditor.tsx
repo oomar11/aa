@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import { MaterialSectionTabs } from "@/components/materials/MaterialSectionTabs";
+import { NumericInput } from "@/components/ui/NumericInput";
 import {
   DEFAULT_BAR_LENGTH_M,
   calcCutSizes,
@@ -1161,13 +1162,11 @@ function SimpleOffsetField({
     onChange(next === "plus" ? amount : -amount);
   }
 
-  function setAmount(raw: string) {
-    const n = Math.max(0, Number(raw) || 0);
+  function setAmount(n: number) {
     if (n === 0) {
       onChange(0);
       return;
     }
-    // لو كان صفر قبل كده، الافتراضي تخصيم (−) إلا لو المستخدم اختار زيادة
     const sign = direction === "plus" ? 1 : -1;
     onChange(sign * n);
   }
@@ -1201,13 +1200,11 @@ function SimpleOffsetField({
       </div>
       <label className="mt-2 block text-[10px] text-muted">
         المقدار (مم)
-        <input
-          type="number"
+        <NumericInput
           min={0}
           step={1}
-          inputMode="decimal"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={setAmount}
           className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm tabular-nums text-foreground outline-none focus:border-primary"
         />
       </label>

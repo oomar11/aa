@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { NumericInput } from "@/components/ui/NumericInput";
 import {
   FRAME_COLORS,
   type DesignItem,
@@ -268,17 +269,14 @@ export function ItemSettingsDrawer({
               >
                 −
               </button>
-              <input
-                type="number"
+              <NumericInput
                 min={1}
+                step={1}
+                round
+                fallback={1}
+                blankZero={false}
                 value={draft.qty}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  setDraft((d) => ({
-                    ...d,
-                    qty: Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1,
-                  }));
-                }}
+                onChange={(qty) => setDraft((d) => ({ ...d, qty }))}
                 className="h-11 min-w-0 flex-1 border-x border-border bg-card text-center text-base font-semibold text-foreground outline-none"
               />
               <button
