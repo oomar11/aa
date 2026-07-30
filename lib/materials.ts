@@ -1,4 +1,5 @@
 import {
+  gridCellCount,
   itemUnitAreaSqm,
   normalizePaneConfig,
   type DesignItem,
@@ -41,6 +42,12 @@ export type MaterialsBreakdown = {
   mullionFrameM: number;
   /** سوقاس بيقسم الضلفة (تقسيم داخلي / عوائد) */
   mullionSashM: number;
+  /** ضلفة مفصلي — متر طولي (محيط كل ضلفة متحركة) */
+  sashHingedM: number;
+  /** ضلفة جرار — متر طولي */
+  sashSlidingM: number;
+  /** باكتة تثبيت الزجاج — متر طولي */
+  beadM: number;
   /** إجمالي الحلق */
   frameTotalM: number;
   /** إجمالي السوقاس */
@@ -93,6 +100,9 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     bouclierM: 0,
     mullionFrameM: 0,
     mullionSashM: 0,
+    sashHingedM: 0,
+    sashSlidingM: 0,
+    beadM: 0,
     frameTotalM: 0,
     mullionTotalM: 0,
     isMixedFrame: false,
@@ -115,6 +125,28 @@ export function frameKindForOpening(opening: PaneOpening): FrameKind {
 
 function isSlidingOpening(opening: PaneOpening): boolean {
   return frameKindForOpening(opening) === "sliding";
+}
+
+/** ضلفة متحركة (مش ثابتة ولا شفاط) */
+function isOpeningSash(opening: PaneOpening): boolean {
+  return opening !== "fixed" && opening !== "exhaust";
+}
+
+function panePerimeterMm(w: number, h: number): number {
+  return 2 * (w + h);
+}
+
+/** هل الضلفة فيها زجاج يحتاج باكتة */
+function paneNeedsBead(opening: PaneOpening, cfg: PaneConfig): boolean {
+  if (opening === "panel-h" || opening === "panel-v") return false;
+  const norm = normalizePaneConfig(cfg);
+  if (norm.mesh) return false;
+  if (norm.sandwichPanels) {
+    const count = gridCellCount(norm.grid);
+    const panelCells = norm.panelCells ?? [];
+    if (panelCells.length >= count) return false;
+  }
+  return true;
 }
 
 /**
@@ -454,6 +486,33 @@ function sashMullionMm(
   return total;
 }
 
+/** محيط قطاع الضلفة لكل ضلفة متحركة */
+function sashProfileMm(boxes: PaneBox[]): { hinged: number; sliding: number } {
+  let hinged = 0;
+  let sliding = 0;
+  for (const box of boxes) {
+    if (!isOpeningSash(box.opening)) continue;
+    const peri = panePerimeterMm(box.w, box.h);
+    if (box.kind === "sliding") sliding += peri;
+    else hinged += peri;
+  }
+  return { hinged, sliding };
+}
+
+/** باكتة تثبيت الزجاج — محيط كل ضلفة فيها زجاج */
+function beadProfileMm(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined
+): number {
+  let total = 0;
+  for (const box of boxes) {
+    const cfg = normalizePaneConfig(panes?.[box.id]);
+    if (!paneNeedsBead(box.opening, cfg)) continue;
+    total += panePerimeterMm(box.w, box.h);
+  }
+  return total;
+}
+
 function frameLabelFor(
   hingedM: number,
   slidingM: number,
@@ -554,6 +613,8 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   }
 
   const mullionSashMm = sashMullionMm(boxes, panes);
+  const sashMm = sashProfileMm(boxes);
+  const beadMm = beadProfileMm(boxes, panes);
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
@@ -562,6 +623,9 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const bouclierM = roundM(mmToM(junctions.bouclierMm));
   const mullionFrameM = roundM(mmToM(junctions.mullionMm));
   const mullionSashM = roundM(mmToM(mullionSashMm));
+  const sashHingedM = roundM(mmToM(sashMm.hinged));
+  const sashSlidingM = roundM(mmToM(sashMm.sliding));
+  const beadM = roundM(mmToM(beadMm));
   const frameTotalM = roundM(frameHingedM + frameSlidingM);
   const mullionTotalM = roundM(mullionFrameM + mullionSashM);
 
@@ -574,6 +638,9 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     bouclierM,
     mullionFrameM,
     mullionSashM,
+    sashHingedM,
+    sashSlidingM,
+    beadM,
     frameTotalM,
     mullionTotalM,
     isMixedFrame,
@@ -598,6 +665,9 @@ export function scaleMaterials(
     bouclierM: roundM(m.bouclierM * q),
     mullionFrameM: roundM(m.mullionFrameM * q),
     mullionSashM: roundM(m.mullionSashM * q),
+    sashHingedM: roundM(m.sashHingedM * q),
+    sashSlidingM: roundM(m.sashSlidingM * q),
+    beadM: roundM(m.beadM * q),
     frameTotalM: roundM(m.frameTotalM * q),
     mullionTotalM: roundM(m.mullionTotalM * q),
   };

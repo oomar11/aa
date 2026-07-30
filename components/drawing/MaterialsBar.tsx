@@ -100,6 +100,25 @@ export function MaterialsBar({
       accent: materials.bouclierM > 0,
     },
     {
+      key: "sash-h",
+      label: "ضلفة مفصلي",
+      value: formatMeters(materials.sashHingedM),
+      accent: materials.sashHingedM > 0,
+    },
+    {
+      key: "sash-s",
+      label: "ضلفة جرار",
+      value: formatMeters(materials.sashSlidingM),
+      accent: materials.sashSlidingM > 0,
+    },
+    {
+      key: "bead",
+      label: "باكتة",
+      value: formatMeters(materials.beadM),
+      hint: materials.beadM > 0 ? "تثبيت زجاج" : undefined,
+      accent: materials.beadM > 0,
+    },
+    {
       key: "mullion",
       label: "سوقاس",
       value: formatMeters(materials.mullionTotalM),
@@ -133,7 +152,7 @@ export function MaterialsBar({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-center">
+        <table className="w-full min-w-[900px] border-collapse text-center">
           <thead>
             <tr className="border-b border-border text-[11px] font-semibold text-muted">
               <th className="px-2.5 py-2 text-start font-semibold">الجزء</th>
@@ -170,15 +189,15 @@ export function MaterialsBar({
             {showDetails ? (
               <tr className="border-t border-border/80 bg-background/50 text-xs text-muted">
                 <td className="px-2.5 py-2 text-start">تفاصيل</td>
-                <td className="px-2.5 py-2" colSpan={3}>
-                  سوقاس حلق: {formatMeters(materials.mullionFrameM)} · ضلفة:{" "}
+                <td className="px-2.5 py-2" colSpan={cells.length}>
+                  سوقاس حلق: {formatMeters(materials.mullionFrameM)} · سوقاس ضلفة:{" "}
                   {formatMeters(materials.mullionSashM)}
-                </td>
-                <td className="px-2.5 py-2" colSpan={2}>
-                  سكينة: {formatMeters(materials.knifeM)}
-                </td>
-                <td className="px-2.5 py-2" colSpan={2}>
-                  بوكلير: {formatMeters(materials.bouclierM)}
+                  {materials.knifeM > 0.0005
+                    ? ` · سكينة: ${formatMeters(materials.knifeM)}`
+                    : ""}
+                  {materials.bouclierM > 0.0005
+                    ? ` · بوكلير: ${formatMeters(materials.bouclierM)}`
+                    : ""}
                 </td>
               </tr>
             ) : null}
