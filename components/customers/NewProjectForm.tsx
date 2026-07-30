@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import { ProjectMaterialDefaultsFields } from "@/components/ProjectMaterialDefaultsFields";
+import { ProjectMaterialDefaultsFields } from "@/components/design/ProjectMaterialDefaultsFields";
 import {
   defaultProjectMaterialDefaults,
   type ProjectMaterialDefaults,

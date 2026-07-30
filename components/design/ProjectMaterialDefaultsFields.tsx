@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AccessoryDetailsForm } from "@/components/AccessoryDetailsForm";
-import { GlassBottlePicker } from "@/components/GlassBottlePicker";
+import { AccessoryDetailsForm } from "@/components/materials/AccessoryDetailsForm";
+import { GlassBottlePicker } from "@/components/materials/GlassBottlePicker";
 import {
   loadAccessoryOptions,
   loadSystemOptions,

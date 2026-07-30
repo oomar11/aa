@@ -13,6 +13,7 @@ import {
   evaluateFormula,
   validateFormula,
 } from "@/lib/excel-formula";
+import { CATALOG_EVENTS, STORAGE_KEYS } from "@/lib/storage/keys";
 
 export type MaterialCategory = "profiles" | "accessories" | "glass" | "iron";
 
@@ -505,10 +506,11 @@ export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]> & {
   profileBrands?: ProfileBrand[];
 };
 
-export const MATERIALS_STORAGE_KEY = "upvc-material-systems";
+/** @deprecated استخدم STORAGE_KEYS.materialSystems */
+export const MATERIALS_STORAGE_KEY = STORAGE_KEYS.materialSystems;
 
 /** يُبث بعد حفظ تصنيفات/أنواع السلك — لمزامنة المحررات */
-export const MESH_CATALOG_UPDATED = "upvc-mesh-catalog-updated";
+export const MESH_CATALOG_UPDATED = CATALOG_EVENTS.meshUpdated;
 
 export function notifyMeshCatalogUpdated() {
   if (typeof window !== "undefined") {
@@ -517,7 +519,7 @@ export function notifyMeshCatalogUpdated() {
 }
 
 /** يُبث بعد حفظ براندات الاكسسوار */
-export const ACCESSORY_BRANDS_UPDATED = "upvc-accessory-brands-updated";
+export const ACCESSORY_BRANDS_UPDATED = CATALOG_EVENTS.accessoryBrandsUpdated;
 
 export function notifyAccessoryBrandsUpdated() {
   if (typeof window !== "undefined") {
@@ -526,7 +528,7 @@ export function notifyAccessoryBrandsUpdated() {
 }
 
 /** يُبث بعد حفظ براندات القطاعات */
-export const PROFILE_BRANDS_UPDATED = "upvc-profile-brands-updated";
+export const PROFILE_BRANDS_UPDATED = CATALOG_EVENTS.profileBrandsUpdated;
 
 export function notifyProfileBrandsUpdated() {
   if (typeof window !== "undefined") {

@@ -2,8 +2,8 @@
 
 import type { MouseEvent } from "react";
 import { useRef } from "react";
-import { useTheme } from "@/components/ThemeProvider";
-import { useUnit } from "@/components/UnitProvider";
+import { useTheme } from "@/components/settings/ThemeProvider";
+import { useUnit } from "@/components/settings/UnitProvider";
 import {
   FRAME_COLORS,
   PANEL_STRIPE_MM,

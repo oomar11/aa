@@ -7,6 +7,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { STORAGE_KEYS } from "@/lib/storage/keys";
 
 type Theme = "light" | "dark";
 
@@ -27,7 +28,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    const stored = localStorage.getItem("upvc-theme") as Theme | null;
+    const stored = localStorage.getItem(STORAGE_KEYS.theme) as Theme | null;
     const preferred =
       stored ??
       (window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -40,7 +41,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
       const next = prev === "light" ? "dark" : "light";
-      localStorage.setItem("upvc-theme", next);
+      localStorage.setItem(STORAGE_KEYS.theme, next);
       applyTheme(next);
       return next;
     });

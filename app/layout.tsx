@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { UnitProvider } from "@/components/UnitProvider";
+import { ThemeProvider } from "@/components/settings/ThemeProvider";
+import { UnitProvider } from "@/components/settings/UnitProvider";
+import { STORAGE_KEYS } from "@/lib/storage/keys";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 const themeInitScript = `
 (function(){
   try {
-    var t = localStorage.getItem('upvc-theme');
+    var t = localStorage.getItem('${STORAGE_KEYS.theme}');
     if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     if (t === 'dark') document.documentElement.classList.add('dark');
     document.documentElement.style.colorScheme = t;

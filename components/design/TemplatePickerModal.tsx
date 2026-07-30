@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TemplatePreview } from "@/components/TemplatePreview";
+import { TemplatePreview } from "@/components/design/TemplatePreview";
 import { getOrderedTemplates } from "@/lib/template-order";
 import type { LayoutNode } from "@/lib/window-layout";
 

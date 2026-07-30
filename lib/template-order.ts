@@ -2,8 +2,10 @@ import {
   WINDOW_TEMPLATES,
   type WindowTemplate,
 } from "@/lib/window-templates";
+import { STORAGE_KEYS } from "@/lib/storage/keys";
 
-export const TEMPLATE_ORDER_KEY = "upvc-template-order";
+/** @deprecated استخدم STORAGE_KEYS.templateOrder */
+export const TEMPLATE_ORDER_KEY = STORAGE_KEYS.templateOrder;
 
 export function getDefaultTemplateOrder(): string[] {
   return WINDOW_TEMPLATES.map((t) => t.id);

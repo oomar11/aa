@@ -1,6 +1,6 @@
 "use client";
 
-import { ScreenBack } from "@/components/ScreenBack";
+import { ScreenBack } from "@/components/layout/ScreenBack";
 import {
   useCallback,
   useEffect,

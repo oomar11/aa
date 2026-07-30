@@ -1,6 +1,9 @@
+import { STORAGE_KEYS } from "@/lib/storage/keys";
+
 export type LengthUnit = "mm" | "cm";
 
-export const UNIT_STORAGE_KEY = "upvc-unit";
+/** @deprecated استخدم STORAGE_KEYS.unit من lib/storage/keys */
+export const UNIT_STORAGE_KEY = STORAGE_KEYS.unit;
 
 export function loadUnit(): LengthUnit {
   if (typeof window === "undefined") return "mm";

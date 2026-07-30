@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ROUTES } from "@/lib/routes";
 
 function DesignIcon() {
   return (
@@ -83,7 +84,7 @@ export function HomeActions() {
   return (
     <section className="grid grid-cols-2 gap-3 px-4 pt-2">
       <Link
-        href="/design"
+        href={ROUTES.design.hub}
         className={`${baseCard} bg-[#E8956F] shadow-[0_6px_20px_rgba(232,149,111,0.35)]`}
       >
         <DesignIcon />
@@ -91,7 +92,7 @@ export function HomeActions() {
       </Link>
 
       <Link
-        href="/orders"
+        href={ROUTES.orders}
         className={`${baseCard} bg-[#6B8AD8] shadow-[0_6px_20px_rgba(107,138,216,0.35)]`}
       >
         <OrdersIcon />
@@ -99,7 +100,7 @@ export function HomeActions() {
       </Link>
 
       <Link
-        href="/materials"
+        href={ROUTES.materials.hub}
         className={`${baseCard} col-span-2 min-h-[132px] flex-row gap-5 bg-[#5A9B8E] shadow-[0_6px_20px_rgba(90,155,142,0.35)] sm:min-h-[148px]`}
       >
         <MaterialsIcon />

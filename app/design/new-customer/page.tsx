@@ -1,5 +1,5 @@
-import { NewCustomerForm } from "@/components/NewCustomerForm";
-import { ScreenBack } from "@/components/ScreenBack";
+import { NewCustomerForm } from "@/components/customers/NewCustomerForm";
+import { ScreenBack } from "@/components/layout/ScreenBack";
 
 export default function NewCustomerPage() {
   return (

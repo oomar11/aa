@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ScreenBack } from "@/components/ScreenBack";
+import { ScreenBack } from "@/components/layout/ScreenBack";
 import {
   DimensionEditDialog,
 } from "@/components/drawing/DimensionEditDialog";
@@ -22,8 +22,8 @@ import {
   type ToolId,
 } from "@/components/drawing/ToolPalette";
 import { MaterialsBar } from "@/components/drawing/MaterialsBar";
-import { TemplatePickerModal } from "@/components/TemplatePickerModal";
-import { useUnit } from "@/components/UnitProvider";
+import { TemplatePickerModal } from "@/components/design/TemplatePickerModal";
+import { useUnit } from "@/components/settings/UnitProvider";
 import {
   calcItemAccessories,
   scaleAccessories,

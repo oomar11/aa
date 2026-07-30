@@ -1,5 +1,5 @@
-import { ScreenBack } from "@/components/ScreenBack";
-import { NewProjectForm } from "@/components/NewProjectForm";
+import { ScreenBack } from "@/components/layout/ScreenBack";
+import { NewProjectForm } from "@/components/customers/NewProjectForm";
 
 type Props = {
   searchParams: Promise<{ customer?: string }>;

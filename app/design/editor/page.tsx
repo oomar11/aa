@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DesignWorkspace } from "@/components/DesignWorkspace";
+import { DesignWorkspace } from "@/components/design/DesignWorkspace";
 
 type Props = {
   searchParams: Promise<{ customer?: string; project?: string }>;

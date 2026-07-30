@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import { ScreenBack } from "@/components/ScreenBack";
-import { ProjectMaterialDefaultsFields } from "@/components/ProjectMaterialDefaultsFields";
+import { ScreenBack } from "@/components/layout/ScreenBack";
+import { ProjectMaterialDefaultsFields } from "@/components/design/ProjectMaterialDefaultsFields";
 import {
   defaultProjectMaterialDefaults,
   normalizeProjectAccessoryDetails,

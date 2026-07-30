@@ -3,6 +3,7 @@ import {
   type DesignItem,
 } from "@/lib/design-items";
 import type { ProjectMaterialDefaults } from "@/lib/project-materials";
+import { STORAGE_KEYS } from "@/lib/storage/keys";
 
 export type Project = {
   id: string;
@@ -14,7 +15,8 @@ export type Project = {
   itemsCount: number;
 } & ProjectMaterialDefaults;
 
-export const PROJECTS_STORAGE_KEY = "upvc-projects";
+/** @deprecated استخدم STORAGE_KEYS.projects */
+export const PROJECTS_STORAGE_KEY = STORAGE_KEYS.projects;
 
 export const projects: Project[] = [
   {
@@ -156,7 +158,7 @@ export function getProjectById(projectId: string): Project | undefined {
   );
 }
 
-const ITEMS_STORAGE_KEY = "upvc-project-items";
+const ITEMS_STORAGE_KEY = STORAGE_KEYS.projectItems;
 
 function loadLocalItems(): Record<string, DesignItem[]> {
   if (typeof window === "undefined") return {};

@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
-import { BackChevron } from "@/components/BackChevron";
-import { NavBack } from "@/components/NavBack";
+import { BackChevron } from "@/components/layout/BackChevron";
+import { NavBack } from "@/components/layout/NavBack";
 
 type NavBackProps = ComponentProps<typeof NavBack>;
 

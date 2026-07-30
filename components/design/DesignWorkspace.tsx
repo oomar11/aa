@@ -12,10 +12,10 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { BackChevron } from "@/components/BackChevron";
-import { NavBack } from "@/components/NavBack";
-import { TemplatePickerModal } from "@/components/TemplatePickerModal";
-import { WindowPreview } from "@/components/WindowPreview";
+import { BackChevron } from "@/components/layout/BackChevron";
+import { NavBack } from "@/components/layout/NavBack";
+import { TemplatePickerModal } from "@/components/design/TemplatePickerModal";
+import { WindowPreview } from "@/components/design/WindowPreview";
 import {
   createItemFromTemplate,
   itemAreaSqm,
@@ -32,7 +32,7 @@ import {
 import { projectMaterialDefaultsFrom } from "@/lib/project-materials";
 import { formatCurrency } from "@/lib/utils";
 import { formatSizePair, type LengthUnit } from "@/lib/units";
-import { useUnit } from "@/components/UnitProvider";
+import { useUnit } from "@/components/settings/UnitProvider";
 import type { LayoutNode } from "@/lib/window-layout";
 
 const LONG_PRESS_MS = 320;

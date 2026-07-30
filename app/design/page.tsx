@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ScreenBack } from "@/components/ScreenBack";
+import { ScreenBack } from "@/components/layout/ScreenBack";
 
 export default function DesignPage() {
   return (

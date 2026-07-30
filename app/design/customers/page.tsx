@@ -1,5 +1,5 @@
-import { CustomerList } from "@/components/CustomerList";
-import { ScreenBack } from "@/components/ScreenBack";
+import { CustomerList } from "@/components/customers/CustomerList";
+import { ScreenBack } from "@/components/layout/ScreenBack";
 
 export default function CustomersPage() {
   return (

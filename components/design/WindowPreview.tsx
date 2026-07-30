@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { useTheme } from "@/components/ThemeProvider";
+import { useTheme } from "@/components/settings/ThemeProvider";
 import {
   FRAME_COLORS,
   PANEL_STRIPE_MM,

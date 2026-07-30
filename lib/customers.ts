@@ -1,3 +1,5 @@
+import { STORAGE_KEYS } from "@/lib/storage/keys";
+
 export type Customer = {
   id: string;
   name: string;
@@ -9,7 +11,8 @@ export type Customer = {
   projectsCount: number;
 };
 
-export const CUSTOMERS_STORAGE_KEY = "upvc-customers";
+/** @deprecated استخدم STORAGE_KEYS.customers */
+export const CUSTOMERS_STORAGE_KEY = STORAGE_KEYS.customers;
 
 export function loadLocalCustomers(): Customer[] {
   if (typeof window === "undefined") return [];

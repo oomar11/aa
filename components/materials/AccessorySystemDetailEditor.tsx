@@ -6,7 +6,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { AccessoryDetailsForm } from "@/components/AccessoryDetailsForm";
+import { AccessoryDetailsForm } from "@/components/materials/AccessoryDetailsForm";
 import {
   ACCESSORY_BRANDS_UPDATED,
   defaultAccessoryDetails,

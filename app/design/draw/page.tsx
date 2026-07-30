@@ -1,4 +1,4 @@
-import { ScreenBack } from "@/components/ScreenBack";
+import { ScreenBack } from "@/components/layout/ScreenBack";
 import { DrawingEditor } from "@/components/drawing/DrawingEditor";
 
 type Props = {

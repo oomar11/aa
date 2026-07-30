@@ -8,7 +8,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { TemplatePreview } from "@/components/TemplatePreview";
+import { TemplatePreview } from "@/components/design/TemplatePreview";
 import {
   getDefaultTemplateOrder,
   getOrderedTemplates,

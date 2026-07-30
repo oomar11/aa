@@ -21,7 +21,7 @@ import {
   resolveItemGlassGeorgian,
   type ProjectMaterialDefaults,
 } from "@/lib/project-materials";
-import { GlassBottlePicker } from "@/components/GlassBottlePicker";
+import { GlassBottlePicker } from "@/components/materials/GlassBottlePicker";
 import { suggestItemName } from "@/lib/item-naming";
 
 export type ItemSettingsPatch = {

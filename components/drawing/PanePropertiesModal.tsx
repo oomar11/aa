@@ -16,7 +16,7 @@ import {
   type MeshKind,
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
-import { MeshTypePicker } from "@/components/MeshTypePicker";
+import { MeshTypePicker } from "@/components/materials/MeshTypePicker";
 import {
   meshCategoryOptions,
   meshTypeOptions,
