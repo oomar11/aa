@@ -146,19 +146,6 @@ export function MaterialsBar({
       accent: materials.sashSlidingM > 0,
     },
     {
-      key: "sash-s-p",
-      label: "ضلفة جرار بارز",
-      value: formatMeters(materials.sashSlidingProtrudingM),
-      accent: materials.sashSlidingProtrudingM > 0,
-    },
-    {
-      key: "sash-s-r",
-      label: "ضلفة جرار غاطس",
-      value: formatMeters(materials.sashSlidingRecessedM),
-      hint: materials.sashSlidingRecessedM > 0 ? "مقبض غاطس" : undefined,
-      accent: materials.sashSlidingRecessedM > 0,
-    },
-    {
       key: "bead-sh",
       label: "باكتة سنجل مفصلي",
       value: formatMeters(materials.beadSingleHingedM),

@@ -549,7 +549,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
               }
               className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
             >
-              <RoleOptionGroup label="حلق وضلف" roles={["frame-hinged", "frame-sliding", "sash-hinged", "sash-door", "sash-sliding", "sash-sliding-protruding", "sash-sliding-recessed"]} />
+              <RoleOptionGroup label="حلق وضلف" roles={["frame-hinged", "frame-sliding", "sash-hinged", "sash-door", "sash-sliding"]} />
               <RoleOptionGroup label="باكتة" roles={["bead-single-hinged", "bead-double-hinged", "bead-single-sliding", "bead-double-sliding"]} />
               <RoleOptionGroup label="بنل" roles={["panel"]} />
               <RoleOptionGroup label="أخرى" roles={["mullion", "coupling", "knife", "four-leaf-meeting", "mesh-meeting", "bouclier-cap", "threshold", "other"]} />

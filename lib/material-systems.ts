@@ -18,8 +18,6 @@ export type ProfilePieceRole =
   | "sash-hinged"
   | "sash-door"
   | "sash-sliding"
-  | "sash-sliding-protruding"
-  | "sash-sliding-recessed"
   | "mullion"
   | "coupling"
   | "knife"
@@ -45,8 +43,6 @@ export const PROFILE_PIECE_ROLES: {
   { id: "sash-hinged", label: "ضلفة شباك مفصلي", group: "sash" },
   { id: "sash-door", label: "ضلفة باب", group: "sash" },
   { id: "sash-sliding", label: "ضلفة جرار", group: "sash" },
-  { id: "sash-sliding-protruding", label: "ضلفة جرار بارز", group: "sash" },
-  { id: "sash-sliding-recessed", label: "ضلفة جرار غاطس", group: "sash" },
   { id: "mullion", label: "سوقاس", group: "other" },
   { id: "coupling", label: "كوبلن", group: "other" },
   { id: "knife", label: "سكينة", group: "other" },
@@ -69,6 +65,8 @@ const PROFILE_PIECE_ROLE_IDS = new Set(
 /** ترحيل الأدوار القديمة */
 const LEGACY_PROFILE_ROLE_MAP: Record<string, ProfilePieceRole> = {
   bead: "bead-single-hinged",
+  "sash-sliding-protruding": "sash-sliding",
+  "sash-sliding-recessed": "sash-sliding",
 };
 
 export function profileRoleLabel(role: ProfilePieceRole): string {
@@ -671,16 +669,9 @@ export function standardSlidingProfilePieces(): ProfilePiece[] {
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
     {
-      id: "piece-sash-sp",
-      name: "ضلفة جرار بارز",
-      role: "sash-sliding-protruding",
-      sectionWidthMm: 45,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-    },
-    {
-      id: "piece-sash-sr",
-      name: "ضلفة جرار غاطس",
-      role: "sash-sliding-recessed",
+      id: "piece-sash-s",
+      name: "ضلفة جرار",
+      role: "sash-sliding",
       sectionWidthMm: 45,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
@@ -1950,6 +1941,17 @@ function normalizeAxisFormulas(
   };
 }
 
+function dedupeProfilePiecesByRole(pieces: ProfilePiece[]): ProfilePiece[] {
+  const seenRoles = new Set<ProfilePieceRole>();
+  const out: ProfilePiece[] = [];
+  for (const piece of pieces) {
+    if (seenRoles.has(piece.role)) continue;
+    seenRoles.add(piece.role);
+    out.push(piece);
+  }
+  return out;
+}
+
 function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
   const fallback = defaultProfileDetails();
   if (!raw || typeof raw !== "object") return fallback;
@@ -1968,7 +1970,8 @@ function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
       ? (d.deductions as Record<string, unknown>)
       : {};
   return {
-    pieces: pieces.length > 0 ? pieces : fallback.pieces,
+    pieces:
+      pieces.length > 0 ? dedupeProfilePiecesByRole(pieces) : fallback.pieces,
     deductions: {
       frame: normalizeAxisFormulas(
         deductionsRaw.frame,

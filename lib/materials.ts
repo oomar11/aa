@@ -68,10 +68,6 @@ export type MaterialsBreakdown = {
   sashDoorM: number;
   /** ضلفة جرار — متر طولي (إجمالي) */
   sashSlidingM: number;
-  /** ضلفة جرار بارز — متر طولي */
-  sashSlidingProtrudingM: number;
-  /** ضلفة جرار غاطس — متر طولي */
-  sashSlidingRecessedM: number;
   /** باكتة سنجل مفصلي — متر طولي */
   beadSingleHingedM: number;
   /** باكتة سنجل جرار — متر طولي */
@@ -164,8 +160,6 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     sashHingedM: 0,
     sashDoorM: 0,
     sashSlidingM: 0,
-    sashSlidingProtrudingM: 0,
-    sashSlidingRecessedM: 0,
     beadSingleHingedM: 0,
     beadSingleSlidingM: 0,
     beadDoubleHingedM: 0,
@@ -835,18 +829,13 @@ function sashProfileMm(
 ): {
   hinged: number;
   sliding: number;
-  slidingProtruding: number;
-  slidingRecessed: number;
   door: number;
 } {
   const cat =
     catalog ??
     (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
-  const depthMap = slidingSashDepthMap(boxes, panes);
   let hinged = 0;
   let sliding = 0;
-  let slidingProtruding = 0;
-  let slidingRecessed = 0;
   let door = 0;
   for (const box of boxes) {
     if (!isOpeningSash(box.opening)) continue;
@@ -855,15 +844,12 @@ function sashProfileMm(
     const peri = panePerimeterMm(box.w, box.h);
     if (box.kind === "sliding") {
       sliding += peri;
-      const depth = depthMap.get(box.id) ?? "recessed";
-      if (depth === "protruding") slidingProtruding += peri;
-      else slidingRecessed += peri;
       continue;
     }
     if (isDoorPane(box.opening, cfg)) door += peri;
     else hinged += peri;
   }
-  return { hinged, sliding, slidingProtruding, slidingRecessed, door };
+  return { hinged, sliding, door };
 }
 
 /** مساحة ملء الضلفة (زجاج أو سلك) بدون بنل — مم² */
@@ -1113,8 +1099,6 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const sashHingedM = roundM(mmToM(sashMm.hinged));
   const sashDoorM = roundM(mmToM(sashMm.door));
   const sashSlidingM = roundM(mmToM(sashMm.sliding));
-  const sashSlidingProtrudingM = roundM(mmToM(sashMm.slidingProtruding));
-  const sashSlidingRecessedM = roundM(mmToM(sashMm.slidingRecessed));
   const beadSingleHingedM = roundM(mmToM(beadMm.singleHingedMm));
   const beadSingleSlidingM = roundM(mmToM(beadMm.singleSlidingMm));
   const beadDoubleHingedM = roundM(mmToM(beadMm.doubleHingedMm));
@@ -1145,8 +1129,6 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     sashHingedM,
     sashDoorM,
     sashSlidingM,
-    sashSlidingProtrudingM,
-    sashSlidingRecessedM,
     beadSingleHingedM,
     beadSingleSlidingM,
     beadDoubleHingedM,
@@ -1194,8 +1176,6 @@ export function scaleMaterials(
     sashHingedM: roundM(m.sashHingedM * q),
     sashDoorM: roundM(m.sashDoorM * q),
     sashSlidingM: roundM(m.sashSlidingM * q),
-    sashSlidingProtrudingM: roundM(m.sashSlidingProtrudingM * q),
-    sashSlidingRecessedM: roundM(m.sashSlidingRecessedM * q),
     beadSingleHingedM: roundM(m.beadSingleHingedM * q),
     beadSingleSlidingM: roundM(m.beadSingleSlidingM * q),
     beadDoubleHingedM: roundM(m.beadDoubleHingedM * q),
