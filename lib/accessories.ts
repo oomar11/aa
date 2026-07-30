@@ -12,12 +12,10 @@
  * - عجلتين لكل ضلفة
  * - فرش: محيط الضلفة ×٢ + ارتفاع السكينة ×١
  * - سبلونة/سكاك جرار
- * - تقابل ٤ ضلفة · تقابل سلك جرار
  */
 
 import {
   normalizePaneConfig,
-  resolvePaneMeshKind,
   type DesignItem,
   type PaneConfig,
   type PaneOpening,
@@ -33,7 +31,6 @@ import {
   findSystem,
   getDefaultAccessoryDetails,
   loadMaterialCatalog,
-  meshCategoryCalcProfile,
   pickEspagnoletteSize,
   resolveCategoryBrandName,
   type AccessoryBrandCategory,
@@ -78,13 +75,6 @@ export type AccessoriesBreakdown = {
   brushLengthM: number;
   slidingEspagnolettes: EspagnoletteLine[];
   slidingLockPieces: LockPieceLine[];
-  /** تقابل ٤ ضلفة — عدد القطع */
-  fourLeafMeetingQty: number;
-  /** طول تقابل ٤ ضلفة بالمتر (ارتفاع الضلفة) */
-  fourLeafMeetingLengthM: number;
-  /** تقابل سلك جرار — عدد القطع */
-  meshMeetingQty: number;
-  meshMeetingLengthM: number;
   /** أسماء البراندات المختارة لكل فئة */
   brandLabels: Partial<Record<AccessoryBrandCategory, string>>;
 };
@@ -146,10 +136,6 @@ function emptyBreakdown(systemName: string | null): AccessoriesBreakdown {
     brushLengthM: 0,
     slidingEspagnolettes: [],
     slidingLockPieces: [],
-    fourLeafMeetingQty: 0,
-    fourLeafMeetingLengthM: 0,
-    meshMeetingQty: 0,
-    meshMeetingLengthM: 0,
     brandLabels: {},
   };
 }
@@ -292,51 +278,6 @@ export function espagnoletteHeightFromSash(
 /** ارتفاع ناحية المقبض — الضلفة الرأسية */
 function handleSideHeightMm(box: PaneBox): number {
   return box.h;
-}
-
-/** مجموعات ضلف الجرار المتجاورة أفقياً في نفس الصف */
-function slidingRowGroups(boxes: PaneBox[]): PaneBox[][] {
-  const sliding = boxes
-    .filter((b) => isSlidingOpening(b.opening))
-    .sort((a, b) => a.y - b.y || a.x - b.x);
-  if (sliding.length === 0) return [];
-
-  const rows: PaneBox[][] = [];
-  for (const box of sliding) {
-    const row = rows.find(
-      (r) => Math.abs(r[0]!.y - box.y) < 2 && Math.abs(r[0]!.h - box.h) < 2
-    );
-    if (row) row.push(box);
-    else rows.push([box]);
-  }
-  return rows.map((r) => r.sort((a, b) => a.x - b.x));
-}
-
-/** مجموعات سلك جرار في نفس الفتحة (صف أفقي) */
-function meshSlidingRowGroups(
-  boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined,
-  catalog?: MaterialCatalog
-): PaneBox[][] {
-  const meshBoxes: PaneBox[] = [];
-  for (const box of boxes) {
-    const cfg = normalizePaneConfig(panes?.[box.id]);
-    if (!cfg.mesh) continue;
-    const kind = resolvePaneMeshKind(cfg, box.opening, catalog);
-    if (!meshCategoryCalcProfile(kind, catalog)) continue;
-    meshBoxes.push(box);
-  }
-
-  meshBoxes.sort((a, b) => a.y - b.y || a.x - b.x);
-  const rows: PaneBox[][] = [];
-  for (const box of meshBoxes) {
-    const row = rows.find(
-      (r) => Math.abs(r[0]!.y - box.y) < 2 && Math.abs(r[0]!.h - box.h) < 2
-    );
-    if (row) row.push(box);
-    else rows.push([box]);
-  }
-  return rows.map((r) => r.sort((a, b) => a.x - b.x));
 }
 
 function aabbWidth(boxes: PaneBox[]): number {
@@ -487,8 +428,6 @@ export function calcItemAccessories(
   let brushMm = 0;
   const slidingEspMap = new Map<EspagnoletteSize, number>();
   let slidingLocksetCount = 0;
-  let fourLeafMeetingQty = 0;
-  let fourLeafMeetingMm = 0;
 
   if (slidingBoxes.length > 0) {
     const frameW = aabbWidth(slidingBoxes) || widthMm;
@@ -511,15 +450,6 @@ export function calcItemAccessories(
       addEspagnolette(slidingEspMap, size);
       slidingLocksetCount += 1;
     }
-
-    if (details.fourLeafMeetingEnabled) {
-      for (const row of slidingRowGroups(slidingBoxes)) {
-        if (row.length >= 4) {
-          fourLeafMeetingQty += 1;
-          fourLeafMeetingMm += row[0]!.h;
-        }
-      }
-    }
   }
 
   const slidingLockPieces = lockPieceLines(
@@ -527,21 +457,7 @@ export function calcItemAccessories(
     slidingLocksetCount
   );
 
-  // تقابل سلك جرار — ضلفتين سلك جرار في نفس الفتحة
-  let meshMeetingQty = 0;
-  let meshMeetingMm = 0;
-  if (details.meshSlidingMeetingEnabled) {
-    for (const row of meshSlidingRowGroups(boxes, panes, cat)) {
-      if (row.length >= 2) {
-        meshMeetingQty += 1;
-        meshMeetingMm += row[0]!.h;
-      }
-    }
-  }
-
   const brushLengthM = roundM(mmToM(brushMm));
-  const fourLeafMeetingLengthM = roundM(mmToM(fourLeafMeetingMm));
-  const meshMeetingLengthM = roundM(mmToM(meshMeetingMm));
 
   const hingedEspagnolettes = espagnoletteLines(hingedEspMap);
   const slidingEspagnolettes = espagnoletteLines(slidingEspMap);
@@ -559,9 +475,7 @@ export function calcItemAccessories(
     rollerQty > 0 ||
     brushLengthM > 0.0005 ||
     slidingEspagnolettes.length > 0 ||
-    slidingLockPieces.length > 0 ||
-    fourLeafMeetingQty > 0 ||
-    meshMeetingQty > 0;
+    slidingLockPieces.length > 0;
 
   return {
     systemName,
@@ -579,10 +493,6 @@ export function calcItemAccessories(
     brushLengthM,
     slidingEspagnolettes,
     slidingLockPieces,
-    fourLeafMeetingQty,
-    fourLeafMeetingLengthM,
-    meshMeetingQty,
-    meshMeetingLengthM,
     brandLabels,
   };
 }
@@ -613,10 +523,6 @@ export function scaleAccessories(
     brushLengthM: roundM(a.brushLengthM * q),
     slidingEspagnolettes: scaleLines(a.slidingEspagnolettes),
     slidingLockPieces: scaleLines(a.slidingLockPieces),
-    fourLeafMeetingQty: a.fourLeafMeetingQty * q,
-    fourLeafMeetingLengthM: roundM(a.fourLeafMeetingLengthM * q),
-    meshMeetingQty: a.meshMeetingQty * q,
-    meshMeetingLengthM: roundM(a.meshMeetingLengthM * q),
   };
 }
 

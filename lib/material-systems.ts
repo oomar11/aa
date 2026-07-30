@@ -19,6 +19,8 @@ export type ProfilePieceRole =
   | "mullion"
   | "coupling"
   | "knife"
+  | "four-leaf-meeting"
+  | "mesh-meeting"
   | "bead"
   | "threshold"
   | "other";
@@ -34,6 +36,8 @@ export const PROFILE_PIECE_ROLES: {
   { id: "mullion", label: "سوقاس" },
   { id: "coupling", label: "كوبلن" },
   { id: "knife", label: "سكينة" },
+  { id: "four-leaf-meeting", label: "تقابل ٤ ضلفة" },
+  { id: "mesh-meeting", label: "تقابل سلك جرار" },
   { id: "bead", label: "بيادة زجاج" },
   { id: "threshold", label: "عتبة" },
   { id: "other", label: "أخرى" },
@@ -193,9 +197,7 @@ export type AccessoryBrandCategory =
   | "roller"
   | "brush"
   | "sliding-espagnolette"
-  | "sliding-lock"
-  | "four-leaf-meeting"
-  | "mesh-meeting";
+  | "sliding-lock";
 
 export const ACCESSORY_BRAND_CATEGORIES: {
   id: AccessoryBrandCategory;
@@ -214,8 +216,6 @@ export const ACCESSORY_BRAND_CATEGORIES: {
   { id: "brush", label: "فرش جرار", group: "sliding" },
   { id: "sliding-espagnolette", label: "سبلونة جرار", group: "sliding" },
   { id: "sliding-lock", label: "سكاك جرار", group: "sliding" },
-  { id: "four-leaf-meeting", label: "تقابل ٤ ضلفة", group: "sliding" },
-  { id: "mesh-meeting", label: "تقابل سلك جرار", group: "sliding" },
 ];
 
 export function accessoryBrandCategoryLabel(
@@ -273,10 +273,6 @@ export type AccessorySystemDetails = {
   brushKnifeHeightMultiplier: number;
   /** سكاك جرار — مكان المفصلي */
   slidingLockPieces: AccessoryLockPiece[];
-  /** تفعيل تقابل ٤ ضلفة */
-  fourLeafMeetingEnabled: boolean;
-  /** تفعيل تقابل سلك جرار (ضلفتين في نفس الفتحة) */
-  meshSlidingMeetingEnabled: boolean;
 };
 
 export type MaterialSystem = {
@@ -555,8 +551,6 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     brushSashPerimeterMultiplier: 2,
     brushKnifeHeightMultiplier: 1,
     slidingLockPieces: defaultSlidingLockPieces(),
-    fourLeafMeetingEnabled: true,
-    meshSlidingMeetingEnabled: true,
   };
 }
 
@@ -1150,6 +1144,20 @@ export function getDefaultCatalog(): MaterialCatalog {
               barLengthM: DEFAULT_BAR_LENGTH_M,
             },
             {
+              id: "pvc2-m4",
+              name: "تقابل ٤ ضلفة",
+              role: "four-leaf-meeting",
+              sectionWidthMm: 70,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "pvc2-mm",
+              name: "تقابل سلك جرار",
+              role: "mesh-meeting",
+              sectionWidthMm: 70,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
               id: "pvc2-b",
               name: "بيادة زجاج",
               role: "bead",
@@ -1732,14 +1740,6 @@ export function normalizeAccessoryDetails(
       o.slidingLockPieces,
       fallback.slidingLockPieces
     ),
-    fourLeafMeetingEnabled:
-      o.fourLeafMeetingEnabled === undefined
-        ? fallback.fourLeafMeetingEnabled
-        : Boolean(o.fourLeafMeetingEnabled),
-    meshSlidingMeetingEnabled:
-      o.meshSlidingMeetingEnabled === undefined
-        ? fallback.meshSlidingMeetingEnabled
-        : Boolean(o.meshSlidingMeetingEnabled),
   };
 }
 

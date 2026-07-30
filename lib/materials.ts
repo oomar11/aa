@@ -78,6 +78,14 @@ export type MaterialsBreakdown = {
   meshSlidingWheelQty: number;
   /** مقبض سلك لطش — ١ لكل ضلفة */
   meshPushHandleQty: number;
+  /** تقابل ٤ ضلفة جرار — عدد القطع */
+  fourLeafMeetingQty: number;
+  /** تقابل ٤ ضلفة — متر طولي (ارتفاع الضلفة) */
+  fourLeafMeetingM: number;
+  /** تقابل سلك جرار — عدد القطع */
+  meshMeetingQty: number;
+  /** تقابل سلك جرار — متر طولي */
+  meshMeetingM: number;
   /** إجمالي الحلق */
   frameTotalM: number;
   /** إجمالي السوقاس */
@@ -143,6 +151,10 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     meshSlidingSashCount: 0,
     meshSlidingWheelQty: 0,
     meshPushHandleQty: 0,
+    fourLeafMeetingQty: 0,
+    fourLeafMeetingM: 0,
+    meshMeetingQty: 0,
+    meshMeetingM: 0,
     frameTotalM: 0,
     mullionTotalM: 0,
     isMixedFrame: false,
@@ -622,6 +634,86 @@ function slidingKnifeProfileMm(boxes: PaneBox[]): number {
   return total;
 }
 
+function isSlidingOpening(opening: PaneOpening): boolean {
+  return frameKindForOpening(opening) === "sliding" && isOpeningSash(opening);
+}
+
+/** مجموعات ضلف الجرار المتجاورة أفقياً في نفس الصف */
+function slidingRowGroups(boxes: PaneBox[]): PaneBox[][] {
+  const sliding = boxes
+    .filter((b) => isSlidingOpening(b.opening))
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+  if (sliding.length === 0) return [];
+
+  const rows: PaneBox[][] = [];
+  for (const box of sliding) {
+    const row = rows.find(
+      (r) => Math.abs(r[0]!.y - box.y) < 2 && Math.abs(r[0]!.h - box.h) < 2
+    );
+    if (row) row.push(box);
+    else rows.push([box]);
+  }
+  return rows.map((r) => r.sort((a, b) => a.x - b.x));
+}
+
+/** مجموعات سلك جرار في نفس الفتحة (صف أفقي) */
+function meshSlidingRowGroups(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined,
+  catalog?: MaterialCatalog
+): PaneBox[][] {
+  const meshBoxes: PaneBox[] = [];
+  for (const box of boxes) {
+    const cfg = normalizePaneConfig(panes?.[box.id]);
+    if (!cfg.mesh) continue;
+    const kind = resolvePaneMeshKind(cfg, box.opening, catalog);
+    if (!meshCategoryCalcProfile(kind, catalog)) continue;
+    meshBoxes.push(box);
+  }
+
+  meshBoxes.sort((a, b) => a.y - b.y || a.x - b.x);
+  const rows: PaneBox[][] = [];
+  for (const box of meshBoxes) {
+    const row = rows.find(
+      (r) => Math.abs(r[0]!.y - box.y) < 2 && Math.abs(r[0]!.h - box.h) < 2
+    );
+    if (row) row.push(box);
+    else rows.push([box]);
+  }
+  return rows.map((r) => r.sort((a, b) => a.x - b.x));
+}
+
+/** تقابل ٤ ضلفة جرار — قطعة واحدة بارتفاع الضلفة لكل صف فيه ٤+ ضلف */
+function fourLeafMeetingStats(boxes: PaneBox[]): {
+  qty: number;
+  lengthMm: number;
+} {
+  let qty = 0;
+  let lengthMm = 0;
+  for (const row of slidingRowGroups(boxes)) {
+    if (row.length < 4) continue;
+    qty += 1;
+    lengthMm += row[0]!.h;
+  }
+  return { qty, lengthMm };
+}
+
+/** تقابل سلك جرار — ضلفتين سلك في نفس الفتحة */
+function meshMeetingStats(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined,
+  catalog?: MaterialCatalog
+): { qty: number; lengthMm: number } {
+  let qty = 0;
+  let lengthMm = 0;
+  for (const row of meshSlidingRowGroups(boxes, panes, catalog)) {
+    if (row.length < 2) continue;
+    qty += 1;
+    lengthMm += row[0]!.h;
+  }
+  return { qty, lengthMm };
+}
+
 /** محيط قطاع الضلفة لكل ضلفة متحركة */
 function sashProfileMm(
   boxes: PaneBox[],
@@ -872,11 +964,17 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const beadMm = beadTotalsMm(boxes, panes, item);
   const glassAreaSqm = totalGlassAreaSqm(boxes, panes);
   const meshAreaSqm = totalMeshAreaSqm(boxes, panes);
-  const slidingMesh = slidingMeshSashStats(boxes, panes);
+  const cat =
+    typeof window !== "undefined" ? loadMaterialCatalog() : undefined;
+  const slidingMesh = slidingMeshSashStats(boxes, panes, cat);
   const meshSlidingProfileM = roundM(mmToM(slidingMesh.profileMm));
   const meshSlidingSashCount = slidingMesh.sashCount;
   const meshSlidingWheelQty = meshSlidingSashCount * MESH_SLIDING_WHEELS_PER_SASH;
   const meshPushHandleQty = meshSlidingSashCount * MESH_PUSH_HANDLE_PER_SASH;
+  const fourLeafMeeting = fourLeafMeetingStats(boxes);
+  const meshMeeting = meshMeetingStats(boxes, panes, cat);
+  const fourLeafMeetingM = roundM(mmToM(fourLeafMeeting.lengthMm));
+  const meshMeetingM = roundM(mmToM(meshMeeting.lengthMm));
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
@@ -924,6 +1022,10 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     meshSlidingSashCount,
     meshSlidingWheelQty,
     meshPushHandleQty,
+    fourLeafMeetingQty: fourLeafMeeting.qty,
+    fourLeafMeetingM,
+    meshMeetingQty: meshMeeting.qty,
+    meshMeetingM,
     frameTotalM,
     mullionTotalM,
     isMixedFrame,
@@ -962,6 +1064,10 @@ export function scaleMaterials(
     meshSlidingSashCount: m.meshSlidingSashCount * q,
     meshSlidingWheelQty: m.meshSlidingWheelQty * q,
     meshPushHandleQty: m.meshPushHandleQty * q,
+    fourLeafMeetingQty: m.fourLeafMeetingQty * q,
+    fourLeafMeetingM: roundM(m.fourLeafMeetingM * q),
+    meshMeetingQty: m.meshMeetingQty * q,
+    meshMeetingM: roundM(m.meshMeetingM * q),
     frameTotalM: roundM(m.frameTotalM * q),
     mullionTotalM: roundM(m.mullionTotalM * q),
   };

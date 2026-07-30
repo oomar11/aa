@@ -189,6 +189,26 @@ export function MaterialsBar({
       accent: materials.meshPushHandleQty > 0,
     },
     {
+      key: "four-leaf-meeting",
+      label: "تقابل ٤ ضلفة",
+      value:
+        materials.fourLeafMeetingQty > 0
+          ? `${formatCount(materials.fourLeafMeetingQty)} · ${formatMeters(materials.fourLeafMeetingM)}`
+          : formatMeters(materials.fourLeafMeetingM),
+      hint: materials.fourLeafMeetingQty > 0 ? "قطاع" : undefined,
+      accent: materials.fourLeafMeetingQty > 0,
+    },
+    {
+      key: "mesh-meeting",
+      label: "تقابل سلك جرار",
+      value:
+        materials.meshMeetingQty > 0
+          ? `${formatCount(materials.meshMeetingQty)} · ${formatMeters(materials.meshMeetingM)}`
+          : formatMeters(materials.meshMeetingM),
+      hint: materials.meshMeetingQty > 0 ? "قطاع" : undefined,
+      accent: materials.meshMeetingQty > 0,
+    },
+    {
       key: "mullion",
       label: "سوقاس",
       value: formatMeters(materials.mullionTotalM),
@@ -567,9 +587,7 @@ function AccessoriesBreakdownPanel({
     breakdown.trackQty > 0 ||
     breakdown.rollerQty > 0 ||
     breakdown.brushLengthM > 0.0005 ||
-    breakdown.slidingEspagnolettes.length > 0 ||
-    breakdown.fourLeafMeetingQty > 0 ||
-    breakdown.meshMeetingQty > 0;
+    breakdown.slidingEspagnolettes.length > 0;
 
   return (
     <div className="border-t border-border bg-background/40 px-3 py-2.5">
@@ -714,20 +732,6 @@ function AccessoriesBreakdownPanel({
                 {formatLockPiecesSummary(breakdown.slidingLockPieces)}
                 {accessoryBrandTag(breakdown.brandLabels, "sliding-lock")}
               </p>
-              {breakdown.fourLeafMeetingQty > 0 ? (
-                <p>
-                  تقابل ٤ ضلفة: {formatCount(breakdown.fourLeafMeetingQty)} ·{" "}
-                  {formatMeters(breakdown.fourLeafMeetingLengthM)}
-                  {accessoryBrandTag(breakdown.brandLabels, "four-leaf-meeting")}
-                </p>
-              ) : null}
-              {breakdown.meshMeetingQty > 0 ? (
-                <p>
-                  تقابل سلك جرار: {formatCount(breakdown.meshMeetingQty)} ·{" "}
-                  {formatMeters(breakdown.meshMeetingLengthM)}
-                  {accessoryBrandTag(breakdown.brandLabels, "mesh-meeting")}
-                </p>
-              ) : null}
             </div>
           ) : null}
         </div>

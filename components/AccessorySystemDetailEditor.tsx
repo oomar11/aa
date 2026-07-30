@@ -519,29 +519,6 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
           onAdd={() => addLockPiece("sliding")}
           onRemove={(id) => removeLockPiece("sliding", id)}
         />
-
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={details.fourLeafMeetingEnabled}
-            onChange={(e) =>
-              patchDetails({ fourLeafMeetingEnabled: e.target.checked })
-            }
-            className="h-4 w-4 accent-[var(--primary)]"
-          />
-          تقابل ٤ ضلفة (قطعة واحدة بارتفاع الضلفة)
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={details.meshSlidingMeetingEnabled}
-            onChange={(e) =>
-              patchDetails({ meshSlidingMeetingEnabled: e.target.checked })
-            }
-            className="h-4 w-4 accent-[var(--primary)]"
-          />
-          تقابل سلك جرار (ضلفتين في نفس الفتحة)
-        </label>
       </Section>
 
       <p className="px-1 pb-2 text-center text-[11px] leading-relaxed text-muted">

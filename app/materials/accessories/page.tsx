@@ -29,7 +29,7 @@ export default function AccessoriesMaterialsPage() {
               براندات الاكسسوار
             </p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-              مفصلات · سبلونة · سكاك · تراك · عجل · فرش · تقابل — لكل فئة
+              مفصلات · سبلونة · سكاك · تراك · عجل · فرش — لكل فئة
             </p>
           </div>
           <span
