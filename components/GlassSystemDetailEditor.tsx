@@ -9,19 +9,14 @@ import {
 } from "react";
 import {
   GLASS_PANE_KINDS,
-  defaultGlassDetails,
   defaultGlassPane,
   findSystem,
-  glassCompositionLabel,
-  glassGlazingCostPerSqm,
+  getGlassBottlePrice,
   glassPaneKindLabel,
-  glassTotalThicknessMm,
   loadMaterialCatalog,
   saveMaterialCatalog,
   upsertSystem,
-  type GlassGlazing,
   type GlassPaneKind,
-  type GlassPaneSpec,
   type GlassSystemDetails,
   type MaterialCatalog,
   type MaterialSystem,
@@ -36,9 +31,9 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
   const [system, setSystem] = useState<MaterialSystem | null>(null);
   const [systemName, setSystemName] = useState("");
   const [systemNotes, setSystemNotes] = useState("");
-  const [glass, setGlass] = useState<GlassSystemDetails>(() =>
-    defaultGlassDetails("double")
-  );
+  const [kind, setKind] = useState<GlassPaneKind>("clear");
+  const [thicknessMm, setThicknessMm] = useState(4);
+  const [pricePerSqm, setPricePerSqm] = useState<number | "">("");
   const [flash, setFlash] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
 
@@ -59,17 +54,34 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
       setSystem(found);
       setSystemName(found.name);
       setSystemNotes(found.notes ?? "");
-      setGlass(found.glass ?? defaultGlassDetails("double"));
+      const pane = found.glass?.pane1 ?? defaultGlassPane();
+      setKind(pane.kind);
+      setThicknessMm(pane.thicknessMm);
+      setPricePerSqm(getGlassBottlePrice(found) || "");
     });
   }, [systemId]);
 
-  function persist(nextGlass: GlassSystemDetails, name = systemName, notes = systemNotes) {
+  function buildGlass(): GlassSystemDetails {
+    return {
+      glazing: "single",
+      pane1: defaultGlassPane({
+        label: systemName.trim() || system?.name || "زجاجة",
+        thicknessMm,
+        kind,
+      }),
+      georgian: false,
+      pane1PricePerSqm:
+        pricePerSqm === "" ? undefined : Math.max(0, Number(pricePerSqm) || 0),
+    };
+  }
+
+  function persist() {
     if (!catalog || !system) return;
     const nextSystem: MaterialSystem = {
       ...system,
-      name: name.trim() || system.name,
-      notes: notes.trim() || undefined,
-      glass: nextGlass,
+      name: systemName.trim() || system.name,
+      notes: systemNotes.trim() || undefined,
+      glass: buildGlass(),
     };
     const saved = saveMaterialCatalog(
       upsertSystem(catalog, "glass", nextSystem)
@@ -80,81 +92,20 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
       setSystem(refreshed);
       setSystemName(refreshed.name);
       setSystemNotes(refreshed.notes ?? "");
-      setGlass(refreshed.glass ?? defaultGlassDetails("double"));
     }
   }
 
   function saveAll(e: FormEvent) {
     e.preventDefault();
-    const next: GlassSystemDetails =
-      glass.glazing === "single"
-        ? {
-            glazing: "single",
-            pane1: glass.pane1,
-            georgian: false,
-            pane1PricePerSqm: glass.pane1PricePerSqm,
-            georgianCostPerSqm: glass.georgianCostPerSqm,
-          }
-        : {
-            glazing: "double",
-            pane1: glass.pane1,
-            pane2: glass.pane2 ?? defaultGlassPane({ thicknessMm: 4 }),
-            spacerMm: glass.spacerMm ?? 6,
-            georgian: glass.georgian,
-            georgianNote: glass.georgian
-              ? glass.georgianNote?.trim() || undefined
-              : undefined,
-            pane1PricePerSqm: glass.pane1PricePerSqm,
-            pane2PricePerSqm: glass.pane2PricePerSqm,
-            doublingCostPerSqm: glass.doublingCostPerSqm,
-            georgianCostPerSqm: glass.georgianCostPerSqm,
-          };
-    setGlass(next);
-    persist(next);
-    showFlash("تم حفظ تفاصيل الزجاج");
-  }
-
-  function setGlazing(glazing: GlassGlazing) {
-    if (glazing === "single") {
-      setGlass({
-        glazing: "single",
-        pane1: glass.pane1,
-        georgian: false,
-        pane1PricePerSqm: glass.pane1PricePerSqm,
-        georgianCostPerSqm: glass.georgianCostPerSqm,
-      });
-    } else {
-      setGlass({
-        glazing: "double",
-        pane1: glass.pane1,
-        pane2: glass.pane2 ?? defaultGlassPane({ thicknessMm: 4 }),
-        spacerMm: glass.spacerMm ?? 6,
-        georgian: glass.georgian,
-        georgianNote: glass.georgianNote,
-        pane1PricePerSqm: glass.pane1PricePerSqm,
-        pane2PricePerSqm: glass.pane2PricePerSqm,
-        doublingCostPerSqm: glass.doublingCostPerSqm,
-        georgianCostPerSqm: glass.georgianCostPerSqm,
-      });
-    }
-  }
-
-  function updatePane1(patch: Partial<GlassPaneSpec>) {
-    setGlass((g) => ({ ...g, pane1: { ...g.pane1, ...patch } }));
-  }
-
-  function updatePane2(patch: Partial<GlassPaneSpec>) {
-    setGlass((g) => ({
-      ...g,
-      pane2: { ...(g.pane2 ?? defaultGlassPane()), ...patch },
-    }));
+    persist();
+    showFlash("تم حفظ الزجاجة");
   }
 
   if (missing) {
     return (
       <div className="space-y-3">
         <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">
-          النظام مش موجود
+          الزجاجة مش موجودة
         </p>
         <ScreenBack href="/materials/glass">رجوع للزجاج</ScreenBack>
       </div>
@@ -169,14 +120,12 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
     );
   }
 
-  const isDouble = glass.glazing === "double";
-
   return (
     <div className="flex flex-col gap-3">
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
         <p className="mt-0.5 text-xs text-muted">
-          مفرد أو دبل · الزجاجة الأولى والثانية · جورجيا
+          زجاجة واحدة — السعر بالمتر المربع
         </p>
       </div>
 
@@ -191,12 +140,12 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
 
       <form onSubmit={saveAll} className="space-y-3">
         <section className="space-y-3 rounded-2xl border border-border bg-card p-3">
-          <h3 className="text-xs font-bold text-foreground">بيانات النظام</h3>
+          <h3 className="text-xs font-bold text-foreground">بيانات الزجاجة</h3>
           <input
             type="text"
             value={systemName}
             onChange={(e) => setSystemName(e.target.value)}
-            placeholder="اسم نظام الزجاج"
+            placeholder="اسم الزجاجة (مثلاً: مصنفر 4 مم)"
             required
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
@@ -209,258 +158,73 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
           />
         </section>
 
-        <section className="space-y-3 rounded-2xl border border-border bg-card p-3">
-          <h3 className="text-xs font-bold text-foreground">نوع التركيب</h3>
+        <section className="space-y-2.5 rounded-2xl border border-border bg-card p-3">
+          <h3 className="text-xs font-bold text-foreground">المواصفات</h3>
           <div className="grid grid-cols-2 gap-2">
-            {(
-              [
-                { id: "single", label: "مفرد" },
-                { id: "double", label: "دبل" },
-              ] as const
-            ).map((opt) => {
-              const active = glass.glazing === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setGlazing(opt.id)}
-                  className={`h-11 rounded-xl border text-sm font-semibold transition-colors ${
-                    active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-foreground"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
+            <label className="block text-[11px] text-muted">
+              النوع
+              <select
+                value={kind}
+                onChange={(e) => setKind(e.target.value as GlassPaneKind)}
+                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              >
+                {GLASS_PANE_KINDS.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[11px] text-muted">
+              السمك (مم)
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={thicknessMm}
+                onChange={(e) =>
+                  setThicknessMm(Math.max(1, Number(e.target.value) || 1))
+                }
+                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              />
+            </label>
           </div>
         </section>
 
-        <PaneEditor
-          title={isDouble ? "الزجاجة الأولى" : "الزجاجة"}
-          subtitle={isDouble ? "الخارجية غالباً" : undefined}
-          pane={glass.pane1}
-          onChange={updatePane1}
-        />
-
-        {isDouble ? (
-          <>
-            <section className="space-y-2 rounded-2xl border border-border bg-card p-3">
-              <h3 className="text-xs font-bold text-foreground">
-                الفاصل الهوائي
-              </h3>
-              <label className="block text-[11px] text-muted">
-                سمك الفاصل (مم)
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={glass.spacerMm ?? 6}
-                  onChange={(e) =>
-                    setGlass((g) => ({
-                      ...g,
-                      spacerMm: Math.max(0, Number(e.target.value) || 0),
-                    }))
-                  }
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-                />
-              </label>
-            </section>
-
-            <PaneEditor
-              title="الزجاجة الثانية"
-              subtitle="الداخلية غالباً"
-              pane={glass.pane2 ?? defaultGlassPane()}
-              onChange={updatePane2}
-            />
-
-            <section className="space-y-3 rounded-2xl border border-border bg-card p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-right">
-                  <h3 className="text-xs font-bold text-foreground">جورجيا</h3>
-                  <p className="mt-0.5 text-[11px] text-muted">
-                    بارك زخرفي بين الزجاجتين
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={glass.georgian}
-                  onClick={() =>
-                    setGlass((g) => ({ ...g, georgian: !g.georgian }))
-                  }
-                  className={`relative h-8 w-14 rounded-full transition-colors ${
-                    glass.georgian ? "bg-primary" : "bg-border"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${
-                      glass.georgian ? "right-1" : "right-7"
-                    }`}
-                  />
-                </button>
-              </div>
-              {glass.georgian ? (
-                <input
-                  type="text"
-                  value={glass.georgianNote ?? ""}
-                  onChange={(e) =>
-                    setGlass((g) => ({ ...g, georgianNote: e.target.value }))
-                  }
-                  placeholder="وصف الجورجيا (لون / شكل)"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-                />
-              ) : null}
-            </section>
-          </>
-        ) : null}
-
-        {/* ─── الأسعار ──────────────────────────────── */}
         <section className="space-y-3 rounded-2xl border border-border bg-card p-3">
           <div>
-            <h3 className="text-xs font-bold text-foreground">الأسعار</h3>
+            <h3 className="text-xs font-bold text-foreground">السعر</h3>
             <p className="mt-0.5 text-[11px] text-muted">
-              أدخل السعر بالجنيه لكل متر مربع — اتركه فاضي لو مش مهم دلوقتي
+              سعر المتر المربع بالجنيه — بيتحسب لكل ضلفة تختار فيها الزجاجة دي
             </p>
           </div>
-
           <label className="block text-[11px] text-muted">
-            سعر م² الزجاجة {isDouble ? "الأولى" : ""}
+            سعر م²
             <input
               type="number"
               min={0}
               step={0.01}
-              value={glass.pane1PricePerSqm ?? ""}
+              value={pricePerSqm}
               onChange={(e) =>
-                setGlass((g) => ({
-                  ...g,
-                  pane1PricePerSqm:
-                    e.target.value === "" ? undefined : Math.max(0, Number(e.target.value) || 0),
-                }))
+                setPricePerSqm(
+                  e.target.value === "" ? "" : Math.max(0, Number(e.target.value) || 0)
+                )
               }
               placeholder="0.00"
               className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
             />
           </label>
-
-          {isDouble ? (
-            <>
-              <label className="block text-[11px] text-muted">
-                سعر م² الزجاجة الثانية
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={glass.pane2PricePerSqm ?? ""}
-                  onChange={(e) =>
-                    setGlass((g) => ({
-                      ...g,
-                      pane2PricePerSqm:
-                        e.target.value === "" ? undefined : Math.max(0, Number(e.target.value) || 0),
-                    }))
-                  }
-                  placeholder="0.00"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-                />
-              </label>
-
-              <label className="block text-[11px] text-muted">
-                سعر م² التدبيل (تركيب الفاصل الهوائي)
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={glass.doublingCostPerSqm ?? ""}
-                  onChange={(e) =>
-                    setGlass((g) => ({
-                      ...g,
-                      doublingCostPerSqm:
-                        e.target.value === "" ? undefined : Math.max(0, Number(e.target.value) || 0),
-                    }))
-                  }
-                  placeholder="0.00"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-                />
-              </label>
-            </>
-          ) : null}
-
-          <label className="block text-[11px] text-muted">
-            سعر م² الجورجيا
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              value={glass.georgianCostPerSqm ?? ""}
-              onChange={(e) =>
-                setGlass((g) => ({
-                  ...g,
-                  georgianCostPerSqm:
-                    e.target.value === "" ? undefined : Math.max(0, Number(e.target.value) || 0),
-                }))
-              }
-              placeholder="0.00"
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-            />
-          </label>
-
-          {(glass.pane1PricePerSqm ?? 0) > 0 ? (
-            <div className="rounded-xl bg-primary-soft px-3 py-2 text-[11px] text-primary">
-              <p className="font-semibold">ملخص التكلفة لكل م²:</p>
-              <p className="mt-0.5">
-                {glassGlazingCostPerSqm(
-                  isDouble
-                    ? { ...glass, pane2: glass.pane2 ?? defaultGlassPane(), spacerMm: glass.spacerMm ?? 6 }
-                    : { glazing: "single", pane1: glass.pane1, georgian: false, pane1PricePerSqm: glass.pane1PricePerSqm, georgianCostPerSqm: glass.georgianCostPerSqm }
-                ).toFixed(2)}{" "}
-                ج.م
-                {glass.georgian
-                  ? ` (شاملاً جورجيا ${(glass.georgianCostPerSqm ?? 0).toFixed(2)} ج.م)`
-                  : ""}
-              </p>
-            </div>
-          ) : null}
         </section>
 
         <section className="rounded-2xl border border-border bg-background p-3 text-sm">
           <p className="text-xs font-bold text-primary">الملخص</p>
           <p className="mt-1 text-foreground">
-            {glassCompositionLabel(
-              isDouble
-                ? glass
-                : { glazing: "single", pane1: glass.pane1, georgian: false }
-            )}
+            {systemName || system.name} — {glassPaneKindLabel(kind)} {thicknessMm} مم
           </p>
-          <p className="mt-1 text-xs text-muted">
-            السمك الإجمالي: {glassTotalThicknessMm(
-              isDouble
-                ? {
-                    ...glass,
-                    pane2: glass.pane2 ?? defaultGlassPane(),
-                    spacerMm: glass.spacerMm ?? 6,
-                  }
-                : { glazing: "single", pane1: glass.pane1, georgian: false }
-            )}{" "}
-            مم
-            {isDouble && glass.georgian
-              ? ` · جورجيا${glass.georgianNote ? `: ${glass.georgianNote}` : ""}`
-              : ""}
-          </p>
-          {isDouble ? (
-            <div className="mt-2 space-y-0.5 text-[11px] text-muted">
-              <p>
-                الأولى: {glass.pane1.label || glassPaneKindLabel(glass.pane1.kind)}{" "}
-                — {glass.pane1.thicknessMm} مم
-              </p>
-              <p>فاصل: {glass.spacerMm ?? 6} مم</p>
-              <p>
-                الثانية:{" "}
-                {(glass.pane2 ?? defaultGlassPane()).label ||
-                  glassPaneKindLabel((glass.pane2 ?? defaultGlassPane()).kind)}{" "}
-                — {(glass.pane2 ?? defaultGlassPane()).thicknessMm} مم
-              </p>
-            </div>
+          {pricePerSqm !== "" && Number(pricePerSqm) > 0 ? (
+            <p className="mt-1 text-xs text-muted">
+              {Number(pricePerSqm).toFixed(2)} ج.م / م²
+            </p>
           ) : null}
         </section>
 
@@ -472,68 +236,5 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
         </button>
       </form>
     </div>
-  );
-}
-
-function PaneEditor({
-  title,
-  subtitle,
-  pane,
-  onChange,
-}: {
-  title: string;
-  subtitle?: string;
-  pane: GlassPaneSpec;
-  onChange: (patch: Partial<GlassPaneSpec>) => void;
-}) {
-  return (
-    <section className="space-y-2.5 rounded-2xl border border-border bg-card p-3">
-      <div>
-        <h3 className="text-xs font-bold text-foreground">{title}</h3>
-        {subtitle ? (
-          <p className="mt-0.5 text-[11px] text-muted">{subtitle}</p>
-        ) : null}
-      </div>
-      <input
-        type="text"
-        value={pane.label}
-        onChange={(e) => onChange({ label: e.target.value })}
-        placeholder="اسم / وصف الزجاجة"
-        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-      />
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block text-[11px] text-muted">
-          النوع
-          <select
-            value={pane.kind}
-            onChange={(e) =>
-              onChange({ kind: e.target.value as GlassPaneKind })
-            }
-            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-          >
-            {GLASS_PANE_KINDS.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-[11px] text-muted">
-          السمك (مم)
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={pane.thicknessMm}
-            onChange={(e) =>
-              onChange({
-                thicknessMm: Math.max(1, Number(e.target.value) || 1),
-              })
-            }
-            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-          />
-        </label>
-      </div>
-    </section>
   );
 }

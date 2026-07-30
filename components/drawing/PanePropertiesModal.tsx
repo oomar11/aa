@@ -10,7 +10,7 @@ import {
   type PaneOpening,
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
-import type { GlassGlazing } from "@/lib/material-systems";
+import { glassBottleOptions } from "@/lib/material-systems";
 
 type Props = {
   open: boolean;
@@ -136,6 +136,14 @@ export function PanePropertiesModal({
 }: Props) {
   const [draft, setDraft] = useState<PaneConfig>(defaultPaneConfig());
   const [expandedExtra, setExpandedExtra] = useState<ExtraKey | null>(null);
+  const [bottleOpts, setBottleOpts] = useState<
+    { id: string; label: string; pricePerSqm: number }[]
+  >([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setBottleOpts(glassBottleOptions());
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -187,8 +195,8 @@ export function PanePropertiesModal({
     if (key === "sandwichPanels") return Boolean(draft.sandwichPanels);
     if (key === "mesh") return Boolean(draft.mesh);
     if (key === "isDoor") return Boolean(draft.isDoor);
-    // glassType: "on" if the pane has an explicit glass override
-    return draft.glassGlazing !== undefined;
+    // glassType: "on" if the pane has a bottle selected
+    return Boolean(draft.glassPane1Id);
   }
 
   function setFlag(key: ExtraKey, value: boolean) {
@@ -212,12 +220,11 @@ export function PanePropertiesModal({
       }
       if (key === "glassType") {
         if (!value) {
-          // reset overrides when turning off
-          next.glassGlazing = undefined;
+          next.glassPane1Id = undefined;
+          next.glassPane2Id = undefined;
           next.glassGeorgian = undefined;
-        } else if (d.glassGlazing === undefined) {
-          // default to double when first enabling
-          next.glassGlazing = "double";
+        } else if (!d.glassPane1Id && bottleOpts.length > 0) {
+          next.glassPane1Id = bottleOpts[0]!.id;
         }
       }
       return next;
@@ -401,62 +408,117 @@ export function PanePropertiesModal({
                 <div className="mx-auto w-full max-w-sm space-y-3">
                   <div className="rounded-xl border border-border bg-card p-3 space-y-3">
                     <p className="text-[12px] leading-relaxed text-muted">
-                      اختار نوع الزجاج لهذه الضلفة. لو ماختارتش، هيتطبق إعداد نظام الزجاج.
+                      اختار الزجاجة لهذه الضلفة. زجاجة واحدة = مفرد بالمتر. لو
+                      اخترت زجاجة تانية يبقى دبل + تدبيل.
                     </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDraft((d) => ({
-                            ...d,
-                            glassGlazing: undefined,
-                            glassGeorgian: undefined,
-                          }))
-                        }
-                        className={`rounded-xl border px-2 py-3 text-[12px] font-semibold transition-colors ${
-                          draft.glassGlazing === undefined
-                            ? "border-primary bg-primary-soft text-primary"
-                            : "border-border bg-background text-foreground"
-                        }`}
-                      >
-                        افتراضي
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDraft((d) => ({
-                            ...d,
-                            glassGlazing: "single" as GlassGlazing,
-                            glassGeorgian: undefined,
-                          }))
-                        }
-                        className={`rounded-xl border px-2 py-3 text-[12px] font-semibold transition-colors ${
-                          draft.glassGlazing === "single"
-                            ? "border-primary bg-primary-soft text-primary"
-                            : "border-border bg-background text-foreground"
-                        }`}
-                      >
-                        مفرد
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDraft((d) => ({
-                            ...d,
-                            glassGlazing: "double" as GlassGlazing,
-                          }))
-                        }
-                        className={`rounded-xl border px-2 py-3 text-[12px] font-semibold transition-colors ${
-                          draft.glassGlazing === "double"
-                            ? "border-primary bg-primary-soft text-primary"
-                            : "border-border bg-background text-foreground"
-                        }`}
-                      >
-                        دبل
-                      </button>
+
+                    <div>
+                      <p className="mb-2 text-[11px] font-semibold text-foreground">
+                        الزجاجة الأولى
+                      </p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {bottleOpts.map((b) => {
+                          const active = draft.glassPane1Id === b.id;
+                          return (
+                            <button
+                              key={b.id}
+                              type="button"
+                              onClick={() =>
+                                setDraft((d) => ({
+                                  ...d,
+                                  glassPane1Id: b.id,
+                                }))
+                              }
+                              className={`rounded-xl border px-2 py-2.5 text-[11px] font-semibold transition-colors ${
+                                active
+                                  ? "border-primary bg-primary-soft text-primary"
+                                  : "border-border bg-background text-foreground"
+                              }`}
+                            >
+                              <span className="block truncate">{b.label}</span>
+                              {b.pricePerSqm > 0 ? (
+                                <span className="mt-0.5 block text-[9px] font-normal opacity-80">
+                                  {b.pricePerSqm} ج.م/م²
+                                </span>
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    {(draft.glassGlazing === "double" || draft.glassGlazing === undefined) && (
+                    {draft.glassPane1Id ? (
+                      <div>
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold text-foreground">
+                            الزجاجة الثانية (دبل)
+                          </p>
+                          {draft.glassPane2Id ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDraft((d) => ({
+                                  ...d,
+                                  glassPane2Id: undefined,
+                                  glassGeorgian: undefined,
+                                }))
+                              }
+                              className="text-[10px] font-semibold text-primary"
+                            >
+                              إزالة
+                            </button>
+                          ) : null}
+                        </div>
+                        {!draft.glassPane2Id ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDraft((d) => ({
+                                ...d,
+                                glassPane2Id:
+                                  bottleOpts.find((b) => b.id !== d.glassPane1Id)
+                                    ?.id ?? bottleOpts[0]?.id,
+                              }))
+                            }
+                            className="w-full rounded-xl border border-dashed border-primary/50 bg-primary-soft/30 px-3 py-2.5 text-[11px] font-semibold text-primary"
+                          >
+                            + إضافة زجاجة تانية (دبل)
+                          </button>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {bottleOpts.map((b) => {
+                              const active = draft.glassPane2Id === b.id;
+                              return (
+                                <button
+                                  key={b.id}
+                                  type="button"
+                                  onClick={() =>
+                                    setDraft((d) => ({
+                                      ...d,
+                                      glassPane2Id: b.id,
+                                    }))
+                                  }
+                                  className={`rounded-xl border px-2 py-2.5 text-[11px] font-semibold transition-colors ${
+                                    active
+                                      ? "border-primary bg-primary-soft text-primary"
+                                      : "border-border bg-background text-foreground"
+                                  }`}
+                                >
+                                  <span className="block truncate">{b.label}</span>
+                                  {b.pricePerSqm > 0 ? (
+                                    <span className="mt-0.5 block text-[9px] font-normal opacity-80">
+                                      {b.pricePerSqm} ج.م/م²
+                                    </span>
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {draft.glassPane2Id ? (
                       <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2.5">
                         <div>
                           <p className="text-[12px] font-semibold text-foreground">جورجيا</p>
@@ -483,7 +545,7 @@ export function PanePropertiesModal({
                           />
                         </button>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                   <button
                     type="button"
@@ -602,7 +664,7 @@ export function PanePropertiesModal({
               />
               <FlagChip
                 label="نوع الزجاج"
-                checked={draft.glassGlazing !== undefined}
+                checked={Boolean(draft.glassPane1Id)}
                 expanded={expandedExtra === "glassType"}
                 onToggle={() => toggleFlag("glassType")}
                 onOpenMenu={() => toggleExtraMenu("glassType")}

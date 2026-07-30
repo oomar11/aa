@@ -347,8 +347,7 @@ function GlassBreakdownPanel({ breakdown }: { breakdown: GlassBreakdown }) {
                 {i + 1}
               </span>
               <span className="px-2 py-1.5 text-foreground">
-                {line.glazing === "double" ? "دبل" : "مفرد"}
-                {line.georgian ? " · ج" : ""}
+                {line.label}
               </span>
               <span className="px-2 py-1.5 text-foreground">
                 {line.areaSqm.toFixed(2)}

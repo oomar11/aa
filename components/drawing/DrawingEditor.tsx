@@ -54,7 +54,6 @@ import { fromMm, toMm } from "@/lib/units";
 import type { LayoutNode } from "@/lib/window-layout";
 import { cloneLayout, ensurePaneIds, listPaneIds } from "@/lib/window-layout";
 import { getTemplateById } from "@/lib/window-templates";
-import { findSystem, loadMaterialCatalog } from "@/lib/material-systems";
 
 type Props = {
   customerId: string;
@@ -74,7 +73,6 @@ type HistorySnap = {
   discountId: string;
   systemId: string;
   accessoryId: string;
-  glassId: string;
   ironId: string;
   name: string;
   nameIsCustom: boolean;
@@ -95,7 +93,6 @@ function snapshot(item: DesignItem): HistorySnap {
     discountId: item.discountId ?? "none",
     systemId: item.systemId ?? "none",
     accessoryId: item.accessoryId ?? "none",
-    glassId: item.glassId ?? "none",
     ironId: item.ironId ?? "iron-std",
     name: item.name,
     nameIsCustom: Boolean(item.nameIsCustom),
@@ -116,7 +113,6 @@ function applySnap(item: DesignItem, snap: HistorySnap): DesignItem {
     discountId: snap.discountId,
     systemId: snap.systemId,
     accessoryId: snap.accessoryId,
-    glassId: snap.glassId,
     ironId: snap.ironId,
     name: snap.name,
     nameIsCustom: snap.nameIsCustom,
@@ -212,9 +208,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
 
   const glassBreakdown = useMemo((): GlassBreakdown | null => {
     if (!item) return null;
-    const catalog = loadMaterialCatalog();
-    const glassDetails = findSystem("glass", item.glassId, catalog)?.glass;
-    return calcGlassBreakdown(item, glassDetails);
+    return calcGlassBreakdown(item);
   }, [item]);
 
   const activeOpening = useMemo(() => {
@@ -285,7 +279,6 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       discountId: patch.discountId,
       systemId: patch.systemId,
       accessoryId: patch.accessoryId,
-      glassId: patch.glassId,
       ironId: patch.ironId,
       frameColor: patch.frameColor,
     });

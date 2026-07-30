@@ -1,4 +1,3 @@
-import type { GlassGlazing } from "@/lib/material-systems";
 import type { LayoutNode } from "@/lib/window-layout";
 import {
   cloneLayout,
@@ -71,9 +70,11 @@ export type PaneConfig = {
   mesh?: boolean;
   /** باب بدل شباك عادي */
   isDoor?: boolean;
-  /** تجاوز نوع الزجاج لهذه الضلفة: مفرد أو دبل */
-  glassGlazing?: GlassGlazing;
-  /** جورجيا لهذه الضلفة (يتجاوز إعداد النظام) */
+  /** الزجاجة الأولى — مفرد */
+  glassPane1Id?: string;
+  /** الزجاجة الثانية — لو موجودة يبقى دبل */
+  glassPane2Id?: string;
+  /** جورجيا — للدبل فقط */
   glassGeorgian?: boolean;
 };
 
@@ -176,8 +177,6 @@ export type DesignItem = {
   systemId?: string;
   /** نظام الاكسسوار */
   accessoryId?: string;
-  /** نوع الزجاج */
-  glassId?: string;
   /** نظام الحديد (غالباً ثابت/افتراضي) */
   ironId?: string;
 };
@@ -245,7 +244,6 @@ export function createItemFromTemplate(
     discountId: "none",
     systemId: "none",
     accessoryId: "none",
-    glassId: "none",
     /** الحديد ثابت غالباً — يُملأ بالافتراضي عند فتح الإعدادات إن لزم */
     ironId: "iron-std",
   };

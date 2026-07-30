@@ -9,9 +9,11 @@ import {
 import { gridLines } from "@/lib/pane-grid";
 import type { LayoutNode } from "@/lib/window-layout";
 import {
-  glassGlazingCostPerSqm,
-  glassSystemHasPricing,
-  type GlassSystemDetails,
+  calcPaneGlassCostPerSqm,
+  findGlassBottle,
+  loadMaterialCatalog,
+  paneGlassHasPricing,
+  type MaterialCatalog,
 } from "@/lib/material-systems";
 
 /** نوع الحلق حسب فتح الضلفة */
@@ -693,6 +695,8 @@ export type PaneGlassLine = {
   glazing: "single" | "double";
   /** جورجيا */
   georgian: boolean;
+  /** وصف الزجاج */
+  label: string;
   /** تكلفة متر مربع الزجاج لهذه الضلفة */
   costPerSqm: number;
   /** إجمالي تكلفة زجاج الضلفة */
@@ -712,14 +716,15 @@ export type GlassBreakdown = {
 
 /**
  * يحسب تكلفة الزجاج لكل ضلفة على حدة بناءً على:
- * — نظام الزجاج (أسعاره)
- * — إعداد كل ضلفة (glassGlazing / glassGeorgian)
+ * — الزجاجات المختارة لكل ضلفة
+ * — أسعار التدبيل والجورجيا العامة
  * — مساحة كل ضلفة المحسوبة من اللآيوت والأبعاد
  */
 export function calcGlassBreakdown(
   item: DesignItem,
-  glassDetails: GlassSystemDetails | undefined
+  catalog?: MaterialCatalog
 ): GlassBreakdown {
+  const cat = catalog ?? (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
   const empty: GlassBreakdown = {
     hasPricing: false,
     lines: [],
@@ -727,11 +732,9 @@ export function calcGlassBreakdown(
     totalCost: 0,
   };
 
-  if (!glassDetails || !glassSystemHasPricing(glassDetails)) return empty;
-
   const widthMm = Math.max(0, item.widthMm || 0);
   const heightMm = Math.max(0, item.heightMm || 0);
-  if (widthMm <= 0 || heightMm <= 0) return { ...empty, hasPricing: true };
+  if (widthMm <= 0 || heightMm <= 0) return empty;
 
   const layout: LayoutNode =
     item.layout ?? ({ type: "pane", id: "root" } as LayoutNode);
@@ -740,24 +743,44 @@ export function calcGlassBreakdown(
   const boxes: PaneBox[] = [];
   collectPaneBoxes(layout, 0, 0, widthMm, heightMm, panes, boxes);
 
-  const lines: PaneGlassLine[] = boxes.map((box) => {
+  const lines: PaneGlassLine[] = [];
+
+  for (const box of boxes) {
     const cfg = normalizePaneConfig(panes[box.id]);
-    const glazing = cfg.glassGlazing ?? glassDetails.glazing;
-    const georgian =
-      cfg.glassGeorgian !== undefined
-        ? cfg.glassGeorgian
-        : glassDetails.georgian;
-    const costPerSqm = glassGlazingCostPerSqm(glassDetails, glazing, georgian);
+    if (!cfg.glassPane1Id) continue;
+    if (!paneGlassHasPricing(cfg.glassPane1Id, cat)) continue;
+
+    const glazing: "single" | "double" = cfg.glassPane2Id ? "double" : "single";
+    const georgian = Boolean(cfg.glassGeorgian && cfg.glassPane2Id);
+    const costPerSqm = calcPaneGlassCostPerSqm(
+      cfg.glassPane1Id,
+      cfg.glassPane2Id,
+      georgian,
+      cat
+    );
+    const bottle1 = findGlassBottle(cfg.glassPane1Id, cat);
+    const bottle2 = cfg.glassPane2Id
+      ? findGlassBottle(cfg.glassPane2Id, cat)
+      : undefined;
+    let label = bottle1?.name ?? "زجاج";
+    if (bottle2) {
+      label = `${label} + ${bottle2.name}`;
+      if (georgian) label += " · جورجيا";
+    }
+
     const areaSqm = roundM((box.w * box.h) / 1_000_000);
-    return {
+    lines.push({
       paneId: box.id,
       areaSqm,
       glazing,
       georgian,
+      label,
       costPerSqm,
       totalCost: roundM(areaSqm * costPerSqm),
-    };
-  });
+    });
+  }
+
+  if (lines.length === 0) return empty;
 
   const totalUnitCost = roundM(lines.reduce((s, l) => s + l.totalCost, 0));
   const qty = Math.max(1, item.qty || 1);
