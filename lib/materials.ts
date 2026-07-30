@@ -16,11 +16,18 @@ import {
   defaultMeshTypeForKind,
   findGlassBottle,
   findMeshType,
+  findSystem,
+  getProfilePrice,
   loadMaterialCatalog,
   meshCategoryCalcProfile,
   meshKindLabel,
   paneGlassHasPricing,
+  PROFILE_PRICE_ITEMS,
+  profilePriceLabel,
+  profileSystemDisplayName,
+  profileSystemHasPricing,
   type MaterialCatalog,
+  type ProfilePriceKey,
 } from "@/lib/material-systems";
 
 /** نوع الحلق حسب فتح الضلفة */
@@ -1213,6 +1220,127 @@ export function calcMeshBreakdown(
     totalSlidingSashCount,
     totalWheelQty,
     totalHandleQty,
+    totalUnitCost,
+    totalCost: roundM(totalUnitCost * qty),
+  };
+}
+
+// ─── حساب تكلفة القطاعات من قائمة أسعار السيستم ───────────────
+
+export type ProfileCostLine = {
+  key: ProfilePriceKey;
+  label: string;
+  meters: number;
+  pricePerM: number;
+  totalCost: number;
+};
+
+export type ProfileCostBreakdown = {
+  hasPricing: boolean;
+  systemId: string;
+  systemLabel: string;
+  lines: ProfileCostLine[];
+  /** تكلفة القطعة الواحدة */
+  totalUnitCost: number;
+  /** إجمالي × الكمية */
+  totalCost: number;
+};
+
+function metersForProfilePriceKey(
+  key: ProfilePriceKey,
+  m: MaterialsBreakdown
+): number {
+  switch (key) {
+    case "frame-hinged":
+      return m.frameHingedM;
+    case "frame-sliding":
+      return m.frameSlidingM;
+    case "sash-hinged":
+      return m.sashHingedM;
+    case "sash-door":
+      return m.sashDoorM;
+    case "sash-sliding":
+      return m.sashSlidingM;
+    case "bead-single-hinged":
+      return m.beadSingleHingedM;
+    case "bead-single-sliding":
+      return m.beadSingleSlidingM;
+    case "bead-double-hinged":
+      return m.beadDoubleHingedM;
+    case "bead-double-sliding":
+      return m.beadDoubleSlidingM;
+    case "mullion":
+      return m.mullionTotalM;
+    case "coupling":
+      return m.couplingM;
+    case "knife":
+      return m.knifeM;
+    case "bouclier":
+      return m.bouclierM;
+    case "mesh-sliding-profile":
+      return m.meshSlidingProfileM;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * يحسب تكلفة القطاعات من قائمة أسعار السيستم المختار على البند
+ * × الأمتار المحسوبة من الرسم (حلق · ضلفة · باكتة · سوقاس…).
+ */
+export function calcProfileCostBreakdown(
+  item: DesignItem,
+  catalog?: MaterialCatalog
+): ProfileCostBreakdown {
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
+  const empty: ProfileCostBreakdown = {
+    hasPricing: false,
+    systemId: "",
+    systemLabel: "",
+    lines: [],
+    totalUnitCost: 0,
+    totalCost: 0,
+  };
+
+  const systemId = item.systemId;
+  if (!systemId || systemId === "none") return empty;
+
+  const system = findSystem("profiles", systemId, cat);
+  if (!system || !profileSystemHasPricing(system)) {
+    return {
+      ...empty,
+      systemId,
+      systemLabel: system ? profileSystemDisplayName(system) : systemId,
+    };
+  }
+
+  const unitM = calcItemMaterials(item);
+  const priceList = system.profile?.priceList;
+  const lines: ProfileCostLine[] = [];
+
+  for (const itemDef of PROFILE_PRICE_ITEMS) {
+    const m = metersForProfilePriceKey(itemDef.id, unitM);
+    const pricePerM = getProfilePrice(priceList, itemDef.id);
+    if (m < 0.0005 || pricePerM <= 0) continue;
+    lines.push({
+      key: itemDef.id,
+      label: profilePriceLabel(itemDef.id),
+      meters: roundM(m),
+      pricePerM,
+      totalCost: roundM(m * pricePerM),
+    });
+  }
+
+  const totalUnitCost = roundM(lines.reduce((s, l) => s + l.totalCost, 0));
+  const qty = Math.max(1, item.qty || 1);
+
+  return {
+    hasPricing: true,
+    systemId,
+    systemLabel: profileSystemDisplayName(system),
+    lines,
     totalUnitCost,
     totalCost: roundM(totalUnitCost * qty),
   };

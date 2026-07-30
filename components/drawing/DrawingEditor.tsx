@@ -38,7 +38,7 @@ import {
   type PaneOpening,
 } from "@/lib/design-items";
 import { withSuggestedName } from "@/lib/item-naming";
-import { calcGlassBreakdown, calcItemMaterials, calcMeshBreakdown, scaleMaterials, type GlassBreakdown, type MeshBreakdown } from "@/lib/materials";
+import { calcGlassBreakdown, calcItemMaterials, calcMeshBreakdown, calcProfileCostBreakdown, scaleMaterials, type GlassBreakdown, type MeshBreakdown, type ProfileCostBreakdown } from "@/lib/materials";
 import {
   equalizeSplitRatios,
   ratioFromMm,
@@ -223,6 +223,11 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   const glassBreakdown = useMemo((): GlassBreakdown | null => {
     if (!item) return null;
     return calcGlassBreakdown(item);
+  }, [item]);
+
+  const profileCostBreakdown = useMemo((): ProfileCostBreakdown | null => {
+    if (!item) return null;
+    return calcProfileCostBreakdown(item);
   }, [item]);
 
   const meshBreakdown = useMemo((): MeshBreakdown | null => {
@@ -497,6 +502,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
             glassBreakdown={glassBreakdown}
             meshBreakdown={meshBreakdown}
             accessoriesBreakdown={accessoriesBreakdown}
+            profileCostBreakdown={profileCostBreakdown}
             partLabel={item.name || "شباك"}
             widthMm={item.widthMm}
             heightMm={item.heightMm}

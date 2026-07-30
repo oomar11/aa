@@ -43,6 +43,53 @@ export function profileRoleLabel(role: ProfilePieceRole): string {
   return PROFILE_PIECE_ROLES.find((r) => r.id === role)?.label ?? role;
 }
 
+/**
+ * بنود قائمة أسعار نظام القطاعات (ج.م / متر طولي).
+ * لما تختار سيستم زي «بريمير سيتي» الأسعار دي بتطبق على حلق/ضلفة/باكتة/سوقاس…
+ */
+export type ProfilePriceKey =
+  | "frame-hinged"
+  | "frame-sliding"
+  | "sash-hinged"
+  | "sash-door"
+  | "sash-sliding"
+  | "bead-single-hinged"
+  | "bead-single-sliding"
+  | "bead-double-hinged"
+  | "bead-double-sliding"
+  | "mullion"
+  | "coupling"
+  | "knife"
+  | "bouclier"
+  | "mesh-sliding-profile";
+
+export const PROFILE_PRICE_ITEMS: {
+  id: ProfilePriceKey;
+  label: string;
+  group: "frame" | "sash" | "bead" | "other";
+}[] = [
+  { id: "frame-hinged", label: "حلق مفصلي", group: "frame" },
+  { id: "frame-sliding", label: "حلق جرار", group: "frame" },
+  { id: "sash-hinged", label: "ضلفة مفصلي", group: "sash" },
+  { id: "sash-door", label: "ضلفة باب", group: "sash" },
+  { id: "sash-sliding", label: "ضلفة جرار", group: "sash" },
+  { id: "bead-single-hinged", label: "باكتة سنجل مفصلي", group: "bead" },
+  { id: "bead-single-sliding", label: "باكتة سنجل جرار", group: "bead" },
+  { id: "bead-double-hinged", label: "باكتة دبل مفصلي", group: "bead" },
+  { id: "bead-double-sliding", label: "باكتة دبل جرار", group: "bead" },
+  { id: "mullion", label: "سوقاس", group: "other" },
+  { id: "coupling", label: "كوبلن", group: "other" },
+  { id: "knife", label: "سكينة", group: "other" },
+  { id: "bouclier", label: "بوكلير", group: "other" },
+  { id: "mesh-sliding-profile", label: "ضلفة سلك جرار", group: "other" },
+];
+
+export type ProfilePriceList = Partial<Record<ProfilePriceKey, number>>;
+
+export function profilePriceLabel(key: ProfilePriceKey): string {
+  return PROFILE_PRICE_ITEMS.find((i) => i.id === key)?.label ?? key;
+}
+
 /** عود / قطاع داخل النظام */
 export type ProfilePiece = {
   id: string;
@@ -74,6 +121,8 @@ export type ProfileDeductions = {
 export type ProfileSystemDetails = {
   pieces: ProfilePiece[];
   deductions: ProfileDeductions;
+  /** قائمة أسعار السيستم — ج.م لكل متر طولي */
+  priceList?: ProfilePriceList;
 };
 
 /** نوع الزجاجة الواحدة */
@@ -282,16 +331,29 @@ export type AccessorySystemDetails = {
 export type MaterialSystem = {
   id: string;
   name: string;
+  /**
+   * براند القطاع (للقطاعات فقط) — مثلاً «بريمير».
+   * الاسم الكامل المعروض: «بريمير سيتي» لما name = سيتي.
+   */
+  brand?: string;
   notes?: string;
   /** النظام الافتراضي (خصوصاً للحديد الثابت غالباً) */
   isDefault?: boolean;
-  /** تفاصيل نظام القطاعات: العيدان + التخصيمات */
+  /** تفاصيل نظام القطاعات: العيدان + التخصيمات + قائمة الأسعار */
   profile?: ProfileSystemDetails;
   /** تفاصيل نظام الزجاج: مفرد/دبل + جورجيا */
   glass?: GlassSystemDetails;
   /** تفاصيل نظام الاكسسوار: مفصلي · جرار · سبلونة · سكاك */
   accessory?: AccessorySystemDetails;
 };
+
+/** اسم العرض: براند + اسم السيستم (مثلاً بريمير سيتي) */
+export function profileSystemDisplayName(system: MaterialSystem): string {
+  const brand = system.brand?.trim();
+  const name = system.name.trim();
+  if (brand && name) return `${brand} ${name}`;
+  return name || brand || system.id;
+}
 
 /** أسعار التدبيل والجورجيا — عامة لكل الضلف */
 export type GlassRates = {
@@ -359,7 +421,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "profiles",
     label: "قطاعات",
-    description: "أنظمة البروفيل · العيدان · التخصيمات",
+    description: "براندات · سيستمات · قائمة أسعار · عيدان · تخصيمات",
     accent: "#E8956F",
     shadow: "rgba(232,149,111,0.35)",
   },
@@ -426,6 +488,31 @@ export function defaultDeductions(): ProfileDeductions {
   };
 }
 
+/** قائمة أسعار فارغة — كل البنود بدون سعر */
+export function emptyProfilePriceList(): ProfilePriceList {
+  return {};
+}
+
+/** قائمة أسعار نموذجية لسيستم سيتي (ج.م/م) — قابلة للتعديل */
+export function defaultCityPriceList(): ProfilePriceList {
+  return {
+    "frame-hinged": 95,
+    "frame-sliding": 110,
+    "sash-hinged": 105,
+    "sash-door": 115,
+    "sash-sliding": 100,
+    "bead-single-hinged": 28,
+    "bead-single-sliding": 28,
+    "bead-double-hinged": 32,
+    "bead-double-sliding": 32,
+    mullion: 100,
+    coupling: 120,
+    knife: 55,
+    bouclier: 90,
+    "mesh-sliding-profile": 85,
+  };
+}
+
 export function defaultProfilePieces(): ProfilePiece[] {
   return [
     {
@@ -436,10 +523,24 @@ export function defaultProfilePieces(): ProfilePiece[] {
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
     {
+      id: "piece-frame-s",
+      name: "حلق جرار",
+      role: "frame-sliding",
+      sectionWidthMm: 80,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
       id: "piece-sash-h",
       name: "ضلفة مفصلي",
       role: "sash-hinged",
       sectionWidthMm: 70,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-sash-s",
+      name: "ضلفة جرار",
+      role: "sash-sliding",
+      sectionWidthMm: 45,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
     {
@@ -450,8 +551,22 @@ export function defaultProfilePieces(): ProfilePiece[] {
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
     {
+      id: "piece-coupling",
+      name: "كوبلن",
+      role: "coupling",
+      sectionWidthMm: 60,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-knife",
+      name: "سكينة",
+      role: "knife",
+      sectionWidthMm: 30,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
       id: "piece-bead",
-      name: "بيادة زجاج",
+      name: "باكتة / بيادة زجاج",
       role: "bead",
       sectionWidthMm: 20,
       barLengthM: DEFAULT_BAR_LENGTH_M,
@@ -459,11 +574,36 @@ export function defaultProfilePieces(): ProfilePiece[] {
   ];
 }
 
-export function defaultProfileDetails(): ProfileSystemDetails {
+export function defaultProfileDetails(
+  priceList?: ProfilePriceList
+): ProfileSystemDetails {
   return {
     pieces: defaultProfilePieces(),
     deductions: defaultDeductions(),
+    priceList: priceList ?? emptyProfilePriceList(),
   };
+}
+
+export function countPricedProfileItems(list?: ProfilePriceList | null): number {
+  if (!list) return 0;
+  return PROFILE_PRICE_ITEMS.filter((item) => {
+    const v = list[item.id];
+    return typeof v === "number" && Number.isFinite(v) && v > 0;
+  }).length;
+}
+
+export function profileSystemHasPricing(
+  system: MaterialSystem | undefined | null
+): boolean {
+  return countPricedProfileItems(system?.profile?.priceList) > 0;
+}
+
+export function getProfilePrice(
+  list: ProfilePriceList | undefined | null,
+  key: ProfilePriceKey
+): number {
+  const v = list?.[key];
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0;
 }
 
 export function defaultGlassPane(
@@ -1082,6 +1222,153 @@ export function getDefaultCatalog(): MaterialCatalog {
   return {
     profiles: [
       withDefaultProfile({
+        id: "premier-city",
+        brand: "بريمير",
+        name: "سيتي",
+        notes: "نظام بريمير سيتي — قائمة أسعار السيتي للحلق والضلفة والباكتة والسوقاس",
+        isDefault: true,
+        profile: {
+          pieces: [
+            {
+              id: "city-fh",
+              name: "حلق مفصلي سيتي",
+              role: "frame-hinged",
+              sectionWidthMm: 60,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "city-fs",
+              name: "حلق جرار سيتي",
+              role: "frame-sliding",
+              sectionWidthMm: 80,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "city-sh",
+              name: "ضلفة مفصلي سيتي",
+              role: "sash-hinged",
+              sectionWidthMm: 70,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "city-ss",
+              name: "ضلفة جرار سيتي",
+              role: "sash-sliding",
+              sectionWidthMm: 45,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "city-m",
+              name: "سوقاس سيتي",
+              role: "mullion",
+              sectionWidthMm: 70,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "city-c",
+              name: "كوبلن سيتي",
+              role: "coupling",
+              sectionWidthMm: 60,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "city-k",
+              name: "سكينة سيتي",
+              role: "knife",
+              sectionWidthMm: 30,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "city-b",
+              name: "باكتة سيتي",
+              role: "bead",
+              sectionWidthMm: 20,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+          ],
+          deductions: {
+            frame: { width: "=W", height: "=H" },
+            sash: { width: "=FW-10", height: "=FH-10" },
+          },
+          priceList: defaultCityPriceList(),
+        },
+      }),
+      withDefaultProfile({
+        id: "premier-slide",
+        brand: "بريمير",
+        name: "سلايد",
+        notes: "نظام بريمير سلايد — جرار",
+        profile: {
+          pieces: [
+            {
+              id: "slide-fs",
+              name: "حلق جرار سلايد",
+              role: "frame-sliding",
+              sectionWidthMm: 85,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "slide-ss",
+              name: "ضلفة جرار سلايد",
+              role: "sash-sliding",
+              sectionWidthMm: 48,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "slide-k",
+              name: "سكينة سلايد",
+              role: "knife",
+              sectionWidthMm: 32,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "slide-b",
+              name: "باكتة سلايد",
+              role: "bead",
+              sectionWidthMm: 20,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+          ],
+          deductions: {
+            frame: { width: "=W", height: "=H" },
+            sash: { width: "=FW-40", height: "=FH-60" },
+          },
+          priceList: {
+            "frame-sliding": 118,
+            "sash-sliding": 108,
+            "bead-single-sliding": 30,
+            "bead-double-sliding": 34,
+            knife: 58,
+            mullion: 105,
+            "mesh-sliding-profile": 90,
+          },
+        },
+      }),
+      withDefaultProfile({
+        id: "rehau-euro",
+        brand: "ريهو",
+        name: "يورو",
+        notes: "نظام ريهو يورو",
+        profile: {
+          ...defaultProfileDetails({
+            "frame-hinged": 120,
+            "frame-sliding": 135,
+            "sash-hinged": 130,
+            "sash-door": 140,
+            "sash-sliding": 125,
+            "bead-single-hinged": 35,
+            "bead-single-sliding": 35,
+            "bead-double-hinged": 40,
+            "bead-double-sliding": 40,
+            mullion: 125,
+            coupling: 145,
+            knife: 65,
+            bouclier: 110,
+            "mesh-sliding-profile": 100,
+          }),
+        },
+      }),
+      withDefaultProfile({
         id: "pvc1",
         name: "نظام PVC مخصص 1",
         notes: "مفصلي قياسي",
@@ -1120,6 +1407,7 @@ export function getDefaultCatalog(): MaterialCatalog {
             frame: { width: "=W", height: "=H" },
             sash: { width: "=FW-10", height: "=FH-10" },
           },
+          priceList: emptyProfilePriceList(),
         },
       }),
       withDefaultProfile({
@@ -1161,26 +1449,12 @@ export function getDefaultCatalog(): MaterialCatalog {
             frame: { width: "=W", height: "=H" },
             sash: { width: "=FW-40", height: "=FH-60" },
           },
+          priceList: emptyProfilePriceList(),
         },
       }),
       withDefaultProfile({
         id: "pvc3",
         name: "نظام PVC مخصص 3",
-        profile: defaultProfileDetails(),
-      }),
-      withDefaultProfile({
-        id: "sysA",
-        name: "نظام PVC A",
-        profile: defaultProfileDetails(),
-      }),
-      withDefaultProfile({
-        id: "sysB",
-        name: "نظام PVC B",
-        profile: defaultProfileDetails(),
-      }),
-      withDefaultProfile({
-        id: "sysC",
-        name: "نظام PVC C",
         profile: defaultProfileDetails(),
       }),
     ],
@@ -1357,6 +1631,19 @@ function normalizeAxisFormulas(
   };
 }
 
+function normalizeProfilePriceList(raw: unknown): ProfilePriceList {
+  if (!raw || typeof raw !== "object") return emptyProfilePriceList();
+  const o = raw as Record<string, unknown>;
+  const out: ProfilePriceList = {};
+  for (const item of PROFILE_PRICE_ITEMS) {
+    const n = Number(o[item.id]);
+    if (Number.isFinite(n) && n >= 0) {
+      out[item.id] = n;
+    }
+  }
+  return out;
+}
+
 function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
   const fallback = defaultProfileDetails();
   if (!raw || typeof raw !== "object") return fallback;
@@ -1388,6 +1675,7 @@ function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
         "sash"
       ),
     },
+    priceList: normalizeProfilePriceList(d.priceList),
   };
 }
 
@@ -1752,9 +2040,11 @@ function normalizeSystem(
   const s = raw as Record<string, unknown>;
   if (typeof s.id !== "string" || typeof s.name !== "string") return null;
   if (!s.id.trim() || !s.name.trim()) return null;
+  const brandRaw = typeof s.brand === "string" ? s.brand.trim() : "";
   const base: MaterialSystem = {
     id: s.id.trim(),
     name: s.name.trim(),
+    brand: category === "profiles" && brandRaw ? brandRaw : undefined,
     notes: typeof s.notes === "string" ? s.notes : undefined,
     isDefault: Boolean(s.isDefault),
   };
@@ -1768,6 +2058,30 @@ function normalizeSystem(
     base.accessory = normalizeAccessoryDetails(s.accessory, accessoryBrands);
   }
   return base;
+}
+
+/** يضيف أنظمة البراندات الافتراضية (بريمير سيتي…) لو مش موجودة */
+function migrateProfileBrandSystems(systems: MaterialSystem[]): MaterialSystem[] {
+  const defaults = getDefaultCatalog().profiles;
+  const brandIds = new Set(["premier-city", "premier-slide", "rehau-euro"]);
+  const byId = new Map(systems.map((s) => [s.id, s]));
+  const out = [...systems];
+
+  for (const def of defaults) {
+    if (!brandIds.has(def.id) || byId.has(def.id)) continue;
+    out.push(def);
+    byId.set(def.id, def);
+  }
+
+  // لو مفيش افتراضي وموجود بريمير سيتي — خلّيه الافتراضي
+  if (!out.some((s) => s.isDefault) && byId.has("premier-city")) {
+    return out.map((s) => ({
+      ...s,
+      isDefault: s.id === "premier-city",
+    }));
+  }
+
+  return out;
 }
 
 function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
@@ -1825,6 +2139,10 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
 
       if (cat.id === "glass") {
         merged = migrateGlassSystems(merged);
+      }
+
+      if (cat.id === "profiles") {
+        merged = migrateProfileBrandSystems(merged);
       }
 
       next[cat.id] = merged;
@@ -2060,6 +2378,10 @@ export function upsertSystem(
     const merged: MaterialSystem = {
       ...prev,
       ...toSave,
+      brand:
+        category === "profiles"
+          ? toSave.brand?.trim() || undefined
+          : undefined,
       profile:
         category === "profiles"
           ? toSave.profile ?? prev.profile ?? defaultProfileDetails()
@@ -2138,10 +2460,18 @@ export function catalogOptionsFor(
   return [
     { id: "none", label: "تجاهل" },
     ...systems.map((s) => {
-      let label = s.isDefault ? `${s.name} (افتراضي)` : s.name;
+      let label =
+        category === "profiles"
+          ? profileSystemDisplayName(s)
+          : s.name;
+      if (s.isDefault) label = `${label} (افتراضي)`;
       if (category === "glass") {
         const price = getGlassBottlePrice(s);
         if (price > 0) label = `${label} — ${price} ج.م/م²`;
+      }
+      if (category === "profiles" && profileSystemHasPricing(s)) {
+        const n = countPricedProfileItems(s.profile?.priceList);
+        label = `${label} — قائمة أسعار (${n})`;
       }
       return { id: s.id, label };
     }),

@@ -11,15 +11,19 @@ import {
 import {
   DEFAULT_BAR_LENGTH_M,
   calcCutSizes,
+  countPricedProfileItems,
   defaultDeductions,
   defaultProfileDetails,
+  emptyProfilePriceList,
   findSystem,
   frameHeightFormula,
   frameWidthFormula,
   loadMaterialCatalog,
   newPieceId,
   PROFILE_PIECE_ROLES,
+  PROFILE_PRICE_ITEMS,
   profileRoleLabel,
+  profileSystemDisplayName,
   saveMaterialCatalog,
   sashHeightFormula,
   sashWidthFormula,
@@ -29,6 +33,8 @@ import {
   type ProfileDeductions,
   type ProfilePiece,
   type ProfilePieceRole,
+  type ProfilePriceKey,
+  type ProfilePriceList,
   type ProfileSystemDetails,
 } from "@/lib/material-systems";
 import {
@@ -86,10 +92,14 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   const [catalog, setCatalog] = useState<MaterialCatalog | null>(null);
   const [system, setSystem] = useState<MaterialSystem | null>(null);
   const [systemName, setSystemName] = useState("");
+  const [systemBrand, setSystemBrand] = useState("");
   const [systemNotes, setSystemNotes] = useState("");
   const [pieces, setPieces] = useState<ProfilePiece[]>([]);
   const [deductions, setDeductions] =
     useState<ProfileDeductions>(defaultDeductions);
+  const [priceList, setPriceList] = useState<ProfilePriceList>(
+    emptyProfilePriceList
+  );
   const [pieceDraft, setPieceDraft] = useState<PieceDraft | null>(null);
   const [previewW, setPreviewW] = useState("1200");
   const [previewH, setPreviewH] = useState("1400");
@@ -113,26 +123,33 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       const details = found.profile ?? defaultProfileDetails();
       setSystem(found);
       setSystemName(found.name);
+      setSystemBrand(found.brand ?? "");
       setSystemNotes(found.notes ?? "");
       setPieces(details.pieces);
       setDeductions(details.deductions);
+      setPriceList(details.priceList ?? emptyProfilePriceList());
     });
   }, [systemId]);
 
   function persistProfile(
     nextPieces: ProfilePiece[],
     nextDeductions: ProfileDeductions,
+    nextPrices: ProfilePriceList = priceList,
     name = systemName,
+    brand = systemBrand,
     notes = systemNotes
   ) {
     if (!catalog || !system) return;
     const profile: ProfileSystemDetails = {
       pieces: nextPieces,
       deductions: nextDeductions,
+      priceList: nextPrices,
     };
+    const brandTrim = brand.trim();
     const nextSystem: MaterialSystem = {
       ...system,
       name: name.trim() || system.name,
+      brand: brandTrim || undefined,
       notes: notes.trim() || undefined,
       profile,
     };
@@ -144,17 +161,38 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     if (refreshed) {
       setSystem(refreshed);
       setSystemName(refreshed.name);
+      setSystemBrand(refreshed.brand ?? "");
       setSystemNotes(refreshed.notes ?? "");
       const details = refreshed.profile ?? defaultProfileDetails();
       setPieces(details.pieces);
       setDeductions(details.deductions);
+      setPriceList(details.priceList ?? emptyProfilePriceList());
     }
   }
 
   function saveMeta(e: FormEvent) {
     e.preventDefault();
-    persistProfile(pieces, deductions);
+    persistProfile(pieces, deductions, priceList);
     showFlash("تم حفظ بيانات النظام");
+  }
+
+  function savePriceList(e: FormEvent) {
+    e.preventDefault();
+    persistProfile(pieces, deductions, priceList);
+    showFlash("تم حفظ قائمة الأسعار");
+  }
+
+  function setPrice(key: ProfilePriceKey, raw: string) {
+    const n = Number(raw);
+    setPriceList((prev) => {
+      const next = { ...prev };
+      if (!Number.isFinite(n) || raw.trim() === "") {
+        delete next[key];
+      } else {
+        next[key] = Math.max(0, n);
+      }
+      return next;
+    });
   }
 
   function saveDeductions(e: FormEvent) {
@@ -170,7 +208,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       },
     };
     setDeductions(normalized);
-    persistProfile(pieces, normalized);
+    persistProfile(pieces, normalized, priceList);
     showFlash("تم حفظ المعادلات");
   }
 
@@ -192,7 +230,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       ? pieces.map((p) => (p.id === parsed.id ? parsed : p))
       : [...pieces, parsed];
     setPieces(next);
-    persistProfile(next, deductions);
+    persistProfile(next, deductions, priceList);
     setPieceDraft(null);
     showFlash(exists ? "تم تعديل العود" : "تمت إضافة العود");
   }
@@ -201,7 +239,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     if (!window.confirm("حذف هذا العود؟")) return;
     const next = pieces.filter((p) => p.id !== id);
     setPieces(next);
-    persistProfile(next, deductions);
+    persistProfile(next, deductions, priceList);
     if (pieceDraft?.id === id) setPieceDraft(null);
     showFlash("تم الحذف");
   }
@@ -234,9 +272,11 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="px-1">
-        <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
+        <h2 className="text-lg font-bold text-foreground">
+          {profileSystemDisplayName(system)}
+        </h2>
         <p className="mt-0.5 text-xs text-muted">
-          العيدان · أطوال العود · تخصيمات الحلق والضلفة
+          البراند · العيدان · قائمة الأسعار · تخصيمات الحلق والضلفة
         </p>
       </div>
 
@@ -255,14 +295,42 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         className="space-y-3 rounded-2xl border border-border bg-card p-3"
       >
         <h3 className="text-xs font-bold text-foreground">بيانات النظام</h3>
-        <input
-          type="text"
-          value={systemName}
-          onChange={(e) => setSystemName(e.target.value)}
-          placeholder="اسم النظام"
-          required
-          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-        />
+        <p className="text-[11px] leading-relaxed text-muted">
+          مثال: براند <span className="font-semibold text-foreground">بريمير</span>{" "}
+          + سيستم <span className="font-semibold text-foreground">سيتي</span> ={" "}
+          <span className="font-semibold text-primary">بريمير سيتي</span>
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-[11px] text-muted">
+            البراند
+            <input
+              type="text"
+              value={systemBrand}
+              onChange={(e) => setSystemBrand(e.target.value)}
+              placeholder="مثلاً: بريمير"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            />
+          </label>
+          <label className="block text-[11px] text-muted">
+            اسم السيستم
+            <input
+              type="text"
+              value={systemName}
+              onChange={(e) => setSystemName(e.target.value)}
+              placeholder="مثلاً: سيتي"
+              required
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            />
+          </label>
+        </div>
+        {(systemBrand.trim() || systemName.trim()) && (
+          <p className="rounded-xl bg-primary-soft/50 px-3 py-2 text-[11px] text-primary">
+            الاسم المعروض:{" "}
+            <span className="font-bold">
+              {[systemBrand.trim(), systemName.trim()].filter(Boolean).join(" ")}
+            </span>
+          </p>
+        )}
         <textarea
           value={systemNotes}
           onChange={(e) => setSystemNotes(e.target.value)}
@@ -274,7 +342,71 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           type="submit"
           className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
         >
-          حفظ الاسم
+          حفظ البيانات
+        </button>
+      </form>
+
+      {/* قائمة الأسعار */}
+      <form
+        onSubmit={savePriceList}
+        className="space-y-3 rounded-2xl border border-border bg-card p-3"
+      >
+        <div>
+          <h3 className="text-xs font-bold text-foreground">
+            قائمة أسعار السيستم
+          </h3>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+            أسعار بالمتر الطولي (ج.م/م) — لما الشباك ياخد السيستم ده، الحلق
+            والضلفة والباكتة والسوقاس بيتسعروا من القائمة دي.
+            {countPricedProfileItems(priceList) > 0
+              ? ` · ${countPricedProfileItems(priceList)} بند مسعّر`
+              : " · لسه مفيش أسعار"}
+          </p>
+        </div>
+
+        {(["frame", "sash", "bead", "other"] as const).map((group) => {
+          const items = PROFILE_PRICE_ITEMS.filter((i) => i.group === group);
+          const groupLabel =
+            group === "frame"
+              ? "الحلق"
+              : group === "sash"
+                ? "الضلفة"
+                : group === "bead"
+                  ? "الباكتة"
+                  : "سوقاس وكوبلن وغيره";
+          return (
+            <div
+              key={group}
+              className="rounded-xl border border-border bg-background p-3"
+            >
+              <p className="mb-2 text-[11px] font-bold text-primary">
+                {groupLabel}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {items.map((item) => (
+                  <label key={item.id} className="block text-[11px] text-muted">
+                    {item.label}
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={priceList[item.id] ?? ""}
+                      onChange={(e) => setPrice(item.id, e.target.value)}
+                      placeholder="ج.م/م"
+                      className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        <button
+          type="submit"
+          className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+        >
+          حفظ قائمة الأسعار
         </button>
       </form>
 

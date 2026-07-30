@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import {
+  countPricedProfileItems,
   defaultAccessoryDetails,
   espagnoletteCatalogSummary,
   defaultGlassRates,
@@ -21,6 +22,7 @@ import {
   loadMaterialCatalog,
   newSystemId,
   profileRoleLabel,
+  profileSystemDisplayName,
   sashHeightFormula,
   sashWidthFormula,
   saveMaterialCatalog,
@@ -42,6 +44,7 @@ export function MaterialSystemsEditor({ category }: Props) {
   const [editing, setEditing] = useState<MaterialSystem | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  const [brand, setBrand] = useState("");
   const [notes, setNotes] = useState("");
   const [asDefault, setAsDefault] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
@@ -83,6 +86,7 @@ export function MaterialSystemsEditor({ category }: Props) {
     setEditing(null);
     setCreating(true);
     setName("");
+    setBrand("");
     setNotes("");
     setAsDefault(category === "iron" && systems.length === 0);
   }
@@ -91,6 +95,7 @@ export function MaterialSystemsEditor({ category }: Props) {
     setCreating(false);
     setEditing(system);
     setName(system.name);
+    setBrand(system.brand ?? "");
     setNotes(system.notes ?? "");
     setAsDefault(Boolean(system.isDefault));
   }
@@ -99,6 +104,7 @@ export function MaterialSystemsEditor({ category }: Props) {
     setCreating(false);
     setEditing(null);
     setName("");
+    setBrand("");
     setNotes("");
     setAsDefault(false);
   }
@@ -108,10 +114,12 @@ export function MaterialSystemsEditor({ category }: Props) {
     if (!catalog) return;
     const trimmed = name.trim();
     if (!trimmed) return;
+    const brandTrim = brand.trim();
 
     const system: MaterialSystem = {
       id: editing?.id ?? newSystemId(category),
       name: trimmed,
+      brand: isProfiles && brandTrim ? brandTrim : undefined,
       notes: notes.trim() || undefined,
       isDefault: asDefault || (category === "iron" && systems.length === 0),
       profile:
@@ -199,9 +207,11 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isProfiles ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          اضغط «تفاصيل» عشان تدخل العيدان ومعادلات التخصيم بصيغة إكسل (مثل{" "}
-          <span className="font-mono text-foreground">=W-10</span> أو{" "}
-          <span className="font-mono text-foreground">=FW-2*60</span>).
+          كل براند ليه سيستم وقائمة أسعار. مثال: براند{" "}
+          <span className="font-semibold text-foreground">بريمير</span> + سيستم{" "}
+          <span className="font-semibold text-foreground">سيتي</span> = قائمة
+          أسعار السيتي للحلق والضلفة والباكتة والسوقاس. اضغط «تفاصيل» لتعديل
+          العيدان والأسعار ومعادلات التخصيم.
         </p>
       ) : null}
 
@@ -275,15 +285,44 @@ export function MaterialSystemsEditor({ category }: Props) {
           <p className="text-xs font-bold text-primary">
             {editing ? (isGlass ? "تعديل الزجاجة" : "تعديل النظام") : isGlass ? "زجاجة جديدة" : "نظام جديد"}
           </p>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={isGlass ? "اسم الزجاجة" : `اسم نظام ال${meta.label}`}
-            required
-            autoFocus
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-          />
+          {isProfiles ? (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="البراند (مثلاً: بريمير)"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="السيستم (مثلاً: سيتي)"
+                required
+                autoFocus
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              />
+            </div>
+          ) : (
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={isGlass ? "اسم الزجاجة" : `اسم نظام ال${meta.label}`}
+              required
+              autoFocus
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            />
+          )}
+          {isProfiles && (brand.trim() || name.trim()) ? (
+            <p className="text-[11px] text-primary">
+              الاسم المعروض:{" "}
+              <span className="font-bold">
+                {[brand.trim(), name.trim()].filter(Boolean).join(" ")}
+              </span>
+            </p>
+          ) : null}
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -345,7 +384,9 @@ export function MaterialSystemsEditor({ category }: Props) {
                   <div className="min-w-0 flex-1 text-right">
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <p className="text-sm font-semibold text-foreground">
-                        {system.name}
+                        {isProfiles
+                          ? profileSystemDisplayName(system)
+                          : system.name}
                       </p>
                       {system.isDefault ? (
                         <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold text-primary">
@@ -353,6 +394,11 @@ export function MaterialSystemsEditor({ category }: Props) {
                         </span>
                       ) : null}
                     </div>
+                    {isProfiles && system.brand ? (
+                      <p className="mt-0.5 text-[11px] text-muted">
+                        براند: {system.brand} · سيستم: {system.name}
+                      </p>
+                    ) : null}
                     {system.notes ? (
                       <p className="mt-0.5 text-xs text-muted">{system.notes}</p>
                     ) : null}
@@ -362,6 +408,9 @@ export function MaterialSystemsEditor({ category }: Props) {
                         <p className="font-semibold text-foreground">
                           {pieceCount} عود
                           {pieceCount > 0 ? ":" : ""}
+                          {countPricedProfileItems(profile.priceList) > 0
+                            ? ` · قائمة أسعار (${countPricedProfileItems(profile.priceList)} بند)`
+                            : " · بدون أسعار"}
                         </p>
                         {profile.pieces.slice(0, 4).map((p) => (
                           <p key={p.id}>

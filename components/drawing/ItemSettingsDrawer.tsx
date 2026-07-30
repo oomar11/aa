@@ -284,6 +284,10 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
           </Section>
 
           <Section title="نظام القطاعات">
+            <p className="mb-2 text-[11px] text-muted">
+              اختَر البراند/السيستم (مثل بريمير سيتي) — الأسعار من قائمة أسعار
+              السيستم للحلق والضلفة والباكتة والسوقاس
+            </p>
             <RadioList
               name="system"
               options={systemOpts}

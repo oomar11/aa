@@ -29,10 +29,16 @@ const defaults = getDefaultCatalog();
 function fallbackOptions(category: MaterialCategory): { id: string; label: string }[] {
   return [
     { id: "none", label: "تجاهل" },
-    ...defaults[category].map((s) => ({
-      id: s.id,
-      label: s.isDefault ? `${s.name} (افتراضي)` : s.name,
-    })),
+    ...defaults[category].map((s) => {
+      const base =
+        category === "profiles" && s.brand
+          ? `${s.brand} ${s.name}`
+          : s.name;
+      return {
+        id: s.id,
+        label: s.isDefault ? `${base} (افتراضي)` : base,
+      };
+    }),
   ];
 }
 
