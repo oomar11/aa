@@ -142,7 +142,7 @@ export function GlassBottlePicker({
           >
             <span
               className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${
-                georgian ? "right-0.5" : "right-5"
+                georgian ? "left-0.5" : "left-5"
               }`}
             />
           </button>

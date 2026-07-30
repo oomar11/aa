@@ -387,11 +387,13 @@ export function defaultGlassBottle(opts: {
   thicknessMm: number;
   pricePerSqm: number;
   notes?: string;
+  isDefault?: boolean;
 }): MaterialSystem {
   return {
     id: opts.id,
     name: opts.name,
     notes: opts.notes,
+    isDefault: opts.isDefault,
     glass: {
       glazing: "single",
       pane1: defaultGlassPane({
@@ -403,6 +405,10 @@ export function defaultGlassBottle(opts: {
       pane1PricePerSqm: opts.pricePerSqm,
     },
   };
+}
+
+export function getDefaultGlassBottleId(catalog?: MaterialCatalog): string {
+  return getDefaultSystemId("glass", catalog);
 }
 
 export function getGlassBottlePrice(system: MaterialSystem | undefined): number {
@@ -577,6 +583,7 @@ export function getDefaultCatalog(): MaterialCatalog {
         kind: "clear",
         thicknessMm: 4,
         pricePerSqm: 80,
+        isDefault: true,
       }),
       defaultGlassBottle({
         id: "bottle-satin-4",

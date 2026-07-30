@@ -13,9 +13,8 @@ import {
   type MeshKind,
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
-import { GlassBottlePicker } from "@/components/GlassBottlePicker";
 import { MeshTypePicker } from "@/components/MeshTypePicker";
-import { glassBottleOptions, meshTypeOptions } from "@/lib/material-systems";
+import { meshTypeOptions } from "@/lib/material-systems";
 
 type Props = {
   open: boolean;
@@ -120,13 +119,12 @@ const GRID_GROUPS: OptionGroup<PaneGrid>[] = [
   },
 ];
 
-type ExtraKey = "sandwichPanels" | "mesh" | "isDoor" | "glassType";
+type ExtraKey = "sandwichPanels" | "mesh" | "isDoor";
 
 const EXTRA_TITLES: Record<ExtraKey, string> = {
   sandwichPanels: "خيارات البنل",
   mesh: "خيارات شبكة السلك",
   isDoor: "خيارات ضلفة الباب",
-  glassType: "نوع الزجاج",
 };
 
 const DOUBLE_TAP_MS = 320;
@@ -141,16 +139,12 @@ export function PanePropertiesModal({
 }: Props) {
   const [draft, setDraft] = useState<PaneConfig>(defaultPaneConfig());
   const [expandedExtra, setExpandedExtra] = useState<ExtraKey | null>(null);
-  const [bottleOpts, setBottleOpts] = useState<
-    { id: string; label: string; pricePerSqm: number }[]
-  >([]);
   const [meshOpts, setMeshOpts] = useState<
     { id: string; label: string; kind: MeshKind; pricePerSqm: number }[]
   >([]);
 
   useEffect(() => {
     if (!open) return;
-    setBottleOpts(glassBottleOptions());
     setMeshOpts(meshTypeOptions());
   }, [open]);
 
@@ -204,8 +198,7 @@ export function PanePropertiesModal({
     if (key === "sandwichPanels") return Boolean(draft.sandwichPanels);
     if (key === "mesh") return Boolean(draft.mesh);
     if (key === "isDoor") return Boolean(draft.isDoor);
-    // glassType: "on" if the pane has a bottle selected
-    return Boolean(draft.glassPane1Id);
+    return false;
   }
 
   function setFlag(key: ExtraKey, value: boolean) {
@@ -238,15 +231,6 @@ export function PanePropertiesModal({
           next.meshTypeId = undefined;
           next.meshKind = undefined;
           next.meshKindManual = undefined;
-        }
-      }
-      if (key === "glassType") {
-        if (!value) {
-          next.glassPane1Id = undefined;
-          next.glassPane2Id = undefined;
-          next.glassGeorgian = undefined;
-        } else if (!d.glassPane1Id && bottleOpts.length > 0) {
-          next.glassPane1Id = bottleOpts[0]!.id;
         }
       }
       return next;
@@ -429,35 +413,6 @@ export function PanePropertiesModal({
                   </button>
                 </div>
               )}
-
-              {expandedExtra === "glassType" && (
-                <div className="mx-auto w-full max-w-sm space-y-3">
-                  <div className="rounded-xl border border-border bg-card p-3">
-                    <GlassBottlePicker
-                      pane1Id={draft.glassPane1Id}
-                      pane2Id={draft.glassPane2Id}
-                      georgian={draft.glassGeorgian}
-                      bottleOpts={bottleOpts}
-                      hint="اختار الزجاجة لهذه الضلفة. زجاجة واحدة = مفرد بالمتر. لو اخترت زجاجة تانية يبقى دبل + تدبيل."
-                      onChange={(next) =>
-                        setDraft((d) => ({
-                          ...d,
-                          glassPane1Id: next.pane1Id,
-                          glassPane2Id: next.pane2Id,
-                          glassGeorgian: next.georgian,
-                        }))
-                      }
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedExtra(null)}
-                    className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[12px] font-semibold text-foreground"
-                  >
-                    رجوع للتقسيم ونوع الفتح
-                  </button>
-                </div>
-              )}
             </div>
           </section>
         ) : (
@@ -550,7 +505,7 @@ export function PanePropertiesModal({
             <p className="mb-1.5 text-center text-[9px] text-muted/80">
               ضغطة تفعيل/إيقاف · ضغطتين أو مطوّلة للقائمة
             </p>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               <FlagChip
                 label="بنل ساندوتش"
                 checked={Boolean(draft.sandwichPanels)}
@@ -574,14 +529,6 @@ export function PanePropertiesModal({
                 onToggle={() => toggleFlag("isDoor")}
                 onOpenMenu={() => toggleExtraMenu("isDoor")}
                 icon={<DoorIcon />}
-              />
-              <FlagChip
-                label="نوع الزجاج"
-                checked={Boolean(draft.glassPane1Id)}
-                expanded={expandedExtra === "glassType"}
-                onToggle={() => toggleFlag("glassType")}
-                onOpenMenu={() => toggleExtraMenu("glassType")}
-                icon={<GlassIcon />}
               />
             </div>
           </div>
@@ -1105,16 +1052,6 @@ function MeshIcon() {
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
       <rect x="4" y="4" width="16" height="16" />
       <path d="M4 8h16M4 12h16M4 16h16M8 4v16M12 4v16M16 4v16" />
-    </svg>
-  );
-}
-
-function GlassIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-      <rect x="4" y="3" width="16" height="18" rx="1" fill="currentColor" opacity="0.12" />
-      <rect x="4" y="3" width="16" height="18" rx="1" />
-      <line x1="9" y1="3" x2="9" y2="21" strokeDasharray="2 1.5" strokeWidth="1.2" opacity="0.5" />
     </svg>
   );
 }

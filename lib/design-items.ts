@@ -5,6 +5,7 @@ import {
   ensurePaneIds,
   listPaneIds,
 } from "@/lib/window-layout";
+import { getDefaultGlassBottleId, type MaterialCatalog } from "@/lib/material-systems";
 import { suggestItemName } from "@/lib/item-naming";
 
 export type WindowStyle =
@@ -179,26 +180,22 @@ export function normalizePaneConfig(
   return { ...base, panelCells: cells };
 }
 
-/** زجاج الضلفة: override على مستوى الضلفة أو الافتراضي من البند */
+/** زجاج البند — يُطبَّق على كل الضلف، مع افتراضي تلقائي من كتالوج الخامات */
 export function resolvePaneGlass(
-  cfg: PaneConfig,
-  item: Pick<DesignItem, "glassPane1Id" | "glassPane2Id" | "glassGeorgian">
+  _cfg: PaneConfig,
+  item: Pick<DesignItem, "glassPane1Id" | "glassPane2Id" | "glassGeorgian">,
+  catalog?: MaterialCatalog
 ): {
-  pane1Id?: string;
+  pane1Id: string;
   pane2Id?: string;
   georgian: boolean;
 } {
-  if (cfg.glassPane1Id) {
-    return {
-      pane1Id: cfg.glassPane1Id,
-      pane2Id: cfg.glassPane2Id,
-      georgian: Boolean(cfg.glassGeorgian && cfg.glassPane2Id),
-    };
-  }
+  const pane1Id = item.glassPane1Id ?? getDefaultGlassBottleId(catalog);
+  const pane2Id = item.glassPane2Id;
   return {
-    pane1Id: item.glassPane1Id,
-    pane2Id: item.glassPane2Id,
-    georgian: Boolean(item.glassGeorgian && item.glassPane2Id),
+    pane1Id,
+    pane2Id,
+    georgian: Boolean(item.glassGeorgian && pane2Id),
   };
 }
 
@@ -322,6 +319,7 @@ export function createItemFromTemplate(
     discountId: "none",
     systemId: "none",
     accessoryId: "none",
+    glassPane1Id: getDefaultGlassBottleId(),
     /** الحديد ثابت غالباً — يُملأ بالافتراضي عند فتح الإعدادات إن لزم */
     ironId: "iron-std",
   };
