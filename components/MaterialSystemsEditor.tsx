@@ -9,8 +9,8 @@ import {
 } from "react";
 import {
   defaultAccessoryDetails,
-  espagnoletteCatalogSummary,
   defaultGlassRates,
+  defaultIronDetails,
   defaultProfileDetails,
   deleteSystem,
   findProfileBrand,
@@ -19,6 +19,7 @@ import {
   getCategoryMeta,
   getGlassBottlePrice,
   glassPaneKindLabel,
+  ironDeductionSummary,
   loadMaterialCatalog,
   newSystemId,
   profileBrandOptions,
@@ -28,6 +29,7 @@ import {
   saveMaterialCatalog,
   setDefaultSystem,
   upsertSystem,
+  espagnoletteCatalogSummary,
   type GlassRates,
   type MaterialCatalog,
   type MaterialCategory,
@@ -62,6 +64,7 @@ export function MaterialSystemsEditor({ category }: Props) {
   const isProfiles = category === "profiles";
   const isGlass = category === "glass";
   const isAccessories = category === "accessories";
+  const isIron = category === "iron";
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -144,6 +147,10 @@ export function MaterialSystemsEditor({ category }: Props) {
         category === "accessories"
           ? editing?.accessory ?? defaultAccessoryDetails()
           : undefined,
+      iron:
+        category === "iron"
+          ? editing?.iron ?? defaultIronDetails()
+          : undefined,
     };
 
     persist(upsertSystem(catalog, category, system));
@@ -202,8 +209,8 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {category === "iron" ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          الحديد غالباً ثابت — اختَر نظاماً افتراضياً وهيتحط تلقائي على
-          التصميمات الجديدة.
+          اضغط «تفاصيل» لتحديد أنواع الحديد للحلق والضلفة والسوقاس — مفصلي
+          وجرار. الحديد أصغر من القطاع (افتراضي ١٠ سم).
         </p>
       ) : null}
 
@@ -458,6 +465,16 @@ export function MaterialSystemsEditor({ category }: Props) {
                       </div>
                     ) : null}
 
+                    {isIron && system.iron ? (
+                      <div className="mt-2 space-y-1 rounded-xl border border-border/80 bg-background/70 p-2.5 text-[11px] text-muted">
+                        <p className="font-semibold text-foreground">
+                          {system.iron.pieces.filter((p) => p.enabled).length}{" "}
+                          نوع مفعّل
+                        </p>
+                        <p>{ironDeductionSummary(system.iron.deductions)}</p>
+                      </div>
+                    ) : null}
+
                     <div className="mt-2 flex flex-wrap justify-end gap-1.5">
                       {isProfiles ? (
                         <Link
@@ -478,6 +495,14 @@ export function MaterialSystemsEditor({ category }: Props) {
                       {isAccessories ? (
                         <Link
                           href={`/materials/accessories/${system.id}`}
+                          className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
+                        >
+                          تفاصيل
+                        </Link>
+                      ) : null}
+                      {isIron ? (
+                        <Link
+                          href={`/materials/iron/${system.id}`}
                           className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:brightness-105"
                         >
                           تفاصيل
