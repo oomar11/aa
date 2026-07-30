@@ -13,7 +13,7 @@ import {
   loadSystemOptions,
   type DiscountId,
 } from "@/lib/item-catalogs";
-import { getDefaultGlassBottleId, getDefaultSystemId, glassBottleOptions, loadMaterialCatalog } from "@/lib/material-systems";
+import { getDefaultGlassBottleId, getDefaultSystemId, glassBottleOptions, loadMaterialCatalog, resolveGlassBottleId } from "@/lib/material-systems";
 import { GlassBottlePicker } from "@/components/GlassBottlePicker";
 import { suggestItemName } from "@/lib/item-naming";
 
@@ -60,7 +60,9 @@ function toDraft(item: DesignItem): ItemSettingsPatch {
     discountId: (item.discountId as DiscountId) || "none",
     systemId: item.systemId || "none",
     accessoryId: item.accessoryId || "none",
-    glassPane1Id: item.glassPane1Id ?? getDefaultGlassBottleId(loadMaterialCatalog()),
+    glassPane1Id:
+      resolveGlassBottleId(item.glassPane1Id) ??
+      getDefaultGlassBottleId(loadMaterialCatalog()),
     glassPane2Id: item.glassPane2Id,
     glassGeorgian: item.glassGeorgian,
     ironId: resolveIronId(item),
@@ -301,7 +303,7 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
 
           <Section title="الزجاج">
             <p className="mb-2 text-[11px] text-muted">
-              يُطبَّق على كل ضلفات البند — لو ماختارتش، بيتحدد شفاف 4 مم تلقائياً
+              يُطبَّق على كل ضلفات البند — لو ماختارتش، بيتحدد شفاف تلقائياً
             </p>
             <GlassBottlePicker
               pane1Id={draft.glassPane1Id}
