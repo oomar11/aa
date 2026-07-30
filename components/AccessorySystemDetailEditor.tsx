@@ -480,7 +480,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
       </Section>
 
       {/* ── جرار ── */}
-      <Section title="اكسسوار الجرار" hint="تراك · عجل · فرش · سبلونة · تقابل">
+      <Section title="اكسسوار الجرار" hint="تراك · عجل · فرش · سبلونة · مقبض غاطس">
         <div className="grid grid-cols-2 gap-2">
           <NumberField
             label="تراك على الحلق"
@@ -492,6 +492,13 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
             label="عجل / ضلفة جرار"
             value={details.rollersPerSlidingSash}
             onChange={(v) => patchDetails({ rollersPerSlidingSash: v })}
+          />
+          <NumberField
+            label="مقبض غاطس / ضلفة غاطسة"
+            value={details.recessedHandlesPerRecessedSash}
+            onChange={(v) =>
+              patchDetails({ recessedHandlesPerRecessedSash: v })
+            }
           />
           <NumberField
             label="فرش × محيط الضلفة"
@@ -523,7 +530,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
 
       <p className="px-1 pb-2 text-center text-[11px] leading-relaxed text-muted">
         ضلفتين مفصلي + بوكلير = سبلونة واحدة + سكاك بوكلير + ترباس + طبة.
-        الجرار: تراك ٢ بعرض الحلق · عجل ٢/ضلفة · فرش محيط×٢ + سكينة×١.
+        الجرار: تراك ٢ بعرض الحلق · عجل ٢/ضلفة · فرش محيط×٢ + سكينة×١ · مقبض غاطس على الضلفة الغاطسة.
       </p>
     </div>
   );

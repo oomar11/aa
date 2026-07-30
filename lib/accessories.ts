@@ -12,6 +12,7 @@
  * - عجلتين لكل ضلفة
  * - فرش: محيط الضلفة ×٢ + ارتفاع السكينة ×١
  * - سبلونة/سكاك جرار
+ * - مقبض غاطس على الضلفة الغاطسة
  */
 
 import {
@@ -24,6 +25,7 @@ import {
   areFacingHandles,
   frameKindForOpening,
   isDoorPane,
+  slidingSashDepthMap,
   type FrameKind,
 } from "@/lib/materials";
 import {
@@ -75,6 +77,8 @@ export type AccessoriesBreakdown = {
   brushLengthM: number;
   slidingEspagnolettes: EspagnoletteLine[];
   slidingLockPieces: LockPieceLine[];
+  /** مقبض غاطس — لكل ضلفة جرار غاطسة */
+  recessedHandleQty: number;
   /** أسماء البراندات المختارة لكل فئة */
   brandLabels: Partial<Record<AccessoryBrandCategory, string>>;
 };
@@ -136,6 +140,7 @@ function emptyBreakdown(systemName: string | null): AccessoriesBreakdown {
     brushLengthM: 0,
     slidingEspagnolettes: [],
     slidingLockPieces: [],
+    recessedHandleQty: 0,
     brandLabels: {},
   };
 }
@@ -428,11 +433,13 @@ export function calcItemAccessories(
   let brushMm = 0;
   const slidingEspMap = new Map<EspagnoletteSize, number>();
   let slidingLocksetCount = 0;
+  let recessedHandleQty = 0;
 
   if (slidingBoxes.length > 0) {
     const frameW = aabbWidth(slidingBoxes) || widthMm;
     trackQty = details.tracksPerFrame;
     trackLengthM = roundM(mmToM(trackQty * frameW));
+    const depthMap = slidingSashDepthMap(boxes, panes);
 
     for (const box of slidingBoxes) {
       rollerQty += details.rollersPerSlidingSash;
@@ -449,6 +456,10 @@ export function calcItemAccessories(
       );
       addEspagnolette(slidingEspMap, size);
       slidingLocksetCount += 1;
+
+      if (depthMap.get(box.id) === "recessed") {
+        recessedHandleQty += details.recessedHandlesPerRecessedSash;
+      }
     }
   }
 
@@ -475,7 +486,8 @@ export function calcItemAccessories(
     rollerQty > 0 ||
     brushLengthM > 0.0005 ||
     slidingEspagnolettes.length > 0 ||
-    slidingLockPieces.length > 0;
+    slidingLockPieces.length > 0 ||
+    recessedHandleQty > 0;
 
   return {
     systemName,
@@ -493,6 +505,7 @@ export function calcItemAccessories(
     brushLengthM,
     slidingEspagnolettes,
     slidingLockPieces,
+    recessedHandleQty,
     brandLabels,
   };
 }
@@ -523,6 +536,7 @@ export function scaleAccessories(
     brushLengthM: roundM(a.brushLengthM * q),
     slidingEspagnolettes: scaleLines(a.slidingEspagnolettes),
     slidingLockPieces: scaleLines(a.slidingLockPieces),
+    recessedHandleQty: a.recessedHandleQty * q,
   };
 }
 

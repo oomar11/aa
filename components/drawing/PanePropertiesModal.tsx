@@ -7,6 +7,7 @@ import {
   gridCellCount,
   inferMeshKind,
   isExhaustPane,
+  isSlidingSashOpening,
   normalizePaneConfig,
   resolvePaneMeshKind,
   type PaneConfig,
@@ -476,6 +477,53 @@ export function PanePropertiesModal({
                       })}
                     </OptionSection>
                   ))}
+                  {isSlidingSashOpening(draft.opening) ? (
+                    <div className="mt-2 rounded-xl border border-border bg-card p-2.5">
+                      <p className="mb-2 text-[11px] font-semibold text-foreground">
+                        نوع الضلفة
+                      </p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(
+                          [
+                            { id: "auto", label: "تلقائي" },
+                            { id: "protruding", label: "بارز" },
+                            { id: "recessed", label: "غاطس" },
+                          ] as const
+                        ).map((opt) => {
+                          const active =
+                            opt.id === "auto"
+                              ? !draft.sashDepthManual
+                              : draft.sashDepthManual &&
+                                draft.sashDepth === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() =>
+                                setDraft((d) => ({
+                                  ...d,
+                                  sashDepthManual: opt.id !== "auto",
+                                  sashDepth:
+                                    opt.id === "auto" ? undefined : opt.id,
+                                }))
+                              }
+                              className={`rounded-lg border px-2 py-2 text-[11px] font-semibold transition-colors ${
+                                active
+                                  ? "border-primary bg-primary-soft text-primary"
+                                  : "border-border bg-background text-foreground"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="mt-1.5 text-[10px] leading-relaxed text-muted">
+                        الضلفة الغاطسة بتحمل مقبض غاطس. التلقائي: تناوب
+                        بارز/غاطس حسب موقع الضلفة في الصف.
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </section>

@@ -66,6 +66,23 @@ export type PaneGrid =
 /** معرّف تصنيف السلك (من كتالوج الخامات) */
 export type MeshKind = string;
 
+/** ضلفة جرار بارزة أو غاطسة — الغاطسة تحمل مقبض غاطس */
+export type SlidingSashDepth = "protruding" | "recessed";
+
+export function slidingSashDepthLabel(depth: SlidingSashDepth): string {
+  return depth === "protruding" ? "بارز" : "غاطس";
+}
+
+/** ضلفة جرار متحركة (سحاب أو جرار) */
+export function isSlidingSashOpening(opening: PaneOpening): boolean {
+  return (
+    opening === "drawer-left" ||
+    opening === "drawer-right" ||
+    opening === "sliding-left" ||
+    opening === "sliding-right"
+  );
+}
+
 /** يحدد تصنيف السلك الافتراضي من نوع الفتح */
 export function openingWantsAutoMesh(opening: PaneOpening): boolean {
   return (
@@ -190,6 +207,10 @@ export type PaneConfig = {
   meshOffManual?: boolean;
   /** باب بدل شباك عادي */
   isDoor?: boolean;
+  /** ضلفة جرار بارز أو غاطس — يُستنتج تلقائياً من موقع الضلفة إن لم يُحدَّد */
+  sashDepth?: SlidingSashDepth;
+  /** المستخدم اختار يدوياً بارز/غاطس */
+  sashDepthManual?: boolean;
   /** الزجاجة الأولى — مفرد */
   glassPane1Id?: string;
   /** الزجاجة الثانية — لو موجودة يبقى دبل */

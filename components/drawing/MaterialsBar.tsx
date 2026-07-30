@@ -133,6 +133,19 @@ export function MaterialsBar({
       accent: materials.sashSlidingM > 0,
     },
     {
+      key: "sash-s-p",
+      label: "ضلفة جرار بارز",
+      value: formatMeters(materials.sashSlidingProtrudingM),
+      accent: materials.sashSlidingProtrudingM > 0,
+    },
+    {
+      key: "sash-s-r",
+      label: "ضلفة جرار غاطس",
+      value: formatMeters(materials.sashSlidingRecessedM),
+      hint: materials.sashSlidingRecessedM > 0 ? "مقبض غاطس" : undefined,
+      accent: materials.sashSlidingRecessedM > 0,
+    },
+    {
       key: "bead-sh",
       label: "باكتة سنجل مفصلي",
       value: formatMeters(materials.beadSingleHingedM),
@@ -723,7 +736,8 @@ function AccessoriesBreakdownPanel({
     breakdown.trackQty > 0 ||
     breakdown.rollerQty > 0 ||
     breakdown.brushLengthM > 0.0005 ||
-    breakdown.slidingEspagnolettes.length > 0;
+    breakdown.slidingEspagnolettes.length > 0 ||
+    breakdown.recessedHandleQty > 0;
 
   return (
     <div className="border-t border-border bg-background/40 px-3 py-2.5">
@@ -785,6 +799,12 @@ function AccessoriesBreakdownPanel({
             سبلونة جرار:{" "}
             {formatEspagnoletteSummary(breakdown.slidingEspagnolettes)}
             {accessoryBrandTag(breakdown.brandLabels, "sliding-espagnolette")}
+          </span>
+        ) : null}
+        {breakdown.recessedHandleQty > 0 ? (
+          <span>
+            مقبض غاطس: {formatCount(breakdown.recessedHandleQty)}
+            {accessoryBrandTag(breakdown.brandLabels, "recessed-handle")}
           </span>
         ) : null}
       </div>
@@ -868,6 +888,12 @@ function AccessoriesBreakdownPanel({
                 {formatLockPiecesSummary(breakdown.slidingLockPieces)}
                 {accessoryBrandTag(breakdown.brandLabels, "sliding-lock")}
               </p>
+              {breakdown.recessedHandleQty > 0 ? (
+                <p>
+                  مقبض غاطس: {formatCount(breakdown.recessedHandleQty)}
+                  {accessoryBrandTag(breakdown.brandLabels, "recessed-handle")}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
