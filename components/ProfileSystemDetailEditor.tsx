@@ -18,9 +18,11 @@ import {
   frameWidthFormula,
   getCutCalculationSteps,
   loadMaterialCatalog,
+  mergeStandardProfilePieces,
   newPieceId,
   PROFILE_PIECE_ROLES,
   profileBrandOptions,
+  profileRoleDefaultName,
   profileRoleLabel,
   saveMaterialCatalog,
   sashHeightFormula,
@@ -322,7 +324,9 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   }
 
   function openNewPiece() {
-    setPieceDraft(toPieceDraft());
+    const draft = toPieceDraft();
+    draft.name = profileRoleDefaultName(draft.role);
+    setPieceDraft(draft);
   }
 
   function openEditPiece(piece: ProfilePiece) {
@@ -342,6 +346,33 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     persistProfile(next, deductions);
     setPieceDraft(null);
     showFlash(exists ? "تم تعديل العود" : "تمت إضافة العود");
+  }
+
+  function addStandardPieces(kind: "hinged" | "sliding") {
+    const next = mergeStandardProfilePieces(pieces, kind);
+    setPieces(next);
+    persistProfile(next, deductions);
+    showFlash(
+      kind === "hinged"
+        ? "تمت إضافة قطاعات المفصلي القياسية"
+        : "تمت إضافة قطاعات الجرار القياسية"
+    );
+  }
+
+  function onPieceRoleChange(role: ProfilePieceRole) {
+    setPieceDraft((d) => {
+      if (!d) return d;
+      const defaultName = profileRoleDefaultName(role);
+      const keepName =
+        d.name.trim() &&
+        d.name !== profileRoleDefaultName(d.role) &&
+        !/بيادة|بياة/.test(d.name);
+      return {
+        ...d,
+        role,
+        name: keepName ? d.name : defaultName,
+      };
+    });
   }
 
   function deletePiece(id: string) {
@@ -383,7 +414,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
         <p className="mt-0.5 text-xs text-muted">
-          العيدان · أطوال العود · تعديلات مقاس القطع
+          العيدان · الباكتة · البنل · ضلفة الشباك والباب · تعديلات مقاس القطع
         </p>
       </div>
 
@@ -469,6 +500,27 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           </button>
         </div>
 
+        <div className="flex flex-wrap gap-1.5 border-b border-border bg-background/50 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => addStandardPieces("hinged")}
+            className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[10px] font-semibold text-primary"
+          >
+            + قطاعات مفصلي قياسية
+          </button>
+          <button
+            type="button"
+            onClick={() => addStandardPieces("sliding")}
+            className="rounded-lg border border-border px-2.5 py-1 text-[10px] font-semibold text-foreground"
+          >
+            + قطاعات جرار قياسية
+          </button>
+        </div>
+        <p className="border-b border-border px-3 py-2 text-[10px] leading-relaxed text-muted">
+          باكتة سنجل/دبل حسب نوع الزجاج · بنل منفصل · ضلفة شباك مفصلي منفصلة عن
+          ضلفة الباب
+        </p>
+
         {pieceDraft ? (
           <form
             onSubmit={savePiece}
@@ -493,19 +545,14 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
             <select
               value={pieceDraft.role}
               onChange={(e) =>
-                setPieceDraft((d) =>
-                  d
-                    ? { ...d, role: e.target.value as ProfilePieceRole }
-                    : d
-                )
+                onPieceRoleChange(e.target.value as ProfilePieceRole)
               }
               className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
             >
-              {PROFILE_PIECE_ROLES.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.label}
-                </option>
-              ))}
+              <RoleOptionGroup label="حلق وضلف" roles={["frame-hinged", "frame-sliding", "sash-hinged", "sash-door", "sash-sliding", "sash-sliding-protruding", "sash-sliding-recessed"]} />
+              <RoleOptionGroup label="باكتة" roles={["bead-single-hinged", "bead-double-hinged", "bead-single-sliding", "bead-double-sliding"]} />
+              <RoleOptionGroup label="بنل" roles={["panel"]} />
+              <RoleOptionGroup label="أخرى" roles={["mullion", "coupling", "knife", "four-leaf-meeting", "mesh-meeting", "bouclier-cap", "threshold", "other"]} />
             </select>
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-[11px] text-muted">
@@ -968,6 +1015,24 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         ) : null}
       </section>
     </div>
+  );
+}
+
+function RoleOptionGroup({
+  label,
+  roles,
+}: {
+  label: string;
+  roles: ProfilePieceRole[];
+}) {
+  return (
+    <optgroup label={label}>
+      {PROFILE_PIECE_ROLES.filter((r) => roles.includes(r.id)).map((r) => (
+        <option key={r.id} value={r.id}>
+          {r.label}
+        </option>
+      ))}
+    </optgroup>
   );
 }
 
