@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
+import { loadCompany } from "@/lib/company";
 
 function WindowLogo() {
   return (
@@ -31,15 +35,29 @@ function SettingsIcon() {
 }
 
 export function Header() {
+  const [companyName, setCompanyName] = useState(() =>
+    typeof window === "undefined"
+      ? "UPVC Design"
+      : loadCompany().name || "UPVC Design"
+  );
+
+  useEffect(() => {
+    function refresh() {
+      setCompanyName(loadCompany().name || "UPVC Design");
+    }
+    window.addEventListener("upvc-company-updated", refresh);
+    return () => window.removeEventListener("upvc-company-updated", refresh);
+  }, []);
+
   return (
     <header className="flex items-center justify-between px-4 pt-4 pb-2">
-      <Link href="/" className="flex items-center gap-2.5">
+      <Link href="/" className="flex min-w-0 items-center gap-2.5">
         <WindowLogo />
-        <span className="text-lg font-bold tracking-tight text-foreground">
-          UPVC Design
+        <span className="truncate text-lg font-bold tracking-tight text-foreground">
+          {companyName}
         </span>
       </Link>
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <ThemeToggle />
         <Link
           href="/settings"

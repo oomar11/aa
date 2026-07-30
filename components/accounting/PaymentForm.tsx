@@ -1,0 +1,225 @@
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
+import {
+  invoiceRemaining,
+  loadInvoices,
+  PAYMENT_METHOD_LABELS,
+  todayIsoDate,
+  upsertPayment,
+  type Invoice,
+  type PaymentMethod,
+} from "@/lib/accounting";
+import {
+  customers,
+  loadLocalCustomers,
+  type Customer,
+} from "@/lib/customers";
+import { ROUTES } from "@/lib/routes";
+import { NumericInput } from "@/components/ui/NumericInput";
+import { formatCurrency } from "@/lib/utils";
+
+function mergeCustomers(): Customer[] {
+  if (typeof window === "undefined") return customers;
+  const local = loadLocalCustomers();
+  const localIds = new Set(local.map((c) => c.id));
+  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
+}
+
+function remainingForInvoice(invoiceId: string): number {
+  const invoice = loadInvoices().find((i) => i.id === invoiceId);
+  return invoice ? invoiceRemaining(invoice) : 0;
+}
+
+export function PaymentForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetCustomerId = searchParams.get("customer") ?? "";
+  const presetInvoiceId = searchParams.get("invoice") ?? "";
+
+  const [allCustomers] = useState(mergeCustomers);
+  const [customerId, setCustomerId] = useState(presetCustomerId);
+  const [invoiceId, setInvoiceId] = useState(presetInvoiceId);
+  const [amount, setAmount] = useState(() =>
+    presetInvoiceId ? remainingForInvoice(presetInvoiceId) : 0
+  );
+  const [date, setDate] = useState(todayIsoDate);
+  const [method, setMethod] = useState<PaymentMethod>("cash");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+
+  const openInvoices = useMemo(() => {
+    if (!customerId) return [] as Invoice[];
+    return loadInvoices().filter(
+      (invoice) =>
+        invoice.customerId === customerId &&
+        invoice.status !== "cancelled" &&
+        invoiceRemaining(invoice) > 0
+    );
+  }, [customerId]);
+
+  const selectedInvoice = useMemo(() => {
+    if (!invoiceId) return undefined;
+    return (
+      openInvoices.find((i) => i.id === invoiceId) ??
+      loadInvoices().find(
+        (i) => i.id === invoiceId && i.customerId === customerId
+      )
+    );
+  }, [invoiceId, openInvoices, customerId]);
+
+  const validInvoiceId = selectedInvoice?.id ?? "";
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!customerId) {
+      setError("اختَر العميل");
+      return;
+    }
+    if (amount <= 0) {
+      setError("ادخل مبلغ أكبر من صفر");
+      return;
+    }
+
+    upsertPayment({
+      id: `pay-${Date.now()}`,
+      customerId,
+      invoiceId: validInvoiceId || undefined,
+      amount,
+      date,
+      method,
+      note: note.trim() || undefined,
+      createdAt: new Date().toISOString(),
+    });
+    router.replace(ROUTES.accounting.payments);
+  }
+
+  const fieldClass =
+    "w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20";
+
+  return (
+    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+      <label className="flex flex-col gap-1.5 text-right">
+        <span className="text-sm font-medium">
+          العميل <span className="text-[#E85A8A]">*</span>
+        </span>
+        <select
+          value={customerId}
+          onChange={(e) => {
+            setCustomerId(e.target.value);
+            setInvoiceId("");
+            setAmount(0);
+            setError("");
+          }}
+          className={fieldClass}
+        >
+          <option value="">اختَر عميل…</option>
+          {allCustomers.map((customer) => (
+            <option key={customer.id} value={customer.id}>
+              {customer.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-right">
+        <span className="text-sm font-medium">
+          الفاتورة <span className="font-normal text-muted">(اختياري)</span>
+        </span>
+        <select
+          value={validInvoiceId}
+          onChange={(e) => {
+            const nextId = e.target.value;
+            setInvoiceId(nextId);
+            setAmount(nextId ? remainingForInvoice(nextId) : 0);
+            setError("");
+          }}
+          disabled={!customerId}
+          className={fieldClass}
+        >
+          <option value="">بدون ربط بفاتورة</option>
+          {openInvoices.map((invoice) => (
+            <option key={invoice.id} value={invoice.id}>
+              {invoice.number} — متبقي {formatCurrency(invoiceRemaining(invoice))}
+            </option>
+          ))}
+          {selectedInvoice &&
+          !openInvoices.some((i) => i.id === selectedInvoice.id) ? (
+            <option value={selectedInvoice.id}>
+              {selectedInvoice.number}
+            </option>
+          ) : null}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-right">
+        <span className="text-sm font-medium">
+          المبلغ (ج.م) <span className="text-[#E85A8A]">*</span>
+        </span>
+        <NumericInput
+          value={amount}
+          onChange={(value) => {
+            setAmount(value);
+            setError("");
+          }}
+          min={0}
+          blankZero
+          className={`${fieldClass} text-left`}
+          dir="ltr"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-right">
+        <span className="text-sm font-medium">التاريخ</span>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className={`${fieldClass} text-left`}
+          dir="ltr"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-right">
+        <span className="text-sm font-medium">طريقة الدفع</span>
+        <select
+          value={method}
+          onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+          className={fieldClass}
+        >
+          {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map(
+            (key) => (
+              <option key={key} value={key}>
+                {PAYMENT_METHOD_LABELS[key]}
+              </option>
+            )
+          )}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-right">
+        <span className="text-sm font-medium">
+          ملاحظة <span className="font-normal text-muted">(اختياري)</span>
+        </span>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+          className={`${fieldClass} resize-none`}
+        />
+      </label>
+
+      {error ? (
+        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+      ) : null}
+
+      <button
+        type="submit"
+        className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
+      >
+        حفظ التحصيل
+      </button>
+    </form>
+  );
+}

@@ -7,6 +7,7 @@ import {
   loadLocalCustomers,
   type Customer,
 } from "@/lib/customers";
+import { loadCompany } from "@/lib/company";
 import {
   loadLocalProjects,
   projects as seedProjects,
@@ -18,24 +19,42 @@ function statusLabel(status: Project["status"]): string {
   return status === "open" ? "مفتوح" : "مكتمل";
 }
 
+function mergeCustomers(): Customer[] {
+  if (typeof window === "undefined") return customers;
+  const localCustomers = loadLocalCustomers();
+  const localIds = new Set(localCustomers.map((c) => c.id));
+  return [
+    ...localCustomers,
+    ...customers.filter((c) => !localIds.has(c.id)),
+  ];
+}
+
+function mergeProjects(): Project[] {
+  if (typeof window === "undefined") return seedProjects;
+  const localProjects = loadLocalProjects();
+  const localProjectIds = new Set(localProjects.map((p) => p.id));
+  return [
+    ...localProjects,
+    ...seedProjects.filter((p) => !localProjectIds.has(p.id)),
+  ];
+}
+
 export function HomeDashboard() {
-  const [allCustomers, setAllCustomers] = useState<Customer[]>(customers);
-  const [allProjects, setAllProjects] = useState<Project[]>(seedProjects);
+  const [companyName, setCompanyName] = useState(() =>
+    typeof window === "undefined"
+      ? "UPVC Design"
+      : loadCompany().name || "UPVC Design"
+  );
+  const [allCustomers] = useState(mergeCustomers);
+  const [allProjects] = useState(mergeProjects);
 
   useEffect(() => {
-    const localCustomers = loadLocalCustomers();
-    const localIds = new Set(localCustomers.map((c) => c.id));
-    setAllCustomers([
-      ...localCustomers,
-      ...customers.filter((c) => !localIds.has(c.id)),
-    ]);
-
-    const localProjects = loadLocalProjects();
-    const localProjectIds = new Set(localProjects.map((p) => p.id));
-    setAllProjects([
-      ...localProjects,
-      ...seedProjects.filter((p) => !localProjectIds.has(p.id)),
-    ]);
+    function refreshCompany() {
+      setCompanyName(loadCompany().name || "UPVC Design");
+    }
+    window.addEventListener("upvc-company-updated", refreshCompany);
+    return () =>
+      window.removeEventListener("upvc-company-updated", refreshCompany);
   }, []);
 
   const customerById = useMemo(() => {
@@ -57,10 +76,10 @@ export function HomeDashboard() {
     <div className="flex flex-col gap-5 px-4 pt-2">
       <section className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-[0_8px_24px_rgba(43,125,233,0.28)]">
         <p className="text-xs font-medium opacity-85">مرحباً بك في</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">UPVC Design</h1>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">{companyName}</h1>
         <p className="mt-2 text-sm leading-relaxed opacity-90">
-          من هنا تبدأ طلب جديد، أو تفتح آخر المشاريع. الطلبات والخامات من الشريط
-          تحت.
+          من هنا تبدأ طلب جديد، أو تفتح آخر المشاريع. الطلبات والحسابات والخامات
+          من الشريط تحت.
         </p>
         <Link
           href={ROUTES.design.hub}
@@ -69,6 +88,21 @@ export function HomeDashboard() {
           طلب جديد
         </Link>
       </section>
+
+      <Link
+        href={ROUTES.accounting.hub}
+        className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 active:scale-[0.99]"
+      >
+        <div className="min-w-0 text-right">
+          <p className="text-sm font-bold text-foreground">حسابات الشركة</p>
+          <p className="mt-0.5 text-xs text-muted">
+            فواتير · تحصيل · مصروفات
+          </p>
+        </div>
+        <span className="text-muted" aria-hidden>
+          ‹
+        </span>
+      </Link>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between px-1">
