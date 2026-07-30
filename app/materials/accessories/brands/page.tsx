@@ -15,8 +15,8 @@ export default function AccessoryBrandsPage() {
         <div className="px-1">
           <h1 className="text-xl font-bold">براندات الاكسسوار</h1>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            أضف البراندات لكل فئة — وبعدين اختارها داخل تفاصيل كل نظام
-            اكسسوار
+            قائمة أسعار فورنا يوليو 2026 مُحمّلة افتراضياً — عدّل الأسعار أو أضف
+            براندات جديدة، ثم اختارها داخل تفاصيل كل نظام اكسسوار.
           </p>
         </div>
 
