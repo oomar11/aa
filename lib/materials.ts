@@ -18,11 +18,12 @@ import {
   findGlassBottle,
   findMeshType,
   findSystem,
-  getProfileBrandPrice,
+  getProfileBrandRate,
   loadMaterialCatalog,
   meshCategoryCalcProfile,
   meshKindLabel,
   paneGlassHasPricing,
+  profileBarPricePerM,
   profileBrandHasPricing,
   profilePriceCategoryLabel,
   resolveProfileBrandForSystem,
@@ -1428,8 +1429,14 @@ export type ProfileCostLine = {
   category: ProfilePriceCategory;
   label: string;
   lengthM: number;
+  /** سعر العود من القائمة */
+  barPrice: number;
+  /** طول العود بالمتر */
+  barLengthM: number;
+  /** سعر المتر المشتق = barPrice ÷ barLengthM */
   pricePerM: number;
   totalCost: number;
+  productName?: string;
 };
 
 export type ProfileCostBreakdown = {
@@ -1491,14 +1498,19 @@ export function calcProfileCostBreakdown(
 
   const lines: ProfileCostLine[] = [];
   for (const entry of profileCostEntries(materials)) {
-    const pricePerM = getProfileBrandPrice(brand, entry.category);
+    const rate = getProfileBrandRate(brand, entry.category);
+    if (!rate) continue;
+    const pricePerM = profileBarPricePerM(rate.barPrice, rate.barLengthM);
     if (pricePerM <= 0) continue;
     lines.push({
       category: entry.category,
       label: profilePriceCategoryLabel(entry.category),
       lengthM: entry.lengthM,
+      barPrice: rate.barPrice,
+      barLengthM: rate.barLengthM,
       pricePerM,
       totalCost: roundM(entry.lengthM * pricePerM),
+      productName: rate.productName,
     });
   }
 

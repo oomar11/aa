@@ -512,29 +512,38 @@ function ProfileCostBreakdownPanel({
 
       {(expanded || breakdown.lines.length <= 3) && (
         <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[10px]">
-          <div className="grid grid-cols-4 border-b border-border text-center font-semibold text-muted">
-            <span className="px-2 py-1.5 text-start">النوع</span>
-            <span className="px-2 py-1.5">الطول</span>
-            <span className="px-2 py-1.5">ج.م/م</span>
-            <span className="px-2 py-1.5">تكلفة</span>
+          <div className="grid grid-cols-5 border-b border-border text-center font-semibold text-muted">
+            <span className="px-1.5 py-1.5 text-start">النوع</span>
+            <span className="px-1.5 py-1.5">الطول</span>
+            <span className="px-1.5 py-1.5">العود</span>
+            <span className="px-1.5 py-1.5">ج.م/م</span>
+            <span className="px-1.5 py-1.5">تكلفة</span>
           </div>
           {breakdown.lines.map((line, i) => (
             <div
               key={line.category}
-              className={`grid grid-cols-4 text-center tabular-nums ${
+              className={`grid grid-cols-5 text-center tabular-nums ${
                 i > 0 ? "border-t border-border/60" : ""
               }`}
             >
-              <span className="px-2 py-1.5 text-start font-medium text-foreground">
+              <span className="px-1.5 py-1.5 text-start font-medium text-foreground">
                 {line.label}
+                {line.productName ? (
+                  <span className="mt-0.5 block text-[9px] font-normal text-muted">
+                    {line.productName}
+                  </span>
+                ) : null}
               </span>
-              <span className="px-2 py-1.5 text-foreground">
+              <span className="px-1.5 py-1.5 text-foreground">
                 {line.lengthM.toFixed(2)} م
               </span>
-              <span className="px-2 py-1.5 text-foreground">
+              <span className="px-1.5 py-1.5 text-foreground">
+                {line.barPrice}/{line.barLengthM}م
+              </span>
+              <span className="px-1.5 py-1.5 text-foreground">
                 {line.pricePerM}
               </span>
-              <span className="px-2 py-1.5 font-semibold text-primary">
+              <span className="px-1.5 py-1.5 font-semibold text-primary">
                 {formatCurrency(Math.round(line.totalCost))}
               </span>
             </div>

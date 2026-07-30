@@ -4,14 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import {
   PROFILE_BRANDS_UPDATED,
   PROFILE_PRICE_CATEGORIES,
-  defaultProfileBrandPrices,
+  defaultProfileBrandRates,
   defaultProfileBrands,
   loadMaterialCatalog,
+  makeProfileBarRate,
   newProfileBrandId,
   notifyProfileBrandsUpdated,
+  profileBarPricePerM,
   profilePriceCategoryLabel,
   saveMaterialCatalog,
   type MaterialCatalog,
+  type ProfileBarRate,
   type ProfileBrand,
   type ProfilePriceCategory,
 } from "@/lib/material-systems";
@@ -19,6 +22,12 @@ import {
 type Props = {
   embedded?: boolean;
 };
+
+function rateSummary(rate: ProfileBarRate | undefined): string | null {
+  if (!rate || rate.barPrice <= 0 || rate.barLengthM <= 0) return null;
+  const perM = profileBarPricePerM(rate.barPrice, rate.barLengthM);
+  return `${rate.barPrice} ج.م/عود · ${rate.barLengthM} م ← ${perM} ج.م/م`;
+}
 
 export function ProfileBrandsEditor({ embedded = false }: Props) {
   const [brands, setBrands] = useState<ProfileBrand[]>(defaultProfileBrands());
@@ -56,24 +65,33 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
     setDraft({
       id: newProfileBrandId(),
       name: "",
-      prices: defaultProfileBrandPrices(),
+      rates: defaultProfileBrandRates(),
     });
   }
 
   function openEdit(brand: ProfileBrand) {
     setDraft({
       ...brand,
-      prices: { ...defaultProfileBrandPrices(), ...brand.prices },
+      rates: { ...defaultProfileBrandRates(), ...brand.rates },
     });
   }
 
-  function setDraftPrice(category: ProfilePriceCategory, raw: string) {
+  function setDraftRate(
+    category: ProfilePriceCategory,
+    field: "barPrice" | "barLengthM",
+    raw: string
+  ) {
     if (!draft) return;
     const n = Number(raw);
-    const price = Number.isFinite(n) && n >= 0 ? n : 0;
+    const prev = draft.rates[category] ?? makeProfileBarRate(0, 6);
+    const nextVal = Number.isFinite(n) && n >= 0 ? n : 0;
+    const next: ProfileBarRate = {
+      ...prev,
+      [field]: field === "barLengthM" ? (nextVal > 0 ? nextVal : 6) : nextVal,
+    };
     setDraft({
       ...draft,
-      prices: { ...draft.prices, [category]: price },
+      rates: { ...draft.rates, [category]: next },
     });
   }
 
@@ -88,7 +106,7 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
       ...draft,
       name,
       notes: draft.notes?.trim() || undefined,
-      prices: { ...draft.prices },
+      rates: { ...draft.rates },
     };
     const exists = brands.some((b) => b.id === item.id);
     const next = exists
@@ -112,9 +130,8 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
         <div>
           <h3 className="text-xs font-bold text-foreground">براندات القطاعات</h3>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-            أضف براند (سيتي · بريمير · …) وحدد سعر المتر لكل نوع: حلق، ضلفة،
-            باكتة، سوقاس، … — براند السيتي الافتراضي من قائمة السيتي بريمير
-            فبراير 2025 (سعر العود ÷ طول العود).
+            التسعير بالعود: اكتب سعر العود وطول العود بالمتر — السعر للمتر
+            بيتحسب تلقائي (سعر العود ÷ الطول). سيتي بريمير من قائمة فبراير 2025.
           </p>
         </div>
       ) : null}
@@ -141,9 +158,10 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
       ) : (
         <ul className="space-y-2">
           {brands.map((brand) => {
-            const priced = PROFILE_PRICE_CATEGORIES.filter(
-              (c) => (brand.prices[c.id] ?? 0) > 0
-            );
+            const priced = PROFILE_PRICE_CATEGORIES.filter((c) => {
+              const r = brand.rates[c.id];
+              return r && r.barPrice > 0 && r.barLengthM > 0;
+            });
             return (
               <li
                 key={brand.id}
@@ -160,14 +178,14 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
                     <p className="mt-1 text-[10px] text-muted">
                       {priced.length > 0
                         ? priced
-                            .slice(0, 4)
-                            .map(
-                              (c) =>
-                                `${c.label}: ${brand.prices[c.id]} ج.م/م`
-                            )
+                            .slice(0, 3)
+                            .map((c) => {
+                              const r = brand.rates[c.id]!;
+                              return `${c.label}: ${r.barPrice}/${r.barLengthM}م`;
+                            })
                             .join(" · ")
                         : "مفيش أسعار"}
-                      {priced.length > 4 ? ` · +${priced.length - 4}` : ""}
+                      {priced.length > 3 ? ` · +${priced.length - 3}` : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">
@@ -202,7 +220,7 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
             type="text"
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            placeholder="اسم البراند (مثلاً: سيتي)"
+            placeholder="اسم البراند (مثلاً: سيتي بريمير)"
             autoFocus
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           />
@@ -215,31 +233,69 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
           />
 
           <div>
-            <p className="mb-2 text-[11px] font-semibold text-foreground">
-              قائمة الأسعار (ج.م/متر طولي)
+            <p className="mb-1 text-[11px] font-semibold text-foreground">
+              قائمة الأسعار بالعود
             </p>
             <p className="mb-2 text-[10px] leading-relaxed text-muted">
-              من سعر العود في قائمة المصنع: اقسم سعر العود على طوله (مثلاً 790÷6 =
-              132 للحلق المفصلي).
+              لكل صنف: سعر العود (ج.م) + طول العود (م) — المتر = السعر ÷ الطول
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              {PROFILE_PRICE_CATEGORIES.map((cat) => (
-                <label
-                  key={cat.id}
-                  className="block text-[10px] text-muted"
-                >
-                  {profilePriceCategoryLabel(cat.id)}
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={draft.prices[cat.id] ?? ""}
-                    onChange={(e) => setDraftPrice(cat.id, e.target.value)}
-                    placeholder="0"
-                    className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-                  />
-                </label>
-              ))}
+            <div className="space-y-2">
+              {PROFILE_PRICE_CATEGORIES.map((cat) => {
+                const rate = draft.rates[cat.id] ?? makeProfileBarRate(0, 6);
+                const summary = rateSummary(
+                  rate.barPrice > 0 ? rate : undefined
+                );
+                return (
+                  <div
+                    key={cat.id}
+                    className="rounded-xl border border-border/70 bg-background/60 p-2"
+                  >
+                    <p className="text-[11px] font-semibold text-foreground">
+                      {profilePriceCategoryLabel(cat.id)}
+                    </p>
+                    {rate.productName ? (
+                      <p className="mt-0.5 text-[10px] text-muted">
+                        {rate.productName}
+                      </p>
+                    ) : null}
+                    <div className="mt-1.5 grid grid-cols-2 gap-2">
+                      <label className="block text-[10px] text-muted">
+                        سعر العود (ج.م)
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={rate.barPrice || ""}
+                          onChange={(e) =>
+                            setDraftRate(cat.id, "barPrice", e.target.value)
+                          }
+                          placeholder="0"
+                          className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                        />
+                      </label>
+                      <label className="block text-[10px] text-muted">
+                        طول العود (م)
+                        <input
+                          type="number"
+                          min={0.1}
+                          step={0.1}
+                          value={rate.barLengthM || ""}
+                          onChange={(e) =>
+                            setDraftRate(cat.id, "barLengthM", e.target.value)
+                          }
+                          placeholder="6"
+                          className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                        />
+                      </label>
+                    </div>
+                    {summary ? (
+                      <p className="mt-1 text-[10px] font-medium text-primary">
+                        {summary}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

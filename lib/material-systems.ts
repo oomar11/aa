@@ -133,13 +133,25 @@ export function profilePriceCategoryLabel(id: ProfilePriceCategory): string {
   return PROFILE_PRICE_CATEGORIES.find((c) => c.id === id)?.label ?? id;
 }
 
-/** براند قطاعات (سيتي · بريمير · …) مع قائمة أسعار لكل نوع */
+/** براند قطاعات (سيتي · بريمير · …) مع قائمة أسعار بالعود */
+export type ProfileBarRate = {
+  /** سعر العود (ج.م/عود) */
+  barPrice: number;
+  /** طول العود بالمتر */
+  barLengthM: number;
+  /** اسم الصنف في قائمة المصنع (اختياري) */
+  productName?: string;
+};
+
 export type ProfileBrand = {
   id: string;
   name: string;
   notes?: string;
-  /** سعر المتر الطولي (ج.م/م) لكل فئة قطاع */
-  prices: Partial<Record<ProfilePriceCategory, number>>;
+  /**
+   * قائمة أسعار بالعود: سعر العود + طول العود.
+   * سعر المتر = barPrice ÷ barLengthM
+   */
+  rates: Partial<Record<ProfilePriceCategory, ProfileBarRate>>;
 };
 
 /** عود / قطاع داخل النظام */
@@ -1060,57 +1072,80 @@ export function barPriceToPerMeter(barPrice: number, barLengthM: number): number
   return profileBarPricePerM(barPrice, barLengthM);
 }
 
-const CITY_BRAND_NOTES =
-  "قائمة أسعار قطاع سيتي بريمير — فبراير 2025 (بدون نقل · الأسعار تشمل الكاوتش والألوان أبيض/بيج/رصاصي)";
-
-/**
- * قائمة أسعار قطاع السيتي بريمير (فبراير 2025) — ج.م/متر طولي.
- * المصدر: سعر العود ÷ طول العود من قائمة المصنع.
- *
- * مراجع سعر العود:
- * - حلق مفصلي ببار 6سم: 790 / 6م
- * - حلق جرار 3 سكة ببار 6سم: 1000 / 6.5م
- * - ضلفة شباك مفصلي: 830 / 6م · ضلفة باب مفصلي: 980 / 6م
- * - ضلفة شباك جرار: 750 / 6م
- * - سوقاس ثابت: 875 / 6.5م · بوكلير متحرك: 710 / 6.5م
- * - كوبلن: 240 / 6م · طبة وسكينة شباك جرار: 255 / 6.5م
- * - باكتة 20مم: 165 / 6م · باكتة 35مم: 208 / 6م · باكتة 9مم: 140 / 6م
- * - ضلفة سلك جرار: 380 / 6م · تقابل 4 ضلفة: 190 / 6م · تقابل سلك: 140 / 6م
- */
-export function cityPremierProfileBrandPrices(): Partial<
-  Record<ProfilePriceCategory, number>
-> {
-  const bar = profileBarPricePerM;
+export function makeProfileBarRate(
+  barPrice: number,
+  barLengthM: number,
+  productName?: string
+): ProfileBarRate {
   return {
-    // مفصلي — حلق ببار 6سم (القياسي مع الكاوتش/البار)
-    "frame-hinged": bar(790, 6),
-    "sash-hinged": bar(830, 6),
-    "sash-door": bar(980, 6),
-    bouclier: bar(710, 6.5),
-    mullion: bar(875, 6.5),
-    "bead-single-hinged": bar(165, 6), // باكته 20 مم
-    "bead-double-hinged": bar(208, 6), // باكته 35 مم (مش بانل)
-    coupling: bar(240, 6),
-    // جرار
-    "frame-sliding": bar(1000, 6.5),
-    "sash-sliding": bar(750, 6),
-    knife: bar(255, 6.5), // طبه وسكينه شباك جرار
-    "bead-single-sliding": bar(165, 6), // باكته 20 مم
-    "bead-double-sliding": bar(208, 6), // باكته 35 مم
-    "mesh-sliding-profile": bar(380, 6),
-    "four-leaf-meeting": bar(190, 6),
-    "mesh-meeting": bar(140, 6),
+    barPrice,
+    barLengthM,
+    ...(productName ? { productName } : {}),
   };
 }
 
-/** قالب أسعار لبراند جديد — يبدأ من قائمة السيتي بريمير */
+const CITY_BRAND_NOTES =
+  "قائمة أسعار قطاع سيتي بريمير — فبراير 2025 · تسعير بالعود (طول العود + سعر العود) · بدون نقل · شامل الكاوتش · أبيض/بيج/رصاصي";
+
+/**
+ * قائمة أسعار قطاع السيتي بريمير (فبراير 2025) — بالعود من قائمة المصنع.
+ * كل صف: سعر العود + طول العود بالمتر (زي ما في القائمة).
+ */
+export function cityPremierProfileBarRates(): Partial<
+  Record<ProfilePriceCategory, ProfileBarRate>
+> {
+  const r = makeProfileBarRate;
+  return {
+    // مفصلي
+    "frame-hinged": r(790, 6, "حلق مفصلي ببار 6سم بالكاوتش"),
+    "sash-hinged": r(830, 6, "ضلفة شباك مفصلي"),
+    "sash-door": r(980, 6, "ضلفة باب مفصلي"),
+    bouclier: r(710, 6.5, "قائم متحرك بوكلير"),
+    mullion: r(875, 6.5, "قائم ثابت سوقاس"),
+    "bead-single-hinged": r(165, 6, "باكتة 20مم"),
+    "bead-double-hinged": r(208, 6, "باكتة 35مم"),
+    coupling: r(240, 6, "كوبلن تجميع مفصلي/جرار"),
+    // جرار
+    "frame-sliding": r(1000, 6.5, "حلق جرار 3 سكة ببار 6سم"),
+    "sash-sliding": r(750, 6, "ضلفة شباك جرار"),
+    knife: r(255, 6.5, "طبة وسكينة شباك جرار"),
+    "bead-single-sliding": r(165, 6, "باكتة 20مم"),
+    "bead-double-sliding": r(208, 6, "باكتة 35مم"),
+    "mesh-sliding-profile": r(380, 6, "ضلفة سلك جرار"),
+    "four-leaf-meeting": r(190, 6, "تقابل 4 ضلفة جرار"),
+    "mesh-meeting": r(140, 6, "تقابل سلك"),
+  };
+}
+
+/** أسعار متر مشتقة — للتوافق مع الحسابات القديمة */
+export function cityPremierProfileBrandPrices(): Partial<
+  Record<ProfilePriceCategory, number>
+> {
+  const rates = cityPremierProfileBarRates();
+  const out: Partial<Record<ProfilePriceCategory, number>> = {};
+  for (const cat of PROFILE_PRICE_CATEGORIES) {
+    const rate = rates[cat.id];
+    if (!rate) continue;
+    out[cat.id] = profileBarPricePerM(rate.barPrice, rate.barLengthM);
+  }
+  return out;
+}
+
+/** قالب أسعار لبراند جديد — يبدأ من قائمة السيتي بريمير (بالعود) */
+export function defaultProfileBrandRates(): Partial<
+  Record<ProfilePriceCategory, ProfileBarRate>
+> {
+  return cityPremierProfileBarRates();
+}
+
+/** @deprecated استخدم defaultProfileBrandRates */
 export function defaultProfileBrandPrices(): Partial<
   Record<ProfilePriceCategory, number>
 > {
   return cityPremierProfileBrandPrices();
 }
 
-/** أسعار افتراضية قديمة — للترحيل فقط */
+/** أسعار افتراضية قديمة (ج.م/م) — للترحيل فقط */
 const LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES = {
   "frame-hinged": 42,
   "frame-sliding": 48,
@@ -1129,9 +1164,6 @@ const LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES = {
   "mesh-sliding-profile": 38,
 } as const satisfies Partial<Record<ProfilePriceCategory, number>>;
 
-/** توقيع خاطئ من ترحيل سابق: باكتة دبل = سعر البانل */
-const LEGACY_PANEL_AS_DOUBLE_BEAD = profileBarPricePerM(750, 6.5);
-
 function profileBrandPricesMatch(
   prices: Partial<Record<ProfilePriceCategory, number>>,
   expected: Partial<Record<ProfilePriceCategory, number>>
@@ -1142,53 +1174,146 @@ function profileBrandPricesMatch(
   return true;
 }
 
-/** يحدّث براند السيتي بريمير من الأسعار النموذجية/الناقصة إلى قائمة المصنع */
+function isProfileBarRate(raw: unknown): raw is ProfileBarRate {
+  if (!raw || typeof raw !== "object") return false;
+  const o = raw as Record<string, unknown>;
+  const barPrice = Number(o.barPrice);
+  const barLengthM = Number(o.barLengthM);
+  return (
+    Number.isFinite(barPrice) &&
+    barPrice >= 0 &&
+    Number.isFinite(barLengthM) &&
+    barLengthM > 0
+  );
+}
+
+export function normalizeProfileBarRate(raw: unknown): ProfileBarRate | undefined {
+  if (isProfileBarRate(raw)) {
+    const o = raw as ProfileBarRate & { productName?: unknown };
+    const productName =
+      typeof o.productName === "string" && o.productName.trim()
+        ? o.productName.trim()
+        : undefined;
+    return makeProfileBarRate(o.barPrice, o.barLengthM, productName);
+  }
+  // رقم قديم = كان ج.م/م — نرجّعه لعود بطول 6م تقريبي
+  const n = Number(raw);
+  if (Number.isFinite(n) && n > 0) {
+    return makeProfileBarRate(Math.round(n * 6 * 100) / 100, 6);
+  }
+  return undefined;
+}
+
+export function normalizeProfileBrandRates(
+  raw: unknown
+): Partial<Record<ProfilePriceCategory, ProfileBarRate>> {
+  if (!raw || typeof raw !== "object") return {};
+  const o = raw as Record<string, unknown>;
+  const out: Partial<Record<ProfilePriceCategory, ProfileBarRate>> = {};
+  for (const cat of PROFILE_PRICE_CATEGORIES) {
+    const rate = normalizeProfileBarRate(o[cat.id]);
+    if (rate) out[cat.id] = rate;
+  }
+  return out;
+}
+
+/**
+ * ترحيل أسعار رقمية قديمة (ج.م/م) إلى هيكل العود.
+ * لو البراند سيتي بريمير → قائمة المصنع الرسمية.
+ */
+export function migrateRatesFromLegacyPrices(
+  prices: Partial<Record<ProfilePriceCategory, number>>
+): Partial<Record<ProfilePriceCategory, ProfileBarRate>> {
+  if (profileBrandPricesMatch(prices, LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES)) {
+    return cityPremierProfileBarRates();
+  }
+  const out: Partial<Record<ProfilePriceCategory, ProfileBarRate>> = {};
+  for (const cat of PROFILE_PRICE_CATEGORIES) {
+    const perM = prices[cat.id];
+    if (!(perM != null && perM > 0)) continue;
+    // حاول نطابق قائمة السيتي بريمير المشتقة
+    const official = cityPremierProfileBarRates()[cat.id];
+    if (
+      official &&
+      Math.abs(profileBarPricePerM(official.barPrice, official.barLengthM) - perM) < 0.02
+    ) {
+      out[cat.id] = { ...official };
+      continue;
+    }
+    out[cat.id] = makeProfileBarRate(Math.round(perM * 6 * 100) / 100, 6);
+  }
+  return out;
+}
+
+/** يحدّث براند السيتي بريمير إلى قائمة العود الرسمية فبراير 2025 */
 export function migrateCityPremierProfileBrandPrices(
   brands: ProfileBrand[]
 ): ProfileBrand[] {
-  const official = cityPremierProfileBrandPrices();
+  const official = cityPremierProfileBarRates();
   return brands.map((brand) => {
     if (brand.id !== "brand-city") return brand;
 
-    if (
-      profileBrandPricesMatch(brand.prices, LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES)
-    ) {
+    // لو لسه على هيكل قديم أو ناقص — ثبّت قائمة المصنع
+    const hasRates = Object.values(brand.rates ?? {}).some(
+      (r) => r && r.barPrice > 0 && r.barLengthM > 0
+    );
+    if (!hasRates) {
       return {
         ...brand,
         name: "سيتي بريمير",
         notes: CITY_BRAND_NOTES,
-        prices: { ...official },
+        rates: { ...official },
       };
     }
 
-    const merged = { ...brand.prices };
+    const merged = { ...brand.rates };
     let changed = false;
 
-    // إصلاح ربط باكتة دبل بسعر البانل بالغلط
-    if ((merged["bead-double-hinged"] ?? 0) === LEGACY_PANEL_AS_DOUBLE_BEAD) {
+    // إصلاح باكتة دبل لو كانت مربوطة بسعر البانل (750/6.5)
+    const bead = merged["bead-double-hinged"];
+    if (
+      bead &&
+      Math.abs(bead.barPrice - 750) < 0.01 &&
+      Math.abs(bead.barLengthM - 6.5) < 0.01
+    ) {
       merged["bead-double-hinged"] = official["bead-double-hinged"];
       changed = true;
     }
 
     for (const cat of PROFILE_PRICE_CATEGORIES) {
-      if ((merged[cat.id] ?? 0) <= 0 && (official[cat.id] ?? 0) > 0) {
-        merged[cat.id] = official[cat.id];
+      const cur = merged[cat.id];
+      const off = official[cat.id];
+      if ((!cur || cur.barPrice <= 0) && off) {
+        merged[cat.id] = { ...off };
         changed = true;
       }
     }
 
-    const name = brand.name === "سيتي" ? "سيتي بريمير" : brand.name;
-    const notes =
-      !(brand.notes ?? "").includes("فبراير 2025") && changed
-        ? CITY_BRAND_NOTES
-        : brand.notes;
+    const name =
+      brand.name === "سيتي" || brand.name === "سيتي بريمير"
+        ? "سيتي بريمير"
+        : brand.name;
+    const notes = !(brand.notes ?? "").includes("بالعود")
+      ? CITY_BRAND_NOTES
+      : brand.notes;
+
+    // سيتي بريمير الافتراضي: ثبّت أسعار المصنع (سعر العود + الطول) دائماً
+    // إلا لو المستخدم غيّر اسم البراند
+    if (name === "سيتي بريمير") {
+      return {
+        ...brand,
+        name,
+        notes: CITY_BRAND_NOTES,
+        rates: { ...official },
+      };
+    }
 
     if (!changed && name === brand.name && notes === brand.notes) return brand;
     return {
       ...brand,
       name,
       notes: notes || CITY_BRAND_NOTES,
-      prices: merged,
+      rates: merged,
     };
   });
 }
@@ -1204,28 +1329,28 @@ export function defaultProfileBrands(): ProfileBrand[] {
       id: "brand-city",
       name: "سيتي بريمير",
       notes: CITY_BRAND_NOTES,
-      prices: cityPremierProfileBrandPrices(),
+      rates: cityPremierProfileBarRates(),
     },
     {
       id: "brand-premier",
       name: "بريمير",
-      notes: "قائمة أسعار بريمير — لأي سيستم مربوط ببراند بريمير",
-      prices: {
-        "frame-hinged": 55,
-        "frame-sliding": 62,
-        "sash-hinged": 68,
-        "sash-door": 75,
-        "sash-sliding": 48,
-        mullion: 65,
-        coupling: 58,
-        knife: 35,
-        bouclier: 42,
-        "bouclier-cap": 10,
-        "bead-single-hinged": 15,
-        "bead-single-sliding": 15,
-        "bead-double-hinged": 22,
-        "bead-double-sliding": 22,
-        "mesh-sliding-profile": 48,
+      notes: "قائمة أسعار بريمير — تسعير بالعود · لأي سيستم مربوط ببراند بريمير",
+      rates: {
+        "frame-hinged": makeProfileBarRate(330, 6),
+        "frame-sliding": makeProfileBarRate(372, 6),
+        "sash-hinged": makeProfileBarRate(408, 6),
+        "sash-door": makeProfileBarRate(450, 6),
+        "sash-sliding": makeProfileBarRate(288, 6),
+        mullion: makeProfileBarRate(390, 6),
+        coupling: makeProfileBarRate(348, 6),
+        knife: makeProfileBarRate(210, 6),
+        bouclier: makeProfileBarRate(252, 6),
+        "bouclier-cap": makeProfileBarRate(60, 6),
+        "bead-single-hinged": makeProfileBarRate(90, 6),
+        "bead-single-sliding": makeProfileBarRate(90, 6),
+        "bead-double-hinged": makeProfileBarRate(132, 6),
+        "bead-double-sliding": makeProfileBarRate(132, 6),
+        "mesh-sliding-profile": makeProfileBarRate(288, 6),
       },
     },
   ];
@@ -1256,11 +1381,18 @@ export function normalizeProfileBrands(raw: unknown): ProfileBrand[] {
     const name = typeof o.name === "string" ? o.name.trim() : "";
     if (!id || !name || seen.has(id)) continue;
     seen.add(id);
+
+    let rates = normalizeProfileBrandRates(o.rates);
+    // ترحيل من prices الرقمية القديمة
+    if (Object.keys(rates).length === 0 && o.prices) {
+      rates = migrateRatesFromLegacyPrices(normalizeProfileBrandPrices(o.prices));
+    }
+
     out.push({
       id,
       name,
       notes: typeof o.notes === "string" ? o.notes.trim() || undefined : undefined,
-      prices: normalizeProfileBrandPrices(o.prices),
+      rates,
     });
   }
 
@@ -1297,16 +1429,30 @@ export function resolveProfileBrandForSystem(
   return findProfileBrand(system.profileBrandId, catalog);
 }
 
-export function profileBrandHasPricing(brand: ProfileBrand | undefined): boolean {
-  if (!brand) return false;
-  return Object.values(brand.prices).some((p) => (p ?? 0) > 0);
+export function getProfileBrandRate(
+  brand: ProfileBrand | undefined,
+  category: ProfilePriceCategory
+): ProfileBarRate | undefined {
+  const rate = brand?.rates?.[category];
+  if (!rate || rate.barPrice <= 0 || rate.barLengthM <= 0) return undefined;
+  return rate;
 }
 
+export function profileBrandHasPricing(brand: ProfileBrand | undefined): boolean {
+  if (!brand) return false;
+  return Object.values(brand.rates ?? {}).some(
+    (r) => r != null && r.barPrice > 0 && r.barLengthM > 0
+  );
+}
+
+/** سعر المتر الطولي المشتق من سعر العود ÷ طول العود */
 export function getProfileBrandPrice(
   brand: ProfileBrand | undefined,
   category: ProfilePriceCategory
 ): number {
-  return brand?.prices[category] ?? 0;
+  const rate = getProfileBrandRate(brand, category);
+  if (!rate) return 0;
+  return profileBarPricePerM(rate.barPrice, rate.barLengthM);
 }
 
 function withDefaultProfile(system: MaterialSystem): MaterialSystem {

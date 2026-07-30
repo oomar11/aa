@@ -15,8 +15,7 @@ export default function ProfileBrandsPage() {
         <div className="px-1">
           <h1 className="text-xl font-bold">براندات القطاعات</h1>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            سيتي بريمير (فبراير 2025) · بريمير · وأي براند تاني — سعر المتر من
-            سعر العود للحلق والضلفة والباكتة والسوقاس
+            سيتي بريمير (فبراير 2025) بالعود: سعر العود + طول العود — لأي براند
           </p>
         </div>
 
