@@ -46,6 +46,8 @@ export type MaterialsBreakdown = {
   mullionSashM: number;
   /** ضلفة مفصلي — متر طولي (محيط كل ضلفة متحركة) */
   sashHingedM: number;
+  /** ضلفة باب — متر طولي */
+  sashDoorM: number;
   /** ضلفة جرار — متر طولي */
   sashSlidingM: number;
   /** باكتة تثبيت الزجاج — متر طولي */
@@ -103,6 +105,7 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     mullionFrameM: 0,
     mullionSashM: 0,
     sashHingedM: 0,
+    sashDoorM: 0,
     sashSlidingM: 0,
     beadM: 0,
     frameTotalM: 0,
@@ -136,6 +139,12 @@ function isOpeningSash(opening: PaneOpening): boolean {
 
 function panePerimeterMm(w: number, h: number): number {
   return 2 * (w + h);
+}
+
+/** ضلفة باب — من العلامة أو نوع الفتح door-left / door-right */
+export function isDoorPane(opening: PaneOpening, cfg: PaneConfig): boolean {
+  if (cfg.isDoor) return true;
+  return opening === "door-left" || opening === "door-right";
 }
 
 /** هل الضلفة فيها زجاج يحتاج باكتة */
@@ -489,16 +498,25 @@ function sashMullionMm(
 }
 
 /** محيط قطاع الضلفة لكل ضلفة متحركة */
-function sashProfileMm(boxes: PaneBox[]): { hinged: number; sliding: number } {
+function sashProfileMm(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined
+): { hinged: number; sliding: number; door: number } {
   let hinged = 0;
   let sliding = 0;
+  let door = 0;
   for (const box of boxes) {
     if (!isOpeningSash(box.opening)) continue;
     const peri = panePerimeterMm(box.w, box.h);
-    if (box.kind === "sliding") sliding += peri;
+    if (box.kind === "sliding") {
+      sliding += peri;
+      continue;
+    }
+    const cfg = normalizePaneConfig(panes?.[box.id]);
+    if (isDoorPane(box.opening, cfg)) door += peri;
     else hinged += peri;
   }
-  return { hinged, sliding };
+  return { hinged, sliding, door };
 }
 
 /** باكتة تثبيت الزجاج — محيط كل ضلفة فيها زجاج */
@@ -615,7 +633,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   }
 
   const mullionSashMm = sashMullionMm(boxes, panes);
-  const sashMm = sashProfileMm(boxes);
+  const sashMm = sashProfileMm(boxes, panes);
   const beadMm = beadProfileMm(boxes, panes);
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
@@ -626,6 +644,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const mullionFrameM = roundM(mmToM(junctions.mullionMm));
   const mullionSashM = roundM(mmToM(mullionSashMm));
   const sashHingedM = roundM(mmToM(sashMm.hinged));
+  const sashDoorM = roundM(mmToM(sashMm.door));
   const sashSlidingM = roundM(mmToM(sashMm.sliding));
   const beadM = roundM(mmToM(beadMm));
   const frameTotalM = roundM(frameHingedM + frameSlidingM);
@@ -641,6 +660,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     mullionFrameM,
     mullionSashM,
     sashHingedM,
+    sashDoorM,
     sashSlidingM,
     beadM,
     frameTotalM,
@@ -668,6 +688,7 @@ export function scaleMaterials(
     mullionFrameM: roundM(m.mullionFrameM * q),
     mullionSashM: roundM(m.mullionSashM * q),
     sashHingedM: roundM(m.sashHingedM * q),
+    sashDoorM: roundM(m.sashDoorM * q),
     sashSlidingM: roundM(m.sashSlidingM * q),
     beadM: roundM(m.beadM * q),
     frameTotalM: roundM(m.frameTotalM * q),

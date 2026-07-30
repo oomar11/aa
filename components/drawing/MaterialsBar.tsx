@@ -106,6 +106,12 @@ export function MaterialsBar({
       accent: materials.sashHingedM > 0,
     },
     {
+      key: "sash-d",
+      label: "ضلفة باب",
+      value: formatMeters(materials.sashDoorM),
+      accent: materials.sashDoorM > 0,
+    },
+    {
       key: "sash-s",
       label: "ضلفة جرار",
       value: formatMeters(materials.sashSlidingM),
