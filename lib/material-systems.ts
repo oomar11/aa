@@ -16,6 +16,8 @@ export type ProfilePieceRole =
   | "frame-sliding"
   | "sash-hinged"
   | "sash-sliding"
+  | "sash-sliding-protruding"
+  | "sash-sliding-recessed"
   | "mullion"
   | "coupling"
   | "knife"
@@ -33,6 +35,8 @@ export const PROFILE_PIECE_ROLES: {
   { id: "frame-sliding", label: "حلق جرار" },
   { id: "sash-hinged", label: "ضلفة مفصلي" },
   { id: "sash-sliding", label: "ضلفة جرار" },
+  { id: "sash-sliding-protruding", label: "ضلفة جرار بارز" },
+  { id: "sash-sliding-recessed", label: "ضلفة جرار غاطس" },
   { id: "mullion", label: "سوقاس" },
   { id: "coupling", label: "كوبلن" },
   { id: "knife", label: "سكينة" },
@@ -197,7 +201,8 @@ export type AccessoryBrandCategory =
   | "roller"
   | "brush"
   | "sliding-espagnolette"
-  | "sliding-lock";
+  | "sliding-lock"
+  | "recessed-handle";
 
 export const ACCESSORY_BRAND_CATEGORIES: {
   id: AccessoryBrandCategory;
@@ -216,6 +221,7 @@ export const ACCESSORY_BRAND_CATEGORIES: {
   { id: "brush", label: "فرش جرار", group: "sliding" },
   { id: "sliding-espagnolette", label: "سبلونة جرار", group: "sliding" },
   { id: "sliding-lock", label: "سكاك جرار", group: "sliding" },
+  { id: "recessed-handle", label: "مقبض غاطس", group: "sliding" },
 ];
 
 export function accessoryBrandCategoryLabel(
@@ -273,6 +279,8 @@ export type AccessorySystemDetails = {
   brushKnifeHeightMultiplier: number;
   /** سكاك جرار — مكان المفصلي */
   slidingLockPieces: AccessoryLockPiece[];
+  /** مقبض غاطس لكل ضلفة جرار غاطسة */
+  recessedHandlesPerRecessedSash: number;
 };
 
 export type MaterialSystem = {
@@ -551,6 +559,7 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     brushSashPerimeterMultiplier: 2,
     brushKnifeHeightMultiplier: 1,
     slidingLockPieces: defaultSlidingLockPieces(),
+    recessedHandlesPerRecessedSash: 1,
   };
 }
 
@@ -1130,9 +1139,16 @@ export function getDefaultCatalog(): MaterialCatalog {
               barLengthM: DEFAULT_BAR_LENGTH_M,
             },
             {
-              id: "pvc2-ss",
-              name: "ضلفة جرار",
-              role: "sash-sliding",
+              id: "pvc2-ss-p",
+              name: "ضلفة جرار بارز",
+              role: "sash-sliding-protruding",
+              sectionWidthMm: 45,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "pvc2-ss-r",
+              name: "ضلفة جرار غاطس",
+              role: "sash-sliding-recessed",
               sectionWidthMm: 45,
               barLengthM: DEFAULT_BAR_LENGTH_M,
             },
@@ -1739,6 +1755,10 @@ export function normalizeAccessoryDetails(
     slidingLockPieces: normalizeLockPieces(
       o.slidingLockPieces,
       fallback.slidingLockPieces
+    ),
+    recessedHandlesPerRecessedSash: normalizePositiveInt(
+      o.recessedHandlesPerRecessedSash,
+      fallback.recessedHandlesPerRecessedSash
     ),
   };
 }
