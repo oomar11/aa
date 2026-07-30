@@ -167,11 +167,15 @@ export function isDoorPane(opening: PaneOpening, cfg: PaneConfig): boolean {
 }
 
 /** هل الضلفة فيها زجاج يحتاج باكتة */
-function paneNeedsBead(opening: PaneOpening, cfg: PaneConfig): boolean {
+function paneNeedsBead(
+  opening: PaneOpening,
+  cfg: PaneConfig,
+  catalog?: MaterialCatalog
+): boolean {
   if (isExhaustPane(opening)) return false;
   if (opening === "panel-h" || opening === "panel-v") return false;
+  if (meshReplacesPaneGlass(cfg, opening, catalog)) return false;
   const norm = normalizePaneConfig(cfg);
-  if (norm.mesh) return false;
   if (norm.sandwichPanels) {
     const count = gridCellCount(norm.grid);
     const panelCells = norm.panelCells ?? [];
@@ -530,15 +534,19 @@ function slidingKnifeProfileMm(boxes: PaneBox[]): number {
 /** محيط قطاع الضلفة لكل ضلفة متحركة */
 function sashProfileMm(
   boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined
+  panes: Record<string, PaneConfig> | undefined,
+  catalog?: MaterialCatalog
 ): { hinged: number; sliding: number; door: number } {
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
   let hinged = 0;
   let sliding = 0;
   let door = 0;
   for (const box of boxes) {
     if (!isOpeningSash(box.opening)) continue;
     const cfg = normalizePaneConfig(panes?.[box.id]);
-    if (cfg.mesh) continue;
+    if (meshReplacesPaneGlass(cfg, box.opening, cat)) continue;
     const peri = panePerimeterMm(box.w, box.h);
     if (box.kind === "sliding") {
       sliding += peri;
@@ -553,12 +561,13 @@ function sashProfileMm(
 /** باكتة تثبيت الزجاج — محيط كل ضلفة فيها زجاج */
 function beadProfileMm(
   boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined
+  panes: Record<string, PaneConfig> | undefined,
+  catalog?: MaterialCatalog
 ): number {
   let total = 0;
   for (const box of boxes) {
     const cfg = normalizePaneConfig(panes?.[box.id]);
-    if (!paneNeedsBead(box.opening, cfg)) continue;
+    if (!paneNeedsBead(box.opening, cfg, catalog)) continue;
     total += panePerimeterMm(box.w, box.h);
   }
   return total;
@@ -586,16 +595,31 @@ function paneFillAreaMm2(
   return mm2;
 }
 
-/** مساحة الزجاج الفعلية داخل الضلفة (مم²) — بدون بنل أو شبكة سلك */
+/** ضلفة سلك جرار (قطاع) — السلك يستبدل الزجاج. باقي الأنواع سلك فوق الزجاج */
+export function meshReplacesPaneGlass(
+  cfg: PaneConfig,
+  opening: PaneOpening,
+  catalog?: MaterialCatalog
+): boolean {
+  const norm = normalizePaneConfig(cfg);
+  if (!norm.mesh) return false;
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
+  const kind = resolvePaneMeshKind(norm, opening, cat);
+  return meshCategoryCalcProfile(kind, cat);
+}
+
+/** مساحة الزجاج الفعلية داخل الضلفة (مم²) — بدون بنل */
 function paneGlassAreaMm2(
   w: number,
   h: number,
   opening: PaneOpening,
-  cfg: PaneConfig
+  cfg: PaneConfig,
+  catalog?: MaterialCatalog
 ): number {
   if (isExhaustPane(opening)) return 0;
-  const norm = normalizePaneConfig(cfg);
-  if (norm.mesh) return 0;
+  if (meshReplacesPaneGlass(cfg, opening, catalog)) return 0;
   return paneFillAreaMm2(w, h, opening, cfg);
 }
 
@@ -950,8 +974,9 @@ export function calcGlassBreakdown(
     }
 
     const areaSqm = roundM(
-      paneGlassAreaMm2(box.w, box.h, box.opening, cfg) / 1_000_000
+      paneGlassAreaMm2(box.w, box.h, box.opening, cfg, cat) / 1_000_000
     );
+    if (areaSqm < 0.0005) continue;
     lines.push({
       paneId: box.id,
       areaSqm,

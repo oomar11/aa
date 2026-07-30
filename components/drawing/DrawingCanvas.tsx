@@ -13,6 +13,7 @@ import {
   type PaneConfig,
   type PaneOpening,
 } from "@/lib/design-items";
+import { meshReplacesPaneGlass } from "@/lib/materials";
 import {
   collectMullionRects,
   collectPaneRects,
@@ -366,6 +367,7 @@ export function DrawingCanvas({
         const isPanel =
           cfg.opening === "panel-h" || cfg.opening === "panel-v";
         const isExhaust = cfg.opening === "exhaust";
+        const screenSash = meshReplacesPaneGlass(cfg, cfg.opening);
 
         return (
           <g
@@ -389,7 +391,13 @@ export function DrawingCanvas({
               width={gw}
               height={gh}
               fill={
-                isPanel || isExhaust ? frameFill : glass
+                isPanel || isExhaust
+                  ? frameFill
+                  : screenSash
+                    ? isDark
+                      ? "#3d4f5f"
+                      : "#dce6ee"
+                    : glass
               }
               stroke={selected ? openStroke : paneStroke}
               strokeWidth={selected ? 2.2 : 1}

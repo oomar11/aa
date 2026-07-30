@@ -373,7 +373,7 @@ export function PanePropertiesModal({
                       meshKindManual={draft.meshKindManual}
                       categoryOpts={meshCategoryOpts}
                       meshOpts={meshOpts}
-                      hint="الشبكة بتتحط على أجزاء الزجاج بس (مش على البنل). القلاب والجرار بيفعّلوا السلك تلقائياً."
+                      hint="سلك الجرار (ضلفة سلك) بيستبدل الزجاج. باقي الأنواع سلك فوق الزجاج — مش على البنل. القلاب والجرار بيفعّلوا السلك تلقائياً."
                       onChange={(next) =>
                         setDraft((d) => ({ ...d, ...next }))
                       }
