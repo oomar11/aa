@@ -363,6 +363,9 @@ export function DrawingCanvas({
         const gy = p.y + profile;
         const gw = Math.max(p.w - profile * 2, 2);
         const gh = Math.max(p.h - profile * 2, 2);
+        const isPanel =
+          cfg.opening === "panel-h" || cfg.opening === "panel-v";
+        const isExhaust = cfg.opening === "exhaust";
 
         return (
           <g
@@ -386,22 +389,22 @@ export function DrawingCanvas({
               width={gw}
               height={gh}
               fill={
-                cfg.opening === "panel-h" || cfg.opening === "panel-v"
-                  ? frameFill
-                  : glass
+                isPanel || isExhaust ? frameFill : glass
               }
               stroke={selected ? openStroke : paneStroke}
               strokeWidth={selected ? 2.2 : 1}
             />
-            <PaneInnerFill
-              config={cfg}
-              x={gx}
-              y={gy}
-              w={gw}
-              h={gh}
-              frameFill={frameFill}
-              svgPerMm={svgPerMm}
-            />
+            {!isExhaust && (
+              <PaneInnerFill
+                config={cfg}
+                x={gx}
+                y={gy}
+                w={gw}
+                h={gh}
+                frameFill={frameFill}
+                svgPerMm={svgPerMm}
+              />
+            )}
             <OpeningOverlay
               opening={cfg.opening}
               bouclier={Boolean(cfg.bouclier)}

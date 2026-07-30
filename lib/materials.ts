@@ -1,5 +1,6 @@
 import {
   gridCellCount,
+  isExhaustPane,
   itemUnitAreaSqm,
   normalizePaneConfig,
   resolvePaneGlass,
@@ -158,6 +159,7 @@ export function isDoorPane(opening: PaneOpening, cfg: PaneConfig): boolean {
 
 /** هل الضلفة فيها زجاج يحتاج باكتة */
 function paneNeedsBead(opening: PaneOpening, cfg: PaneConfig): boolean {
+  if (isExhaustPane(opening)) return false;
   if (opening === "panel-h" || opening === "panel-v") return false;
   const norm = normalizePaneConfig(cfg);
   if (norm.mesh) return false;
@@ -485,6 +487,7 @@ function sashMullionMm(
 ): number {
   let total = 0;
   for (const box of boxes) {
+    if (isExhaustPane(box.opening)) continue;
     // ضلفة البوكلير الثابتة مش بتتقسم بسوقاس داخلي للخامات دي
     if (box.bouclier) continue;
     const grid = normalizePaneConfig(panes?.[box.id]).grid ?? "solid";
@@ -559,6 +562,7 @@ function paneFillAreaMm2(
   opening: PaneOpening,
   cfg: PaneConfig
 ): number {
+  if (isExhaustPane(opening)) return 0;
   if (opening === "panel-h" || opening === "panel-v") return 0;
   const norm = normalizePaneConfig(cfg);
   const grid = norm.grid ?? "solid";
@@ -580,6 +584,7 @@ function paneGlassAreaMm2(
   opening: PaneOpening,
   cfg: PaneConfig
 ): number {
+  if (isExhaustPane(opening)) return 0;
   const norm = normalizePaneConfig(cfg);
   if (norm.mesh) return 0;
   return paneFillAreaMm2(w, h, opening, cfg);
@@ -885,6 +890,7 @@ export function calcGlassBreakdown(
   const lines: PaneGlassLine[] = [];
 
   for (const box of boxes) {
+    if (isExhaustPane(box.opening)) continue;
     const cfg = normalizePaneConfig(panes[box.id]);
     const glass = resolvePaneGlass(cfg, item, cat);
     if (!paneGlassHasPricing(glass.pane1Id, cat)) continue;

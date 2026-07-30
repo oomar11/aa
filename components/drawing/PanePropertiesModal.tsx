@@ -6,6 +6,7 @@ import {
   defaultPaneConfig,
   gridCellCount,
   inferMeshKind,
+  isExhaustPane,
   normalizePaneConfig,
   resolvePaneMeshKind,
   type PaneConfig,
@@ -274,6 +275,7 @@ export function PanePropertiesModal({
 
   const showBouclier =
     !expandedExtra && bouclierEligible && draft.opening === "fixed";
+  const isExhaust = isExhaustPane(draft.opening);
   const doorSide: "door-left" | "door-right" | null =
     draft.opening === "door-left" || draft.opening === "door-right"
       ? draft.opening
@@ -430,8 +432,16 @@ export function PanePropertiesModal({
             </div>
           </section>
         ) : (
-          <div className="grid min-h-0 flex-1 grid-cols-2 gap-0 overflow-hidden">
-            <section className="flex min-h-0 flex-col border-l border-border">
+          <div
+            className={`grid min-h-0 flex-1 gap-0 overflow-hidden ${
+              isExhaust ? "grid-cols-1" : "grid-cols-2"
+            }`}
+          >
+            <section
+              className={`flex min-h-0 flex-col ${
+                isExhaust ? "" : "border-l border-border"
+              }`}
+            >
               <header className="bg-primary px-2 py-1.5 text-center">
                 <p className="text-sm font-bold text-primary-foreground">
                   نوع الفتح
@@ -470,6 +480,7 @@ export function PanePropertiesModal({
               </div>
             </section>
 
+            {!isExhaust && (
             <section className="flex min-h-0 flex-col">
               <header className="bg-primary px-2 py-1.5 text-center">
                 <p className="text-sm font-bold text-primary-foreground">
@@ -501,10 +512,20 @@ export function PanePropertiesModal({
                 </div>
               </div>
             </section>
+            )}
+
+            {isExhaust && (
+              <div className="border-t border-border bg-background/40 px-4 py-6 text-center">
+                <p className="text-[12px] leading-relaxed text-muted">
+                  الشفاط بيتساب فاضي — بدون زجاج أو باكتة أو تقسيم داخلي.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* شريط الخيارات الإضافية */}
+        {!isExhaust && (
         <div className="shrink-0 border-t border-border bg-background/80">
           <div className="px-2.5 pt-2 pb-1.5">
             <p className="mb-1 text-center text-[10px] font-semibold tracking-wide text-muted">
@@ -590,6 +611,7 @@ export function PanePropertiesModal({
             </div>
           )}
         </div>
+        )}
 
         <footer className="grid shrink-0 grid-cols-2 gap-3 border-t border-border p-3">
           <button

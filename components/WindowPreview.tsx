@@ -244,6 +244,7 @@ export function WindowPreview({
         const gh = Math.max(p.h - profile * 2, 1.5);
         const isLouver =
           cfg.opening === "panel-h" || cfg.opening === "panel-v";
+        const isExhaust = cfg.opening === "exhaust";
 
         return (
           <g key={p.id}>
@@ -252,20 +253,22 @@ export function WindowPreview({
               y={gy}
               width={gw}
               height={gh}
-              fill={isLouver ? frameFill : glass}
+              fill={isLouver || isExhaust ? frameFill : glass}
               stroke={frameStroke}
               strokeWidth={0.6}
             />
-            <PaneDetailFill
-              config={cfg}
-              x={gx}
-              y={gy}
-              w={gw}
-              h={gh}
-              frameFill={frameFill}
-              meshId={meshId}
-              svgPerMm={svgPerMm}
-            />
+            {!isExhaust && (
+              <PaneDetailFill
+                config={cfg}
+                x={gx}
+                y={gy}
+                w={gw}
+                h={gh}
+                frameFill={frameFill}
+                meshId={meshId}
+                svgPerMm={svgPerMm}
+              />
+            )}
             <OpeningMarks
               opening={cfg.opening}
               bouclier={Boolean(cfg.bouclier)}

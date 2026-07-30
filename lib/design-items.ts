@@ -129,6 +129,9 @@ export function applyOpeningMeshDefaults(
   config: PaneConfig,
   catalog?: MaterialCatalog
 ): PaneConfig {
+  if (isExhaustPane(config.opening)) {
+    return exhaustPaneConfig(config);
+  }
   if (!openingWantsAutoMesh(config.opening) || config.meshOffManual) {
     return config;
   }
@@ -235,10 +238,36 @@ export function gridCellCount(grid: PaneGrid = "solid"): number {
   }
 }
 
+/** ضلفة شفاط — بدون زجاج أو باكتة */
+export function isExhaustPane(opening: PaneOpening): boolean {
+  return opening === "exhaust";
+}
+
+function exhaustPaneConfig(config: PaneConfig): PaneConfig {
+  return {
+    ...config,
+    grid: "solid",
+    sandwichPanels: false,
+    panelCells: [],
+    mesh: false,
+    meshTypeId: undefined,
+    meshKind: undefined,
+    meshKindManual: undefined,
+    meshOffManual: undefined,
+    isDoor: false,
+    glassPane1Id: undefined,
+    glassPane2Id: undefined,
+    glassGeorgian: undefined,
+  };
+}
+
 export function normalizePaneConfig(
   config?: PaneConfig
 ): PaneConfig {
   const base = defaultPaneConfig(config);
+  if (isExhaustPane(base.opening)) {
+    return exhaustPaneConfig(base);
+  }
   const count = gridCellCount(base.grid);
   const cells = (base.panelCells ?? []).filter((i) => i >= 0 && i < count);
   return { ...base, panelCells: cells };
