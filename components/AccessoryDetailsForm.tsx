@@ -250,14 +250,14 @@ export function AccessoryDetailsForm({
           ))}
         </div>
         <p className="text-[10px] leading-relaxed text-muted">
-          الاختيار التلقائي: أصغر مقاس أقصى ارتفاعه ≥ (ارتفاع الضلفة − التخصيم)
-          من ناحية المقبض.
+          الاختيار التلقائي: أكبر مقاس سبلونة أقصر من الضلفة بـ ٢٠ سم على الأقل
+          (قابل للتعديل). مثال: ضلفة ١٤٠٠ مم → سبلونة ١٢٠ سم أو ١٠٠ حسب الكتالوج.
         </p>
         <NumberField
-          label="تخصيم من الضلفة لاختيار السبلونة (مم)"
+          label="أقل فرق بين الضلفة والسبلونة (مم)"
           value={details.espagnoletteSashDeductionMm}
           onChange={(v) => patchDetails({ espagnoletteSashDeductionMm: v })}
-          hint="١٥٠ = ١٥ سم"
+          hint="٢٠٠ = ٢٠ سم"
         />
       </Section>
 

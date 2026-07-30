@@ -276,7 +276,7 @@ function hingedLocksetGroups(boxes: PaneBox[]): {
   return { solo, bouclierPairs };
 }
 
-/** ارتفاع ناحية المقبض بعد تخصيم السبلونة (مم) */
+/** @deprecated استخدم pickEspagnoletteSize مع ارتفاع الضلفة والفرق الأدنى */
 export function espagnoletteHeightFromSash(
   sashHeightMm: number,
   deductionMm: number
@@ -405,16 +405,17 @@ export function calcItemAccessories(
   let protrudingHandleQty = 0;
 
   const { solo, bouclierPairs } = hingedLocksetGroups(boxes);
-  const espDeduction = details.espagnoletteSashDeductionMm;
+  const espGap = details.espagnoletteSashDeductionMm;
 
   for (const box of solo) {
     hingeQty += box.isDoor
       ? details.hingesPerDoor
       : details.hingesPerSash;
     const size = pickEspagnoletteSize(
-      espagnoletteHeightFromSash(handleSideHeightMm(box), espDeduction),
+      handleSideHeightMm(box),
       details.espagnoletteCatalog,
-      "hinged"
+      "hinged",
+      espGap
     );
     addEspagnolette(hingedEspMap, size);
     hingedLocksetCount += 1;
@@ -429,14 +430,15 @@ export function calcItemAccessories(
         : details.hingesPerSash;
     }
     // سبلونة واحدة للزوج — المقاس من أطول ضلفة
-    const height = Math.max(
-      espagnoletteHeightFromSash(handleSideHeightMm(pair.left), espDeduction),
-      espagnoletteHeightFromSash(handleSideHeightMm(pair.right), espDeduction)
+    const sashH = Math.max(
+      handleSideHeightMm(pair.left),
+      handleSideHeightMm(pair.right)
     );
     const size = pickEspagnoletteSize(
-      height,
+      sashH,
       details.espagnoletteCatalog,
-      "hinged"
+      "hinged",
+      espGap
     );
     addEspagnolette(hingedEspMap, size);
     bouclierLocksetCount += 1;
@@ -482,9 +484,10 @@ export function calcItemAccessories(
         knifeH * details.brushKnifeHeightMultiplier;
 
       const size = pickEspagnoletteSize(
-        espagnoletteHeightFromSash(handleSideHeightMm(box), espDeduction),
+        handleSideHeightMm(box),
         details.espagnoletteCatalog,
-        "sliding"
+        "sliding",
+        espGap
       );
       addEspagnolette(slidingEspMap, size);
       slidingLocksetCount += 1;

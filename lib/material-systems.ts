@@ -219,8 +219,8 @@ export type EspagnoletteCatalogEntry = {
   /** مقاس السبلونة (سم) */
   size: number;
   /**
-   * أقصى ارتفاع ضلفة من ناحية المقبض (مم) لهذا المقاس.
-   * الاختيار: أصغر مقاس قاعدته ≥ الارتفاع، وإلا الأكبر المتاح.
+   * أقصى ارتفاع ضلفة من ناحية المقبض (مم) — مرجعي في الكتالوج.
+   * الاختيار التلقائي يعتمد على مقاس السبلونة (سم) والفرق عن الضلفة.
    */
   maxHeightMm: number;
   /** متاح لسبلونة المفصلي */
@@ -308,8 +308,8 @@ export type AccessorySystemDetails = {
   /** كتالوج مقاسات السبلونة — قابل للتعديل */
   espagnoletteCatalog: EspagnoletteCatalogEntry[];
   /**
-   * تخصيم من ارتفاع الضلفة (مم) قبل اختيار مقاس السبلونة.
-   * الافتراضي ١٥٠ مم = ١٥ سم.
+   * أقل فرق مطلوب بين ارتفاع الضلفة ومقاس السبلونة (مم).
+   * الافتراضي ٢٠٠ مم = ٢٠ سم — تُختار أكبر سبلونة أقصر من الضلفة بهذا الفرق على الأقل.
    */
   espagnoletteSashDeductionMm: number;
   /** سكاك مفصلي — طقم لكل سبلونة ضلفة واحدة */
@@ -676,7 +676,7 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     hingesPerSash: 2,
     hingesPerDoor: 3,
     espagnoletteCatalog: defaultEspagnoletteCatalog(),
-    espagnoletteSashDeductionMm: 150,
+    espagnoletteSashDeductionMm: 200,
     hingedLockPieces: defaultHingedLockPieces(),
     bouclierLockPieces: defaultBouclierLockPieces(),
     boltsPerBouclier: 2,
@@ -785,28 +785,35 @@ export function ironDeductionSummary(d: IronDeductions): string {
 }
 
 /**
- * يختار مقاس السبلونة حسب ارتفاع ناحية المقبض (مم).
- * أصغر مقاس قاعدته ≥ الارتفاع، وإلا أكبر مقاس متاح.
+ * يختار مقاس السبلونة (سم) حسب ارتفاع الضلفة (مم).
+ * يُختار أكبر مقاس طوله ≤ (ارتفاع الضلفة − الفرق الأدنى)، وإلا أصغر مقاس متاح.
  */
 export function pickEspagnoletteSize(
-  handleSideHeightMm: number,
+  sashHeightMm: number,
   catalog: EspagnoletteCatalogEntry[],
-  kind: "hinged" | "sliding"
+  kind: "hinged" | "sliding",
+  minGapMm = 200
 ): number {
   const allowed = catalog
     .filter((e) => (kind === "hinged" ? e.hinged : e.sliding))
-    .sort((a, b) => a.maxHeightMm - b.maxHeightMm);
+    .sort((a, b) => a.size - b.size);
 
   if (allowed.length === 0) {
     const fallback = [...catalog].sort((a, b) => a.size - b.size);
     return fallback[fallback.length - 1]?.size ?? 100;
   }
 
-  const h = Math.max(0, handleSideHeightMm);
+  const gap = Math.max(0, minGapMm);
+  const maxEspLengthMm = Math.max(0, sashHeightMm - gap);
+
+  let best: EspagnoletteCatalogEntry | null = null;
   for (const entry of allowed) {
-    if (h <= entry.maxHeightMm) return entry.size;
+    const espLengthMm = entry.size * 10;
+    if (espLengthMm <= maxEspLengthMm) best = entry;
+    else break;
   }
-  return allowed[allowed.length - 1]!.size;
+
+  return best?.size ?? allowed[0]!.size;
 }
 
 export function espagnoletteCatalogSummary(
