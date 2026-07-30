@@ -5,6 +5,7 @@ import type { AccessoriesBreakdown } from "@/lib/accessories";
 import {
   formatEspagnoletteSummary,
   formatLockPiecesSummary,
+  accessoryBrandTag,
 } from "@/lib/accessories";
 import type { GlassBreakdown, MaterialsBreakdown, MeshBreakdown } from "@/lib/materials";
 import { formatArea, formatCount, formatMeters } from "@/lib/materials";
@@ -588,33 +589,48 @@ function AccessoriesBreakdownPanel({
 
       <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
         {breakdown.hingeQty > 0 ? (
-          <span>مفصلات: {formatCount(breakdown.hingeQty)}</span>
+          <span>
+            مفصلات: {formatCount(breakdown.hingeQty)}
+            {accessoryBrandTag(breakdown.brandLabels, "hinge")}
+          </span>
         ) : null}
         {breakdown.hingedEspagnolettes.length > 0 ? (
           <span>
             سبلونة مفصلي:{" "}
             {formatEspagnoletteSummary(breakdown.hingedEspagnolettes)}
+            {accessoryBrandTag(breakdown.brandLabels, "hinged-espagnolette")}
           </span>
         ) : null}
         {breakdown.protrudingHandleQty > 0 ? (
-          <span>مقبض بارز: {formatCount(breakdown.protrudingHandleQty)}</span>
+          <span>
+            مقبض بارز: {formatCount(breakdown.protrudingHandleQty)}
+            {accessoryBrandTag(breakdown.brandLabels, "protruding-handle")}
+          </span>
         ) : null}
         {breakdown.trackQty > 0 ? (
           <span>
             تراك: {formatCount(breakdown.trackQty)} ·{" "}
             {formatMeters(breakdown.trackLengthM)}
+            {accessoryBrandTag(breakdown.brandLabels, "track")}
           </span>
         ) : null}
         {breakdown.rollerQty > 0 ? (
-          <span>عجل جرار: {formatCount(breakdown.rollerQty)}</span>
+          <span>
+            عجل جرار: {formatCount(breakdown.rollerQty)}
+            {accessoryBrandTag(breakdown.brandLabels, "roller")}
+          </span>
         ) : null}
         {breakdown.brushLengthM > 0.0005 ? (
-          <span>فرش: {formatMeters(breakdown.brushLengthM)}</span>
+          <span>
+            فرش: {formatMeters(breakdown.brushLengthM)}
+            {accessoryBrandTag(breakdown.brandLabels, "brush")}
+          </span>
         ) : null}
         {breakdown.slidingEspagnolettes.length > 0 ? (
           <span>
             سبلونة جرار:{" "}
             {formatEspagnoletteSummary(breakdown.slidingEspagnolettes)}
+            {accessoryBrandTag(breakdown.brandLabels, "sliding-espagnolette")}
           </span>
         ) : null}
       </div>
@@ -624,30 +640,43 @@ function AccessoriesBreakdownPanel({
           {hasHinged ? (
             <div className="rounded-xl border border-border bg-card p-2.5">
               <p className="font-semibold text-foreground">مفصلي</p>
-              <p>مفصلات: {formatCount(breakdown.hingeQty)}</p>
+              <p>
+                مفصلات: {formatCount(breakdown.hingeQty)}
+                {accessoryBrandTag(breakdown.brandLabels, "hinge")}
+              </p>
               <p>
                 سبلونة:{" "}
                 {formatEspagnoletteSummary(breakdown.hingedEspagnolettes)}
+                {accessoryBrandTag(breakdown.brandLabels, "hinged-espagnolette")}
               </p>
               <p>
                 سكاك مفصلي:{" "}
                 {formatLockPiecesSummary(breakdown.hingedLockPieces)}
+                {accessoryBrandTag(breakdown.brandLabels, "hinged-lock")}
               </p>
               {breakdown.bouclierLockPieces.length > 0 ? (
                 <p>
                   سكاك بوكلير:{" "}
                   {formatLockPiecesSummary(breakdown.bouclierLockPieces)}
+                  {accessoryBrandTag(breakdown.brandLabels, "bouclier-lock")}
                 </p>
               ) : null}
               {breakdown.boltQty > 0 ? (
-                <p>ترباس: {formatCount(breakdown.boltQty)}</p>
+                <p>
+                  ترباس: {formatCount(breakdown.boltQty)}
+                  {accessoryBrandTag(breakdown.brandLabels, "bouclier-bolt")}
+                </p>
               ) : null}
               {breakdown.bouclierCapKitQty > 0 ? (
-                <p>طقم طبة بوكلير: {formatCount(breakdown.bouclierCapKitQty)}</p>
+                <p>
+                  طقم طبة بوكلير: {formatCount(breakdown.bouclierCapKitQty)}
+                  {accessoryBrandTag(breakdown.brandLabels, "bouclier-cap")}
+                </p>
               ) : null}
               {breakdown.protrudingHandleQty > 0 ? (
                 <p>
                   مقبض بارز: {formatCount(breakdown.protrudingHandleQty)}
+                  {accessoryBrandTag(breakdown.brandLabels, "protruding-handle")}
                 </p>
               ) : null}
             </div>
@@ -660,32 +689,43 @@ function AccessoriesBreakdownPanel({
                 <p>
                   تراك: {formatCount(breakdown.trackQty)} قطعة ·{" "}
                   {formatMeters(breakdown.trackLengthM)}
+                  {accessoryBrandTag(breakdown.brandLabels, "track")}
                 </p>
               ) : null}
               {breakdown.rollerQty > 0 ? (
-                <p>عجل: {formatCount(breakdown.rollerQty)}</p>
+                <p>
+                  عجل: {formatCount(breakdown.rollerQty)}
+                  {accessoryBrandTag(breakdown.brandLabels, "roller")}
+                </p>
               ) : null}
               {breakdown.brushLengthM > 0.0005 ? (
-                <p>فرش: {formatMeters(breakdown.brushLengthM)}</p>
+                <p>
+                  فرش: {formatMeters(breakdown.brushLengthM)}
+                  {accessoryBrandTag(breakdown.brandLabels, "brush")}
+                </p>
               ) : null}
               <p>
                 سبلونة:{" "}
                 {formatEspagnoletteSummary(breakdown.slidingEspagnolettes)}
+                {accessoryBrandTag(breakdown.brandLabels, "sliding-espagnolette")}
               </p>
               <p>
                 سكاك جرار:{" "}
                 {formatLockPiecesSummary(breakdown.slidingLockPieces)}
+                {accessoryBrandTag(breakdown.brandLabels, "sliding-lock")}
               </p>
               {breakdown.fourLeafMeetingQty > 0 ? (
                 <p>
                   تقابل ٤ ضلفة: {formatCount(breakdown.fourLeafMeetingQty)} ·{" "}
                   {formatMeters(breakdown.fourLeafMeetingLengthM)}
+                  {accessoryBrandTag(breakdown.brandLabels, "four-leaf-meeting")}
                 </p>
               ) : null}
               {breakdown.meshMeetingQty > 0 ? (
                 <p>
                   تقابل سلك جرار: {formatCount(breakdown.meshMeetingQty)} ·{" "}
                   {formatMeters(breakdown.meshMeetingLengthM)}
+                  {accessoryBrandTag(breakdown.brandLabels, "mesh-meeting")}
                 </p>
               ) : null}
             </div>

@@ -180,11 +180,65 @@ export type AccessoryLockPiece = {
   qtyPerLockset: number;
 };
 
+/** فئات براندات الاكسسوار */
+export type AccessoryBrandCategory =
+  | "hinge"
+  | "hinged-espagnolette"
+  | "hinged-lock"
+  | "protruding-handle"
+  | "bouclier-lock"
+  | "bouclier-bolt"
+  | "bouclier-cap"
+  | "track"
+  | "roller"
+  | "brush"
+  | "sliding-espagnolette"
+  | "sliding-lock"
+  | "four-leaf-meeting"
+  | "mesh-meeting";
+
+export const ACCESSORY_BRAND_CATEGORIES: {
+  id: AccessoryBrandCategory;
+  label: string;
+  group: "hinged" | "bouclier" | "sliding";
+}[] = [
+  { id: "hinge", label: "مفصلات", group: "hinged" },
+  { id: "hinged-espagnolette", label: "سبلونة مفصلي", group: "hinged" },
+  { id: "hinged-lock", label: "سكاك مفصلي", group: "hinged" },
+  { id: "protruding-handle", label: "مقبض بارز", group: "hinged" },
+  { id: "bouclier-lock", label: "سكاك بوكلير", group: "bouclier" },
+  { id: "bouclier-bolt", label: "ترباس بوكلير", group: "bouclier" },
+  { id: "bouclier-cap", label: "طبة بوكلير", group: "bouclier" },
+  { id: "track", label: "تراك جرار", group: "sliding" },
+  { id: "roller", label: "عجل جرار", group: "sliding" },
+  { id: "brush", label: "فرش جرار", group: "sliding" },
+  { id: "sliding-espagnolette", label: "سبلونة جرار", group: "sliding" },
+  { id: "sliding-lock", label: "سكاك جرار", group: "sliding" },
+  { id: "four-leaf-meeting", label: "تقابل ٤ ضلفة", group: "sliding" },
+  { id: "mesh-meeting", label: "تقابل سلك جرار", group: "sliding" },
+];
+
+export function accessoryBrandCategoryLabel(
+  id: AccessoryBrandCategory
+): string {
+  return ACCESSORY_BRAND_CATEGORIES.find((c) => c.id === id)?.label ?? id;
+}
+
+/** براند اكسسوار داخل فئة محددة */
+export type AccessoryBrand = {
+  id: string;
+  name: string;
+  category: AccessoryBrandCategory;
+  notes?: string;
+};
+
 /**
  * تفاصيل نظام الاكسسوار — قواعد الكميات للمفصلي والجرار.
  * تتعدّل من شاشة تفاصيل نظام الاكسسوار.
  */
 export type AccessorySystemDetails = {
+  /** البراند المختار لكل فئة (معرّف من كتالوج accessoryBrands) */
+  categoryBrands: Partial<Record<AccessoryBrandCategory, string>>;
   // ── مفصلي ──────────────────────────────────────────
   /** مفصلات لكل ضلفة شباك مفصلي */
   hingesPerSash: number;
@@ -263,6 +317,8 @@ export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]> & {
   glassRates?: GlassRates;
   meshCategories?: MeshCategory[];
   meshTypes?: MeshType[];
+  /** كتالوج براندات الاكسسوار حسب الفئة */
+  accessoryBrands?: AccessoryBrand[];
 };
 
 export const MATERIALS_STORAGE_KEY = "upvc-material-systems";
@@ -273,6 +329,15 @@ export const MESH_CATALOG_UPDATED = "upvc-mesh-catalog-updated";
 export function notifyMeshCatalogUpdated() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(MESH_CATALOG_UPDATED));
+  }
+}
+
+/** يُبث بعد حفظ براندات الاكسسوار */
+export const ACCESSORY_BRANDS_UPDATED = "upvc-accessory-brands-updated";
+
+export function notifyAccessoryBrandsUpdated() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(ACCESSORY_BRANDS_UPDATED));
   }
 }
 
@@ -470,6 +535,7 @@ export function defaultSlidingLockPieces(): AccessoryLockPiece[] {
 
 export function defaultAccessoryDetails(): AccessorySystemDetails {
   return {
+    categoryBrands: {},
     hingesPerSash: 2,
     hingesPerDoor: 3,
     espagnoletteCatalog: defaultEspagnoletteCatalog(),
@@ -537,6 +603,57 @@ export function newAccessoryLockPieceId(kind: "hinged" | "bouclier" | "sliding")
   const prefix =
     kind === "hinged" ? "hl" : kind === "bouclier" ? "bl" : "sl";
   return newLockPieceId(prefix);
+}
+
+export function newAccessoryBrandId(): string {
+  return `abrand-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+}
+
+const ACCESSORY_BRAND_CATEGORY_IDS = new Set(
+  ACCESSORY_BRAND_CATEGORIES.map((c) => c.id)
+);
+
+export function isAccessoryBrandCategory(
+  raw: unknown
+): raw is AccessoryBrandCategory {
+  return (
+    typeof raw === "string" &&
+    ACCESSORY_BRAND_CATEGORY_IDS.has(raw as AccessoryBrandCategory)
+  );
+}
+
+export function defaultAccessoryBrands(): AccessoryBrand[] {
+  return [];
+}
+
+export function findAccessoryBrand(
+  id: string | undefined | null,
+  catalog?: MaterialCatalog
+): AccessoryBrand | undefined {
+  if (!id) return undefined;
+  const cat = catalog ?? (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  return (cat.accessoryBrands ?? []).find((b) => b.id === id);
+}
+
+export function brandsForCategory(
+  category: AccessoryBrandCategory,
+  catalog?: MaterialCatalog
+): AccessoryBrand[] {
+  const cat = catalog ?? (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  return (cat.accessoryBrands ?? [])
+    .filter((b) => b.category === category)
+    .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+}
+
+export function resolveCategoryBrandName(
+  category: AccessoryBrandCategory,
+  brandId: string | undefined,
+  catalog?: MaterialCatalog
+): string | null {
+  if (!brandId) return null;
+  const brand = findAccessoryBrand(brandId, catalog);
+  if (!brand || brand.category !== category) return null;
+  return brand.name;
 }
 
 function withDefaultProfile(system: MaterialSystem): MaterialSystem {
@@ -1150,6 +1267,7 @@ export function getDefaultCatalog(): MaterialCatalog {
     glassRates: defaultGlassRates(),
     meshCategories: defaultMeshCategories(),
     meshTypes: defaultMeshTypes(),
+    accessoryBrands: defaultAccessoryBrands(),
   };
 }
 
@@ -1505,8 +1623,53 @@ function normalizeMultiplier(raw: unknown, fallback: number): number {
   return n;
 }
 
+function normalizeCategoryBrands(
+  raw: unknown,
+  brands: AccessoryBrand[]
+): Partial<Record<AccessoryBrandCategory, string>> {
+  if (!raw || typeof raw !== "object") return {};
+  const o = raw as Record<string, unknown>;
+  const byId = new Map(brands.map((b) => [b.id, b]));
+  const out: Partial<Record<AccessoryBrandCategory, string>> = {};
+
+  for (const cat of ACCESSORY_BRAND_CATEGORIES) {
+    const idRaw = o[cat.id];
+    if (typeof idRaw !== "string" || !idRaw.trim()) continue;
+    const brand = byId.get(idRaw.trim());
+    if (!brand || brand.category !== cat.id) continue;
+    out[cat.id] = brand.id;
+  }
+
+  return out;
+}
+
+export function normalizeAccessoryBrands(raw: unknown): AccessoryBrand[] {
+  if (!Array.isArray(raw)) return defaultAccessoryBrands();
+  const out: AccessoryBrand[] = [];
+  const seen = new Set<string>();
+
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const id = typeof o.id === "string" ? o.id.trim() : "";
+    const name = typeof o.name === "string" ? o.name.trim() : "";
+    const category = isAccessoryBrandCategory(o.category) ? o.category : null;
+    if (!id || !name || !category || seen.has(id)) continue;
+    seen.add(id);
+    out.push({
+      id,
+      name,
+      category,
+      notes: typeof o.notes === "string" ? o.notes.trim() || undefined : undefined,
+    });
+  }
+
+  return out;
+}
+
 export function normalizeAccessoryDetails(
-  raw: unknown
+  raw: unknown,
+  brands: AccessoryBrand[] = defaultAccessoryBrands()
 ): AccessorySystemDetails {
   const fallback = defaultAccessoryDetails();
   if (!raw || typeof raw !== "object") return fallback;
@@ -1518,6 +1681,7 @@ export function normalizeAccessoryDetails(
   );
 
   return {
+    categoryBrands: normalizeCategoryBrands(o.categoryBrands, brands),
     hingesPerSash: normalizePositiveInt(o.hingesPerSash, fallback.hingesPerSash),
     hingesPerDoor: normalizePositiveInt(o.hingesPerDoor, fallback.hingesPerDoor),
     espagnoletteCatalog,
@@ -1571,7 +1735,8 @@ export function normalizeAccessoryDetails(
 
 function normalizeSystem(
   raw: unknown,
-  category: MaterialCategory
+  category: MaterialCategory,
+  accessoryBrands: AccessoryBrand[] = []
 ): MaterialSystem | null {
   if (!raw || typeof raw !== "object") return null;
   const s = raw as Record<string, unknown>;
@@ -1590,7 +1755,7 @@ function normalizeSystem(
     base.glass = normalizeGlassBottleDetails(s.glass, base.name);
   }
   if (category === "accessories") {
-    base.accessory = normalizeAccessoryDetails(s.accessory);
+    base.accessory = normalizeAccessoryDetails(s.accessory, accessoryBrands);
   }
   return base;
 }
@@ -1599,13 +1764,18 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
   const defaults = getDefaultCatalog();
   const next = {} as MaterialCatalog;
 
+  const accessoryBrands =
+    raw.accessoryBrands === undefined
+      ? defaults.accessoryBrands ?? defaultAccessoryBrands()
+      : normalizeAccessoryBrands(raw.accessoryBrands);
+
   for (const cat of MATERIAL_CATEGORIES) {
     const list = Array.isArray(raw[cat.id]) ? raw[cat.id] : [];
     const seen = new Set<string>();
     const systems: MaterialSystem[] = [];
 
     for (const item of list) {
-      const sys = normalizeSystem(item, cat.id);
+      const sys = normalizeSystem(item, cat.id, accessoryBrands);
       if (!sys || seen.has(sys.id)) continue;
       seen.add(sys.id);
       systems.push(sys);
@@ -1660,6 +1830,7 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
     raw.meshTypes === undefined
       ? defaultMeshTypes()
       : normalizeMeshTypes(raw.meshTypes, next.meshCategories);
+  next.accessoryBrands = accessoryBrands;
 
   return next;
 }

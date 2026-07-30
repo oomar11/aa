@@ -8,6 +8,9 @@ import {
   type ReactNode,
 } from "react";
 import {
+  ACCESSORY_BRAND_CATEGORIES,
+  ACCESSORY_BRANDS_UPDATED,
+  accessoryBrandCategoryLabel,
   defaultAccessoryDetails,
   defaultEspagnoletteCatalog,
   findSystem,
@@ -16,6 +19,8 @@ import {
   newEspagnoletteCatalogId,
   saveMaterialCatalog,
   upsertSystem,
+  type AccessoryBrand,
+  type AccessoryBrandCategory,
   type AccessoryLockPiece,
   type AccessorySystemDetails,
   type EspagnoletteCatalogEntry,
@@ -39,6 +44,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
   );
   const [flash, setFlash] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
+  const [brandCatalog, setBrandCatalog] = useState<AccessoryBrand[]>([]);
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -59,11 +65,20 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
     setSystemName(found.name);
     setSystemNotes(found.notes ?? "");
     setDetails(found.accessory ?? defaultAccessoryDetails());
+    setBrandCatalog(cat.accessoryBrands ?? []);
   }, [systemId]);
 
   useEffect(() => {
     queueMicrotask(reload);
   }, [reload]);
+
+  useEffect(() => {
+    const onBrands = () => {
+      setBrandCatalog(loadMaterialCatalog().accessoryBrands ?? []);
+    };
+    window.addEventListener(ACCESSORY_BRANDS_UPDATED, onBrands);
+    return () => window.removeEventListener(ACCESSORY_BRANDS_UPDATED, onBrands);
+  }, []);
 
   function persist(nextDetails: AccessorySystemDetails, name?: string, notes?: string) {
     if (!catalog || !system) return;
@@ -143,6 +158,13 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
 
   function resetCatalogToDefaults() {
     patchDetails({ espagnoletteCatalog: defaultEspagnoletteCatalog() });
+  }
+
+  function setCategoryBrand(category: AccessoryBrandCategory, brandId: string) {
+    const next = { ...details.categoryBrands };
+    if (!brandId) delete next[category];
+    else next[category] = brandId;
+    patchDetails({ categoryBrands: next });
   }
 
   function updateLockPiece(
@@ -364,6 +386,34 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
         </p>
       </Section>
 
+      <Section
+        title="براندات لكل فئة"
+        hint="اختَر البراند من الكتالوج — أضف براندات جديدة من صفحة الاكسسوار"
+      >
+        {(["hinged", "bouclier", "sliding"] as const).map((group) => {
+          const cats = ACCESSORY_BRAND_CATEGORIES.filter((c) => c.group === group);
+          const groupLabel =
+            group === "hinged" ? "مفصلي" : group === "bouclier" ? "بوكلير" : "جرار";
+          return (
+            <div key={group} className="space-y-2">
+              <p className="text-[11px] font-bold text-foreground">{groupLabel}</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {cats.map((cat) => (
+                  <BrandSelect
+                    key={cat.id}
+                    category={cat.id}
+                    label={cat.label}
+                    value={details.categoryBrands[cat.id]}
+                    options={brandCatalog.filter((b) => b.category === cat.id)}
+                    onChange={(id) => setCategoryBrand(cat.id, id)}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </Section>
+
       {/* ── مفصلي ── */}
       <Section title="اكسسوار المفصلي" hint="مفصلات · سبلونة · سكاك · بوكلير">
         <div className="grid grid-cols-2 gap-2">
@@ -491,6 +541,44 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
         الجرار: تراك ٢ بعرض الحلق · عجل ٢/ضلفة · فرش محيط×٢ + سكينة×١.
       </p>
     </div>
+  );
+}
+
+function BrandSelect({
+  category,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  category: AccessoryBrandCategory;
+  label: string;
+  value?: string;
+  options: AccessoryBrand[];
+  onChange: (brandId: string) => void;
+}) {
+  return (
+    <label className="block text-[11px] text-muted">
+      {label}
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+        aria-label={`براند ${accessoryBrandCategoryLabel(category)}`}
+      >
+        <option value="">— بدون —</option>
+        {options.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name}
+          </option>
+        ))}
+      </select>
+      {options.length === 0 ? (
+        <span className="mt-0.5 block text-[10px] text-muted/80">
+          مفيش براندات — أضف من صفحة الاكسسوار
+        </span>
+      ) : null}
+    </label>
   );
 }
 

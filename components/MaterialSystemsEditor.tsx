@@ -31,6 +31,7 @@ import {
   type MaterialCategory,
   type MaterialSystem,
 } from "@/lib/material-systems";
+import { AccessoryBrandsEditor } from "@/components/AccessoryBrandsEditor";
 
 type Props = {
   category: MaterialCategory;
@@ -208,9 +209,11 @@ export function MaterialSystemsEditor({ category }: Props) {
       {isAccessories ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
           اضغط «تفاصيل» لضبط اكسسوار المفصلي والجرار: مفصلات · سبلونة · سكاك ·
-          تراك · عجل · فرش · تقابل.
+          تراك · عجل · فرش · تقابل · براند لكل فئة.
         </p>
       ) : null}
+
+      {isAccessories ? <AccessoryBrandsEditor /> : null}
 
       {isGlass ? (
         <div className="space-y-3">

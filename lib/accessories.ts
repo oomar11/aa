@@ -29,11 +29,14 @@ import {
   type FrameKind,
 } from "@/lib/materials";
 import {
+  ACCESSORY_BRAND_CATEGORIES,
   findSystem,
   getDefaultAccessoryDetails,
   loadMaterialCatalog,
   meshCategoryCalcProfile,
   pickEspagnoletteSize,
+  resolveCategoryBrandName,
+  type AccessoryBrandCategory,
   type AccessoryLockPiece,
   type AccessorySystemDetails,
   type EspagnoletteSize,
@@ -82,6 +85,8 @@ export type AccessoriesBreakdown = {
   /** تقابل سلك جرار — عدد القطع */
   meshMeetingQty: number;
   meshMeetingLengthM: number;
+  /** أسماء البراندات المختارة لكل فئة */
+  brandLabels: Partial<Record<AccessoryBrandCategory, string>>;
 };
 
 type PaneBox = {
@@ -145,6 +150,7 @@ function emptyBreakdown(systemName: string | null): AccessoriesBreakdown {
     fourLeafMeetingLengthM: 0,
     meshMeetingQty: 0,
     meshMeetingLengthM: 0,
+    brandLabels: {},
   };
 }
 
@@ -335,6 +341,30 @@ function aabbWidth(boxes: PaneBox[]): number {
   return Math.max(0, maxX - minX);
 }
 
+function buildBrandLabels(
+  details: AccessorySystemDetails,
+  catalog?: MaterialCatalog
+): Partial<Record<AccessoryBrandCategory, string>> {
+  const out: Partial<Record<AccessoryBrandCategory, string>> = {};
+  for (const cat of ACCESSORY_BRAND_CATEGORIES) {
+    const name = resolveCategoryBrandName(
+      cat.id,
+      details.categoryBrands[cat.id],
+      catalog
+    );
+    if (name) out[cat.id] = name;
+  }
+  return out;
+}
+
+export function accessoryBrandTag(
+  labels: Partial<Record<AccessoryBrandCategory, string>>,
+  category: AccessoryBrandCategory
+): string {
+  const name = labels[category];
+  return name ? ` · ${name}` : "";
+}
+
 function resolveAccessoryDetails(
   item: DesignItem,
   catalog?: MaterialCatalog
@@ -505,6 +535,7 @@ export function calcItemAccessories(
 
   const hingedEspagnolettes = espagnoletteLines(hingedEspMap);
   const slidingEspagnolettes = espagnoletteLines(slidingEspMap);
+  const brandLabels = buildBrandLabels(details, cat);
 
   const hasAccessories =
     hingeQty > 0 ||
@@ -542,6 +573,7 @@ export function calcItemAccessories(
     fourLeafMeetingLengthM,
     meshMeetingQty,
     meshMeetingLengthM,
+    brandLabels,
   };
 }
 
