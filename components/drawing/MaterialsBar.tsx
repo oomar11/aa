@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { GlassBreakdown, MaterialsBreakdown, MeshBreakdown } from "@/lib/materials";
-import { formatArea, formatMeters } from "@/lib/materials";
+import { formatArea, formatCount, formatMeters } from "@/lib/materials";
 import {
   calcCutSizes,
   findSystem,
@@ -144,8 +144,22 @@ export function MaterialsBar({
       key: "mesh-profile",
       label: "ضلفة سلك جرار",
       value: formatMeters(materials.meshSlidingProfileM),
-      hint: materials.meshSlidingProfileM > 0 ? "قطاع" : undefined,
+      hint: materials.meshSlidingProfileM > 0 ? "زي ضلفة الجرار" : undefined,
       accent: materials.meshSlidingProfileM > 0,
+    },
+    {
+      key: "mesh-wheel",
+      label: "عجل سلك",
+      value: formatCount(materials.meshSlidingWheelQty),
+      hint: materials.meshSlidingWheelQty > 0 ? "٢/ضلفة" : undefined,
+      accent: materials.meshSlidingWheelQty > 0,
+    },
+    {
+      key: "mesh-handle",
+      label: "مقبض لطش",
+      value: formatCount(materials.meshPushHandleQty),
+      hint: materials.meshPushHandleQty > 0 ? "١/ضلفة" : undefined,
+      accent: materials.meshPushHandleQty > 0,
     },
     {
       key: "mullion",
@@ -429,7 +443,13 @@ function MeshBreakdownPanel({ breakdown }: { breakdown: MeshBreakdown }) {
       <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
         <span>مساحة: {breakdown.totalAreaSqm.toFixed(2)} م²</span>
         {breakdown.totalSlidingProfileM > 0.0005 ? (
-          <span>ضلفة جرار: {breakdown.totalSlidingProfileM.toFixed(2)} م</span>
+          <span>ضلفة سلك: {breakdown.totalSlidingProfileM.toFixed(2)} م</span>
+        ) : null}
+        {breakdown.totalWheelQty > 0 ? (
+          <span>عجل: {breakdown.totalWheelQty} (٢/ضلفة)</span>
+        ) : null}
+        {breakdown.totalHandleQty > 0 ? (
+          <span>مقبض لطش: {breakdown.totalHandleQty}</span>
         ) : null}
         {showCost ? (
           <span>

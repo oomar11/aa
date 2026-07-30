@@ -63,8 +63,14 @@ export type MaterialsBreakdown = {
   glassAreaSqm: number;
   /** مساحة السلك م² */
   meshAreaSqm: number;
-  /** قطاع ضلفة سلك جرار — متر طولي */
+  /** قطاع ضلفة سلك جرار — متر طولي (نفس مقاس ضلفة الجرار) */
   meshSlidingProfileM: number;
+  /** عدد ضلف السلك الجرار */
+  meshSlidingSashCount: number;
+  /** عجل سلك جرار — ٢ لكل ضلفة */
+  meshSlidingWheelQty: number;
+  /** مقبض سلك لطش — ١ لكل ضلفة */
+  meshPushHandleQty: number;
   /** إجمالي الحلق */
   frameTotalM: number;
   /** إجمالي السوقاس */
@@ -123,6 +129,9 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     glassAreaSqm: 0,
     meshAreaSqm: 0,
     meshSlidingProfileM: 0,
+    meshSlidingSashCount: 0,
+    meshSlidingWheelQty: 0,
+    meshPushHandleQty: 0,
     frameTotalM: 0,
     mullionTotalM: 0,
     isMixedFrame: false,
@@ -603,23 +612,36 @@ function paneMeshAreaMm2(
 }
 
 /** قطاع ضلفة سلك جرار — محيط الضلفة لما السلك نوعه جرار */
-function meshSlidingProfileMm(
+const MESH_SLIDING_WHEELS_PER_SASH = 2;
+const MESH_PUSH_HANDLE_PER_SASH = 1;
+
+function slidingMeshSashStats(
   boxes: PaneBox[],
   panes: Record<string, PaneConfig> | undefined,
   catalog?: MaterialCatalog
-): number {
+): { sashCount: number; profileMm: number } {
   const cat =
     catalog ??
     (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
-  let total = 0;
+  let sashCount = 0;
+  let profileMm = 0;
   for (const box of boxes) {
     const cfg = normalizePaneConfig(panes?.[box.id]);
     if (!cfg.mesh) continue;
     const kind = resolvePaneMeshKind(cfg, box.opening, cat);
     if (!meshCategoryCalcProfile(kind, cat)) continue;
-    total += panePerimeterMm(box.w, box.h);
+    sashCount += 1;
+    profileMm += panePerimeterMm(box.w, box.h);
   }
-  return total;
+  return { sashCount, profileMm };
+}
+
+function meshSlidingProfileMm(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined,
+  catalog?: MaterialCatalog
+): number {
+  return slidingMeshSashStats(boxes, panes, catalog).profileMm;
 }
 
 function totalMeshAreaSqm(
@@ -750,7 +772,11 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const beadMm = beadProfileMm(boxes, panes);
   const glassAreaSqm = totalGlassAreaSqm(boxes, panes);
   const meshAreaSqm = totalMeshAreaSqm(boxes, panes);
-  const meshSlidingProfileMmVal = meshSlidingProfileMm(boxes, panes);
+  const slidingMesh = slidingMeshSashStats(boxes, panes);
+  const meshSlidingProfileM = roundM(mmToM(slidingMesh.profileMm));
+  const meshSlidingSashCount = slidingMesh.sashCount;
+  const meshSlidingWheelQty = meshSlidingSashCount * MESH_SLIDING_WHEELS_PER_SASH;
+  const meshPushHandleQty = meshSlidingSashCount * MESH_PUSH_HANDLE_PER_SASH;
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
@@ -763,7 +789,6 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const sashDoorM = roundM(mmToM(sashMm.door));
   const sashSlidingM = roundM(mmToM(sashMm.sliding));
   const beadM = roundM(mmToM(beadMm));
-  const meshSlidingProfileM = roundM(mmToM(meshSlidingProfileMmVal));
   const frameTotalM = roundM(frameHingedM + frameSlidingM);
   const mullionTotalM = roundM(mullionFrameM + mullionSashM);
 
@@ -783,6 +808,9 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     glassAreaSqm,
     meshAreaSqm,
     meshSlidingProfileM,
+    meshSlidingSashCount,
+    meshSlidingWheelQty,
+    meshPushHandleQty,
     frameTotalM,
     mullionTotalM,
     isMixedFrame,
@@ -814,6 +842,9 @@ export function scaleMaterials(
     glassAreaSqm: roundM(m.glassAreaSqm * q),
     meshAreaSqm: roundM(m.meshAreaSqm * q),
     meshSlidingProfileM: roundM(m.meshSlidingProfileM * q),
+    meshSlidingSashCount: m.meshSlidingSashCount * q,
+    meshSlidingWheelQty: m.meshSlidingWheelQty * q,
+    meshPushHandleQty: m.meshPushHandleQty * q,
     frameTotalM: roundM(m.frameTotalM * q),
     mullionTotalM: roundM(m.mullionTotalM * q),
   };
@@ -827,6 +858,11 @@ export function formatMeters(m: number): string {
 export function formatArea(sqm: number): string {
   if (sqm < 0.0005) return "—";
   return `${sqm.toFixed(2)} م²`;
+}
+
+export function formatCount(n: number): string {
+  if (n < 0.5) return "—";
+  return String(Math.round(n));
 }
 
 // ─── حساب تكلفة الزجاج لكل ضلفة ────────────────────────────────
@@ -953,6 +989,10 @@ export type PaneMeshLine = {
   costPerSqm: number;
   /** قطاع ضلفة سلك جرار — متر (٠ للأنواع التانية) */
   profileM: number;
+  /** عجل سلك جرار — ٢ لكل ضلفة جرار */
+  wheelQty: number;
+  /** مقبض سلك لطش — ١ لكل ضلفة جرار */
+  handleQty: number;
   /** تكلفة قماش السلك */
   totalCost: number;
 };
@@ -962,6 +1002,9 @@ export type MeshBreakdown = {
   lines: PaneMeshLine[];
   totalAreaSqm: number;
   totalSlidingProfileM: number;
+  totalSlidingSashCount: number;
+  totalWheelQty: number;
+  totalHandleQty: number;
   totalUnitCost: number;
   totalCost: number;
 };
@@ -976,6 +1019,9 @@ export function calcMeshBreakdown(
     lines: [],
     totalAreaSqm: 0,
     totalSlidingProfileM: 0,
+    totalSlidingSashCount: 0,
+    totalWheelQty: 0,
+    totalHandleQty: 0,
     totalUnitCost: 0,
     totalCost: 0,
   };
@@ -1006,9 +1052,12 @@ export function calcMeshBreakdown(
     const areaSqm = roundM(
       paneMeshAreaMm2(box.w, box.h, box.opening, cfg) / 1_000_000
     );
-    const profileM = meshCategoryCalcProfile(meshKind, cat)
+    const isSlidingMesh = meshCategoryCalcProfile(meshKind, cat);
+    const profileM = isSlidingMesh
       ? roundM(panePerimeterMm(box.w, box.h) / 1000)
       : 0;
+    const wheelQty = isSlidingMesh ? MESH_SLIDING_WHEELS_PER_SASH : 0;
+    const handleQty = isSlidingMesh ? MESH_PUSH_HANDLE_PER_SASH : 0;
     const label = meshType
       ? `${meshType.name} · ${meshKindLabel(meshKind, cat)}`
       : meshKindLabel(meshKind, cat);
@@ -1020,6 +1069,8 @@ export function calcMeshBreakdown(
       areaSqm,
       costPerSqm,
       profileM,
+      wheelQty,
+      handleQty,
       totalCost: roundM(areaSqm * costPerSqm),
     });
   }
@@ -1030,6 +1081,9 @@ export function calcMeshBreakdown(
   const totalSlidingProfileM = roundM(
     lines.reduce((s, l) => s + l.profileM, 0)
   );
+  const totalSlidingSashCount = lines.filter((l) => l.profileM > 0.0005).length;
+  const totalWheelQty = lines.reduce((s, l) => s + l.wheelQty, 0);
+  const totalHandleQty = lines.reduce((s, l) => s + l.handleQty, 0);
   const totalUnitCost = roundM(lines.reduce((s, l) => s + l.totalCost, 0));
   const qty = Math.max(1, item.qty || 1);
 
@@ -1038,6 +1092,9 @@ export function calcMeshBreakdown(
     lines,
     totalAreaSqm,
     totalSlidingProfileM,
+    totalSlidingSashCount,
+    totalWheelQty,
+    totalHandleQty,
     totalUnitCost,
     totalCost: roundM(totalUnitCost * qty),
   };

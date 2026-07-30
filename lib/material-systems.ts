@@ -1253,10 +1253,12 @@ function mergeMeshCategories(stored: MeshCategory[]): MeshCategory[] {
   for (const d of defaultMeshCategories()) {
     if (!byId.has(d.id)) byId.set(d.id, d);
   }
-  const order = defaultMeshCategories().map((c) => c.id);
-  return order
+  const defaultOrder = defaultMeshCategories().map((c) => c.id);
+  const defaults = defaultOrder
     .map((id) => byId.get(id))
     .filter((c): c is MeshCategory => Boolean(c));
+  const customs = stored.filter((c) => !defaultOrder.includes(c.id));
+  return [...defaults, ...customs];
 }
 
 function normalizeMeshTypes(raw: unknown, categories: MeshCategory[]): MeshType[] {

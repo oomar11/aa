@@ -72,7 +72,10 @@ export function MeshCategoriesEditor() {
   function saveDraft() {
     if (!draft) return;
     const label = draft.label.trim();
-    if (!label) return;
+    if (!label) {
+      showFlash("اكتب اسم التصنيف");
+      return;
+    }
 
     const defaultFor = draft.defaultFor || undefined;
     const others = categories.filter((c) => c.id !== draft.id);
@@ -115,7 +118,8 @@ export function MeshCategoriesEditor() {
         <div>
           <h3 className="text-xs font-bold text-foreground">تصنيفات السلك</h3>
           <p className="mt-0.5 text-[11px] text-muted">
-            التصنيف اللي فيه «قطاع» بيتحسب زي ضلفة جرار. الباقي مساحة بس.
+            التصنيف اللي فيه «قطاع ضلفة» بيتحسب ضلفة سلك جرار + مساحة السلك +
+            عجل (٢/ضلفة) + مقبض لطش (١/ضلفة).
           </p>
         </div>
         <button
@@ -148,7 +152,9 @@ export function MeshCategoriesEditor() {
                   {c.label}
                 </p>
                 <p className="text-[10px] text-muted">
-                  {c.calcProfile ? "قطاع + مساحة" : "مساحة فقط"}
+                  {c.calcProfile
+                    ? "ضلفة + سلك + عجل + مقبض"
+                    : "مساحة سلك فقط"}
                   {c.defaultFor
                     ? ` · تلقائي: ${
                         DEFAULT_FOR_OPTIONS.find((o) => o.value === c.defaultFor)
@@ -206,7 +212,7 @@ export function MeshCategoriesEditor() {
               }
               className="h-4 w-4 accent-[var(--primary)]"
             />
-            يتحسب قطاع ضلفة (زي الجرار)
+            يتحسب ضلفة سلك جرار + عجل ومقبض (زي الجرار)
           </label>
           <label className="block text-[11px] text-muted">
             الاختيار التلقائي من نوع الفتح
