@@ -64,29 +64,13 @@ export default function SettingsPage() {
 
         <section className="overflow-hidden rounded-2xl border border-border bg-card">
           <Link
-            href="/materials"
-            className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5 transition-colors hover:bg-primary-soft/50"
-          >
-            <div className="min-w-0 text-right">
-              <p className="text-sm font-medium text-foreground">الخامات</p>
-              <p className="mt-0.5 text-xs text-muted">
-                قطاعات · اكسسوار · زجاج · حديد
-              </p>
-            </div>
-            <span className="shrink-0 text-muted" aria-hidden>
-              ‹
-            </span>
-          </Link>
-          <Link
             href="/settings/design"
             className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-primary-soft/50"
           >
             <div className="min-w-0 text-right">
-              <p className="text-sm font-medium text-foreground">
-                إعدادات التصميم
-              </p>
+              <p className="text-sm font-medium text-foreground">ترتيب الأشكال</p>
               <p className="mt-0.5 text-xs text-muted">
-                ترتيب التمبلتات في قائمة الاختيار
+                رتّب التمبلتات في قائمة اختيار الشكل
               </p>
             </div>
             <span className="shrink-0 text-muted" aria-hidden>
@@ -94,13 +78,6 @@ export default function SettingsPage() {
             </span>
           </Link>
         </section>
-
-        <Link
-          href="/"
-          className="mx-auto mt-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          العودة للرئيسية
-        </Link>
       </main>
       <BottomNav />
     </div>

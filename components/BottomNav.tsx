@@ -3,24 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-function ProfileIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-6 w-6"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="12" cy="8" r="3.5" fill={active ? "currentColor" : "none"} />
-      <path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5" />
-    </svg>
-  );
-}
-
 function HomeIcon({ active }: { active: boolean }) {
   return (
     <svg
@@ -38,10 +20,58 @@ function HomeIcon({ active }: { active: boolean }) {
   );
 }
 
-/** RTL: أول عنصر في الـ DOM يظهر يمين → الرئيسية يمين، الحساب شمال */
+function OrdersIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M8 4h8a2 2 0 0 1 2 2v14l-6-3-6 3V6a2 2 0 0 1 2-2z" />
+      <path d="M10 9h4M10 13h3" />
+    </svg>
+  );
+}
+
+function MaterialsIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="4" y="4" width="6" height="16" rx="1.5" />
+      <rect x="14" y="4" width="6" height="16" rx="1.5" />
+      <path d="M10 8h4M10 12h4M10 16h4" />
+    </svg>
+  );
+}
+
+/** RTL: أول عنصر في الـ DOM يظهر يمين → الرئيسية يمين، الخامات شمال */
 const items = [
-  { href: "/", label: "الرئيسية", Icon: HomeIcon },
-  { href: "/profile", label: "الحساب", Icon: ProfileIcon },
+  { href: "/", label: "الرئيسية", Icon: HomeIcon, match: (p: string) => p === "/" },
+  {
+    href: "/orders",
+    label: "الطلبات",
+    Icon: OrdersIcon,
+    match: (p: string) => p.startsWith("/orders") || p.startsWith("/design"),
+  },
+  {
+    href: "/materials",
+    label: "خامات",
+    Icon: MaterialsIcon,
+    match: (p: string) => p.startsWith("/materials"),
+  },
 ] as const;
 
 export function BottomNav() {
@@ -50,10 +80,9 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-20">
       <div className="mx-auto w-full max-w-md border-t border-border bg-card/95 backdrop-blur-sm">
-        <div className="flex h-14 items-center justify-around px-10">
-          {items.map(({ href, label, Icon }) => {
-            const active =
-              href === "/" ? pathname === "/" : pathname.startsWith(href);
+        <div className="flex h-14 items-center justify-around px-4">
+          {items.map(({ href, label, Icon, match }) => {
+            const active = match(pathname);
             return (
               <Link
                 key={href}

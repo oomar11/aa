@@ -305,8 +305,20 @@ export function OrdersBrowser() {
 
       {tab === "customers" ? (
         filteredCustomers.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
-            مفيش عميل مطابق للبحث
+          <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center">
+            <p className="text-sm text-muted">
+              {deferredQuery.trim()
+                ? "مفيش عميل مطابق للبحث"
+                : "لسه مفيش عملاء — ابدأ بطلب جديد"}
+            </p>
+            {!deferredQuery.trim() ? (
+              <Link
+                href="/design"
+                className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                طلب جديد
+              </Link>
+            ) : null}
           </div>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -401,6 +413,20 @@ export function OrdersBrowser() {
                             })}
                           </ul>
                         )}
+                        <div className="mt-2 flex gap-2">
+                          <Link
+                            href={`/design/projects/new?customer=${customer.id}`}
+                            className="flex-1 rounded-xl border border-dashed border-primary/40 py-2 text-center text-xs font-semibold text-primary transition-colors hover:bg-primary-soft"
+                          >
+                            مشروع جديد
+                          </Link>
+                          <Link
+                            href={`/design/projects?customer=${customer.id}`}
+                            className="flex-1 rounded-xl border border-border py-2 text-center text-xs font-semibold text-muted transition-colors hover:bg-card"
+                          >
+                            كل المشاريع
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -410,8 +436,20 @@ export function OrdersBrowser() {
           </ul>
         )
       ) : filteredProjects.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
-          مفيش مشروع مطابق للبحث
+        <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center">
+          <p className="text-sm text-muted">
+            {deferredQuery.trim()
+              ? "مفيش مشروع مطابق للبحث"
+              : "لسه مفيش مشاريع — ابدأ بطلب جديد"}
+          </p>
+          {!deferredQuery.trim() ? (
+            <Link
+              href="/design"
+              className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              طلب جديد
+            </Link>
+          ) : null}
         </div>
       ) : (
         <ul className="flex flex-col gap-3">

@@ -12,8 +12,8 @@ export default async function EditorPage({ searchParams }: Props) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <p className="font-semibold text-foreground">اختَر عميل أولاً</p>
-        <Link href="/design/customers" className="text-sm text-primary">
-          قاعدة العملاء
+        <Link href="/orders" className="text-sm text-primary">
+          فتح الطلبات
         </Link>
       </div>
     );
@@ -35,7 +35,7 @@ export default async function EditorPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
-      <main className="flex-1 px-3 pb-16 pt-3">
+      <main className="flex-1 px-3 pb-6 pt-3">
         <DesignWorkspace
           customerId={params.customer}
           projectId={params.project}

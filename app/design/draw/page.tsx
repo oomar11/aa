@@ -19,10 +19,12 @@ export default async function DrawPage({ searchParams }: Props) {
           href={
             params.customer && params.project
               ? `/design/editor?customer=${params.customer}&project=${params.project}`
-              : "/"
+              : "/orders"
           }
         >
-          {params.customer && params.project ? "الرجوع للمشروع" : "الرجوع للرئيسية"}
+          {params.customer && params.project
+            ? "الرجوع لبنود المشروع"
+            : "الرجوع للطلبات"}
         </ScreenBack>
         <p className="text-center font-semibold text-foreground">بيانات الرسم غير مكتملة</p>
       </div>

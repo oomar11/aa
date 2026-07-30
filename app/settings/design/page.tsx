@@ -14,7 +14,7 @@ export default function DesignSettingsPage() {
           <ScreenBack href="/settings" className="mb-2">
             رجوع للإعدادات
           </ScreenBack>
-          <h1 className="text-xl font-bold">إعدادات التصميم</h1>
+          <h1 className="text-xl font-bold">ترتيب الأشكال</h1>
           <p className="mt-1 text-xs text-muted">
             رتّب ظهور التمبلتات في شاشة اختيار الشكل
           </p>

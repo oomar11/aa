@@ -11,7 +11,7 @@ export default async function ProjectSettingsPage({ searchParams }: Props) {
   if (!params.customer || !params.project) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-3 bg-background px-6 py-6">
-        <ScreenBack href="/">رجوع للرئيسية</ScreenBack>
+        <ScreenBack href="/orders">رجوع للطلبات</ScreenBack>
         <p className="text-center font-semibold text-foreground">بيانات المشروع ناقصة</p>
       </div>
     );
@@ -23,10 +23,9 @@ export default async function ProjectSettingsPage({ searchParams }: Props) {
         <ScreenBack
           href={`/design/editor?customer=${params.customer}&project=${params.project}`}
         >
-          رجوع
+          رجوع لبنود المشروع
         </ScreenBack>
         <div className="mt-3 text-center">
-          <p className="text-sm font-medium text-primary">UPVC Design</p>
           <h1 className="mt-2 text-xl font-bold text-foreground">
             إعدادات المشروع
           </h1>

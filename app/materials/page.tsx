@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
-import { ScreenBack } from "@/components/ScreenBack";
 import { MATERIAL_HUB_ITEMS } from "@/lib/material-systems";
 
 export default function MaterialsPage() {
@@ -10,12 +9,9 @@ export default function MaterialsPage() {
       <Header />
       <main className="flex flex-1 flex-col gap-4 px-4 pb-20 pt-2">
         <div className="px-1">
-          <ScreenBack href="/" className="mb-2">
-            رجوع للرئيسية
-          </ScreenBack>
           <h1 className="text-xl font-bold">الخامات</h1>
           <p className="mt-1 text-xs text-muted">
-            قطاعات · اكسسوار · زجاج · سلك · حديد — وربطها بالتصميمات
+            أسعار وأنظمة القطاعات والاكسسوار والزجاج والسلك والحديد
           </p>
         </div>
 
@@ -35,11 +31,6 @@ export default function MaterialsPage() {
             </Link>
           ))}
         </section>
-
-        <p className="px-1 text-center text-[11px] leading-relaxed text-muted">
-          السلك والبراندات لهم صفحات خاصة داخل الخامات. كل تصميم يختار القطاعات
-          والاكسسوار والزجاج والسلك.
-        </p>
       </main>
       <BottomNav />
     </div>
@@ -74,12 +65,7 @@ function HubIcon({ id }: { id: string }) {
       <svg viewBox="0 0 40 40" className={cls} fill="none" aria-hidden>
         <circle cx="20" cy="14" r="6" fill="currentColor" />
         <rect x="17" y="18" width="6" height="14" rx="2" fill="currentColor" />
-        <circle
-          cx="20"
-          cy="14"
-          r="2.5"
-          fill="rgba(0,0,0,0.2)"
-        />
+        <circle cx="20" cy="14" r="2.5" fill="rgba(0,0,0,0.2)" />
       </svg>
     );
   }

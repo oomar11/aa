@@ -703,16 +703,20 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     >
       <header className="flex items-center justify-between rounded-2xl bg-primary px-3 py-2.5 text-primary-foreground shadow-[0_6px_18px_rgba(43,125,233,0.28)]">
         <NavBack
-          href="/"
+          href={
+            customerId
+              ? `/design/projects?customer=${customerId}`
+              : "/orders"
+          }
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-          aria-label="رجوع للرئيسية"
+          aria-label="رجوع لمشاريع العميل"
         >
           <BackChevron />
         </NavBack>
 
         <div className="min-w-0 flex-1 px-2 text-center">
           <p className="truncate text-sm font-bold">
-            {project?.name ?? "مساحة التصميم"}
+            {project?.name ?? "بنود المشروع"}
           </p>
           <p className="truncate text-[10px] opacity-80">بنود المشروع</p>
         </div>
