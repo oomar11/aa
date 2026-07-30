@@ -15,12 +15,18 @@ export type ProfilePieceRole =
   | "frame-hinged"
   | "frame-sliding"
   | "sash-hinged"
+  | "sash-door"
   | "sash-sliding"
   | "mullion"
   | "coupling"
   | "knife"
   | "four-leaf-meeting"
   | "mesh-meeting"
+  | "bead-single-hinged"
+  | "bead-double-hinged"
+  | "bead-single-sliding"
+  | "bead-double-sliding"
+  | "panel"
   | "bead"
   | "threshold"
   | "other";
@@ -28,23 +34,53 @@ export type ProfilePieceRole =
 export const PROFILE_PIECE_ROLES: {
   id: ProfilePieceRole;
   label: string;
+  group: "frame" | "sash" | "bead" | "panel" | "other";
 }[] = [
-  { id: "frame-hinged", label: "حلق مفصلي" },
-  { id: "frame-sliding", label: "حلق جرار" },
-  { id: "sash-hinged", label: "ضلفة مفصلي" },
-  { id: "sash-sliding", label: "ضلفة جرار" },
-  { id: "mullion", label: "سوقاس" },
-  { id: "coupling", label: "كوبلن" },
-  { id: "knife", label: "سكينة" },
-  { id: "four-leaf-meeting", label: "تقابل ٤ ضلفة" },
-  { id: "mesh-meeting", label: "تقابل سلك جرار" },
-  { id: "bead", label: "بيادة زجاج" },
-  { id: "threshold", label: "عتبة" },
-  { id: "other", label: "أخرى" },
+  { id: "frame-hinged", label: "حلق مفصلي", group: "frame" },
+  { id: "frame-sliding", label: "حلق جرار", group: "frame" },
+  { id: "sash-hinged", label: "ضلفة شباك مفصلي", group: "sash" },
+  { id: "sash-door", label: "ضلفة باب", group: "sash" },
+  { id: "sash-sliding", label: "ضلفة جرار", group: "sash" },
+  { id: "mullion", label: "سوقاس", group: "other" },
+  { id: "coupling", label: "كوبلن", group: "other" },
+  { id: "knife", label: "سكينة", group: "other" },
+  { id: "four-leaf-meeting", label: "تقابل ٤ ضلفة", group: "other" },
+  { id: "mesh-meeting", label: "تقابل سلك جرار", group: "other" },
+  { id: "bead-single-hinged", label: "باكتة سنجل مفصلي", group: "bead" },
+  { id: "bead-double-hinged", label: "باكتة دبل مفصلي", group: "bead" },
+  { id: "bead-single-sliding", label: "باكتة سنجل جرار", group: "bead" },
+  { id: "bead-double-sliding", label: "باكتة دبل جرار", group: "bead" },
+  { id: "panel", label: "بنل / باكتة بنل", group: "panel" },
+  { id: "threshold", label: "عتبة", group: "other" },
+  { id: "other", label: "أخرى", group: "other" },
 ];
 
+const PROFILE_PIECE_ROLE_IDS = new Set(
+  PROFILE_PIECE_ROLES.map((r) => r.id)
+);
+
+/** ترحيل الأدوار القديمة */
+const LEGACY_PROFILE_ROLE_MAP: Record<string, ProfilePieceRole> = {
+  bead: "bead-single-hinged",
+};
+
 export function profileRoleLabel(role: ProfilePieceRole): string {
-  return PROFILE_PIECE_ROLES.find((r) => r.id === role)?.label ?? role;
+  const resolved = LEGACY_PROFILE_ROLE_MAP[role] ?? role;
+  return PROFILE_PIECE_ROLES.find((r) => r.id === resolved)?.label ?? role;
+}
+
+export function profileRoleDefaultName(role: ProfilePieceRole): string {
+  return profileRoleLabel(role);
+}
+
+export function normalizeProfilePieceRole(raw: unknown): ProfilePieceRole {
+  if (typeof raw === "string" && PROFILE_PIECE_ROLE_IDS.has(raw as ProfilePieceRole)) {
+    return raw as ProfilePieceRole;
+  }
+  if (typeof raw === "string" && LEGACY_PROFILE_ROLE_MAP[raw]) {
+    return LEGACY_PROFILE_ROLE_MAP[raw]!;
+  }
+  return "other";
 }
 
 /** فئات أسعار القطاعات — تطابق حساب الخامات */
@@ -62,6 +98,8 @@ export type ProfilePriceCategory =
   | "bead-single-sliding"
   | "bead-double-hinged"
   | "bead-double-sliding"
+  | "panel-hinged"
+  | "panel-sliding"
   | "mesh-sliding-profile";
 
 export const PROFILE_PRICE_CATEGORIES: {
@@ -70,7 +108,7 @@ export const PROFILE_PRICE_CATEGORIES: {
 }[] = [
   { id: "frame-hinged", label: "حلق مفصلي" },
   { id: "frame-sliding", label: "حلق جرار" },
-  { id: "sash-hinged", label: "ضلفة مفصلي" },
+  { id: "sash-hinged", label: "ضلفة شباك مفصلي" },
   { id: "sash-door", label: "ضلفة باب" },
   { id: "sash-sliding", label: "ضلفة جرار" },
   { id: "mullion", label: "سوقاس" },
@@ -81,6 +119,8 @@ export const PROFILE_PRICE_CATEGORIES: {
   { id: "bead-single-sliding", label: "باكتة سنجل جرار" },
   { id: "bead-double-hinged", label: "باكتة دبل مفصلي" },
   { id: "bead-double-sliding", label: "باكتة دبل جرار" },
+  { id: "panel-hinged", label: "بنل مفصلي" },
+  { id: "panel-sliding", label: "بنل جرار" },
   { id: "mesh-sliding-profile", label: "ضلفة سلك جرار" },
 ];
 
@@ -486,6 +526,11 @@ export function defaultDeductions(): ProfileDeductions {
 }
 
 export function defaultProfilePieces(): ProfilePiece[] {
+  return standardHingedProfilePieces();
+}
+
+/** قطاعات قياسية لنظام مفصلي */
+export function standardHingedProfilePieces(): ProfilePiece[] {
   return [
     {
       id: "piece-frame-h",
@@ -496,8 +541,15 @@ export function defaultProfilePieces(): ProfilePiece[] {
     },
     {
       id: "piece-sash-h",
-      name: "ضلفة مفصلي",
+      name: "ضلفة شباك مفصلي",
       role: "sash-hinged",
+      sectionWidthMm: 70,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-sash-door",
+      name: "ضلفة باب",
+      role: "sash-door",
       sectionWidthMm: 70,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
@@ -509,13 +561,109 @@ export function defaultProfilePieces(): ProfilePiece[] {
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
     {
-      id: "piece-bead",
-      name: "بيادة زجاج",
-      role: "bead",
+      id: "piece-bead-sh",
+      name: "باكتة سنجل مفصلي",
+      role: "bead-single-hinged",
+      sectionWidthMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-bead-dh",
+      name: "باكتة دبل مفصلي",
+      role: "bead-double-hinged",
+      sectionWidthMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-panel",
+      name: "بنل مفصلي",
+      role: "panel",
       sectionWidthMm: 20,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
   ];
+}
+
+/** قطاعات قياسية لنظام جرار */
+export function standardSlidingProfilePieces(): ProfilePiece[] {
+  return [
+    {
+      id: "piece-frame-s",
+      name: "حلق جرار",
+      role: "frame-sliding",
+      sectionWidthMm: 80,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-sash-s",
+      name: "ضلفة جرار",
+      role: "sash-sliding",
+      sectionWidthMm: 45,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-knife",
+      name: "سكينة",
+      role: "knife",
+      sectionWidthMm: 30,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-m4",
+      name: "تقابل ٤ ضلفة",
+      role: "four-leaf-meeting",
+      sectionWidthMm: 70,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-mm",
+      name: "تقابل سلك جرار",
+      role: "mesh-meeting",
+      sectionWidthMm: 70,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-bead-ss",
+      name: "باكتة سنجل جرار",
+      role: "bead-single-sliding",
+      sectionWidthMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-bead-ds",
+      name: "باكتة دبل جرار",
+      role: "bead-double-sliding",
+      sectionWidthMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+    {
+      id: "piece-panel-s",
+      name: "بنل جرار",
+      role: "panel",
+      sectionWidthMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+    },
+  ];
+}
+
+/** يدمج القطاعات القياسية مع الموجود — بدون تكرار نفس الدور */
+export function mergeStandardProfilePieces(
+  existing: ProfilePiece[],
+  kind: "hinged" | "sliding"
+): ProfilePiece[] {
+  const standard =
+    kind === "hinged"
+      ? standardHingedProfilePieces()
+      : standardSlidingProfilePieces();
+  const byRole = new Map<ProfilePieceRole, ProfilePiece>();
+  for (const p of existing) {
+    const role = normalizeProfilePieceRole(p.role);
+    byRole.set(role, { ...p, role });
+  }
+  for (const p of standard) {
+    if (!byRole.has(p.role)) byRole.set(p.role, { ...p, id: newPieceId() });
+  }
+  return [...byRole.values()];
 }
 
 export function defaultProfileDetails(): ProfileSystemDetails {
@@ -753,6 +901,8 @@ export function defaultProfileBrandPrices(): Partial<
     "bead-single-sliding": 12,
     "bead-double-hinged": 18,
     "bead-double-sliding": 18,
+    "panel-hinged": 18,
+    "panel-sliding": 18,
     "mesh-sliding-profile": 38,
   };
 }
@@ -782,6 +932,8 @@ export function defaultProfileBrands(): ProfileBrand[] {
         "bead-single-sliding": 15,
         "bead-double-hinged": 22,
         "bead-double-sliding": 22,
+        "panel-hinged": 22,
+        "panel-sliding": 22,
         "mesh-sliding-profile": 48,
       },
     },
@@ -1291,36 +1443,10 @@ export function getDefaultCatalog(): MaterialCatalog {
         notes: "مفصلي قياسي",
         profileBrandId: "brand-city",
         profile: {
-          pieces: [
-            {
-              id: "pvc1-fh",
-              name: "حلق مفصلي",
-              role: "frame-hinged",
-              sectionWidthMm: 60,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-            {
-              id: "pvc1-sh",
-              name: "ضلفة مفصلي",
-              role: "sash-hinged",
-              sectionWidthMm: 70,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-            {
-              id: "pvc1-m",
-              name: "سوقاس",
-              role: "mullion",
-              sectionWidthMm: 70,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-            {
-              id: "pvc1-b",
-              name: "بيادة زجاج",
-              role: "bead",
-              sectionWidthMm: 20,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-          ],
+          pieces: standardHingedProfilePieces().map((p) => ({
+            ...p,
+            id: `pvc1-${p.role}`,
+          })),
           deductions: {
             frame: { width: "=W", height: "=H" },
             sash: { width: "=FW-10", height: "=FH-10" },
@@ -1333,50 +1459,10 @@ export function getDefaultCatalog(): MaterialCatalog {
         notes: "جرار",
         profileBrandId: "brand-city",
         profile: {
-          pieces: [
-            {
-              id: "pvc2-fs",
-              name: "حلق جرار",
-              role: "frame-sliding",
-              sectionWidthMm: 80,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-            {
-              id: "pvc2-ss",
-              name: "ضلفة جرار",
-              role: "sash-sliding",
-              sectionWidthMm: 45,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-            {
-              id: "pvc2-k",
-              name: "سكينة",
-              role: "knife",
-              sectionWidthMm: 30,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-            {
-              id: "pvc2-m4",
-              name: "تقابل ٤ ضلفة",
-              role: "four-leaf-meeting",
-              sectionWidthMm: 70,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-            {
-              id: "pvc2-mm",
-              name: "تقابل سلك جرار",
-              role: "mesh-meeting",
-              sectionWidthMm: 70,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-            {
-              id: "pvc2-b",
-              name: "بيادة زجاج",
-              role: "bead",
-              sectionWidthMm: 20,
-              barLengthM: DEFAULT_BAR_LENGTH_M,
-            },
-          ],
+          pieces: standardSlidingProfilePieces().map((p) => ({
+            ...p,
+            id: `pvc2-${p.role}`,
+          })),
           deductions: {
             frame: { width: "=W", height: "=H" },
             sash: { width: "=FW-40", height: "=FH-60" },
@@ -1505,8 +1591,20 @@ function isCatalog(value: unknown): value is MaterialCatalog {
 }
 
 function normalizeRole(raw: unknown): ProfilePieceRole {
-  const ok = PROFILE_PIECE_ROLES.some((r) => r.id === raw);
-  return ok ? (raw as ProfilePieceRole) : "other";
+  return normalizeProfilePieceRole(raw);
+}
+
+function migrateProfilePiece(piece: ProfilePiece): ProfilePiece {
+  const role = normalizeProfilePieceRole(piece.role);
+  const legacyBead =
+    piece.role === "bead" ||
+    /بيادة|بياة/.test(piece.name) ||
+    piece.name.trim() === "باكتة";
+  const name =
+    legacyBead && role === "bead-single-hinged"
+      ? profileRoleDefaultName("bead-single-hinged")
+      : piece.name.trim() || profileRoleDefaultName(role);
+  return { ...piece, role, name };
 }
 
 function normalizePiece(raw: unknown): ProfilePiece | null {
@@ -1516,7 +1614,7 @@ function normalizePiece(raw: unknown): ProfilePiece | null {
   if (!p.id.trim() || !p.name.trim()) return null;
   const sectionWidthMm = Number(p.sectionWidthMm);
   const barLengthM = Number(p.barLengthM);
-  return {
+  return migrateProfilePiece({
     id: p.id.trim(),
     name: p.name.trim(),
     role: normalizeRole(p.role),
@@ -1529,7 +1627,7 @@ function normalizePiece(raw: unknown): ProfilePiece | null {
         ? barLengthM
         : DEFAULT_BAR_LENGTH_M,
     notes: typeof p.notes === "string" ? p.notes : undefined,
-  };
+  });
 }
 
 function normalizeFormulaField(
