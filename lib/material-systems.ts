@@ -47,6 +47,56 @@ export function profileRoleLabel(role: ProfilePieceRole): string {
   return PROFILE_PIECE_ROLES.find((r) => r.id === role)?.label ?? role;
 }
 
+/** فئات أسعار القطاعات — تطابق حساب الخامات */
+export type ProfilePriceCategory =
+  | "frame-hinged"
+  | "frame-sliding"
+  | "sash-hinged"
+  | "sash-door"
+  | "sash-sliding"
+  | "mullion"
+  | "coupling"
+  | "knife"
+  | "bouclier"
+  | "bead-single-hinged"
+  | "bead-single-sliding"
+  | "bead-double-hinged"
+  | "bead-double-sliding"
+  | "mesh-sliding-profile";
+
+export const PROFILE_PRICE_CATEGORIES: {
+  id: ProfilePriceCategory;
+  label: string;
+}[] = [
+  { id: "frame-hinged", label: "حلق مفصلي" },
+  { id: "frame-sliding", label: "حلق جرار" },
+  { id: "sash-hinged", label: "ضلفة مفصلي" },
+  { id: "sash-door", label: "ضلفة باب" },
+  { id: "sash-sliding", label: "ضلفة جرار" },
+  { id: "mullion", label: "سوقاس" },
+  { id: "coupling", label: "كوبلن" },
+  { id: "knife", label: "سكينة" },
+  { id: "bouclier", label: "بوكلير" },
+  { id: "bead-single-hinged", label: "باكتة سنجل مفصلي" },
+  { id: "bead-single-sliding", label: "باكتة سنجل جرار" },
+  { id: "bead-double-hinged", label: "باكتة دبل مفصلي" },
+  { id: "bead-double-sliding", label: "باكتة دبل جرار" },
+  { id: "mesh-sliding-profile", label: "ضلفة سلك جرار" },
+];
+
+export function profilePriceCategoryLabel(id: ProfilePriceCategory): string {
+  return PROFILE_PRICE_CATEGORIES.find((c) => c.id === id)?.label ?? id;
+}
+
+/** براند قطاعات (سيتي · بريمير · …) مع قائمة أسعار لكل نوع */
+export type ProfileBrand = {
+  id: string;
+  name: string;
+  notes?: string;
+  /** سعر المتر الطولي (ج.م/م) لكل فئة قطاع */
+  prices: Partial<Record<ProfilePriceCategory, number>>;
+};
+
 /** عود / قطاع داخل النظام */
 export type ProfilePiece = {
   id: string;
@@ -281,6 +331,8 @@ export type MaterialSystem = {
   notes?: string;
   /** النظام الافتراضي (خصوصاً للحديد الثابت غالباً) */
   isDefault?: boolean;
+  /** براند القطاعات المرتبط — قائمة أسعار الحلق والضلفة والباكتة … */
+  profileBrandId?: string;
   /** تفاصيل نظام القطاعات: العيدان + التخصيمات */
   profile?: ProfileSystemDetails;
   /** تفاصيل نظام الزجاج: مفرد/دبل + جورجيا */
@@ -320,6 +372,8 @@ export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]> & {
   meshTypes?: MeshType[];
   /** كتالوج براندات الاكسسوار حسب الفئة */
   accessoryBrands?: AccessoryBrand[];
+  /** كتالوج براندات القطاعات مع قوائم الأسعار */
+  profileBrands?: ProfileBrand[];
 };
 
 export const MATERIALS_STORAGE_KEY = "upvc-material-systems";
@@ -339,6 +393,15 @@ export const ACCESSORY_BRANDS_UPDATED = "upvc-accessory-brands-updated";
 export function notifyAccessoryBrandsUpdated() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(ACCESSORY_BRANDS_UPDATED));
+  }
+}
+
+/** يُبث بعد حفظ براندات القطاعات */
+export const PROFILE_BRANDS_UPDATED = "upvc-profile-brands-updated";
+
+export function notifyProfileBrandsUpdated() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(PROFILE_BRANDS_UPDATED));
   }
 }
 
@@ -654,6 +717,153 @@ export function resolveCategoryBrandName(
   const brand = findAccessoryBrand(brandId, catalog);
   if (!brand || brand.category !== category) return null;
   return brand.name;
+}
+
+const PROFILE_PRICE_CATEGORY_IDS = new Set(
+  PROFILE_PRICE_CATEGORIES.map((c) => c.id)
+);
+
+export function isProfilePriceCategory(
+  raw: unknown
+): raw is ProfilePriceCategory {
+  return (
+    typeof raw === "string" &&
+    PROFILE_PRICE_CATEGORY_IDS.has(raw as ProfilePriceCategory)
+  );
+}
+
+export function newProfileBrandId(): string {
+  return `pbrand-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+}
+
+export function defaultProfileBrandPrices(): Partial<
+  Record<ProfilePriceCategory, number>
+> {
+  return {
+    "frame-hinged": 42,
+    "frame-sliding": 48,
+    "sash-hinged": 52,
+    "sash-door": 58,
+    "sash-sliding": 38,
+    mullion: 50,
+    coupling: 45,
+    knife: 28,
+    bouclier: 35,
+    "bead-single-hinged": 12,
+    "bead-single-sliding": 12,
+    "bead-double-hinged": 18,
+    "bead-double-sliding": 18,
+    "mesh-sliding-profile": 38,
+  };
+}
+
+export function defaultProfileBrands(): ProfileBrand[] {
+  return [
+    {
+      id: "brand-city",
+      name: "سيتي",
+      notes: "نظام سيتي — قائمة أسعار قياسية",
+      prices: defaultProfileBrandPrices(),
+    },
+    {
+      id: "brand-premier",
+      name: "بريمير",
+      prices: {
+        "frame-hinged": 55,
+        "frame-sliding": 62,
+        "sash-hinged": 68,
+        "sash-door": 75,
+        "sash-sliding": 48,
+        mullion: 65,
+        coupling: 58,
+        knife: 35,
+        bouclier: 42,
+        "bead-single-hinged": 15,
+        "bead-single-sliding": 15,
+        "bead-double-hinged": 22,
+        "bead-double-sliding": 22,
+        "mesh-sliding-profile": 48,
+      },
+    },
+  ];
+}
+
+export function normalizeProfileBrandPrices(
+  raw: unknown
+): Partial<Record<ProfilePriceCategory, number>> {
+  if (!raw || typeof raw !== "object") return {};
+  const o = raw as Record<string, unknown>;
+  const out: Partial<Record<ProfilePriceCategory, number>> = {};
+  for (const cat of PROFILE_PRICE_CATEGORIES) {
+    const n = Number(o[cat.id]);
+    if (Number.isFinite(n) && n >= 0) out[cat.id] = n;
+  }
+  return out;
+}
+
+export function normalizeProfileBrands(raw: unknown): ProfileBrand[] {
+  if (!Array.isArray(raw)) return defaultProfileBrands();
+  const out: ProfileBrand[] = [];
+  const seen = new Set<string>();
+
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const id = typeof o.id === "string" ? o.id.trim() : "";
+    const name = typeof o.name === "string" ? o.name.trim() : "";
+    if (!id || !name || seen.has(id)) continue;
+    seen.add(id);
+    out.push({
+      id,
+      name,
+      notes: typeof o.notes === "string" ? o.notes.trim() || undefined : undefined,
+      prices: normalizeProfileBrandPrices(o.prices),
+    });
+  }
+
+  return out.length > 0 ? out : defaultProfileBrands();
+}
+
+export function findProfileBrand(
+  id: string | undefined | null,
+  catalog?: MaterialCatalog
+): ProfileBrand | undefined {
+  if (!id) return undefined;
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  return (cat.profileBrands ?? defaultProfileBrands()).find((b) => b.id === id);
+}
+
+export function profileBrandOptions(
+  catalog?: MaterialCatalog
+): { id: string; label: string }[] {
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  return (cat.profileBrands ?? defaultProfileBrands())
+    .map((b) => ({ id: b.id, label: b.name }))
+    .sort((a, b) => a.label.localeCompare(b.label, "ar"));
+}
+
+export function resolveProfileBrandForSystem(
+  system: MaterialSystem | undefined | null,
+  catalog?: MaterialCatalog
+): ProfileBrand | undefined {
+  if (!system?.profileBrandId) return undefined;
+  return findProfileBrand(system.profileBrandId, catalog);
+}
+
+export function profileBrandHasPricing(brand: ProfileBrand | undefined): boolean {
+  if (!brand) return false;
+  return Object.values(brand.prices).some((p) => (p ?? 0) > 0);
+}
+
+export function getProfileBrandPrice(
+  brand: ProfileBrand | undefined,
+  category: ProfilePriceCategory
+): number {
+  return brand?.prices[category] ?? 0;
 }
 
 function withDefaultProfile(system: MaterialSystem): MaterialSystem {
@@ -1079,6 +1289,7 @@ export function getDefaultCatalog(): MaterialCatalog {
         id: "pvc1",
         name: "نظام PVC مخصص 1",
         notes: "مفصلي قياسي",
+        profileBrandId: "brand-city",
         profile: {
           pieces: [
             {
@@ -1120,6 +1331,7 @@ export function getDefaultCatalog(): MaterialCatalog {
         id: "pvc2",
         name: "نظام PVC مخصص 2",
         notes: "جرار",
+        profileBrandId: "brand-city",
         profile: {
           pieces: [
             {
@@ -1282,6 +1494,7 @@ export function getDefaultCatalog(): MaterialCatalog {
     meshCategories: defaultMeshCategories(),
     meshTypes: defaultMeshTypes(),
     accessoryBrands: defaultAccessoryBrands(),
+    profileBrands: defaultProfileBrands(),
   };
 }
 
@@ -1757,6 +1970,10 @@ function normalizeSystem(
     name: s.name.trim(),
     notes: typeof s.notes === "string" ? s.notes : undefined,
     isDefault: Boolean(s.isDefault),
+    profileBrandId:
+      typeof s.profileBrandId === "string" && s.profileBrandId.trim()
+        ? s.profileBrandId.trim()
+        : undefined,
   };
   if (category === "profiles") {
     base.profile = normalizeProfileDetails(s.profile);
@@ -1779,6 +1996,13 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       ? defaults.accessoryBrands ?? defaultAccessoryBrands()
       : normalizeAccessoryBrands(raw.accessoryBrands);
 
+  const profileBrands =
+    raw.profileBrands === undefined
+      ? defaults.profileBrands ?? defaultProfileBrands()
+      : normalizeProfileBrands(raw.profileBrands);
+
+  const profileBrandIds = new Set(profileBrands.map((b) => b.id));
+
   for (const cat of MATERIAL_CATEGORIES) {
     const list = Array.isArray(raw[cat.id]) ? raw[cat.id] : [];
     const seen = new Set<string>();
@@ -1799,6 +2023,13 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
         let enriched = s;
         if (cat.id === "profiles" && !enriched.profile) {
           enriched = { ...enriched, profile: defaultProfileDetails() };
+        }
+        if (
+          cat.id === "profiles" &&
+          enriched.profileBrandId &&
+          !profileBrandIds.has(enriched.profileBrandId)
+        ) {
+          enriched = { ...enriched, profileBrandId: undefined };
         }
         if (cat.id === "glass" && !enriched.glass) {
           enriched = {
@@ -1841,6 +2072,7 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       ? defaultMeshTypes()
       : normalizeMeshTypes(raw.meshTypes, next.meshCategories);
   next.accessoryBrands = accessoryBrands;
+  next.profileBrands = profileBrands;
 
   return next;
 }
@@ -2134,11 +2366,16 @@ export function catalogOptionsFor(
   category: MaterialCategory,
   catalog?: MaterialCatalog
 ): { id: string; label: string }[] {
-  const systems = getSystemsForCategory(category, catalog);
+  const cat = catalog ?? (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  const systems = getSystemsForCategory(category, cat);
   return [
     { id: "none", label: "تجاهل" },
     ...systems.map((s) => {
       let label = s.isDefault ? `${s.name} (افتراضي)` : s.name;
+      if (category === "profiles" && s.profileBrandId) {
+        const brand = findProfileBrand(s.profileBrandId, cat);
+        if (brand) label = `${label} · ${brand.name}`;
+      }
       if (category === "glass") {
         const price = getGlassBottlePrice(s);
         if (price > 0) label = `${label} — ${price} ج.م/م²`;

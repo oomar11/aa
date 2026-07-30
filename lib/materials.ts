@@ -16,11 +16,18 @@ import {
   defaultMeshTypeForKind,
   findGlassBottle,
   findMeshType,
+  findSystem,
+  getProfileBrandPrice,
   loadMaterialCatalog,
   meshCategoryCalcProfile,
   meshKindLabel,
   paneGlassHasPricing,
+  profileBrandHasPricing,
+  profilePriceCategoryLabel,
+  resolveProfileBrandForSystem,
   type MaterialCatalog,
+  type ProfileBrand,
+  type ProfilePriceCategory,
 } from "@/lib/material-systems";
 
 /** نوع الحلق حسب فتح الضلفة */
@@ -1319,6 +1326,97 @@ export function calcMeshBreakdown(
     totalSlidingSashCount,
     totalWheelQty,
     totalHandleQty,
+    totalUnitCost,
+    totalCost: roundM(totalUnitCost * qty),
+  };
+}
+
+// ─── حساب تكلفة القطاعات حسب البراند ───────────────────────────
+
+export type ProfileCostLine = {
+  category: ProfilePriceCategory;
+  label: string;
+  lengthM: number;
+  pricePerM: number;
+  totalCost: number;
+};
+
+export type ProfileCostBreakdown = {
+  hasPricing: boolean;
+  brandName: string | null;
+  lines: ProfileCostLine[];
+  totalUnitCost: number;
+  totalCost: number;
+};
+
+type ProfileCostEntry = {
+  category: ProfilePriceCategory;
+  lengthM: number;
+};
+
+function profileCostEntries(m: MaterialsBreakdown): ProfileCostEntry[] {
+  const entries: ProfileCostEntry[] = [
+    { category: "frame-hinged", lengthM: m.frameHingedM },
+    { category: "frame-sliding", lengthM: m.frameSlidingM },
+    { category: "coupling", lengthM: m.couplingM },
+    { category: "knife", lengthM: m.knifeM },
+    { category: "bouclier", lengthM: m.bouclierM },
+    { category: "sash-hinged", lengthM: m.sashHingedM },
+    { category: "sash-door", lengthM: m.sashDoorM },
+    { category: "sash-sliding", lengthM: m.sashSlidingM },
+    { category: "bead-single-hinged", lengthM: m.beadSingleHingedM },
+    { category: "bead-single-sliding", lengthM: m.beadSingleSlidingM },
+    { category: "bead-double-hinged", lengthM: m.beadDoubleHingedM },
+    { category: "bead-double-sliding", lengthM: m.beadDoubleSlidingM },
+    { category: "mesh-sliding-profile", lengthM: m.meshSlidingProfileM },
+    { category: "mullion", lengthM: m.mullionTotalM },
+  ];
+  return entries.filter((e) => e.lengthM > 0.0005);
+}
+
+export function calcProfileCostBreakdown(
+  item: DesignItem,
+  materials: MaterialsBreakdown,
+  catalog?: MaterialCatalog
+): ProfileCostBreakdown {
+  const empty: ProfileCostBreakdown = {
+    hasPricing: false,
+    brandName: null,
+    lines: [],
+    totalUnitCost: 0,
+    totalCost: 0,
+  };
+
+  const cat =
+    catalog ?? (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
+  if (!cat || !item.systemId || item.systemId === "none") return empty;
+
+  const system = findSystem("profiles", item.systemId, cat);
+  const brand: ProfileBrand | undefined = resolveProfileBrandForSystem(system, cat);
+  if (!brand || !profileBrandHasPricing(brand)) return empty;
+
+  const lines: ProfileCostLine[] = [];
+  for (const entry of profileCostEntries(materials)) {
+    const pricePerM = getProfileBrandPrice(brand, entry.category);
+    if (pricePerM <= 0) continue;
+    lines.push({
+      category: entry.category,
+      label: profilePriceCategoryLabel(entry.category),
+      lengthM: entry.lengthM,
+      pricePerM,
+      totalCost: roundM(entry.lengthM * pricePerM),
+    });
+  }
+
+  if (lines.length === 0) return empty;
+
+  const totalUnitCost = roundM(lines.reduce((s, l) => s + l.totalCost, 0));
+  const qty = Math.max(1, item.qty || 1);
+
+  return {
+    hasPricing: true,
+    brandName: brand.name,
+    lines,
     totalUnitCost,
     totalCost: roundM(totalUnitCost * qty),
   };

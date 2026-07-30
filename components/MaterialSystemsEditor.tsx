@@ -13,6 +13,7 @@ import {
   defaultGlassRates,
   defaultProfileDetails,
   deleteSystem,
+  findProfileBrand,
   frameHeightFormula,
   frameWidthFormula,
   getCategoryMeta,
@@ -20,6 +21,7 @@ import {
   glassPaneKindLabel,
   loadMaterialCatalog,
   newSystemId,
+  profileBrandOptions,
   profileRoleLabel,
   sashHeightFormula,
   sashWidthFormula,
@@ -44,6 +46,7 @@ export function MaterialSystemsEditor({ category }: Props) {
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [asDefault, setAsDefault] = useState(false);
+  const [profileBrandId, setProfileBrandId] = useState("");
   const [flash, setFlash] = useState<string | null>(null);
   const [glassRates, setGlassRates] = useState<GlassRates>(defaultGlassRates());
 
@@ -84,6 +87,7 @@ export function MaterialSystemsEditor({ category }: Props) {
     setCreating(true);
     setName("");
     setNotes("");
+    setProfileBrandId("");
     setAsDefault(category === "iron" && systems.length === 0);
   }
 
@@ -92,6 +96,7 @@ export function MaterialSystemsEditor({ category }: Props) {
     setEditing(system);
     setName(system.name);
     setNotes(system.notes ?? "");
+    setProfileBrandId(system.profileBrandId ?? "");
     setAsDefault(Boolean(system.isDefault));
   }
 
@@ -100,6 +105,7 @@ export function MaterialSystemsEditor({ category }: Props) {
     setEditing(null);
     setName("");
     setNotes("");
+    setProfileBrandId("");
     setAsDefault(false);
   }
 
@@ -114,6 +120,10 @@ export function MaterialSystemsEditor({ category }: Props) {
       name: trimmed,
       notes: notes.trim() || undefined,
       isDefault: asDefault || (category === "iron" && systems.length === 0),
+      profileBrandId:
+        category === "profiles" && profileBrandId.trim()
+          ? profileBrandId.trim()
+          : undefined,
       profile:
         category === "profiles"
           ? editing?.profile ?? defaultProfileDetails()
@@ -199,9 +209,17 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isProfiles ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          اضغط «تفاصيل» عشان تدخل العيدان ومعادلات مقاس الحلق والضلفة بصيغة إكسل (مثل{" "}
+          اضغط «تفاصيل» عشان تدخل العيدان ومعادلات التخصيم بصيغة إكسل (مثل{" "}
           <span className="font-mono text-foreground">=W-10</span> أو{" "}
-          <span className="font-mono text-foreground">=FW-2*60</span>).
+          <span className="font-mono text-foreground">=FW-2*60</span>). البراندات
+          وقوائم الأسعار من{" "}
+          <Link
+            href="/materials/profiles/brands"
+            className="font-semibold text-primary underline-offset-2 hover:underline"
+          >
+            صفحة البراندات
+          </Link>
+          .
         </p>
       ) : null}
 
@@ -291,6 +309,23 @@ export function MaterialSystemsEditor({ category }: Props) {
             rows={2}
             className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
+          {isProfiles ? (
+            <label className="block text-[11px] text-muted">
+              براند القطاعات (قائمة الأسعار)
+              <select
+                value={profileBrandId}
+                onChange={(e) => setProfileBrandId(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              >
+                <option value="">بدون براند</option>
+                {profileBrandOptions(catalog ?? undefined).map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
             <input
               type="checkbox"
@@ -355,6 +390,13 @@ export function MaterialSystemsEditor({ category }: Props) {
                     </div>
                     {system.notes ? (
                       <p className="mt-0.5 text-xs text-muted">{system.notes}</p>
+                    ) : null}
+                    {isProfiles && system.profileBrandId ? (
+                      <p className="mt-0.5 text-[11px] font-semibold text-primary">
+                        براند:{" "}
+                        {findProfileBrand(system.profileBrandId, catalog ?? undefined)
+                          ?.name ?? "—"}
+                      </p>
                     ) : null}
 
                     {isProfiles && profile ? (

@@ -17,7 +17,7 @@ type Props = {
 export default async function MaterialCategoryPage({ params }: Props) {
   const { category } = await params;
   if (!VALID.has(category as MaterialCategory)) notFound();
-  if (category === "accessories") notFound();
+  if (category === "accessories" || category === "profiles") notFound();
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-md flex-col bg-background">

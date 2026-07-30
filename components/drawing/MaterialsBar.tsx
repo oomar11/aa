@@ -7,7 +7,7 @@ import {
   formatLockPiecesSummary,
   accessoryBrandTag,
 } from "@/lib/accessories";
-import type { GlassBreakdown, MaterialsBreakdown, MeshBreakdown } from "@/lib/materials";
+import type { GlassBreakdown, MaterialsBreakdown, MeshBreakdown, ProfileCostBreakdown } from "@/lib/materials";
 import { formatArea, formatCount, formatMeters } from "@/lib/materials";
 import {
   calcCutSizes,
@@ -31,6 +31,7 @@ type Props = {
   glassBreakdown?: GlassBreakdown | null;
   meshBreakdown?: MeshBreakdown | null;
   accessoriesBreakdown?: AccessoriesBreakdown | null;
+  profileCostBreakdown?: ProfileCostBreakdown | null;
   partLabel?: string;
   /** مقاس الفتحة للبند */
   widthMm?: number;
@@ -52,6 +53,7 @@ export function MaterialsBar({
   glassBreakdown,
   meshBreakdown,
   accessoriesBreakdown,
+  profileCostBreakdown,
   partLabel = "شباك",
   widthMm,
   heightMm,
@@ -306,6 +308,11 @@ export function MaterialsBar({
         />
       ) : null}
 
+      {profileCostBreakdown?.hasPricing &&
+      profileCostBreakdown.lines.length > 0 ? (
+        <ProfileCostBreakdownPanel breakdown={profileCostBreakdown} />
+      ) : null}
+
       {glassBreakdown?.hasPricing && glassBreakdown.lines.length > 0 ? (
         <GlassBreakdownPanel breakdown={glassBreakdown} />
       ) : null}
@@ -445,6 +452,81 @@ function mullionHint(m: MaterialsBreakdown): string | undefined {
   if (parts.length === 0) return undefined;
   if (parts.length === 2) return "حلق + ضلفة";
   return parts[0];
+}
+
+function ProfileCostBreakdownPanel({
+  breakdown,
+}: {
+  breakdown: ProfileCostBreakdown;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const showExpand = breakdown.lines.length > 3;
+
+  return (
+    <div className="border-t border-border bg-background/40 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-primary">
+          تكلفة القطاعات
+          {breakdown.brandName ? `: ${breakdown.brandName}` : ""}
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-foreground">
+            {formatCurrency(Math.round(breakdown.totalCost))} ج.م
+          </span>
+          {showExpand ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
+            >
+              {expanded ? "إخفاء" : "تفاصيل"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-1.5 grid grid-cols-2 gap-x-3 text-[10px] text-muted">
+        <span>
+          للقطعة: {formatCurrency(Math.round(breakdown.totalUnitCost))} ج.م
+        </span>
+        <span>
+          الإجمالي: {formatCurrency(Math.round(breakdown.totalCost))} ج.م
+        </span>
+      </div>
+
+      {(expanded || breakdown.lines.length <= 3) && (
+        <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[10px]">
+          <div className="grid grid-cols-4 border-b border-border text-center font-semibold text-muted">
+            <span className="px-2 py-1.5 text-start">النوع</span>
+            <span className="px-2 py-1.5">الطول</span>
+            <span className="px-2 py-1.5">ج.م/م</span>
+            <span className="px-2 py-1.5">تكلفة</span>
+          </div>
+          {breakdown.lines.map((line, i) => (
+            <div
+              key={line.category}
+              className={`grid grid-cols-4 text-center tabular-nums ${
+                i > 0 ? "border-t border-border/60" : ""
+              }`}
+            >
+              <span className="px-2 py-1.5 text-start font-medium text-foreground">
+                {line.label}
+              </span>
+              <span className="px-2 py-1.5 text-foreground">
+                {line.lengthM.toFixed(2)} م
+              </span>
+              <span className="px-2 py-1.5 text-foreground">
+                {line.pricePerM}
+              </span>
+              <span className="px-2 py-1.5 font-semibold text-primary">
+                {formatCurrency(Math.round(line.totalCost))}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function GlassBreakdownPanel({ breakdown }: { breakdown: GlassBreakdown }) {
