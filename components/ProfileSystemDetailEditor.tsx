@@ -36,9 +36,9 @@ import {
 import {
   FORMULA_VAR_HELP,
   areAllDeductionsSimple,
-  deductToFormula,
   describeFormulaAr,
   ensureEqualsPrefix,
+  offsetToFormula,
   parseSimpleDeduct,
   validateFormula,
   type FormulaBaseVar,
@@ -62,6 +62,7 @@ type FormulaMode = "simple" | "advanced";
 type DeductPreset = {
   id: string;
   label: string;
+  /** موجب = زيادة · سالب = تخصيم */
   frameW: number;
   frameH: number;
   sashW: number;
@@ -69,29 +70,44 @@ type DeductPreset = {
 };
 
 const DEDUCT_PRESETS: DeductPreset[] = [
-  { id: "none", label: "بدون تخصيم", frameW: 0, frameH: 0, sashW: 0, sashH: 0 },
-  { id: "sash10", label: "ضلفة −١٠", frameW: 0, frameH: 0, sashW: 10, sashH: 10 },
+  { id: "none", label: "بدون تعديل", frameW: 0, frameH: 0, sashW: 0, sashH: 0 },
+  {
+    id: "frame-bar50",
+    label: "حلق +٥٠ (بار)",
+    frameW: 50,
+    frameH: 50,
+    sashW: 0,
+    sashH: 0,
+  },
+  {
+    id: "frame-bar50-sash10",
+    label: "حلق +٥٠ · ضلفة −١٠",
+    frameW: 50,
+    frameH: 50,
+    sashW: -10,
+    sashH: -10,
+  },
+  {
+    id: "sash10",
+    label: "ضلفة −١٠",
+    frameW: 0,
+    frameH: 0,
+    sashW: -10,
+    sashH: -10,
+  },
   {
     id: "frame5-sash10",
     label: "حلق −٥ · ضلفة −١٠",
-    frameW: 5,
-    frameH: 5,
-    sashW: 10,
-    sashH: 10,
-  },
-  {
-    id: "frame10-sash20",
-    label: "حلق −١٠ · ضلفة −٢٠",
-    frameW: 10,
-    frameH: 10,
-    sashW: 20,
-    sashH: 20,
+    frameW: -5,
+    frameH: -5,
+    sashW: -10,
+    sashH: -10,
   },
 ];
 
-function deductMmFromFormula(formula: string): number {
+function offsetMmFromFormula(formula: string): number {
   const parsed = parseSimpleDeduct(formula);
-  return parsed.simple ? parsed.deductMm : 0;
+  return parsed.simple ? parsed.offsetMm : 0;
 }
 
 function deductionsFromSimpleMm(mm: {
@@ -102,12 +118,12 @@ function deductionsFromSimpleMm(mm: {
 }): ProfileDeductions {
   return {
     frame: {
-      width: deductToFormula("W", mm.frameW),
-      height: deductToFormula("H", mm.frameH),
+      width: offsetToFormula("W", mm.frameW),
+      height: offsetToFormula("H", mm.frameH),
     },
     sash: {
-      width: deductToFormula("FW", mm.sashW),
-      height: deductToFormula("FH", mm.sashH),
+      width: offsetToFormula("FW", mm.sashW),
+      height: offsetToFormula("FH", mm.sashH),
     },
   };
 }
@@ -246,15 +262,15 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     };
     setDeductions(normalized);
     persistProfile(pieces, normalized);
-    showFlash("تم حفظ التخصيمات");
+    showFlash("تم حفظ التعديلات");
   }
 
-  function setSimpleDeduct(
+  function setSimpleOffset(
     part: "frame" | "sash",
     axis: "width" | "height",
-    raw: string
+    offsetMm: number
   ) {
-    const n = Math.max(0, Number(raw) || 0);
+    const n = Number.isFinite(offsetMm) ? offsetMm : 0;
     const base: FormulaBaseVar =
       part === "frame"
         ? axis === "width"
@@ -267,7 +283,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       ...d,
       [part]: {
         ...d[part],
-        [axis]: deductToFormula(base, n),
+        [axis]: offsetToFormula(base, n),
       },
     }));
   }
@@ -290,14 +306,14 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       ];
       if (!areAllDeductionsSimple(formulas)) {
         const ok = window.confirm(
-          "في معادلات متقدمة. التحويل للوضع السهل هيخلّي التخصيم أرقام ثابتة بس. كمّل؟"
+          "في معادلات متقدمة. التحويل للوضع السهل هيخلّي التعديل أرقام ثابتة بس (+/−). كمّل؟"
         );
         if (!ok) return;
         const next = deductionsFromSimpleMm({
-          frameW: deductMmFromFormula(deductions.frame.width),
-          frameH: deductMmFromFormula(deductions.frame.height),
-          sashW: deductMmFromFormula(deductions.sash.width),
-          sashH: deductMmFromFormula(deductions.sash.height),
+          frameW: offsetMmFromFormula(deductions.frame.width),
+          frameH: offsetMmFromFormula(deductions.frame.height),
+          sashW: offsetMmFromFormula(deductions.sash.width),
+          sashH: offsetMmFromFormula(deductions.sash.height),
         });
         setDeductions(next);
       }
@@ -367,7 +383,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
         <p className="mt-0.5 text-xs text-muted">
-          العيدان · أطوال العود · تخصيمات مقاس القطع
+          العيدان · أطوال العود · تعديلات مقاس القطع
         </p>
       </div>
 
@@ -602,18 +618,19 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         )}
       </section>
 
-      {/* تخصيمات مقاس القطع */}
+      {/* تعديلات مقاس القطع */}
       <form
         onSubmit={saveDeductions}
         className="space-y-3 rounded-2xl border border-border bg-card p-3"
       >
         <div>
           <h3 className="text-xs font-bold text-foreground">
-            تخصيمات مقاس القطع
+            تعديلات مقاس القطع
           </h3>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-            التخصيم = كام مليمتر نخصم عشان نطلع مقاس قطع الحلق والضلفة من مقاس
-            الفتحة.
+            تقدر <strong className="text-foreground">تزوّد</strong> أو{" "}
+            <strong className="text-foreground">تنقص</strong> من المقاس —
+            مثلاً الحلق أكبر من الفتحة لو فيه بار.
           </p>
         </div>
 
@@ -621,16 +638,16 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           <p className="font-bold text-primary">بالبلدي كده (خطوتين)</p>
           <ol className="mt-1.5 list-inside list-decimal space-y-1 text-muted">
             <li>
-              <span className="text-foreground">الحلق</span> بيتقص من الفتحة بعد
-              خصم العرض/الارتفاع
+              <span className="text-foreground">الحلق</span> من الفتحة: زوّد لو
+              فيه بار، أو انقص لو محتاج تخصيم
             </li>
             <li>
-              <span className="text-foreground">الضلفة</span> بتتقص من الحلق بعد
-              خصم العرض/الارتفاع
+              <span className="text-foreground">الضلفة</span> من الحلق: عادةً
+              تخصيم (أصغر من الحلق)
             </li>
           </ol>
           <p className="mt-2 border-t border-primary/20 pt-2 text-[10px] text-muted">
-            أمتار الخامات في الرسم تتحسب من تقسيمات الرسم. التخصيمات هنا لمقاس
+            أمتار الخامات في الرسم تتحسب من تقسيمات الرسم. التعديلات هنا لمقاس
             القطع فقط.
           </p>
         </div>
@@ -682,20 +699,25 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
 
             <div className="rounded-xl border border-border bg-background p-3">
               <p className="mb-1 text-[11px] font-bold text-primary">
-                الخطوة ١ — خصم الحلق من الفتحة
+                الخطوة ١ — الحلق من الفتحة
               </p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <SimpleDeductField
-                  label="خصم العرض"
-                  value={deductMmFromFormula(deductions.frame.width)}
-                  onChange={(v) => setSimpleDeduct("frame", "width", v)}
-                  explain="عرض الحلق = عرض الفتحة − الخصم"
+              <p className="mb-2 text-[10px] text-muted">
+                + زيادة (بار) · − تخصيم · ٠ نفس الفتحة
+              </p>
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <SimpleOffsetField
+                  label="تعديل العرض"
+                  value={offsetMmFromFormula(deductions.frame.width)}
+                  onChange={(v) => setSimpleOffset("frame", "width", v)}
+                  explainPlus="عرض الحلق = عرض الفتحة + الزيادة"
+                  explainMinus="عرض الحلق = عرض الفتحة − التخصيم"
                 />
-                <SimpleDeductField
-                  label="خصم الارتفاع"
-                  value={deductMmFromFormula(deductions.frame.height)}
-                  onChange={(v) => setSimpleDeduct("frame", "height", v)}
-                  explain="ارتفاع الحلق = ارتفاع الفتحة − الخصم"
+                <SimpleOffsetField
+                  label="تعديل الارتفاع"
+                  value={offsetMmFromFormula(deductions.frame.height)}
+                  onChange={(v) => setSimpleOffset("frame", "height", v)}
+                  explainPlus="ارتفاع الحلق = ارتفاع الفتحة + الزيادة"
+                  explainMinus="ارتفاع الحلق = ارتفاع الفتحة − التخصيم"
                 />
               </div>
               <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
@@ -708,20 +730,25 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
 
             <div className="rounded-xl border border-border bg-background p-3">
               <p className="mb-1 text-[11px] font-bold text-primary">
-                الخطوة ٢ — خصم الضلفة من الحلق
+                الخطوة ٢ — الضلفة من الحلق
               </p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <SimpleDeductField
-                  label="خصم العرض"
-                  value={deductMmFromFormula(deductions.sash.width)}
-                  onChange={(v) => setSimpleDeduct("sash", "width", v)}
-                  explain="عرض الضلفة = عرض الحلق − الخصم"
+              <p className="mb-2 text-[10px] text-muted">
+                + زيادة · − تخصيم · ٠ نفس الحلق
+              </p>
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <SimpleOffsetField
+                  label="تعديل العرض"
+                  value={offsetMmFromFormula(deductions.sash.width)}
+                  onChange={(v) => setSimpleOffset("sash", "width", v)}
+                  explainPlus="عرض الضلفة = عرض الحلق + الزيادة"
+                  explainMinus="عرض الضلفة = عرض الحلق − التخصيم"
                 />
-                <SimpleDeductField
-                  label="خصم الارتفاع"
-                  value={deductMmFromFormula(deductions.sash.height)}
-                  onChange={(v) => setSimpleDeduct("sash", "height", v)}
-                  explain="ارتفاع الضلفة = ارتفاع الحلق − الخصم"
+                <SimpleOffsetField
+                  label="تعديل الارتفاع"
+                  value={offsetMmFromFormula(deductions.sash.height)}
+                  onChange={(v) => setSimpleOffset("sash", "height", v)}
+                  explainPlus="ارتفاع الضلفة = ارتفاع الحلق + الزيادة"
+                  explainMinus="ارتفاع الضلفة = ارتفاع الحلق − التخصيم"
                 />
               </div>
               <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
@@ -842,7 +869,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           type="submit"
           className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
         >
-          حفظ التخصيمات
+          حفظ التعديلات
         </button>
       </form>
 
@@ -850,7 +877,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       <section className="space-y-2 rounded-2xl border border-border bg-card p-3">
         <h3 className="text-xs font-bold text-foreground">جرّب على مقاس فتحة</h3>
         <p className="text-[10px] leading-relaxed text-muted">
-          اكتب أي مقاس فتحة وشوف مقاس قطع الحلق والضلفة بعد التخصيم خطوة بخطوة.
+          اكتب أي مقاس فتحة وشوف مقاس قطع الحلق والضلفة بعد التعديل خطوة بخطوة.
         </p>
         <div className="grid grid-cols-2 gap-2">
           <label className="block text-[11px] text-muted">
@@ -980,31 +1007,95 @@ function CutStepsList({
 }
 
 
-function SimpleDeductField({
+function SimpleOffsetField({
   label,
   value,
   onChange,
-  explain,
+  explainPlus,
+  explainMinus,
 }: {
   label: string;
+  /** موجب = زيادة · سالب = تخصيم */
   value: number;
-  onChange: (next: string) => void;
-  explain: string;
+  onChange: (next: number) => void;
+  explainPlus: string;
+  explainMinus: string;
 }) {
+  const direction: "plus" | "minus" | "zero" =
+    value > 0 ? "plus" : value < 0 ? "minus" : "zero";
+  const amount = Math.abs(Number.isFinite(value) ? value : 0);
+
+  function setDirection(next: "plus" | "minus") {
+    if (amount === 0) {
+      onChange(next === "plus" ? 1 : -1);
+      return;
+    }
+    onChange(next === "plus" ? amount : -amount);
+  }
+
+  function setAmount(raw: string) {
+    const n = Math.max(0, Number(raw) || 0);
+    if (n === 0) {
+      onChange(0);
+      return;
+    }
+    // لو كان صفر قبل كده، الافتراضي تخصيم (−) إلا لو المستخدم اختار زيادة
+    const sign = direction === "plus" ? 1 : -1;
+    onChange(sign * n);
+  }
+
   return (
-    <label className="block text-[11px] text-muted">
-      {label} (مم)
-      <input
-        type="number"
-        min={0}
-        step={1}
-        inputMode="decimal"
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm tabular-nums text-foreground outline-none focus:border-primary"
-      />
-      <p className="mt-0.5 text-[10px] leading-snug text-muted">{explain}</p>
-    </label>
+    <div className="rounded-xl border border-border bg-card p-2.5">
+      <p className="text-[11px] font-semibold text-foreground">{label}</p>
+      <div className="mt-1.5 grid grid-cols-2 gap-1 rounded-lg border border-border bg-background p-0.5">
+        <button
+          type="button"
+          onClick={() => setDirection("minus")}
+          className={`h-8 rounded-md text-[11px] font-semibold transition-colors ${
+            direction === "minus"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted hover:bg-card"
+          }`}
+        >
+          − تخصيم
+        </button>
+        <button
+          type="button"
+          onClick={() => setDirection("plus")}
+          className={`h-8 rounded-md text-[11px] font-semibold transition-colors ${
+            direction === "plus"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted hover:bg-card"
+          }`}
+        >
+          + زيادة
+        </button>
+      </div>
+      <label className="mt-2 block text-[10px] text-muted">
+        المقدار (مم)
+        <input
+          type="number"
+          min={0}
+          step={1}
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm tabular-nums text-foreground outline-none focus:border-primary"
+        />
+      </label>
+      <p className="mt-1 text-[10px] leading-snug text-muted">
+        {direction === "plus"
+          ? explainPlus
+          : direction === "minus"
+            ? explainMinus
+            : "نفس المقاس بدون تعديل"}
+        {amount > 0 ? (
+          <span className="mt-0.5 block font-semibold text-primary">
+            {direction === "plus" ? `+${amount}` : `−${amount}`} مم
+          </span>
+        ) : null}
+      </p>
+    </div>
   );
 }
 

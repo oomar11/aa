@@ -219,7 +219,9 @@ export function MaterialSystemsEditor({ category }: Props) {
           كل سيستم بيتربط ببراند أسعار. مثال: سيستم{" "}
           <span className="font-semibold text-foreground">بريمير سيتي</span> +
           براند <span className="font-semibold text-foreground">سيتي</span> =
-          قائمة أسعار السيتي للحلق والضلفة والباكتة والسوقاس. البراندات من{" "}
+          قائمة أسعار السيتي للحلق والضلفة والباكتة والسوقاس. من «تفاصيل»
+          تقدر تزود أو تنقص مقاس القطع بالمم (مثلاً حلق +٥٠ بار، أو ضلفة −١٠).
+          البراندات من{" "}
           <Link
             href="/materials/profiles/brands"
             className="font-semibold text-primary underline-offset-2 hover:underline"
