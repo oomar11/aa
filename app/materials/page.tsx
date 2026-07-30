@@ -37,7 +37,7 @@ export default function MaterialsPage() {
         </section>
 
         <p className="px-1 text-center text-[11px] leading-relaxed text-muted">
-          السلك له صفحة خاصة — مش داخل الاكسسوار. كل تصميم يختار القطاعات
+          السلك والبراندات لهم صفحات خاصة داخل الخامات. كل تصميم يختار القطاعات
           والاكسسوار والزجاج والسلك.
         </p>
       </main>

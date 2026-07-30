@@ -31,7 +31,6 @@ import {
   type MaterialCategory,
   type MaterialSystem,
 } from "@/lib/material-systems";
-import { AccessoryBrandsEditor } from "@/components/AccessoryBrandsEditor";
 
 type Props = {
   category: MaterialCategory;
@@ -208,12 +207,16 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isAccessories ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          اضغط «تفاصيل» لضبط اكسسوار المفصلي والجرار: مفصلات · سبلونة · سكاك ·
-          تراك · عجل · فرش · تقابل · براند لكل فئة.
+          اضغط «تفاصيل» لضبط المفصلي والجرار. البراندات من{" "}
+          <Link
+            href="/materials/accessories/brands"
+            className="font-semibold text-primary underline-offset-2 hover:underline"
+          >
+            صفحة البراندات
+          </Link>
+          .
         </p>
       ) : null}
-
-      {isAccessories ? <AccessoryBrandsEditor /> : null}
 
       {isGlass ? (
         <div className="space-y-3">

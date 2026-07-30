@@ -21,7 +21,12 @@ const GROUP_LABELS: Record<"hinged" | "bouclier" | "sliding", string> = {
   sliding: "جرار",
 };
 
-export function AccessoryBrandsEditor() {
+type Props = {
+  /** إخفاء العنوان عند استخدام المحرر داخل صفحة مخصصة */
+  embedded?: boolean;
+};
+
+export function AccessoryBrandsEditor({ embedded = false }: Props) {
   const [brands, setBrands] = useState<AccessoryBrand[]>(defaultAccessoryBrands());
   const [flash, setFlash] = useState<string | null>(null);
   const [draft, setDraft] = useState<AccessoryBrand | null>(null);
@@ -101,12 +106,14 @@ export function AccessoryBrandsEditor() {
 
   return (
     <section className="space-y-3 rounded-2xl border border-border bg-card p-3">
-      <div>
-        <h3 className="text-xs font-bold text-foreground">براندات الاكسسوار</h3>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-          أضف البراندات لكل فئة — وبعدين اختارها داخل تفاصيل كل نظام اكسسوار.
-        </p>
-      </div>
+      {!embedded ? (
+        <div>
+          <h3 className="text-xs font-bold text-foreground">براندات الاكسسوار</h3>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+            أضف البراندات لكل فئة — وبعدين اختارها داخل تفاصيل كل نظام اكسسوار.
+          </p>
+        </div>
+      ) : null}
 
       {flash ? (
         <p

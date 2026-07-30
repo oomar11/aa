@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -395,7 +396,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
 
       <Section
         title="براندات لكل فئة"
-        hint="اختَر البراند من الكتالوج — أضف براندات جديدة من صفحة الاكسسوار"
+        hint="اختَر البراند من كتالوج البراندات"
       >
         {(["hinged", "bouclier", "sliding"] as const).map((group) => {
           const cats = ACCESSORY_BRAND_CATEGORIES.filter((c) => c.group === group);
@@ -582,7 +583,13 @@ function BrandSelect({
       </select>
       {options.length === 0 ? (
         <span className="mt-0.5 block text-[10px] text-muted/80">
-          مفيش براندات — أضف من صفحة الاكسسوار
+          مفيش براندات —{" "}
+          <Link
+            href="/materials/accessories/brands"
+            className="font-semibold text-primary underline-offset-2 hover:underline"
+          >
+            أضف من صفحة البراندات
+          </Link>
         </span>
       ) : null}
     </label>
