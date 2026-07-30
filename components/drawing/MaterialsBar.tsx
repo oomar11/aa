@@ -10,7 +10,11 @@ import type {
   ProfileCostBreakdown,
   ProfileCostLine,
 } from "@/lib/materials";
-import { formatCount, formatMeters } from "@/lib/materials";
+import {
+  calcProfileCostBreakdown,
+  formatCount,
+  formatMeters,
+} from "@/lib/materials";
 import type { IronBreakdown } from "@/lib/iron";
 import {
   findSystem,
@@ -70,9 +74,29 @@ export function MaterialsBar({
     });
   }, [systemId]);
 
+  // احسب التكلفة من الكتالوج الحالي مباشرة — بعد ترحيل أسعار السيتي بريمير
+  const localProfileCost = useMemo((): ProfileCostBreakdown | null => {
+    if (!systemId || systemId === "none") return null;
+    if (typeof window === "undefined") return null;
+    const catalog = loadMaterialCatalog();
+    return calcProfileCostBreakdown(
+      { systemId, qty: 1 } as never,
+      materials,
+      catalog
+    );
+  }, [systemId, materials]);
+
+  const effectiveProfileCost =
+    localProfileCost?.hasPricing && localProfileCost.lines.length > 0
+      ? localProfileCost
+      : profileCostBreakdown?.hasPricing &&
+          (profileCostBreakdown.lines?.length ?? 0) > 0
+        ? profileCostBreakdown
+        : localProfileCost ?? profileCostBreakdown;
+
   const profileRows = useMemo(
-    () => buildProfileRows(profileCostBreakdown, materials),
-    [profileCostBreakdown, materials]
+    () => buildProfileRows(effectiveProfileCost, materials),
+    [effectiveProfileCost, materials]
   );
 
   const glassRows = useMemo(
@@ -95,8 +119,8 @@ export function MaterialsBar({
     [ironBreakdown]
   );
 
-  const profileTotal = profileCostBreakdown?.hasPricing
-    ? profileCostBreakdown.totalUnitCost
+  const profileTotal = effectiveProfileCost?.hasPricing
+    ? effectiveProfileCost.totalUnitCost
     : null;
   const glassTotal = glassBreakdown?.hasPricing
     ? glassBreakdown.totalUnitCost

@@ -1254,90 +1254,42 @@ export function migrateCityPremierProfileBrandPrices(
   brands: ProfileBrand[]
 ): ProfileBrand[] {
   const official = cityPremierProfileBarRates();
-  return brands.map((brand) => {
-    if (brand.id !== "brand-city") return brand;
+  let list = brands.map((brand) => {
+    const isCityBrand =
+      brand.id === "brand-city" ||
+      brand.name === "سيتي" ||
+      brand.name === "سيتي بريمير";
 
-    // لو لسه على هيكل قديم أو ناقص — ثبّت قائمة المصنع
+    if (!isCityBrand) return brand;
+
     const hasRates = Object.values(brand.rates ?? {}).some(
       (r) => r && r.barPrice > 0 && r.barLengthM > 0
     );
-    if (!hasRates) {
-      return {
-        ...brand,
+
+    // ثبّت قائمة المصنع لبراند السيتي بريمير
+    return {
+      ...brand,
+      id: brand.id === "brand-city" || !hasRates ? "brand-city" : brand.id,
+      name: "سيتي بريمير",
+      notes: CITY_BRAND_NOTES,
+      rates: { ...official },
+    };
+  });
+
+  // لو مفيش براند سيتي خالص — أضيفه
+  if (!list.some((b) => b.id === "brand-city" || b.name === "سيتي بريمير")) {
+    list = [
+      {
+        id: "brand-city",
         name: "سيتي بريمير",
         notes: CITY_BRAND_NOTES,
         rates: { ...official },
-      };
-    }
+      },
+      ...list,
+    ];
+  }
 
-    const merged = { ...brand.rates };
-    let changed = false;
-
-    // إصلاح ربط الباكتات الغلط من ترحيلات سابقة
-    // (كان 35 على دبل و 20 على سنجل — الصح: 35 سنجل مفصلي · 20 دبل مفصلي/سنجل جرار · 9 دبل جرار)
-    const wrongSingleH = merged["bead-single-hinged"];
-    if (
-      wrongSingleH &&
-      Math.abs(wrongSingleH.barPrice - 165) < 0.01 &&
-      (wrongSingleH.productName === "باكتة 20مم" || !wrongSingleH.productName)
-    ) {
-      merged["bead-single-hinged"] = official["bead-single-hinged"];
-      changed = true;
-    }
-    const wrongDoubleH = merged["bead-double-hinged"];
-    if (
-      wrongDoubleH &&
-      (Math.abs(wrongDoubleH.barPrice - 208) < 0.01 ||
-        Math.abs(wrongDoubleH.barPrice - 750) < 0.01)
-    ) {
-      merged["bead-double-hinged"] = official["bead-double-hinged"];
-      changed = true;
-    }
-    const wrongDoubleS = merged["bead-double-sliding"];
-    if (
-      wrongDoubleS &&
-      Math.abs(wrongDoubleS.barPrice - 208) < 0.01
-    ) {
-      merged["bead-double-sliding"] = official["bead-double-sliding"];
-      changed = true;
-    }
-
-    for (const cat of PROFILE_PRICE_CATEGORIES) {
-      const cur = merged[cat.id];
-      const off = official[cat.id];
-      if ((!cur || cur.barPrice <= 0) && off) {
-        merged[cat.id] = { ...off };
-        changed = true;
-      }
-    }
-
-    const name =
-      brand.name === "سيتي" || brand.name === "سيتي بريمير"
-        ? "سيتي بريمير"
-        : brand.name;
-    const notes = !(brand.notes ?? "").includes("بالعود")
-      ? CITY_BRAND_NOTES
-      : brand.notes;
-
-    // سيتي بريمير الافتراضي: ثبّت أسعار المصنع (سعر العود + الطول) دائماً
-    // إلا لو المستخدم غيّر اسم البراند
-    if (name === "سيتي بريمير") {
-      return {
-        ...brand,
-        name,
-        notes: CITY_BRAND_NOTES,
-        rates: { ...official },
-      };
-    }
-
-    if (!changed && name === brand.name && notes === brand.notes) return brand;
-    return {
-      ...brand,
-      name,
-      notes: notes || CITY_BRAND_NOTES,
-      rates: merged,
-    };
-  });
+  return list;
 }
 
 /** @deprecated استخدم migrateCityPremierProfileBrandPrices */
@@ -1442,12 +1394,63 @@ export function profileBrandOptions(
     .sort((a, b) => a.label.localeCompare(b.label, "ar"));
 }
 
+export function findProfileBrandByName(
+  name: string | undefined | null,
+  catalog?: MaterialCatalog
+): ProfileBrand | undefined {
+  const needle = (name ?? "").trim();
+  if (!needle) return undefined;
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  const brands = cat.profileBrands ?? defaultProfileBrands();
+  return (
+    brands.find((b) => b.name === needle) ??
+    brands.find((b) => needle.includes(b.name) || b.name.includes(needle))
+  );
+}
+
+/** يرجّع براند أسعار السيتي بريمير الافتراضي */
+export function cityPremierProfileBrand(
+  catalog?: MaterialCatalog
+): ProfileBrand | undefined {
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  const brands = cat.profileBrands ?? defaultProfileBrands();
+  return (
+    brands.find((b) => b.id === "brand-city") ??
+    brands.find((b) => b.name === "سيتي بريمير" || b.name === "سيتي") ??
+    brands.find((b) => profileBrandHasPricing(b))
+  );
+}
+
+function systemLooksLikeCityPremier(system: MaterialSystem): boolean {
+  const n = `${system.name} ${system.notes ?? ""}`;
+  return /سيتي|بريمير\s*سيتي|سيتي\s*بريمير/.test(n);
+}
+
 export function resolveProfileBrandForSystem(
   system: MaterialSystem | undefined | null,
   catalog?: MaterialCatalog
 ): ProfileBrand | undefined {
-  if (!system?.profileBrandId) return undefined;
-  return findProfileBrand(system.profileBrandId, catalog);
+  if (!system) return undefined;
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+
+  if (system.profileBrandId) {
+    const linked = findProfileBrand(system.profileBrandId, cat);
+    if (linked && profileBrandHasPricing(linked)) return linked;
+    if (linked) return linked;
+  }
+
+  // سيستم سيتي/بريمير سيتي بدون براند مربوط → قائمة السيتي بريمير
+  if (systemLooksLikeCityPremier(system)) {
+    return cityPremierProfileBrand(cat);
+  }
+
+  return undefined;
 }
 
 export function getProfileBrandRate(
@@ -2689,13 +2692,24 @@ function migrateProfileSystemLabels(systems: MaterialSystem[]): MaterialSystem[]
 
   let list = systems.map((s) => {
     const rule = renames[s.id];
-    if (!rule || !rule.fromNames.includes(s.name)) return s;
-    return {
-      ...s,
-      name: rule.name,
-      notes: s.notes && !rule.fromNames.includes(s.notes) ? s.notes : rule.notes,
-      profileBrandId: s.profileBrandId ?? rule.brandId,
-    };
+    if (rule && rule.fromNames.includes(s.name)) {
+      return {
+        ...s,
+        name: rule.name,
+        notes: s.notes && !rule.fromNames.includes(s.notes) ? s.notes : rule.notes,
+        profileBrandId: s.profileBrandId ?? rule.brandId,
+      };
+    }
+
+    // pvc1/pvc2 أو أي سيستم اسمه سيتي/بريمير سيتي → لازم يبقى مربوط ببراند الأسعار
+    if (
+      (s.id === "pvc1" || s.id === "pvc2" || systemLooksLikeCityPremier(s)) &&
+      !s.profileBrandId
+    ) {
+      return { ...s, profileBrandId: "brand-city" };
+    }
+
+    return s;
   });
 
   if (!list.some((s) => s.isDefault) && list.some((s) => s.id === "pvc1")) {
