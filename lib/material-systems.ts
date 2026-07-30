@@ -24,6 +24,7 @@ export type ProfilePieceRole =
   | "knife"
   | "four-leaf-meeting"
   | "mesh-meeting"
+  | "bouclier-cap"
   | "bead"
   | "threshold"
   | "other";
@@ -43,6 +44,7 @@ export const PROFILE_PIECE_ROLES: {
   { id: "knife", label: "سكينة" },
   { id: "four-leaf-meeting", label: "تقابل ٤ ضلفة" },
   { id: "mesh-meeting", label: "تقابل سلك جرار" },
+  { id: "bouclier-cap", label: "طبة بوكلير" },
   { id: "bead", label: "بيادة زجاج" },
   { id: "threshold", label: "عتبة" },
   { id: "other", label: "أخرى" },
@@ -63,6 +65,7 @@ export type ProfilePriceCategory =
   | "coupling"
   | "knife"
   | "bouclier"
+  | "bouclier-cap"
   | "bead-single-hinged"
   | "bead-single-sliding"
   | "bead-double-hinged"
@@ -82,6 +85,7 @@ export const PROFILE_PRICE_CATEGORIES: {
   { id: "coupling", label: "كوبلن" },
   { id: "knife", label: "سكينة" },
   { id: "bouclier", label: "بوكلير" },
+  { id: "bouclier-cap", label: "طبة بوكلير" },
   { id: "bead-single-hinged", label: "باكتة سنجل مفصلي" },
   { id: "bead-single-sliding", label: "باكتة سنجل جرار" },
   { id: "bead-double-hinged", label: "باكتة دبل مفصلي" },
@@ -248,7 +252,6 @@ export type AccessoryBrandCategory =
   | "bouclier-lock"
   | "bouclier-bolt"
   | "bouclier-bolt-lock"
-  | "bouclier-cap"
   | "track"
   | "roller"
   | "brush"
@@ -268,7 +271,6 @@ export const ACCESSORY_BRAND_CATEGORIES: {
   { id: "bouclier-lock", label: "سكاك بوكلير", group: "bouclier" },
   { id: "bouclier-bolt", label: "ترباس بوكلير", group: "bouclier" },
   { id: "bouclier-bolt-lock", label: "سكاك ترباس", group: "bouclier" },
-  { id: "bouclier-cap", label: "طبة بوكلير", group: "bouclier" },
   { id: "track", label: "تراك جرار", group: "sliding" },
   { id: "roller", label: "عجل جرار", group: "sliding" },
   { id: "brush", label: "فرش جرار", group: "sliding" },
@@ -318,8 +320,6 @@ export type AccessorySystemDetails = {
   boltsPerBouclier: number;
   /** سكاك ترباس — لكل ترباس */
   bouclierBoltLockPieces: AccessoryLockPiece[];
-  /** طقم طبة بوكلير لكل بوكلير */
-  bouclierCapKitsPerBouclier: number;
   /** مقبض بارز لكل سبلونة */
   protrudingHandlesPerLockset: number;
 
@@ -681,7 +681,6 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     bouclierLockPieces: defaultBouclierLockPieces(),
     boltsPerBouclier: 2,
     bouclierBoltLockPieces: defaultBouclierBoltLockPieces(),
-    bouclierCapKitsPerBouclier: 1,
     protrudingHandlesPerLockset: 1,
     tracksPerFrame: 2,
     rollersPerSlidingSash: 2,
@@ -921,6 +920,7 @@ export function defaultProfileBrandPrices(): Partial<
     coupling: 45,
     knife: 28,
     bouclier: 35,
+    "bouclier-cap": 8,
     "bead-single-hinged": 12,
     "bead-single-sliding": 12,
     "bead-double-hinged": 18,
@@ -952,6 +952,7 @@ export function defaultProfileBrands(): ProfileBrand[] {
         coupling: 58,
         knife: 35,
         bouclier: 42,
+        "bouclier-cap": 10,
         "bead-single-hinged": 15,
         "bead-single-sliding": 15,
         "bead-double-hinged": 22,
@@ -1487,6 +1488,13 @@ export function getDefaultCatalog(): MaterialCatalog {
               name: "سوقاس",
               role: "mullion",
               sectionWidthMm: 70,
+              barLengthM: DEFAULT_BAR_LENGTH_M,
+            },
+            {
+              id: "pvc1-bc",
+              name: "طبة بوكلير",
+              role: "bouclier-cap",
+              sectionWidthMm: 25,
               barLengthM: DEFAULT_BAR_LENGTH_M,
             },
             {
@@ -2195,10 +2203,6 @@ export function normalizeAccessoryDetails(
     bouclierBoltLockPieces: normalizeLockPieces(
       o.bouclierBoltLockPieces,
       fallback.bouclierBoltLockPieces
-    ),
-    bouclierCapKitsPerBouclier: normalizePositiveInt(
-      o.bouclierCapKitsPerBouclier,
-      fallback.bouclierCapKitsPerBouclier
     ),
     protrudingHandlesPerLockset: normalizePositiveInt(
       o.protrudingHandlesPerLockset,

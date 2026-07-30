@@ -5,7 +5,7 @@
  * - مفصلات لكل ضلفة (٢ شباك / ٣ باب — من الإعدادات)
  * - سبلونة مفصلي حسب ارتفاع ناحية المقبض
  * - سكاك مفصلي لكل سبلونة (كميات قابلة للتعديل)
- * - ضلفتين + بوكلير: سبلونة واحدة، سكاك بوكلير، ترباس + سكاك ترباس، طبة، مقبض بارز
+ * - ضلفتين + بوكلير: سبلونة واحدة، سكاك بوكلير، ترباس + سكاك ترباس، مقبض بارز
  *
  * جرار:
  * - تراك ×٢ بعرض الحلق
@@ -66,7 +66,6 @@ export type AccessoriesBreakdown = {
   bouclierLockPieces: LockPieceLine[];
   boltQty: number;
   bouclierBoltLockPieces: LockPieceLine[];
-  bouclierCapKitQty: number;
   protrudingHandleQty: number;
 
   // ── جرار ───────────────────────────────────────────
@@ -134,7 +133,6 @@ function emptyBreakdown(systemName: string | null): AccessoriesBreakdown {
     bouclierLockPieces: [],
     boltQty: 0,
     bouclierBoltLockPieces: [],
-    bouclierCapKitQty: 0,
     protrudingHandleQty: 0,
     trackQty: 0,
     trackLengthM: 0,
@@ -374,7 +372,6 @@ export function calcItemAccessories(
   let hingedLocksetCount = 0;
   let bouclierLocksetCount = 0;
   let boltQty = 0;
-  let bouclierCapKitQty = 0;
   let protrudingHandleQty = 0;
 
   const { solo, bouclierPairs } = hingedLocksetGroups(boxes);
@@ -414,7 +411,6 @@ export function calcItemAccessories(
     addEspagnolette(hingedEspMap, size);
     bouclierLocksetCount += 1;
     boltQty += details.boltsPerBouclier;
-    bouclierCapKitQty += details.bouclierCapKitsPerBouclier;
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
 
@@ -487,7 +483,6 @@ export function calcItemAccessories(
     bouclierLockPieces.length > 0 ||
     boltQty > 0 ||
     bouclierBoltLockPieces.length > 0 ||
-    bouclierCapKitQty > 0 ||
     protrudingHandleQty > 0 ||
     trackQty > 0 ||
     rollerQty > 0 ||
@@ -505,7 +500,6 @@ export function calcItemAccessories(
     bouclierLockPieces,
     boltQty,
     bouclierBoltLockPieces,
-    bouclierCapKitQty,
     protrudingHandleQty,
     trackQty,
     trackLengthM,
@@ -537,7 +531,6 @@ export function scaleAccessories(
     bouclierLockPieces: scaleLines(a.bouclierLockPieces),
     boltQty: a.boltQty * q,
     bouclierBoltLockPieces: scaleLines(a.bouclierBoltLockPieces),
-    bouclierCapKitQty: a.bouclierCapKitQty * q,
     protrudingHandleQty: a.protrudingHandleQty * q,
     trackQty: a.trackQty * q,
     trackLengthM: roundM(a.trackLengthM * q),

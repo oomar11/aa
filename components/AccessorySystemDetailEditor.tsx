@@ -448,11 +448,6 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
             onChange={(v) => patchDetails({ boltsPerBouclier: v })}
           />
           <NumberField
-            label="طقم طبة / بوكلير"
-            value={details.bouclierCapKitsPerBouclier}
-            onChange={(v) => patchDetails({ bouclierCapKitsPerBouclier: v })}
-          />
-          <NumberField
             label="مقبض بارز / سبلونة"
             value={details.protrudingHandlesPerLockset}
             onChange={(v) => patchDetails({ protrudingHandlesPerLockset: v })}
@@ -549,7 +544,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
       </Section>
 
       <p className="px-1 pb-2 text-center text-[11px] leading-relaxed text-muted">
-        ضلفتين مفصلي + بوكلير = سبلونة واحدة + سكاك بوكلير + ترباس + سكاك ترباس + طبة.
+        ضلفتين مفصلي + بوكلير = سبلونة واحدة + سكاك بوكلير + ترباس + سكاك ترباس + طبة (قطاع).
         الجرار: تراك ٢ بعرض الحلق · عجل ٢/ضلفة · فرش محيط×٢ + سكينة×١ · مقبض غاطس على الضلفة الغاطسة.
       </p>
     </div>

@@ -54,6 +54,10 @@ export type MaterialsBreakdown = {
   knifeM: number;
   /** بوكلير (مقابض في وش بعض) — متر طولي */
   bouclierM: number;
+  /** طبة بوكلير — عدد القطع */
+  bouclierCapQty: number;
+  /** طبة بوكلير — متر طولي (ارتفاع الضلفة) */
+  bouclierCapM: number;
   /** سوقاس بيقسم الحلق (خطوط التقسيم في اللليآوت) */
   mullionFrameM: number;
   /** سوقاس بيقسم الضلفة (تقسيم داخلي / عوائد) */
@@ -147,6 +151,8 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     couplingM: 0,
     knifeM: 0,
     bouclierM: 0,
+    bouclierCapQty: 0,
+    bouclierCapM: 0,
     mullionFrameM: 0,
     mullionSashM: 0,
     sashHingedM: 0,
@@ -191,6 +197,10 @@ export function frameKindForOpening(opening: PaneOpening): FrameKind {
 
 function isOpeningSash(opening: PaneOpening): boolean {
   return opening !== "fixed" && opening !== "exhaust";
+}
+
+function isHingedOpening(opening: PaneOpening): boolean {
+  return frameKindForOpening(opening) === "hinged" && isOpeningSash(opening);
 }
 
 function panePerimeterMm(w: number, h: number): number {
@@ -734,6 +744,39 @@ function meshSlidingRowGroups(
   return rows.map((r) => r.sort((a, b) => a.x - b.x));
 }
 
+/** طبة بوكلير — قطعة واحدة بارتفاع الضلفة لكل بوكلير صالح */
+function bouclierCapStats(boxes: PaneBox[]): { qty: number; lengthMm: number } {
+  const hinged = boxes.filter((b) => isHingedOpening(b.opening));
+  const boucliers = boxes.filter((b) => b.bouclier && b.opening === "fixed");
+  let qty = 0;
+  let lengthMm = 0;
+
+  for (const mid of boucliers) {
+    const left = hinged
+      .filter(
+        (b) =>
+          Math.abs(b.y - mid.y) < 2 &&
+          Math.abs(b.h - mid.h) < 2 &&
+          Math.abs(b.x + b.w - mid.x) < 3
+      )
+      .sort((a, b) => b.x - a.x)[0];
+    const right = hinged
+      .filter(
+        (b) =>
+          Math.abs(b.y - mid.y) < 2 &&
+          Math.abs(b.h - mid.h) < 2 &&
+          Math.abs(mid.x + mid.w - b.x) < 3
+      )
+      .sort((a, b) => a.x - b.x)[0];
+
+    if (!left || !right) continue;
+    if (!areFacingHandles(left.opening, right.opening)) continue;
+    qty += 1;
+    lengthMm += mid.h;
+  }
+  return { qty, lengthMm };
+}
+
 /** تقابل ٤ ضلفة جرار — قطعة واحدة بارتفاع الضلفة لكل صف فيه ٤+ ضلف */
 function fourLeafMeetingStats(boxes: PaneBox[]): {
   qty: number;
@@ -1038,6 +1081,8 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const meshMeeting = meshMeetingStats(boxes, panes, cat);
   const fourLeafMeetingM = roundM(mmToM(fourLeafMeeting.lengthMm));
   const meshMeetingM = roundM(mmToM(meshMeeting.lengthMm));
+  const bouclierCap = bouclierCapStats(boxes);
+  const bouclierCapM = roundM(mmToM(bouclierCap.lengthMm));
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
@@ -1071,6 +1116,8 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     couplingM,
     knifeM,
     bouclierM,
+    bouclierCapQty: bouclierCap.qty,
+    bouclierCapM,
     mullionFrameM,
     mullionSashM,
     sashHingedM,
@@ -1115,6 +1162,8 @@ export function scaleMaterials(
     couplingM: roundM(m.couplingM * q),
     knifeM: roundM(m.knifeM * q),
     bouclierM: roundM(m.bouclierM * q),
+    bouclierCapQty: m.bouclierCapQty * q,
+    bouclierCapM: roundM(m.bouclierCapM * q),
     mullionFrameM: roundM(m.mullionFrameM * q),
     mullionSashM: roundM(m.mullionSashM * q),
     sashHingedM: roundM(m.sashHingedM * q),
@@ -1423,6 +1472,7 @@ function profileCostEntries(m: MaterialsBreakdown): ProfileCostEntry[] {
     { category: "coupling", lengthM: m.couplingM },
     { category: "knife", lengthM: m.knifeM },
     { category: "bouclier", lengthM: m.bouclierM },
+    { category: "bouclier-cap", lengthM: m.bouclierCapM },
     { category: "sash-hinged", lengthM: m.sashHingedM },
     { category: "sash-door", lengthM: m.sashDoorM },
     { category: "sash-sliding", lengthM: m.sashSlidingM },

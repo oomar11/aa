@@ -118,6 +118,16 @@ export function MaterialsBar({
       accent: materials.bouclierM > 0,
     },
     {
+      key: "bouclier-cap",
+      label: "طبة بوكلير",
+      value:
+        materials.bouclierCapQty > 0
+          ? `${formatCount(materials.bouclierCapQty)} · ${formatMeters(materials.bouclierCapM)}`
+          : formatMeters(materials.bouclierCapM),
+      hint: materials.bouclierCapQty > 0 ? "قطاع" : undefined,
+      accent: materials.bouclierCapQty > 0,
+    },
+    {
       key: "sash-h",
       label: "ضلفة مفصلي",
       value: formatMeters(materials.sashHingedM),
@@ -853,12 +863,6 @@ function AccessoriesBreakdownPanel({
                   سكاك ترباس:{" "}
                   {formatLockPiecesSummary(breakdown.bouclierBoltLockPieces)}
                   {accessoryBrandTag(breakdown.brandLabels, "bouclier-bolt-lock")}
-                </p>
-              ) : null}
-              {breakdown.bouclierCapKitQty > 0 ? (
-                <p>
-                  طقم طبة بوكلير: {formatCount(breakdown.bouclierCapKitQty)}
-                  {accessoryBrandTag(breakdown.brandLabels, "bouclier-cap")}
                 </p>
               ) : null}
               {breakdown.protrudingHandleQty > 0 ? (
