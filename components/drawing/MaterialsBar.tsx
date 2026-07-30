@@ -125,6 +125,13 @@ export function MaterialsBar({
       accent: materials.beadM > 0,
     },
     {
+      key: "glass-area",
+      label: "مساحة زجاج",
+      value: formatArea(materials.glassAreaSqm),
+      hint: materials.glassAreaSqm > 0 ? "فعلي" : undefined,
+      accent: materials.glassAreaSqm > 0,
+    },
+    {
       key: "mullion",
       label: "سوقاس",
       value: formatMeters(materials.mullionTotalM),

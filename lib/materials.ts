@@ -2,11 +2,12 @@ import {
   gridCellCount,
   itemUnitAreaSqm,
   normalizePaneConfig,
+  resolvePaneGlass,
   type DesignItem,
   type PaneConfig,
   type PaneOpening,
 } from "@/lib/design-items";
-import { gridLines } from "@/lib/pane-grid";
+import { getGridCells, gridLines } from "@/lib/pane-grid";
 import type { LayoutNode } from "@/lib/window-layout";
 import {
   calcPaneGlassCostPerSqm,
@@ -52,6 +53,8 @@ export type MaterialsBreakdown = {
   sashSlidingM: number;
   /** باكتة تثبيت الزجاج — متر طولي */
   beadM: number;
+  /** مساحة الزجاج الفعلية م² (بدون بنل) */
+  glassAreaSqm: number;
   /** إجمالي الحلق */
   frameTotalM: number;
   /** إجمالي السوقاس */
@@ -108,6 +111,7 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     sashDoorM: 0,
     sashSlidingM: 0,
     beadM: 0,
+    glassAreaSqm: 0,
     frameTotalM: 0,
     mullionTotalM: 0,
     isMixedFrame: false,
@@ -533,6 +537,44 @@ function beadProfileMm(
   return total;
 }
 
+/** مساحة الزجاج الفعلية داخل الضلفة (مم²) — بدون بنل أو شبكة سلك */
+function paneGlassAreaMm2(
+  w: number,
+  h: number,
+  opening: PaneOpening,
+  cfg: PaneConfig
+): number {
+  if (opening === "panel-h" || opening === "panel-v") return 0;
+  const norm = normalizePaneConfig(cfg);
+  if (norm.mesh) return 0;
+
+  const grid = norm.grid ?? "solid";
+  const cells = getGridCells(grid, 0, 0, w, h);
+  const panelSet = new Set(norm.panelCells ?? []);
+
+  let mm2 = 0;
+  cells.forEach((cell, i) => {
+    if (norm.sandwichPanels && panelSet.has(i)) return;
+    mm2 += cell.w * cell.h;
+  });
+  return mm2;
+}
+
+function totalGlassAreaSqm(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined,
+  item: DesignItem
+): number {
+  let mm2 = 0;
+  for (const box of boxes) {
+    const cfg = normalizePaneConfig(panes?.[box.id]);
+    const glass = resolvePaneGlass(cfg, item);
+    if (!glass.pane1Id) continue;
+    mm2 += paneGlassAreaMm2(box.w, box.h, box.opening, cfg);
+  }
+  return roundM(mm2 / 1_000_000);
+}
+
 function frameLabelFor(
   hingedM: number,
   slidingM: number,
@@ -635,6 +677,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const mullionSashMm = sashMullionMm(boxes, panes);
   const sashMm = sashProfileMm(boxes, panes);
   const beadMm = beadProfileMm(boxes, panes);
+  const glassAreaSqm = totalGlassAreaSqm(boxes, panes, item);
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
@@ -663,6 +706,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     sashDoorM,
     sashSlidingM,
     beadM,
+    glassAreaSqm,
     frameTotalM,
     mullionTotalM,
     isMixedFrame,
@@ -691,6 +735,7 @@ export function scaleMaterials(
     sashDoorM: roundM(m.sashDoorM * q),
     sashSlidingM: roundM(m.sashSlidingM * q),
     beadM: roundM(m.beadM * q),
+    glassAreaSqm: roundM(m.glassAreaSqm * q),
     frameTotalM: roundM(m.frameTotalM * q),
     mullionTotalM: roundM(m.mullionTotalM * q),
   };
@@ -768,20 +813,21 @@ export function calcGlassBreakdown(
 
   for (const box of boxes) {
     const cfg = normalizePaneConfig(panes[box.id]);
-    if (!cfg.glassPane1Id) continue;
-    if (!paneGlassHasPricing(cfg.glassPane1Id, cat)) continue;
+    const glass = resolvePaneGlass(cfg, item);
+    if (!glass.pane1Id) continue;
+    if (!paneGlassHasPricing(glass.pane1Id, cat)) continue;
 
-    const glazing: "single" | "double" = cfg.glassPane2Id ? "double" : "single";
-    const georgian = Boolean(cfg.glassGeorgian && cfg.glassPane2Id);
+    const glazing: "single" | "double" = glass.pane2Id ? "double" : "single";
+    const georgian = glass.georgian;
     const costPerSqm = calcPaneGlassCostPerSqm(
-      cfg.glassPane1Id,
-      cfg.glassPane2Id,
+      glass.pane1Id,
+      glass.pane2Id,
       georgian,
       cat
     );
-    const bottle1 = findGlassBottle(cfg.glassPane1Id, cat);
-    const bottle2 = cfg.glassPane2Id
-      ? findGlassBottle(cfg.glassPane2Id, cat)
+    const bottle1 = findGlassBottle(glass.pane1Id, cat);
+    const bottle2 = glass.pane2Id
+      ? findGlassBottle(glass.pane2Id, cat)
       : undefined;
     let label = bottle1?.name ?? "زجاج";
     if (bottle2) {
@@ -789,7 +835,9 @@ export function calcGlassBreakdown(
       if (georgian) label += " · جورجيا";
     }
 
-    const areaSqm = roundM((box.w * box.h) / 1_000_000);
+    const areaSqm = roundM(
+      paneGlassAreaMm2(box.w, box.h, box.opening, cfg) / 1_000_000
+    );
     lines.push({
       paneId: box.id,
       areaSqm,

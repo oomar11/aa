@@ -13,7 +13,8 @@ import {
   loadSystemOptions,
   type DiscountId,
 } from "@/lib/item-catalogs";
-import { getDefaultSystemId } from "@/lib/material-systems";
+import { getDefaultSystemId, glassBottleOptions } from "@/lib/material-systems";
+import { GlassBottlePicker } from "@/components/GlassBottlePicker";
 import { suggestItemName } from "@/lib/item-naming";
 
 export type ItemSettingsPatch = {
@@ -25,6 +26,9 @@ export type ItemSettingsPatch = {
   discountId: DiscountId;
   systemId: string;
   accessoryId: string;
+  glassPane1Id?: string;
+  glassPane2Id?: string;
+  glassGeorgian?: boolean;
   ironId: string;
   frameColor: FrameColorId;
 };
@@ -56,6 +60,9 @@ function toDraft(item: DesignItem): ItemSettingsPatch {
     discountId: (item.discountId as DiscountId) || "none",
     systemId: item.systemId || "none",
     accessoryId: item.accessoryId || "none",
+    glassPane1Id: item.glassPane1Id,
+    glassPane2Id: item.glassPane2Id,
+    glassGeorgian: item.glassGeorgian,
     ironId: resolveIronId(item),
     frameColor: (item.frameColor as FrameColorId) || "white",
   };
@@ -71,6 +78,9 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
   const [systemOpts, setSystemOpts] = useState<CatalogOpts>([]);
   const [accessoryOpts, setAccessoryOpts] = useState<CatalogOpts>([]);
   const [ironOpts, setIronOpts] = useState<CatalogOpts>([]);
+  const [bottleOpts, setBottleOpts] = useState<
+    { id: string; label: string; pricePerSqm: number }[]
+  >([]);
 
   useEffect(() => {
     if (!open) return;
@@ -84,6 +94,7 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
     setSystemOpts(loadSystemOptions());
     setAccessoryOpts(loadAccessoryOptions());
     setIronOpts(loadIronOptions());
+    setBottleOpts(glassBottleOptions());
   }, [open, item]);
 
   useEffect(() => {
@@ -286,6 +297,42 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
               value={draft.accessoryId}
               onChange={(id) => setDraft((d) => ({ ...d, accessoryId: id }))}
             />
+          </Section>
+
+          <Section title="الزجاج">
+            <p className="mb-2 text-[11px] text-muted">
+              الافتراضي لكل الضلف — ممكن تغيّره لكل ضلفة من خصائص الضلفة
+            </p>
+            <GlassBottlePicker
+              pane1Id={draft.glassPane1Id}
+              pane2Id={draft.glassPane2Id}
+              georgian={draft.glassGeorgian}
+              bottleOpts={bottleOpts}
+              onChange={(next) =>
+                setDraft((d) => ({
+                  ...d,
+                  glassPane1Id: next.pane1Id,
+                  glassPane2Id: next.pane2Id,
+                  glassGeorgian: next.georgian,
+                }))
+              }
+            />
+            {draft.glassPane1Id ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    glassPane1Id: undefined,
+                    glassPane2Id: undefined,
+                    glassGeorgian: undefined,
+                  }))
+                }
+                className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-[11px] font-semibold text-muted"
+              >
+                إزالة الزجاج الافتراضي
+              </button>
+            ) : null}
           </Section>
 
           <Section title="الحديد">

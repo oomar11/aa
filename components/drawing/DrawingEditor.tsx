@@ -73,6 +73,9 @@ type HistorySnap = {
   discountId: string;
   systemId: string;
   accessoryId: string;
+  glassPane1Id?: string;
+  glassPane2Id?: string;
+  glassGeorgian?: boolean;
   ironId: string;
   name: string;
   nameIsCustom: boolean;
@@ -93,6 +96,9 @@ function snapshot(item: DesignItem): HistorySnap {
     discountId: item.discountId ?? "none",
     systemId: item.systemId ?? "none",
     accessoryId: item.accessoryId ?? "none",
+    glassPane1Id: item.glassPane1Id,
+    glassPane2Id: item.glassPane2Id,
+    glassGeorgian: item.glassGeorgian,
     ironId: item.ironId ?? "iron-std",
     name: item.name,
     nameIsCustom: Boolean(item.nameIsCustom),
@@ -113,6 +119,9 @@ function applySnap(item: DesignItem, snap: HistorySnap): DesignItem {
     discountId: snap.discountId,
     systemId: snap.systemId,
     accessoryId: snap.accessoryId,
+    glassPane1Id: snap.glassPane1Id,
+    glassPane2Id: snap.glassPane2Id,
+    glassGeorgian: snap.glassGeorgian,
     ironId: snap.ironId,
     name: snap.name,
     nameIsCustom: snap.nameIsCustom,
@@ -279,6 +288,9 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       discountId: patch.discountId,
       systemId: patch.systemId,
       accessoryId: patch.accessoryId,
+      glassPane1Id: patch.glassPane1Id,
+      glassPane2Id: patch.glassPane2Id,
+      glassGeorgian: patch.glassGeorgian,
       ironId: patch.ironId,
       frameColor: patch.frameColor,
     });
