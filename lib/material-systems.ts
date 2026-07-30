@@ -228,6 +228,35 @@ export function getCategoryMeta(id: MaterialCategory) {
   return MATERIAL_CATEGORIES.find((c) => c.id === id)!;
 }
 
+/** بطاقات صفحة الخامات — السلك صفحة مستقلة مش جزء من الاكسسوار */
+export type MaterialHubId = MaterialCategory | "mesh";
+
+export const MATERIAL_HUB_ITEMS: {
+  id: MaterialHubId;
+  label: string;
+  description: string;
+  accent: string;
+  shadow: string;
+  href: string;
+}[] = [
+  ...MATERIAL_CATEGORIES.filter((c) => c.id !== "iron").map((c) => ({
+    ...c,
+    href: `/materials/${c.id}`,
+  })),
+  {
+    id: "mesh",
+    label: "سلك",
+    description: "تصنيفات وأنواع السلك · الأسعار والحساب",
+    accent: "#5B9A6F",
+    shadow: "rgba(91,154,111,0.35)",
+    href: "/materials/mesh",
+  },
+  ...MATERIAL_CATEGORIES.filter((c) => c.id === "iron").map((c) => ({
+    ...c,
+    href: `/materials/${c.id}`,
+  })),
+];
+
 export function defaultDeductions(): ProfileDeductions {
   return {
     frame: { width: "=W", height: "=H" },

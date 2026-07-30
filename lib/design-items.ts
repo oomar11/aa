@@ -5,11 +5,12 @@ import {
   ensurePaneIds,
   listPaneIds,
 } from "@/lib/window-layout";
-<<<<<<< HEAD
-import { getDefaultGlassBottleId, getMeshCategories, type MaterialCatalog } from "@/lib/material-systems";
-=======
-import { getDefaultGlassBottleId, resolveGlassBottleId, type MaterialCatalog } from "@/lib/material-systems";
->>>>>>> aed3588 (Update default glass catalog to industry standard types)
+import {
+  getDefaultGlassBottleId,
+  getMeshCategories,
+  resolveGlassBottleId,
+  type MaterialCatalog,
+} from "@/lib/material-systems";
 import { suggestItemName } from "@/lib/item-naming";
 
 export type WindowStyle =
