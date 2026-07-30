@@ -398,8 +398,8 @@ export function calcItemAccessories(
       : details.hingesPerSash;
     const size = pickEspagnoletteSize(
       handleSideHeightMm(box),
-      details.espagnoletteSizeRules,
-      details.hingedEspagnoletteSizes
+      details.espagnoletteCatalog,
+      "hinged"
     );
     addEspagnolette(hingedEspMap, size);
     hingedLocksetCount += 1;
@@ -420,8 +420,8 @@ export function calcItemAccessories(
     );
     const size = pickEspagnoletteSize(
       height,
-      details.espagnoletteSizeRules,
-      details.hingedEspagnoletteSizes
+      details.espagnoletteCatalog,
+      "hinged"
     );
     addEspagnolette(hingedEspMap, size);
     bouclierLocksetCount += 1;
@@ -465,8 +465,8 @@ export function calcItemAccessories(
 
       const size = pickEspagnoletteSize(
         handleSideHeightMm(box),
-        details.espagnoletteSizeRules,
-        details.slidingEspagnoletteSizes
+        details.espagnoletteCatalog,
+        "sliding"
       );
       addEspagnolette(slidingEspMap, size);
       slidingLocksetCount += 1;

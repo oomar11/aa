@@ -139,20 +139,36 @@ export type GlassSystemDetails = {
   georgianCostPerSqm?: number;
 };
 
-/** مقاسات السبلونة القياسية (سم تقريباً حسب ارتفاع ناحية المقبض) */
-export type EspagnoletteSize = 40 | 60 | 80 | 100 | 140 | 160 | 180;
+/** مقاس السبلونة بالسم */
+export type EspagnoletteSize = number;
 
-export const ESPAGNOLETTE_SIZES: EspagnoletteSize[] = [
+/** المقاسات القياسية الافتراضية */
+export const DEFAULT_ESPAGNOLETTE_SIZE_VALUES = [
   40, 60, 80, 100, 140, 160, 180,
-];
+] as const;
 
-/** عتبة اختيار مقاس السبلونة حسب ارتفاع الضلفة من ناحية المقبض */
-export type EspagnoletteSizeRule = {
-  size: EspagnoletteSize;
+/** @deprecated استخدم DEFAULT_ESPAGNOLETTE_SIZE_VALUES */
+export const ESPAGNOLETTE_SIZES: number[] = [...DEFAULT_ESPAGNOLETTE_SIZE_VALUES];
+
+/** صف في كتالوج مقاسات السبلونة — قابل للتعديل بالكامل */
+export type EspagnoletteCatalogEntry = {
+  id: string;
+  /** مقاس السبلونة (سم) */
+  size: number;
   /**
-   * أقصى ارتفاع ضلفة (مم) لهذا المقاس.
+   * أقصى ارتفاع ضلفة من ناحية المقبض (مم) لهذا المقاس.
    * الاختيار: أصغر مقاس قاعدته ≥ الارتفاع، وإلا الأكبر المتاح.
    */
+  maxHeightMm: number;
+  /** متاح لسبلونة المفصلي */
+  hinged: boolean;
+  /** متاح لسبلونة الجرار */
+  sliding: boolean;
+};
+
+/** @deprecated — للترحيل من الإصدارات القديمة فقط */
+export type EspagnoletteSizeRule = {
+  size: number;
   maxHeightMm: number;
 };
 
@@ -174,10 +190,8 @@ export type AccessorySystemDetails = {
   hingesPerSash: number;
   /** مفصلات لكل ضلفة باب */
   hingesPerDoor: number;
-  /** مقاسات السبلونة المفصلي المتاحة */
-  hingedEspagnoletteSizes: EspagnoletteSize[];
-  /** قواعد اختيار المقاس حسب ارتفاع ناحية المقبض */
-  espagnoletteSizeRules: EspagnoletteSizeRule[];
+  /** كتالوج مقاسات السبلونة — قابل للتعديل */
+  espagnoletteCatalog: EspagnoletteCatalogEntry[];
   /** سكاك مفصلي — طقم لكل سبلونة ضلفة واحدة */
   hingedLockPieces: AccessoryLockPiece[];
   /** سكاك بوكلير — بدل المفصلي لما فيه بوكلير */
@@ -198,8 +212,6 @@ export type AccessorySystemDetails = {
   brushSashPerimeterMultiplier: number;
   /** مضاعف ارتفاع السكينة للفرش (افتراضي ١) */
   brushKnifeHeightMultiplier: number;
-  /** مقاسات سبلونة الجرار */
-  slidingEspagnoletteSizes: EspagnoletteSize[];
   /** سكاك جرار — مكان المفصلي */
   slidingLockPieces: AccessoryLockPiece[];
   /** تفعيل تقابل ٤ ضلفة */
@@ -417,11 +429,21 @@ function newLockPieceId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-export function defaultEspagnoletteSizeRules(): EspagnoletteSizeRule[] {
-  // المقاس ≈ ارتفاع ناحية المقبض بالسم — العتبة بالمم = المقاس × ١٠
-  return ESPAGNOLETTE_SIZES.map((size) => ({
+export function defaultEspagnoletteCatalog(): EspagnoletteCatalogEntry[] {
+  return DEFAULT_ESPAGNOLETTE_SIZE_VALUES.map((size) => ({
+    id: `esp-${size}`,
     size,
     maxHeightMm: size * 10,
+    hinged: true,
+    sliding: true,
+  }));
+}
+
+/** @deprecated */
+export function defaultEspagnoletteSizeRules(): EspagnoletteSizeRule[] {
+  return defaultEspagnoletteCatalog().map((e) => ({
+    size: e.size,
+    maxHeightMm: e.maxHeightMm,
   }));
 }
 
@@ -450,8 +472,7 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
   return {
     hingesPerSash: 2,
     hingesPerDoor: 3,
-    hingedEspagnoletteSizes: [...ESPAGNOLETTE_SIZES],
-    espagnoletteSizeRules: defaultEspagnoletteSizeRules(),
+    espagnoletteCatalog: defaultEspagnoletteCatalog(),
     hingedLockPieces: defaultHingedLockPieces(),
     bouclierLockPieces: defaultBouclierLockPieces(),
     boltsPerBouclier: 2,
@@ -461,7 +482,6 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     rollersPerSlidingSash: 2,
     brushSashPerimeterMultiplier: 2,
     brushKnifeHeightMultiplier: 1,
-    slidingEspagnoletteSizes: [...ESPAGNOLETTE_SIZES],
     slidingLockPieces: defaultSlidingLockPieces(),
     fourLeafMeetingEnabled: true,
     meshSlidingMeetingEnabled: true,
@@ -478,24 +498,39 @@ export function getDefaultAccessoryDetails(): AccessorySystemDetails {
  */
 export function pickEspagnoletteSize(
   handleSideHeightMm: number,
-  rules: EspagnoletteSizeRule[],
-  allowed: EspagnoletteSize[]
-): EspagnoletteSize {
-  const allowedSet = new Set(allowed.length > 0 ? allowed : ESPAGNOLETTE_SIZES);
-  const sorted = [...rules]
-    .filter((r) => allowedSet.has(r.size))
+  catalog: EspagnoletteCatalogEntry[],
+  kind: "hinged" | "sliding"
+): number {
+  const allowed = catalog
+    .filter((e) => (kind === "hinged" ? e.hinged : e.sliding))
     .sort((a, b) => a.maxHeightMm - b.maxHeightMm);
 
-  if (sorted.length === 0) {
-    const fallback = [...allowedSet].sort((a, b) => a - b);
-    return fallback[fallback.length - 1] ?? 100;
+  if (allowed.length === 0) {
+    const fallback = [...catalog].sort((a, b) => a.size - b.size);
+    return fallback[fallback.length - 1]?.size ?? 100;
   }
 
   const h = Math.max(0, handleSideHeightMm);
-  for (const rule of sorted) {
-    if (h <= rule.maxHeightMm) return rule.size;
+  for (const entry of allowed) {
+    if (h <= entry.maxHeightMm) return entry.size;
   }
-  return sorted[sorted.length - 1]!.size;
+  return allowed[allowed.length - 1]!.size;
+}
+
+export function espagnoletteCatalogSummary(
+  catalog: EspagnoletteCatalogEntry[],
+  kind?: "hinged" | "sliding"
+): string {
+  const sizes = catalog
+    .filter((e) => !kind || (kind === "hinged" ? e.hinged : e.sliding))
+    .map((e) => e.size)
+    .sort((a, b) => a - b);
+  if (sizes.length === 0) return "—";
+  return sizes.join(" · ");
+}
+
+export function newEspagnoletteCatalogId(): string {
+  return `esp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
 }
 
 export function newAccessoryLockPieceId(kind: "hinged" | "bouclier" | "sliding"): string {
@@ -1325,10 +1360,112 @@ function normalizeGlassDetails(raw: unknown): GlassSystemDetails {
   };
 }
 
-function normalizeEspagnoletteSize(raw: unknown): EspagnoletteSize | null {
-  const n = Number(raw);
-  if (!ESPAGNOLETTE_SIZES.includes(n as EspagnoletteSize)) return null;
-  return n as EspagnoletteSize;
+function normalizeSizeNumber(raw: unknown): number | null {
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n) || n <= 0 || n > 999) return null;
+  return n;
+}
+
+function normalizeEspagnoletteCatalog(
+  raw: unknown,
+  legacy?: Record<string, unknown>
+): EspagnoletteCatalogEntry[] {
+  if (Array.isArray(raw) && raw.length > 0) {
+    const out: EspagnoletteCatalogEntry[] = [];
+    const seenIds = new Set<string>();
+    for (const item of raw) {
+      if (!item || typeof item !== "object") continue;
+      const o = item as Record<string, unknown>;
+      const id =
+        typeof o.id === "string" && o.id.trim()
+          ? o.id.trim()
+          : newEspagnoletteCatalogId();
+      if (seenIds.has(id)) continue;
+      const size = normalizeSizeNumber(o.size);
+      if (!size) continue;
+      const maxH = Number(o.maxHeightMm);
+      seenIds.add(id);
+      out.push({
+        id,
+        size,
+        maxHeightMm:
+          Number.isFinite(maxH) && maxH > 0 ? Math.round(maxH) : size * 10,
+        hinged: o.hinged === undefined ? true : Boolean(o.hinged),
+        sliding: o.sliding === undefined ? true : Boolean(o.sliding),
+      });
+    }
+    if (out.length > 0) {
+      return out.sort((a, b) => a.size - b.size);
+    }
+  }
+
+  if (legacy) {
+    return migrateLegacyEspagnoletteCatalog(legacy);
+  }
+
+  return defaultEspagnoletteCatalog();
+}
+
+function migrateLegacyEspagnoletteCatalog(
+  o: Record<string, unknown>
+): EspagnoletteCatalogEntry[] {
+  const fallback = defaultEspagnoletteCatalog();
+  const rulesRaw = Array.isArray(o.espagnoletteSizeRules)
+    ? o.espagnoletteSizeRules
+    : null;
+
+  const hingedRaw = Array.isArray(o.hingedEspagnoletteSizes)
+    ? o.hingedEspagnoletteSizes
+    : [];
+  const slidingRaw = Array.isArray(o.slidingEspagnoletteSizes)
+    ? o.slidingEspagnoletteSizes
+    : [];
+
+  const hingedSet = new Set<number>();
+  for (const item of hingedRaw) {
+    const n = normalizeSizeNumber(item);
+    if (n) hingedSet.add(n);
+  }
+  const slidingSet = new Set<number>();
+  for (const item of slidingRaw) {
+    const n = normalizeSizeNumber(item);
+    if (n) slidingSet.add(n);
+  }
+
+  const bySize = new Map<number, { maxHeightMm: number }>();
+
+  if (rulesRaw) {
+    for (const item of rulesRaw) {
+      if (!item || typeof item !== "object") continue;
+      const r = item as Record<string, unknown>;
+      const size = normalizeSizeNumber(r.size);
+      if (!size) continue;
+      const maxH = Number(r.maxHeightMm);
+      bySize.set(size, {
+        maxHeightMm:
+          Number.isFinite(maxH) && maxH > 0 ? Math.round(maxH) : size * 10,
+      });
+    }
+  }
+
+  const allSizes = new Set<number>([
+    ...bySize.keys(),
+    ...hingedSet,
+    ...slidingSet,
+    ...fallback.map((e) => e.size),
+  ]);
+
+  if (allSizes.size === 0) return fallback;
+
+  return [...allSizes]
+    .sort((a, b) => a - b)
+    .map((size) => ({
+      id: `esp-${size}`,
+      size,
+      maxHeightMm: bySize.get(size)?.maxHeightMm ?? size * 10,
+      hinged: hingedSet.size === 0 || hingedSet.has(size),
+      sliding: slidingSet.size === 0 || slidingSet.has(size),
+    }));
 }
 
 function normalizeLockPieces(
@@ -1356,49 +1493,6 @@ function normalizeLockPieces(
   return out.length > 0 ? out : fallback.map((p) => ({ ...p }));
 }
 
-function normalizeEspagnoletteSizes(
-  raw: unknown,
-  fallback: EspagnoletteSize[]
-): EspagnoletteSize[] {
-  if (!Array.isArray(raw)) return [...fallback];
-  const out: EspagnoletteSize[] = [];
-  const seen = new Set<number>();
-  for (const item of raw) {
-    const size = normalizeEspagnoletteSize(item);
-    if (!size || seen.has(size)) continue;
-    seen.add(size);
-    out.push(size);
-  }
-  return out.length > 0 ? out : [...fallback];
-}
-
-function normalizeEspagnoletteRules(
-  raw: unknown,
-  sizes: EspagnoletteSize[]
-): EspagnoletteSizeRule[] {
-  const defaults = defaultEspagnoletteSizeRules().filter((r) =>
-    sizes.includes(r.size)
-  );
-  if (!Array.isArray(raw)) return defaults;
-  const bySize = new Map<EspagnoletteSize, number>();
-  for (const item of raw) {
-    if (!item || typeof item !== "object") continue;
-    const o = item as Record<string, unknown>;
-    const size = normalizeEspagnoletteSize(o.size);
-    if (!size || !sizes.includes(size)) continue;
-    const maxH = Number(o.maxHeightMm);
-    bySize.set(
-      size,
-      Number.isFinite(maxH) && maxH > 0 ? maxH : size * 10
-    );
-  }
-  if (bySize.size === 0) return defaults;
-  return sizes.map((size) => ({
-    size,
-    maxHeightMm: bySize.get(size) ?? size * 10,
-  }));
-}
-
 function normalizePositiveInt(raw: unknown, fallback: number): number {
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 0) return fallback;
@@ -1418,26 +1512,15 @@ export function normalizeAccessoryDetails(
   if (!raw || typeof raw !== "object") return fallback;
   const o = raw as Record<string, unknown>;
 
-  const hingedEspagnoletteSizes = normalizeEspagnoletteSizes(
-    o.hingedEspagnoletteSizes,
-    fallback.hingedEspagnoletteSizes
+  const espagnoletteCatalog = normalizeEspagnoletteCatalog(
+    o.espagnoletteCatalog,
+    o
   );
-  const slidingEspagnoletteSizes = normalizeEspagnoletteSizes(
-    o.slidingEspagnoletteSizes,
-    fallback.slidingEspagnoletteSizes
-  );
-  const ruleSizes = [
-    ...new Set([...hingedEspagnoletteSizes, ...slidingEspagnoletteSizes]),
-  ].sort((a, b) => a - b) as EspagnoletteSize[];
 
   return {
     hingesPerSash: normalizePositiveInt(o.hingesPerSash, fallback.hingesPerSash),
     hingesPerDoor: normalizePositiveInt(o.hingesPerDoor, fallback.hingesPerDoor),
-    hingedEspagnoletteSizes,
-    espagnoletteSizeRules: normalizeEspagnoletteRules(
-      o.espagnoletteSizeRules,
-      ruleSizes
-    ),
+    espagnoletteCatalog,
     hingedLockPieces: normalizeLockPieces(
       o.hingedLockPieces,
       fallback.hingedLockPieces
@@ -1471,7 +1554,6 @@ export function normalizeAccessoryDetails(
       o.brushKnifeHeightMultiplier,
       fallback.brushKnifeHeightMultiplier
     ),
-    slidingEspagnoletteSizes,
     slidingLockPieces: normalizeLockPieces(
       o.slidingLockPieces,
       fallback.slidingLockPieces

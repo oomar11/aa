@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   defaultAccessoryDetails,
+  espagnoletteCatalogSummary,
   defaultGlassRates,
   defaultProfileDetails,
   deleteSystem,
@@ -399,7 +400,9 @@ export function MaterialSystemsEditor({ category }: Props) {
                         </p>
                         <p>
                           سبلونة:{" "}
-                          {system.accessory.hingedEspagnoletteSizes.join(" · ")}
+                          {espagnoletteCatalogSummary(
+                            system.accessory.espagnoletteCatalog
+                          )}
                         </p>
                         <p>
                           جرار: تراك {system.accessory.tracksPerFrame} · عجل{" "}

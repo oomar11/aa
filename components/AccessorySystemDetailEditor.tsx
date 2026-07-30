@@ -9,16 +9,16 @@ import {
 } from "react";
 import {
   defaultAccessoryDetails,
-  ESPAGNOLETTE_SIZES,
+  defaultEspagnoletteCatalog,
   findSystem,
   loadMaterialCatalog,
   newAccessoryLockPieceId,
+  newEspagnoletteCatalogId,
   saveMaterialCatalog,
   upsertSystem,
   type AccessoryLockPiece,
   type AccessorySystemDetails,
-  type EspagnoletteSize,
-  type EspagnoletteSizeRule,
+  type EspagnoletteCatalogEntry,
   type MaterialCatalog,
   type MaterialSystem,
 } from "@/lib/material-systems";
@@ -103,38 +103,46 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
     showFlash("تم الحفظ");
   }
 
-  function toggleSize(
-    field: "hingedEspagnoletteSizes" | "slidingEspagnoletteSizes",
-    size: EspagnoletteSize
+  function updateCatalogEntry(
+    id: string,
+    patch: Partial<EspagnoletteCatalogEntry>
   ) {
-    const current = details[field];
-    const next = current.includes(size)
-      ? current.filter((s) => s !== size)
-      : [...current, size].sort((a, b) => a - b);
-    if (next.length === 0) {
+    const next = details.espagnoletteCatalog
+      .map((e) => (e.id === id ? { ...e, ...patch } : e))
+      .sort((a, b) => a.size - b.size);
+    patchDetails({ espagnoletteCatalog: next });
+  }
+
+  function addCatalogEntry() {
+    const used = new Set(details.espagnoletteCatalog.map((e) => e.size));
+    let size = 100;
+    while (used.has(size) && size < 999) size += 10;
+    const entry: EspagnoletteCatalogEntry = {
+      id: newEspagnoletteCatalogId(),
+      size,
+      maxHeightMm: size * 10,
+      hinged: true,
+      sliding: true,
+    };
+    patchDetails({
+      espagnoletteCatalog: [...details.espagnoletteCatalog, entry].sort(
+        (a, b) => a.size - b.size
+      ),
+    });
+  }
+
+  function removeCatalogEntry(id: string) {
+    if (details.espagnoletteCatalog.length <= 1) {
       showFlash("لازم مقاس واحد على الأقل");
       return;
     }
-    const allSizes = [
-      ...new Set([
-        ...(field === "hingedEspagnoletteSizes"
-          ? next
-          : details.hingedEspagnoletteSizes),
-        ...(field === "slidingEspagnoletteSizes"
-          ? next
-          : details.slidingEspagnoletteSizes),
-      ]),
-    ].sort((a, b) => a - b) as EspagnoletteSize[];
-
-    const rules = syncRules(details.espagnoletteSizeRules, allSizes);
-    patchDetails({ [field]: next, espagnoletteSizeRules: rules });
+    patchDetails({
+      espagnoletteCatalog: details.espagnoletteCatalog.filter((e) => e.id !== id),
+    });
   }
 
-  function updateRule(size: EspagnoletteSize, maxHeightMm: number) {
-    const rules = details.espagnoletteSizeRules.map((r) =>
-      r.size === size ? { ...r, maxHeightMm: Math.max(1, maxHeightMm) } : r
-    );
-    patchDetails({ espagnoletteSizeRules: rules });
+  function resetCatalogToDefaults() {
+    patchDetails({ espagnoletteCatalog: defaultEspagnoletteCatalog() });
   }
 
   function updateLockPiece(
@@ -246,6 +254,116 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
         </button>
       </form>
 
+      <Section
+        title="مقاسات السبلونة"
+        hint="عدّل المقاس (سم) · أقصى ارتفاع ضلفة (مم) · تفعيل للمفصلي أو الجرار"
+      >
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={addCatalogEntry}
+            className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary"
+          >
+            + مقاس جديد
+          </button>
+          <button
+            type="button"
+            onClick={resetCatalogToDefaults}
+            className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-muted"
+          >
+            استعادة القياسي
+          </button>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-border bg-background/70 text-[11px]">
+          <div className="grid grid-cols-[1fr_1.2fr_0.5fr_0.5fr_0.4fr] border-b border-border bg-card/80 text-center font-semibold text-muted">
+            <span className="px-2 py-2">مقاس (سم)</span>
+            <span className="px-2 py-2">أقصى ارتفاع (مم)</span>
+            <span className="px-2 py-2">مفصلي</span>
+            <span className="px-2 py-2">جرار</span>
+            <span className="px-2 py-2" />
+          </div>
+          {details.espagnoletteCatalog.map((entry, i) => (
+            <div
+              key={entry.id}
+              className={`grid grid-cols-[1fr_1.2fr_0.5fr_0.5fr_0.4fr] items-center text-center ${
+                i > 0 ? "border-t border-border/70" : ""
+              }`}
+            >
+              <div className="p-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  step={1}
+                  value={entry.size}
+                  onChange={(e) => {
+                    const size = Math.max(
+                      1,
+                      Math.min(999, Math.round(Number(e.target.value) || 1))
+                    );
+                    updateCatalogEntry(entry.id, { size });
+                  }}
+                  className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm font-bold text-foreground outline-none focus:border-primary"
+                />
+              </div>
+              <div className="p-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  step={10}
+                  value={entry.maxHeightMm}
+                  onChange={(e) =>
+                    updateCatalogEntry(entry.id, {
+                      maxHeightMm: Math.max(
+                        1,
+                        Math.round(Number(e.target.value) || 1)
+                      ),
+                    })
+                  }
+                  className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+                />
+              </div>
+              <div className="flex justify-center p-1.5">
+                <input
+                  type="checkbox"
+                  checked={entry.hinged}
+                  onChange={(e) =>
+                    updateCatalogEntry(entry.id, { hinged: e.target.checked })
+                  }
+                  className="h-4 w-4 accent-[var(--primary)]"
+                  aria-label={`مفصلي ${entry.size}`}
+                />
+              </div>
+              <div className="flex justify-center p-1.5">
+                <input
+                  type="checkbox"
+                  checked={entry.sliding}
+                  onChange={(e) =>
+                    updateCatalogEntry(entry.id, { sliding: e.target.checked })
+                  }
+                  className="h-4 w-4 accent-[var(--primary)]"
+                  aria-label={`جرار ${entry.size}`}
+                />
+              </div>
+              <div className="p-1.5">
+                <button
+                  type="button"
+                  onClick={() => removeCatalogEntry(entry.id)}
+                  className="rounded-md border border-border px-1.5 py-1 text-[10px] text-red-600"
+                >
+                  حذف
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] leading-relaxed text-muted">
+          الاختيار التلقائي: أصغر مقاس أقصى ارتفاعه ≥ ارتفاع الضلفة من ناحية
+          المقبض. مثال: ضلفة ١٤٠٠ مم → مقاس ١٤٠ لو العتبة ١٤٠٠.
+        </p>
+      </Section>
+
       {/* ── مفصلي ── */}
       <Section title="اكسسوار المفصلي" hint="مفصلات · سبلونة · سكاك · بوكلير">
         <div className="grid grid-cols-2 gap-2">
@@ -275,12 +393,6 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
             onChange={(v) => patchDetails({ protrudingHandlesPerLockset: v })}
           />
         </div>
-
-        <SizeChips
-          label="مقاسات سبلونة مفصلي"
-          selected={details.hingedEspagnoletteSizes}
-          onToggle={(s) => toggleSize("hingedEspagnoletteSizes", s)}
-        />
 
         <LockPiecesEditor
           title="سكاك مفصلي (لكل سبلونة ضلفة واحدة)"
@@ -337,12 +449,6 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
           />
         </div>
 
-        <SizeChips
-          label="مقاسات سبلونة جرار"
-          selected={details.slidingEspagnoletteSizes}
-          onToggle={(s) => toggleSize("slidingEspagnoletteSizes", s)}
-        />
-
         <LockPiecesEditor
           title="سكاك جرار (مكان المفصلي)"
           pieces={details.slidingLockPieces}
@@ -380,55 +486,12 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
         </label>
       </Section>
 
-      {/* ── قواعد المقاس ── */}
-      <Section
-        title="قواعد اختيار مقاس السبلونة"
-        hint="حسب ارتفاع الضلفة من ناحية المقبض (مم) — أصغر مقاس يغطي الارتفاع"
-      >
-        <div className="space-y-2">
-          {details.espagnoletteSizeRules.map((rule) => (
-            <div
-              key={rule.size}
-              className="flex items-center gap-2 rounded-xl border border-border/80 bg-background/70 px-2.5 py-2"
-            >
-              <span className="w-12 shrink-0 text-sm font-bold text-foreground">
-                {rule.size}
-              </span>
-              <label className="flex flex-1 items-center gap-2 text-[11px] text-muted">
-                أقصى ارتفاع (مم)
-                <input
-                  type="number"
-                  min={1}
-                  step={10}
-                  value={rule.maxHeightMm}
-                  onChange={(e) =>
-                    updateRule(rule.size, Number(e.target.value) || 1)
-                  }
-                  className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
-                />
-              </label>
-            </div>
-          ))}
-        </div>
-      </Section>
-
       <p className="px-1 pb-2 text-center text-[11px] leading-relaxed text-muted">
         ضلفتين مفصلي + بوكلير = سبلونة واحدة + سكاك بوكلير + ترباس + طبة.
         الجرار: تراك ٢ بعرض الحلق · عجل ٢/ضلفة · فرش محيط×٢ + سكينة×١.
       </p>
     </div>
   );
-}
-
-function syncRules(
-  current: EspagnoletteSizeRule[],
-  sizes: EspagnoletteSize[]
-): EspagnoletteSizeRule[] {
-  const map = new Map(current.map((r) => [r.size, r.maxHeightMm]));
-  return sizes.map((size) => ({
-    size,
-    maxHeightMm: map.get(size) ?? size * 10,
-  }));
 }
 
 function Section({
@@ -481,41 +544,6 @@ function NumberField({
         className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
       />
     </label>
-  );
-}
-
-function SizeChips({
-  label,
-  selected,
-  onToggle,
-}: {
-  label: string;
-  selected: EspagnoletteSize[];
-  onToggle: (s: EspagnoletteSize) => void;
-}) {
-  return (
-    <div>
-      <p className="mb-1.5 text-[11px] font-semibold text-muted">{label}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {ESPAGNOLETTE_SIZES.map((size) => {
-          const on = selected.includes(size);
-          return (
-            <button
-              key={size}
-              type="button"
-              onClick={() => onToggle(size)}
-              className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                on
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border bg-background text-muted"
-              }`}
-            >
-              {size}
-            </button>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
