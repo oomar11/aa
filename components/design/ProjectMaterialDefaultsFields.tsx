@@ -95,8 +95,8 @@ export function ProjectMaterialDefaultsFields({ value, onChange }: Props) {
   return (
     <div className="space-y-4">
       <p className="text-[11px] leading-relaxed text-muted">
-        الخامات الافتراضية للبنود الجديدة. تقدر تختار نظام من الكتالوج أو تخصّص
-        قواعد الاكسسوار للمشروع فقط.
+        الخامات الافتراضية للبنود الجديدة. غالباً يكفي اختيار نظام اكسسوار من
+        الكتالوج.
       </p>
 
       <Field title="نظام القطاعات">
@@ -186,8 +186,8 @@ export function ProjectMaterialDefaultsFields({ value, onChange }: Props) {
               />
             ) : (
               <p className="text-[10px] leading-relaxed text-muted">
-                القواعد محفوظة مع المشروع — اضغط «تعديل القواعد» لتغيير المفصلات
-                والسبلونة والسكاك والجرار.
+                القواعد محفوظة مع المشروع — اضغط «تعديل القواعد» لو حابب تغيّر
+                أرقام المفصلات والجرار.
               </p>
             )}
           </div>

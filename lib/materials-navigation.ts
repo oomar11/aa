@@ -27,14 +27,6 @@ export function materialsAccessoriesBreadcrumb(): Crumb[] {
   return [MATERIALS_HUB_CRUMB, { label: "الاكسسوار" }];
 }
 
-export function materialsAccessoryBrandsBreadcrumb(): Crumb[] {
-  return [
-    MATERIALS_HUB_CRUMB,
-    { label: "الاكسسوار", href: ROUTES.materials.accessories },
-    { label: "البراندات" },
-  ];
-}
-
 export function materialsAccessorySystemBreadcrumb(systemName?: string): Crumb[] {
   return [
     MATERIALS_HUB_CRUMB,
@@ -75,7 +67,7 @@ export function materialsDeductionsBreadcrumb(): Crumb[] {
   return [MATERIALS_HUB_CRUMB, { label: "التخصيمات" }];
 }
 
-/** خطوات العمل لصفحات فيها أكثر من مرحلة */
+/** خطوات العمل لصفحات فيها أكثر من مرحلة (اختياري) */
 export type MaterialWorkflowStep = {
   step: number;
   title: string;
@@ -83,21 +75,3 @@ export type MaterialWorkflowStep = {
   href?: string;
   active?: boolean;
 };
-
-export function accessoryWorkflowSteps(active: "brands" | "systems"): MaterialWorkflowStep[] {
-  return [
-    {
-      step: 1,
-      title: "البراندات",
-      description: "أسعار المفصلات والسبلونة والسكاك والتراك",
-      href: ROUTES.materials.accessoryBrands,
-      active: active === "brands",
-    },
-    {
-      step: 2,
-      title: "الأنظمة",
-      description: "قواعد المفصلي والجرار لكل نظام",
-      active: active === "systems",
-    },
-  ];
-}

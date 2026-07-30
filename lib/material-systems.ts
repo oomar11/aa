@@ -589,7 +589,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "accessories",
     label: "الاكسسوار",
-    description: "براندات + أنظمة · مفصلي · جرار · سبلونة",
+    description: "أسعار وقواعد المفصلي والجرار",
     accent: "#6B8AD8",
     shadow: "rgba(107,138,216,0.35)",
   },
@@ -656,7 +656,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "accessories",
     label: "الاكسسوار",
-    description: "براندات الأسعار + أنظمة المفصلي والجرار",
+    description: "نظام واحد: الأسعار + قواعد المفصلي والجرار",
     accent: "#6B8AD8",
     shadow: "rgba(107,138,216,0.35)",
     href: "/materials/accessories",
@@ -2043,18 +2043,9 @@ export function getDefaultCatalog(): MaterialCatalog {
     accessories: [
       {
         id: "acc-std",
-        name: "اكسسوار قياسي",
+        name: "اكسسوار فورنا",
         isDefault: true,
-        accessory: defaultAccessoryDetails(),
-      },
-      {
-        id: "acc-premium",
-        name: "اكسسوار فاخر",
-        accessory: defaultAccessoryDetails(),
-      },
-      {
-        id: "acc-economy",
-        name: "اكسسوار اقتصادي",
+        notes: "أسعار فورنا يوليو 2026 · قواعد المفصلي والجرار",
         accessory: defaultAccessoryDetails(),
       },
     ],

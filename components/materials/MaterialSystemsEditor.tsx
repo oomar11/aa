@@ -24,7 +24,6 @@ import {
   saveMaterialCatalog,
   setDefaultSystem,
   upsertSystem,
-  espagnoletteCatalogSummary,
   type GlassRates,
   type MaterialCatalog,
   type MaterialCategory,
@@ -59,7 +58,7 @@ function systemSummary(
   }
   if (category === "accessories" && system.accessory) {
     const a = system.accessory;
-    return `مفصلات ${a.hingesPerSash}/${a.hingesPerDoor} · سبلونة ${espagnoletteCatalogSummary(a.espagnoletteCatalog)} · تراك ${a.tracksPerFrame}`;
+    return `أسعار + قواعد · مفصلات ${a.hingesPerSash}/${a.hingesPerDoor} · تراك ${a.tracksPerFrame}`;
   }
   if (category === "glass" && system.glass) {
     const price = getGlassBottlePrice(system);

@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { MaterialSectionTabs } from "@/components/materials/MaterialSectionTabs";
 import { NumericInput } from "@/components/ui/NumericInput";
+import { defaultVorneCategoryBrands } from "@/lib/accessory-price-list-2026";
 import {
   ACCESSORY_BRAND_CATEGORIES,
   accessoryBrandCategoryLabel,
+  DEFAULT_ESPAGNOLETTE_SIZE_VALUES,
   defaultEspagnoletteCatalog,
   newAccessoryLockPieceId,
   newEspagnoletteCatalogId,
@@ -16,29 +17,32 @@ import {
   type AccessorySystemDetails,
   type EspagnoletteCatalogEntry,
 } from "@/lib/material-systems";
-import { ROUTES } from "@/lib/routes";
 
 type LockKind = "hinged" | "bouclier" | "bouclier-bolt" | "sliding";
 
-type AccessoryFormTab = "brands" | "hinged" | "sliding" | "espagnolette";
+type AccessoryFormTab = "prices" | "rules" | "advanced";
 
-const ACCESSORY_FORM_TABS: {
-  id: AccessoryFormTab;
-  label: string;
-}[] = [
-  { id: "brands", label: "براندات" },
-  { id: "hinged", label: "مفصلي" },
-  { id: "sliding", label: "جرار" },
-  { id: "espagnolette", label: "سبلونة" },
+const ACCESSORY_FORM_TABS: { id: AccessoryFormTab; label: string }[] = [
+  { id: "prices", label: "الأسعار" },
+  { id: "rules", label: "القواعد" },
+  { id: "advanced", label: "متقدم" },
 ];
 
 type Props = {
   details: AccessorySystemDetails;
   onChange: (next: AccessorySystemDetails) => void;
   brandCatalog: AccessoryBrand[];
+  onBrandCatalogChange?: (next: AccessoryBrand[]) => void;
   onNotify?: (message: string) => void;
+  /** في إعدادات المشروع: اعرض القواعد فقط بدون تبويبات أسعار */
   compact?: boolean;
 };
+
+function isEspagnoletteCategory(category: AccessoryBrandCategory): boolean {
+  return (
+    category === "hinged-espagnolette" || category === "sliding-espagnolette"
+  );
+}
 
 function lockPieceKey(
   kind: LockKind
@@ -62,21 +66,92 @@ function defaultLockPieceName(kind: LockKind): string {
   return "سكة";
 }
 
-/** نموذج قواعد الاكسسوار — مشترك بين كتالوج الأنظمة وإعدادات المشروع */
+function resolveBrandForCategory(
+  category: AccessoryBrandCategory,
+  details: AccessorySystemDetails,
+  brands: AccessoryBrand[]
+): AccessoryBrand | undefined {
+  const linkedId = details.categoryBrands[category];
+  const linked = linkedId
+    ? brands.find((b) => b.id === linkedId && b.category === category)
+    : undefined;
+  if (linked) return linked;
+  return brands.find((b) => b.category === category);
+}
+
+/** نموذج الاكسسوار المبسّط — أسعار + قواعد (+ متقدم) */
 export function AccessoryDetailsForm({
   details,
   onChange,
   brandCatalog,
+  onBrandCatalogChange,
   onNotify,
   compact = false,
 }: Props) {
-  const [tab, setTab] = useState<AccessoryFormTab>("brands");
+  const [tab, setTab] = useState<AccessoryFormTab>(
+    compact ? "rules" : "prices"
+  );
 
   function patchDetails(patch: Partial<AccessorySystemDetails>) {
     onChange({ ...details, ...patch });
   }
 
   const show = (id: AccessoryFormTab) => compact || tab === id;
+
+  function ensureBrand(
+    category: AccessoryBrandCategory
+  ): { brand: AccessoryBrand; brands: AccessoryBrand[]; details: AccessorySystemDetails } | null {
+    const existing = resolveBrandForCategory(category, details, brandCatalog);
+    if (existing) {
+      const nextDetails =
+        details.categoryBrands[category] === existing.id
+          ? details
+          : {
+              ...details,
+              categoryBrands: {
+                ...details.categoryBrands,
+                [category]: existing.id,
+              },
+            };
+      if (nextDetails !== details) onChange(nextDetails);
+      return { brand: existing, brands: brandCatalog, details: nextDetails };
+    }
+
+    const fallbackId = defaultVorneCategoryBrands()[category];
+    if (!fallbackId || !onBrandCatalogChange) return null;
+
+    const created: AccessoryBrand = {
+      id: fallbackId,
+      name: accessoryBrandCategoryLabel(category),
+      category,
+      unitPrice: isEspagnoletteCategory(category) ? undefined : 0,
+      sizePrices: isEspagnoletteCategory(category) ? {} : undefined,
+    };
+    const brands = [...brandCatalog, created];
+    const nextDetails = {
+      ...details,
+      categoryBrands: { ...details.categoryBrands, [category]: created.id },
+    };
+    onBrandCatalogChange(brands);
+    onChange(nextDetails);
+    return { brand: created, brands, details: nextDetails };
+  }
+
+  function updateBrandPrice(
+    category: AccessoryBrandCategory,
+    patch: Partial<Pick<AccessoryBrand, "unitPrice" | "sizePrices">>
+  ) {
+    if (!onBrandCatalogChange) return;
+    const resolved = ensureBrand(category);
+    if (!resolved) {
+      onNotify?.("مفيش سعر مرتبط بالفئة دي");
+      return;
+    }
+    const nextBrands = resolved.brands.map((b) =>
+      b.id === resolved.brand.id ? { ...b, ...patch } : b
+    );
+    onBrandCatalogChange(nextBrands);
+  }
 
   function updateCatalogEntry(
     id: string,
@@ -116,17 +191,6 @@ export function AccessoryDetailsForm({
     });
   }
 
-  function resetCatalogToDefaults() {
-    patchDetails({ espagnoletteCatalog: defaultEspagnoletteCatalog() });
-  }
-
-  function setCategoryBrand(category: AccessoryBrandCategory, brandId: string) {
-    const next = { ...details.categoryBrands };
-    if (!brandId) delete next[category];
-    else next[category] = brandId;
-    patchDetails({ categoryBrands: next });
-  }
-
   function updateLockPiece(
     kind: LockKind,
     id: string,
@@ -160,323 +224,428 @@ export function AccessoryDetailsForm({
   }
 
   const gapClass = compact ? "gap-2" : "gap-3";
+  const formTabs = compact
+    ? ACCESSORY_FORM_TABS.filter((t) => t.id !== "prices")
+    : ACCESSORY_FORM_TABS;
 
   return (
     <div className={`flex flex-col ${gapClass}`}>
       {!compact ? (
         <MaterialSectionTabs
-          tabs={ACCESSORY_FORM_TABS}
+          tabs={formTabs}
           active={tab}
           onChange={setTab}
           label="أقسام الاكسسوار"
         />
+      ) : (
+        <MaterialSectionTabs
+          tabs={formTabs}
+          active={tab === "prices" ? "rules" : tab}
+          onChange={setTab}
+          label="أقسام الاكسسوار"
+        />
+      )}
+
+      {show("prices") && onBrandCatalogChange ? (
+        <Section
+          title="أسعار القطع"
+          hint="عدّل السعر مباشرة — بيتطبّق على حساب تكلفة البند"
+          compact={compact}
+        >
+          {(["hinged", "bouclier", "sliding"] as const).map((group) => {
+            const cats = ACCESSORY_BRAND_CATEGORIES.filter(
+              (c) => c.group === group
+            );
+            const groupLabel =
+              group === "hinged"
+                ? "مفصلي"
+                : group === "bouclier"
+                  ? "بوكلير"
+                  : "جرار";
+            return (
+              <div key={group} className="space-y-2">
+                <p className="text-[11px] font-bold text-foreground">
+                  {groupLabel}
+                </p>
+                <div className="space-y-2">
+                  {cats.map((cat) => {
+                    const brand = resolveBrandForCategory(
+                      cat.id,
+                      details,
+                      brandCatalog
+                    );
+                    if (isEspagnoletteCategory(cat.id)) {
+                      return (
+                        <EspagnolettePriceRow
+                          key={cat.id}
+                          label={cat.label}
+                          brand={brand}
+                          onChangeSizePrice={(size, raw) => {
+                            const next = { ...(brand?.sizePrices ?? {}) };
+                            if (raw === "") delete next[size];
+                            else {
+                              const n = Number(raw);
+                              if (Number.isFinite(n) && n >= 0) next[size] = n;
+                            }
+                            updateBrandPrice(cat.id, { sizePrices: next });
+                          }}
+                        />
+                      );
+                    }
+                    return (
+                      <UnitPriceRow
+                        key={cat.id}
+                        label={cat.label}
+                        unitHint={
+                          cat.id === "track" || cat.id === "brush" ? "ج.م/م" : "ج.م"
+                        }
+                        value={brand?.unitPrice}
+                        onChange={(raw) => {
+                          if (raw === "") {
+                            updateBrandPrice(cat.id, { unitPrice: undefined });
+                            return;
+                          }
+                          const n = Number(raw);
+                          if (Number.isFinite(n) && n >= 0) {
+                            updateBrandPrice(cat.id, { unitPrice: n });
+                          }
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </Section>
       ) : null}
 
-      {show("espagnolette") ? (
-      <Section
-        title="مقاسات السبلونة"
-        hint="عدّل المقاس (سم) · أقصى ارتفاع ضلفة (مم) · تفعيل للمفصلي أو الجرار"
-        compact={compact}
-      >
-        <div className="flex flex-wrap justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={addCatalogEntry}
-            className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary"
-          >
-            + مقاس جديد
-          </button>
-          <button
-            type="button"
-            onClick={resetCatalogToDefaults}
-            className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-muted"
-          >
-            استعادة القياسي
-          </button>
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-border bg-background/70 text-[11px]">
-          <div className="grid grid-cols-[1fr_1.2fr_0.5fr_0.5fr_0.4fr] border-b border-border bg-card/80 text-center font-semibold text-muted">
-            <span className="px-2 py-2">مقاس (سم)</span>
-            <span className="px-2 py-2">أقصى ارتفاع (مم)</span>
-            <span className="px-2 py-2">مفصلي</span>
-            <span className="px-2 py-2">جرار</span>
-            <span className="px-2 py-2" />
+      {show("rules") ? (
+        <Section
+          title="قواعد الحساب"
+          hint="أرقام بسيطة: كام مفصلة · كام تراك · كام عجل"
+          compact={compact}
+        >
+          <p className="text-[11px] font-bold text-foreground">مفصلي</p>
+          <div className="grid grid-cols-2 gap-2">
+            <NumberField
+              label="مفصلات / ضلفة شباك"
+              value={details.hingesPerSash}
+              onChange={(v) => patchDetails({ hingesPerSash: v })}
+            />
+            <NumberField
+              label="مفصلات / باب"
+              value={details.hingesPerDoor}
+              onChange={(v) => patchDetails({ hingesPerDoor: v })}
+            />
+            <NumberField
+              label="ترباس / بوكلير"
+              value={details.boltsPerBouclier}
+              onChange={(v) => patchDetails({ boltsPerBouclier: v })}
+            />
+            <NumberField
+              label="مقبض بارز / سبلونة"
+              value={details.protrudingHandlesPerLockset}
+              onChange={(v) => patchDetails({ protrudingHandlesPerLockset: v })}
+            />
           </div>
-          {details.espagnoletteCatalog.map((entry, i) => (
-            <div
-              key={entry.id}
-              className={`grid grid-cols-[1fr_1.2fr_0.5fr_0.5fr_0.4fr] items-center text-center ${
-                i > 0 ? "border-t border-border/70" : ""
-              }`}
-            >
-              <div className="p-1.5">
-                <NumericInput
-                  min={1}
-                  max={999}
-                  step={1}
-                  round
-                  fallback={1}
-                  blankZero={false}
-                  value={entry.size}
-                  onChange={(size) => updateCatalogEntry(entry.id, { size })}
-                  className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm font-bold text-foreground outline-none focus:border-primary"
-                />
+
+          <p className="pt-1 text-[11px] font-bold text-foreground">جرار</p>
+          <div className="grid grid-cols-2 gap-2">
+            <NumberField
+              label="تراك على الحلق"
+              value={details.tracksPerFrame}
+              onChange={(v) => patchDetails({ tracksPerFrame: v })}
+              hint="بعرض الحلق"
+            />
+            <NumberField
+              label="عجل / ضلفة جرار"
+              value={details.rollersPerSlidingSash}
+              onChange={(v) => patchDetails({ rollersPerSlidingSash: v })}
+            />
+            <NumberField
+              label="مقبض غاطس / ضلفة غاطسة"
+              value={details.recessedHandlesPerRecessedSash}
+              onChange={(v) =>
+                patchDetails({ recessedHandlesPerRecessedSash: v })
+              }
+            />
+            <NumberField
+              label="فرق السبلونة عن الضلفة (مم)"
+              value={details.espagnoletteSashDeductionMm}
+              onChange={(v) => patchDetails({ espagnoletteSashDeductionMm: v })}
+              hint="٢٠٠ = ٢٠ سم"
+            />
+          </div>
+        </Section>
+      ) : null}
+
+      {show("advanced") ? (
+        <>
+          <Section
+            title="سكاك وفرش"
+            hint="لو مش محتاج تعدّل التفاصيل دي، سيبها زي ما هي"
+            compact={compact}
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <NumberField
+                label="فرش × محيط الضلفة"
+                value={details.brushSashPerimeterMultiplier}
+                onChange={(v) =>
+                  patchDetails({ brushSashPerimeterMultiplier: v })
+                }
+                step={0.5}
+              />
+              <NumberField
+                label="فرش × ارتفاع السكينة"
+                value={details.brushKnifeHeightMultiplier}
+                onChange={(v) =>
+                  patchDetails({ brushKnifeHeightMultiplier: v })
+                }
+                step={0.5}
+              />
+            </div>
+
+            <LockPiecesEditor
+              title="سكاك مفصلي"
+              pieces={details.hingedLockPieces}
+              onChangeName={(id, name) =>
+                updateLockPiece("hinged", id, { name })
+              }
+              onChangeQty={(id, qty) =>
+                updateLockPiece("hinged", id, { qtyPerLockset: qty })
+              }
+              onAdd={() => addLockPiece("hinged")}
+              onRemove={(id) => removeLockPiece("hinged", id)}
+            />
+            <LockPiecesEditor
+              title="سكاك بوكلير"
+              pieces={details.bouclierLockPieces}
+              onChangeName={(id, name) =>
+                updateLockPiece("bouclier", id, { name })
+              }
+              onChangeQty={(id, qty) =>
+                updateLockPiece("bouclier", id, { qtyPerLockset: qty })
+              }
+              onAdd={() => addLockPiece("bouclier")}
+              onRemove={(id) => removeLockPiece("bouclier", id)}
+            />
+            <LockPiecesEditor
+              title="سكاك ترباس"
+              pieces={details.bouclierBoltLockPieces}
+              onChangeName={(id, name) =>
+                updateLockPiece("bouclier-bolt", id, { name })
+              }
+              onChangeQty={(id, qty) =>
+                updateLockPiece("bouclier-bolt", id, { qtyPerLockset: qty })
+              }
+              onAdd={() => addLockPiece("bouclier-bolt")}
+              onRemove={(id) => removeLockPiece("bouclier-bolt", id)}
+            />
+            <LockPiecesEditor
+              title="سكاك جرار"
+              pieces={details.slidingLockPieces}
+              onChangeName={(id, name) =>
+                updateLockPiece("sliding", id, { name })
+              }
+              onChangeQty={(id, qty) =>
+                updateLockPiece("sliding", id, { qtyPerLockset: qty })
+              }
+              onAdd={() => addLockPiece("sliding")}
+              onRemove={(id) => removeLockPiece("sliding", id)}
+            />
+          </Section>
+
+          <Section
+            title="مقاسات السبلونة"
+            hint="المقاس (سم) وأقصى ارتفاع ضلفة (مم)"
+            compact={compact}
+          >
+            <div className="flex flex-wrap justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={addCatalogEntry}
+                className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary"
+              >
+                + مقاس
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  patchDetails({
+                    espagnoletteCatalog: defaultEspagnoletteCatalog(),
+                  })
+                }
+                className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-muted"
+              >
+                استعادة القياسي
+              </button>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-border bg-background/70 text-[11px]">
+              <div className="grid grid-cols-[1fr_1.2fr_0.5fr_0.5fr_0.4fr] border-b border-border bg-card/80 text-center font-semibold text-muted">
+                <span className="px-2 py-2">مقاس</span>
+                <span className="px-2 py-2">أقصى ارتفاع</span>
+                <span className="px-2 py-2">مفصلي</span>
+                <span className="px-2 py-2">جرار</span>
+                <span className="px-2 py-2" />
               </div>
-              <div className="p-1.5">
-                <NumericInput
-                  min={1}
-                  step={10}
-                  round
-                  fallback={1}
-                  blankZero={false}
-                  value={entry.maxHeightMm}
-                  onChange={(maxHeightMm) =>
-                    updateCatalogEntry(entry.id, { maxHeightMm })
-                  }
-                  className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary"
-                />
-              </div>
-              <div className="flex justify-center p-1.5">
-                <input
-                  type="checkbox"
-                  checked={entry.hinged}
-                  onChange={(e) =>
-                    updateCatalogEntry(entry.id, { hinged: e.target.checked })
-                  }
-                  className="h-4 w-4 accent-[var(--primary)]"
-                  aria-label={`مفصلي ${entry.size}`}
-                />
-              </div>
-              <div className="flex justify-center p-1.5">
-                <input
-                  type="checkbox"
-                  checked={entry.sliding}
-                  onChange={(e) =>
-                    updateCatalogEntry(entry.id, { sliding: e.target.checked })
-                  }
-                  className="h-4 w-4 accent-[var(--primary)]"
-                  aria-label={`جرار ${entry.size}`}
-                />
-              </div>
-              <div className="p-1.5">
-                <button
-                  type="button"
-                  onClick={() => removeCatalogEntry(entry.id)}
-                  className="rounded-md border border-border px-1.5 py-1 text-[10px] text-red-600"
+              {details.espagnoletteCatalog.map((entry, i) => (
+                <div
+                  key={entry.id}
+                  className={`grid grid-cols-[1fr_1.2fr_0.5fr_0.5fr_0.4fr] items-center text-center ${
+                    i > 0 ? "border-t border-border/70" : ""
+                  }`}
                 >
-                  حذف
-                </button>
-              </div>
+                  <div className="p-1.5">
+                    <NumericInput
+                      min={1}
+                      max={999}
+                      step={1}
+                      round
+                      fallback={1}
+                      blankZero={false}
+                      value={entry.size}
+                      onChange={(size) => updateCatalogEntry(entry.id, { size })}
+                      className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm font-bold outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="p-1.5">
+                    <NumericInput
+                      min={1}
+                      step={10}
+                      round
+                      fallback={1}
+                      blankZero={false}
+                      value={entry.maxHeightMm}
+                      onChange={(maxHeightMm) =>
+                        updateCatalogEntry(entry.id, { maxHeightMm })
+                      }
+                      className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="flex justify-center p-1.5">
+                    <input
+                      type="checkbox"
+                      checked={entry.hinged}
+                      onChange={(e) =>
+                        updateCatalogEntry(entry.id, {
+                          hinged: e.target.checked,
+                        })
+                      }
+                      className="h-4 w-4 accent-[var(--primary)]"
+                      aria-label={`مفصلي ${entry.size}`}
+                    />
+                  </div>
+                  <div className="flex justify-center p-1.5">
+                    <input
+                      type="checkbox"
+                      checked={entry.sliding}
+                      onChange={(e) =>
+                        updateCatalogEntry(entry.id, {
+                          sliding: e.target.checked,
+                        })
+                      }
+                      className="h-4 w-4 accent-[var(--primary)]"
+                      aria-label={`جرار ${entry.size}`}
+                    />
+                  </div>
+                  <div className="p-1.5">
+                    <button
+                      type="button"
+                      onClick={() => removeCatalogEntry(entry.id)}
+                      className="rounded-md border border-border px-1.5 py-1 text-[10px] text-red-600"
+                    >
+                      حذف
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <p className="text-[10px] leading-relaxed text-muted">
-          الاختيار التلقائي: أكبر مقاس سبلونة أقصر من الضلفة بـ ٢٠ سم على الأقل
-          (قابل للتعديل). مثال: ضلفة ١٤٠٠ مم → سبلونة ١٢٠ سم أو ١٠٠ حسب الكتالوج.
-        </p>
-        <NumberField
-          label="أقل فرق بين الضلفة والسبلونة (مم)"
-          value={details.espagnoletteSashDeductionMm}
-          onChange={(v) => patchDetails({ espagnoletteSashDeductionMm: v })}
-          hint="٢٠٠ = ٢٠ سم"
-        />
-      </Section>
-      ) : null}
-
-      {show("brands") ? (
-      <Section
-        title="براندات لكل فئة"
-        hint="اختَر البراند من كتالوج البراندات"
-        compact={compact}
-      >
-        {(["hinged", "bouclier", "sliding"] as const).map((group) => {
-          const cats = ACCESSORY_BRAND_CATEGORIES.filter((c) => c.group === group);
-          const groupLabel =
-            group === "hinged" ? "مفصلي" : group === "bouclier" ? "بوكلير" : "جرار";
-          return (
-            <div key={group} className="space-y-2">
-              <p className="text-[11px] font-bold text-foreground">{groupLabel}</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {cats.map((cat) => (
-                  <BrandSelect
-                    key={cat.id}
-                    category={cat.id}
-                    label={cat.label}
-                    value={details.categoryBrands[cat.id]}
-                    options={brandCatalog.filter((b) => b.category === cat.id)}
-                    onChange={(id) => setCategoryBrand(cat.id, id)}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </Section>
-      ) : null}
-
-      {show("hinged") ? (
-      <Section
-        title="اكسسوار المفصلي"
-        hint="مفصلات · سبلونة · سكاك · بوكلير"
-        compact={compact}
-      >
-        <div className="grid grid-cols-2 gap-2">
-          <NumberField
-            label="مفصلات / ضلفة شباك"
-            value={details.hingesPerSash}
-            onChange={(v) => patchDetails({ hingesPerSash: v })}
-          />
-          <NumberField
-            label="مفصلات / باب"
-            value={details.hingesPerDoor}
-            onChange={(v) => patchDetails({ hingesPerDoor: v })}
-          />
-          <NumberField
-            label="ترباس / بوكلير"
-            value={details.boltsPerBouclier}
-            onChange={(v) => patchDetails({ boltsPerBouclier: v })}
-          />
-          <NumberField
-            label="مقبض بارز / سبلونة"
-            value={details.protrudingHandlesPerLockset}
-            onChange={(v) => patchDetails({ protrudingHandlesPerLockset: v })}
-          />
-        </div>
-
-        <LockPiecesEditor
-          title="سكاك مفصلي (لكل سبلونة ضلفة واحدة)"
-          pieces={details.hingedLockPieces}
-          onChangeName={(id, name) => updateLockPiece("hinged", id, { name })}
-          onChangeQty={(id, qty) =>
-            updateLockPiece("hinged", id, { qtyPerLockset: qty })
-          }
-          onAdd={() => addLockPiece("hinged")}
-          onRemove={(id) => removeLockPiece("hinged", id)}
-        />
-
-        <LockPiecesEditor
-          title="سكاك بوكلير (بدل المفصلي لما فيه بوكلير)"
-          pieces={details.bouclierLockPieces}
-          onChangeName={(id, name) => updateLockPiece("bouclier", id, { name })}
-          onChangeQty={(id, qty) =>
-            updateLockPiece("bouclier", id, { qtyPerLockset: qty })
-          }
-          onAdd={() => addLockPiece("bouclier")}
-          onRemove={(id) => removeLockPiece("bouclier", id)}
-        />
-
-        <LockPiecesEditor
-          title="سكاك ترباس (لكل ترباس)"
-          pieces={details.bouclierBoltLockPieces}
-          onChangeName={(id, name) =>
-            updateLockPiece("bouclier-bolt", id, { name })
-          }
-          onChangeQty={(id, qty) =>
-            updateLockPiece("bouclier-bolt", id, { qtyPerLockset: qty })
-          }
-          onAdd={() => addLockPiece("bouclier-bolt")}
-          onRemove={(id) => removeLockPiece("bouclier-bolt", id)}
-        />
-      </Section>
-      ) : null}
-
-      {show("sliding") ? (
-      <Section
-        title="اكسسوار الجرار"
-        hint="تراك · عجل · فرش · سبلونة · مقبض غاطس"
-        compact={compact}
-      >
-        <div className="grid grid-cols-2 gap-2">
-          <NumberField
-            label="تراك على الحلق"
-            value={details.tracksPerFrame}
-            onChange={(v) => patchDetails({ tracksPerFrame: v })}
-            hint="بعرض الحلق"
-          />
-          <NumberField
-            label="عجل / ضلفة جرار"
-            value={details.rollersPerSlidingSash}
-            onChange={(v) => patchDetails({ rollersPerSlidingSash: v })}
-          />
-          <NumberField
-            label="مقبض غاطس / ضلفة غاطسة"
-            value={details.recessedHandlesPerRecessedSash}
-            onChange={(v) =>
-              patchDetails({ recessedHandlesPerRecessedSash: v })
-            }
-          />
-          <NumberField
-            label="فرش × محيط الضلفة"
-            value={details.brushSashPerimeterMultiplier}
-            onChange={(v) => patchDetails({ brushSashPerimeterMultiplier: v })}
-            step={0.5}
-          />
-          <NumberField
-            label="فرش × ارتفاع السكينة"
-            value={details.brushKnifeHeightMultiplier}
-            onChange={(v) => patchDetails({ brushKnifeHeightMultiplier: v })}
-            step={0.5}
-          />
-        </div>
-
-        <LockPiecesEditor
-          title="سكاك جرار (مكان المفصلي)"
-          pieces={details.slidingLockPieces}
-          onChangeName={(id, name) => updateLockPiece("sliding", id, { name })}
-          onChangeQty={(id, qty) =>
-            updateLockPiece("sliding", id, { qtyPerLockset: qty })
-          }
-          onAdd={() => addLockPiece("sliding")}
-          onRemove={(id) => removeLockPiece("sliding", id)}
-        />
-      </Section>
+          </Section>
+        </>
       ) : null}
     </div>
   );
 }
 
-function BrandSelect({
-  category,
+function UnitPriceRow({
   label,
   value,
-  options,
+  unitHint,
   onChange,
 }: {
-  category: AccessoryBrandCategory;
   label: string;
-  value?: string;
-  options: AccessoryBrand[];
-  onChange: (brandId: string) => void;
+  value?: number;
+  unitHint: string;
+  onChange: (raw: string) => void;
 }) {
   return (
-    <label className="block text-[11px] text-muted">
-      {label}
-      <select
+    <label className="flex items-center gap-2 rounded-xl border border-border bg-background/70 px-3 py-2">
+      <span className="min-w-0 flex-1 text-[12px] font-medium text-foreground">
+        {label}
+      </span>
+      <input
+        type="number"
+        min={0}
+        step="any"
+        dir="ltr"
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-        aria-label={`براند ${accessoryBrandCategoryLabel(category)}`}
-      >
-        <option value="">— بدون —</option>
-        {options.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.name}
-          </option>
-        ))}
-      </select>
-      {options.length === 0 ? (
-        <span className="mt-0.5 block text-[10px] text-muted/80">
-          مفيش براندات —{" "}
-          <Link
-            href={ROUTES.materials.accessoryBrands}
-            className="font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            أضف من صفحة البراندات
-          </Link>
-        </span>
-      ) : null}
+        placeholder="—"
+        className="w-24 rounded-lg border border-border bg-card px-2 py-1.5 text-left text-sm outline-none focus:border-primary"
+      />
+      <span className="shrink-0 text-[10px] text-muted">{unitHint}</span>
     </label>
+  );
+}
+
+function EspagnolettePriceRow({
+  label,
+  brand,
+  onChangeSizePrice,
+}: {
+  label: string;
+  brand?: AccessoryBrand;
+  onChangeSizePrice: (size: number, raw: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const priced = DEFAULT_ESPAGNOLETTE_SIZE_VALUES.filter(
+    (size) => (brand?.sizePrices?.[size] ?? 0) > 0
+  ).length;
+
+  return (
+    <div className="rounded-xl border border-border bg-background/70">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-right"
+      >
+        <span className="text-[12px] font-medium text-foreground">{label}</span>
+        <span className="text-[10px] text-muted">
+          {priced > 0 ? `${priced} مقاس` : "بدون أسعار"} · {open ? "إخفاء" : "تعديل"}
+        </span>
+      </button>
+      {open ? (
+        <div className="grid grid-cols-2 gap-2 border-t border-border px-3 py-2.5">
+          {DEFAULT_ESPAGNOLETTE_SIZE_VALUES.map((size) => (
+            <label key={size} className="flex items-center gap-1.5 text-[11px]">
+              <span className="w-10 shrink-0 text-muted">{size}سم</span>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                dir="ltr"
+                value={brand?.sizePrices?.[size] ?? ""}
+                onChange={(e) => onChangeSizePrice(size, e.target.value)}
+                placeholder="—"
+                className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-left text-sm outline-none focus:border-primary"
+              />
+            </label>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -499,9 +668,7 @@ function Section({
     >
       <div>
         <h2 className="text-xs font-bold text-foreground">{title}</h2>
-        {hint ? (
-          <p className="mt-0.5 text-[11px] text-muted">{hint}</p>
-        ) : null}
+        {hint ? <p className="mt-0.5 text-[11px] text-muted">{hint}</p> : null}
       </div>
       {children}
     </section>

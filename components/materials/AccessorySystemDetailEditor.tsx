@@ -12,8 +12,10 @@ import {
   defaultAccessoryDetails,
   findSystem,
   loadMaterialCatalog,
+  notifyAccessoryBrandsUpdated,
   saveMaterialCatalog,
   upsertSystem,
+  type AccessoryBrand,
   type AccessorySystemDetails,
   type MaterialCatalog,
   type MaterialSystem,
@@ -33,7 +35,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
   );
   const [flash, setFlash] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
-  const [brandCatalog, setBrandCatalog] = useState(
+  const [brandCatalog, setBrandCatalog] = useState<AccessoryBrand[]>(
     () => loadMaterialCatalog().accessoryBrands ?? []
   );
 
@@ -94,6 +96,14 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
     }
   }
 
+  function persistBrands(nextBrands: AccessoryBrand[]) {
+    const cat = catalog ?? loadMaterialCatalog();
+    const saved = saveMaterialCatalog({ ...cat, accessoryBrands: nextBrands });
+    setCatalog(saved);
+    setBrandCatalog(saved.accessoryBrands ?? []);
+    notifyAccessoryBrandsUpdated();
+  }
+
   function handleSaveMeta(e: FormEvent) {
     e.preventDefault();
     const trimmed = systemName.trim();
@@ -106,8 +116,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
     showFlash("تم حفظ بيانات النظام");
   }
 
-  function patchDetails(patch: Partial<AccessorySystemDetails>) {
-    const next = { ...details, ...patch };
+  function patchDetails(next: AccessorySystemDetails) {
     setDetails(next);
     persist(next);
     showFlash("تم الحفظ");
@@ -134,8 +143,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h1 className="text-xl font-bold">{system.name}</h1>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          عدّل الاسم تحت، وبعدين استخدم التبويبات: براندات · مفصلي · جرار ·
-          سبلونة
+          الأسعار والقواعد من مكان واحد — التبويب «متقدم» للتفاصيل النادرة.
         </p>
       </div>
 
@@ -177,8 +185,12 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
 
       <AccessoryDetailsForm
         details={details}
-        onChange={(next) => patchDetails(next)}
+        onChange={patchDetails}
         brandCatalog={brandCatalog}
+        onBrandCatalogChange={(next) => {
+          persistBrands(next);
+          showFlash("تم حفظ الأسعار");
+        }}
         onNotify={showFlash}
       />
     </div>
