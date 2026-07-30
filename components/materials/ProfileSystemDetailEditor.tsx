@@ -480,7 +480,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h1 className="text-xl font-bold text-foreground">{system.name}</h1>
         <p className="mt-0.5 text-xs text-muted">
-          استخدم التبويبات: بيانات · الأسعار · العيدان · التخصيم
+          بيانات · الأسعار · العيدان · التخصيم
         </p>
       </div>
 
@@ -508,9 +508,6 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         className="space-y-3 rounded-2xl border border-border bg-card p-3"
       >
         <h3 className="text-xs font-bold text-foreground">بيانات النظام</h3>
-        <p className="text-[11px] leading-relaxed text-muted">
-          اسم النظام والملاحظات وسعر طبة البوكلير — الأسعار من تبويب «الأسعار»
-        </p>
         <input
           type="text"
           value={systemName}
@@ -531,10 +528,6 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
             className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
         </label>
-        <p className="text-[10px] leading-relaxed text-muted">
-          طبة البوكلير طقم بيركب لكل حتة بوكلير — مش بالعود، والسعر بيختلف من
-          سيستم للتاني.
-        </p>
         <textarea
           value={systemNotes}
           onChange={(e) => setSystemNotes(e.target.value)}
@@ -558,9 +551,9 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         className="space-y-3 rounded-2xl border border-border bg-card p-3"
       >
         <div>
-          <h3 className="text-xs font-bold text-foreground">أسعار قطاعات النظام</h3>
+          <h3 className="text-xs font-bold text-foreground">أسعار العود</h3>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-            لكل صنف: سعر العود (ج.م) + طول العود (م) — المتر = السعر ÷ الطول
+            سعر العود ÷ الطول = سعر المتر
           </p>
         </div>
         <div className="space-y-2">

@@ -15,11 +15,6 @@ export function materialsProfilesBreadcrumb(): Crumb[] {
   return [MATERIALS_HUB_CRUMB, { label: "القطاعات" }];
 }
 
-/** @deprecated الأسعار بقت جوه النظام — بيرجع لمسار القطاعات */
-export function materialsProfileBrandsBreadcrumb(): Crumb[] {
-  return materialsProfilesBreadcrumb();
-}
-
 export function materialsProfileSystemBreadcrumb(systemName?: string): Crumb[] {
   return [
     MATERIALS_HUB_CRUMB,
@@ -76,7 +71,7 @@ export function materialsMeshBreadcrumb(): Crumb[] {
   return [MATERIALS_HUB_CRUMB, { label: "السلك" }];
 }
 
-/** خطوات العمل لصفحات فيها براندات + أنظمة */
+/** خطوات العمل لصفحات فيها أكثر من مرحلة */
 export type MaterialWorkflowStep = {
   step: number;
   title: string;
@@ -84,21 +79,6 @@ export type MaterialWorkflowStep = {
   href?: string;
   active?: boolean;
 };
-
-/** @deprecated القطاعات بقت أنظمة فقط بدون خطوة براندات */
-export function profileWorkflowSteps(
-  _active: "brands" | "systems" = "systems"
-): MaterialWorkflowStep[] {
-  return [
-    {
-      step: 1,
-      title: "أنظمة القطاعات",
-      description: "كل سيستم فيه أسعاره + العيدان والتخصيم",
-      href: ROUTES.materials.profiles,
-      active: true,
-    },
-  ];
-}
 
 export function accessoryWorkflowSteps(active: "brands" | "systems"): MaterialWorkflowStep[] {
   return [

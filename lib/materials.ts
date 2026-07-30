@@ -1478,7 +1478,7 @@ export function calcMeshBreakdown(
   };
 }
 
-// ─── حساب تكلفة القطاعات حسب البراند ───────────────────────────
+// ─── حساب تكلفة القطاعات حسب أسعار النظام ───────────────────────────
 
 export type ProfileCostLine = {
   category: string;

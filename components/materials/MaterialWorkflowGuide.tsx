@@ -6,7 +6,7 @@ type Props = {
   className?: string;
 };
 
-/** يوضح ترتيب العمل: براندات ← أنظمة ← تفاصيل */
+/** يوضح ترتيب العمل لصفحات متعددة الخطوات (مثل الاكسسوار) */
 export function MaterialWorkflowGuide({ steps, className }: Props) {
   return (
     <ol

@@ -14,7 +14,7 @@ export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
 
 /** أحداث مزامنة الكتالوج بين الشاشات */
 export const CATALOG_EVENTS = {
+  catalogUpdated: "upvc-material-catalog-updated",
   meshUpdated: "upvc-mesh-catalog-updated",
   accessoryBrandsUpdated: "upvc-accessory-brands-updated",
-  profileBrandsUpdated: "upvc-profile-brands-updated",
 } as const;

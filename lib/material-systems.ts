@@ -154,6 +154,7 @@ export type ProfileBrand = {
   /**
    * قائمة أسعار بالعود: سعر العود + طول العود.
    * سعر المتر = barPrice ÷ barLengthM
+   * @deprecated يُنسخ إلى `profile.rates` عند الترحيل
    */
   rates: Partial<Record<ProfilePriceCategory, ProfileBarRate>>;
 };
@@ -536,12 +537,12 @@ export function notifyAccessoryBrandsUpdated() {
   }
 }
 
-/** يُبث بعد حفظ براندات القطاعات */
-export const PROFILE_BRANDS_UPDATED = CATALOG_EVENTS.profileBrandsUpdated;
+/** يُبث بعد أي حفظ لكتالوج الخامات — لمزامنة شاشة الرسم */
+export const MATERIAL_CATALOG_UPDATED = CATALOG_EVENTS.catalogUpdated;
 
-export function notifyProfileBrandsUpdated() {
+export function notifyMaterialCatalogUpdated() {
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(PROFILE_BRANDS_UPDATED));
+    window.dispatchEvent(new Event(MATERIAL_CATALOG_UPDATED));
   }
 }
 
@@ -601,13 +602,13 @@ export const MATERIAL_HUB_GROUPS: {
 }[] = [
   {
     id: "systems",
-    title: "أنظمة الخامات",
-    hint: "كل نظام فيه قواعده وأسعاره — اختاره وقت التصميم",
+    title: "الأنظمة",
+    hint: "قطاعات واكسسوار — اختار النظام وقت التصميم",
   },
   {
     id: "other",
     title: "خامات تانية",
-    hint: "زجاج وسلك وحديد — أسعار وأنواع جاهزة للاختيار من الرسم",
+    hint: "زجاج · سلك · حديد",
   },
 ];
 
@@ -623,7 +624,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "profiles",
     label: "القطاعات",
-    description: "كل سيستم فيه قطاعاته وأسعار العود + التخصيم",
+    description: "أسعار العود · العيدان · التخصيم",
     accent: "#E8956F",
     shadow: "rgba(232,149,111,0.35)",
     href: "/materials/profiles",
@@ -632,7 +633,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "accessories",
     label: "الاكسسوار",
-    description: "أنظمة المفصلي والجرار + براندات الأسعار (فورنا…)",
+    description: "براندات الأسعار + أنظمة المفصلي والجرار",
     accent: "#6B8AD8",
     shadow: "rgba(107,138,216,0.35)",
     href: "/materials/accessories",
@@ -1139,10 +1140,6 @@ export function isProfilePriceCategory(
   );
 }
 
-export function newProfileBrandId(): string {
-  return `pbrand-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
-}
-
 /** تحويل سعر العود (ج.م/عود) إلى سعر المتر الطولي */
 export function profileBarPricePerM(
   barPrice: number,
@@ -1202,34 +1199,6 @@ export function cityPremierProfileBarRates(): Partial<
     "four-leaf-meeting": r(190, 6, "تقابل 4 ضلفة جرار"),
     "mesh-meeting": r(140, 6, "تقابل سلك"),
   };
-}
-
-/** أسعار متر مشتقة — للتوافق مع الحسابات القديمة */
-export function cityPremierProfileBrandPrices(): Partial<
-  Record<ProfilePriceCategory, number>
-> {
-  const rates = cityPremierProfileBarRates();
-  const out: Partial<Record<ProfilePriceCategory, number>> = {};
-  for (const cat of PROFILE_PRICE_CATEGORIES) {
-    const rate = rates[cat.id];
-    if (!rate) continue;
-    out[cat.id] = profileBarPricePerM(rate.barPrice, rate.barLengthM);
-  }
-  return out;
-}
-
-/** قالب أسعار لبراند جديد — يبدأ من قائمة السيتي بريمير (بالعود) */
-export function defaultProfileBrandRates(): Partial<
-  Record<ProfilePriceCategory, ProfileBarRate>
-> {
-  return cityPremierProfileBarRates();
-}
-
-/** @deprecated استخدم defaultProfileBrandRates */
-export function defaultProfileBrandPrices(): Partial<
-  Record<ProfilePriceCategory, number>
-> {
-  return cityPremierProfileBrandPrices();
 }
 
 /** أسعار افتراضية قديمة (ج.م/م) — للترحيل فقط */
@@ -1454,85 +1423,9 @@ export function normalizeProfileBrands(raw: unknown): ProfileBrand[] {
   return out.length > 0 ? out : defaultProfileBrands();
 }
 
-export function findProfileBrand(
-  id: string | undefined | null,
-  catalog?: MaterialCatalog
-): ProfileBrand | undefined {
-  if (!id) return undefined;
-  const cat =
-    catalog ??
-    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
-  return (cat.profileBrands ?? defaultProfileBrands()).find((b) => b.id === id);
-}
-
-export function profileBrandOptions(
-  catalog?: MaterialCatalog
-): { id: string; label: string }[] {
-  const cat =
-    catalog ??
-    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
-  return (cat.profileBrands ?? defaultProfileBrands())
-    .map((b) => ({ id: b.id, label: b.name }))
-    .sort((a, b) => a.label.localeCompare(b.label, "ar"));
-}
-
-export function findProfileBrandByName(
-  name: string | undefined | null,
-  catalog?: MaterialCatalog
-): ProfileBrand | undefined {
-  const needle = (name ?? "").trim();
-  if (!needle) return undefined;
-  const cat =
-    catalog ??
-    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
-  const brands = cat.profileBrands ?? defaultProfileBrands();
-  return (
-    brands.find((b) => b.name === needle) ??
-    brands.find((b) => needle.includes(b.name) || b.name.includes(needle))
-  );
-}
-
-/** يرجّع براند أسعار السيتي بريمير الافتراضي */
-export function cityPremierProfileBrand(
-  catalog?: MaterialCatalog
-): ProfileBrand | undefined {
-  const cat =
-    catalog ??
-    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
-  const brands = cat.profileBrands ?? defaultProfileBrands();
-  return (
-    brands.find((b) => b.id === "brand-city") ??
-    brands.find((b) => b.name === "سيتي بريمير" || b.name === "سيتي") ??
-    brands.find((b) => profileBrandHasPricing(b))
-  );
-}
-
 function systemLooksLikeCityPremier(system: MaterialSystem): boolean {
   const n = `${system.name} ${system.notes ?? ""}`;
   return /سيتي|بريمير\s*سيتي|سيتي\s*بريمير/.test(n);
-}
-
-export function resolveProfileBrandForSystem(
-  system: MaterialSystem | undefined | null,
-  catalog?: MaterialCatalog
-): ProfileBrand | undefined {
-  if (!system) return undefined;
-  const cat =
-    catalog ??
-    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
-
-  if (system.profileBrandId) {
-    const linked = findProfileBrand(system.profileBrandId, cat);
-    if (linked && profileBrandHasPricing(linked)) return linked;
-    if (linked) return linked;
-  }
-
-  // سيستم سيتي/بريمير سيتي بدون براند مربوط → قائمة السيتي بريمير
-  if (systemLooksLikeCityPremier(system)) {
-    return cityPremierProfileBrand(cat);
-  }
-
-  return undefined;
 }
 
 export function profileRatesHasPricing(
@@ -1580,28 +1473,9 @@ export function countProfilePricedCategories(
   }).length;
 }
 
-export function getProfileBrandRate(
-  brand: ProfileBrand | undefined,
-  category: ProfilePriceCategory
-): ProfileBarRate | undefined {
-  const rate = brand?.rates?.[category];
-  if (!rate || rate.barPrice <= 0 || rate.barLengthM <= 0) return undefined;
-  return rate;
-}
-
-export function profileBrandHasPricing(brand: ProfileBrand | undefined): boolean {
+function profileBrandHasPricing(brand: ProfileBrand | undefined): boolean {
   if (!brand) return false;
   return profileRatesHasPricing(brand.rates);
-}
-
-/** سعر المتر الطولي المشتق من سعر العود ÷ طول العود */
-export function getProfileBrandPrice(
-  brand: ProfileBrand | undefined,
-  category: ProfilePriceCategory
-): number {
-  const rate = getProfileBrandRate(brand, category);
-  if (!rate) return 0;
-  return profileBarPricePerM(rate.barPrice, rate.barLengthM);
 }
 
 function withDefaultProfile(system: MaterialSystem): MaterialSystem {
@@ -3073,6 +2947,7 @@ export function saveMaterialCatalog(catalog: MaterialCatalog): MaterialCatalog {
   const normalized = normalizeCatalog(catalog);
   if (typeof window !== "undefined") {
     localStorage.setItem(MATERIALS_STORAGE_KEY, JSON.stringify(normalized));
+    notifyMaterialCatalogUpdated();
     notifyMeshCatalogUpdated();
   }
   return normalized;

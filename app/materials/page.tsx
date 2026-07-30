@@ -2,7 +2,6 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MaterialHubIcon } from "@/components/materials/MaterialHubIcons";
-import { MaterialsHubIntro } from "@/components/materials/MaterialsHubIntro";
 import { materialsHubBreadcrumb } from "@/lib/materials-navigation";
 import {
   MATERIAL_HUB_GROUPS,
@@ -15,10 +14,8 @@ export default function MaterialsPage() {
       <PageHeader
         breadcrumb={materialsHubBreadcrumb()}
         title="الخامات"
-        description="من هنا بتظبط أنظمة وأسعار الخامات اللي بتتحسب في الرسم — ابدأ بالقطاعات"
+        description="أنظمة وأسعار القطاعات والاكسسوار والزجاج والسلك والحديد"
       />
-
-      <MaterialsHubIntro />
 
       <div className="flex flex-col gap-5">
         {MATERIAL_HUB_GROUPS.map((group) => {

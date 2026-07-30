@@ -33,7 +33,6 @@ export const ROUTES = {
   materials: {
     hub: "/materials",
     profiles: "/materials/profiles",
-    profileBrands: "/materials/profiles/brands",
     profileSystem: (systemId: string) => `/materials/profiles/${systemId}`,
     accessories: "/materials/accessories",
     accessoryBrands: "/materials/accessories/brands",

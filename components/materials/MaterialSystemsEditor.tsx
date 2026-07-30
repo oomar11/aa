@@ -241,13 +241,6 @@ export function MaterialSystemsEditor({ category }: Props) {
         </p>
       ) : null}
 
-      {isProfiles && !formOpen ? (
-        <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          كل نظام = قطاعاته بأسعارها + العيدان والتخصيم. من «تفاصيل» تضبط
-          الأسعار والعيدان ومعادلات التقطيع.
-        </p>
-      ) : null}
-
       {isIron ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
           من «تفاصيل» حدّد أنواع الحديد للحلق والضلفة والسوقاس — مفصلي وجرار.
