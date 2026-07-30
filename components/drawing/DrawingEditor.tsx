@@ -282,14 +282,10 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
     if (!calcItem || !calcItem.ironId || calcItem.ironId === "none") return null;
     const catalog = loadMaterialCatalog();
     const ironSystem = findSystem("iron", calcItem.ironId, catalog);
-    const profileSystem =
-      calcItem.systemId && calcItem.systemId !== "none"
-        ? findSystem("profiles", calcItem.systemId, catalog)
-        : null;
-    const raw = calcIronBreakdown(calcItem, ironSystem, profileSystem);
+    const raw = calcIronBreakdown(calcItem, ironSystem);
     if (!raw) return null;
     return scaleIronBreakdown(raw, calcItem.qty);
-  }, [calcItem]);
+  }, [calcItem, catalogTick]);
 
   const activeOpening = useMemo(() => {
     if (!item || !selectedPaneId) return null;
