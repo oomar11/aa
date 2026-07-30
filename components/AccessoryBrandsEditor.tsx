@@ -80,6 +80,10 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
     const item: AccessoryBrand = {
       ...draft,
       name,
+      unitPrice:
+        draft.unitPrice != null && draft.unitPrice >= 0
+          ? draft.unitPrice
+          : undefined,
       notes: draft.notes?.trim() || undefined,
     };
     const exists = brands.some((b) => b.id === item.id);
@@ -110,7 +114,8 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
         <div>
           <h3 className="text-xs font-bold text-foreground">براندات الاكسسوار</h3>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-            أضف البراندات لكل فئة — وبعدين اختارها داخل تفاصيل كل نظام اكسسوار.
+            أضف البراندات لكل فئة مع سعر الوحدة — وبعدين اختارها داخل تفاصيل نظام
+            الاكسسوار عشان تظهر العدد والتكلفة في الشباك.
           </p>
         </div>
       ) : null}
@@ -163,11 +168,12 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
                             <p className="truncate text-xs font-semibold text-foreground">
                               {brand.name}
                             </p>
-                            {brand.notes ? (
-                              <p className="truncate text-[10px] text-muted">
-                                {brand.notes}
-                              </p>
-                            ) : null}
+                            <p className="truncate text-[10px] text-muted">
+                              {brand.unitPrice != null && brand.unitPrice > 0
+                                ? `${brand.unitPrice} ج.م/وحدة`
+                                : "السعر مش متحدد"}
+                              {brand.notes ? ` · ${brand.notes}` : ""}
+                            </p>
                           </div>
                           <div className="flex shrink-0 gap-1">
                             <button
@@ -212,6 +218,29 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
             autoFocus
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           />
+          <label className="block text-[11px] text-muted">
+            سعر الوحدة (ج.م) — قطعة أو متر حسب الفئة
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={draft.unitPrice ?? ""}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                setDraft({
+                  ...draft,
+                  unitPrice:
+                    e.target.value === ""
+                      ? undefined
+                      : Number.isFinite(n) && n >= 0
+                        ? n
+                        : draft.unitPrice,
+                });
+              }}
+              placeholder="مثلاً: 25"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+          </label>
           <input
             type="text"
             value={draft.notes ?? ""}

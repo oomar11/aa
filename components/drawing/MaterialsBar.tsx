@@ -1,29 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AccessoriesBreakdown } from "@/lib/accessories";
-import {
-  formatEspagnoletteSummary,
-  formatLockPiecesSummary,
-  accessoryBrandTag,
-} from "@/lib/accessories";
-import type { GlassBreakdown, MaterialsBreakdown, MeshBreakdown, ProfileCostBreakdown } from "@/lib/materials";
-import { formatArea, formatCount, formatMeters } from "@/lib/materials";
+import { accessoryBrandTag } from "@/lib/accessories";
+import type {
+  GlassBreakdown,
+  MaterialsBreakdown,
+  MeshBreakdown,
+  ProfileCostBreakdown,
+  ProfileCostLine,
+} from "@/lib/materials";
+import { formatCount, formatMeters } from "@/lib/materials";
 import type { IronBreakdown } from "@/lib/iron";
 import {
-  calcCutSizes,
   findSystem,
-  formatFormulaVars,
-  frameHeightFormula,
-  frameWidthFormula,
-  getCutCalculationSteps,
   loadMaterialCatalog,
-  sashHeightFormula,
-  sashWidthFormula,
-  type CutSizes,
-  type CutCalculationStep,
+  type AccessoryBrand,
+  type AccessoryBrandCategory,
   type MaterialSystem,
-  type ProfileSystemDetails,
 } from "@/lib/material-systems";
 import { formatCurrency } from "@/lib/utils";
 
@@ -35,19 +29,18 @@ type Props = {
   profileCostBreakdown?: ProfileCostBreakdown | null;
   ironBreakdown?: IronBreakdown | null;
   partLabel?: string;
-  /** مقاس الفتحة للبند */
   widthMm?: number;
   heightMm?: number;
-  /** نظام القطاعات المختار على البند */
   systemId?: string | null;
 };
 
-type Cell = {
+type MaterialRow = {
   key: string;
   label: string;
-  value: string;
-  hint?: string;
-  accent?: boolean;
+  qty: string;
+  unitHint?: string;
+  cost: number | null;
+  sub?: string;
 };
 
 export function MaterialsBar({
@@ -58,194 +51,73 @@ export function MaterialsBar({
   profileCostBreakdown,
   ironBreakdown,
   partLabel = "شباك",
-  widthMm,
-  heightMm,
   systemId,
 }: Props) {
   const [profileSystem, setProfileSystem] = useState<MaterialSystem | null>(
     null
   );
+  const [accessoryBrands, setAccessoryBrands] = useState<AccessoryBrand[]>([]);
 
   useEffect(() => {
     queueMicrotask(() => {
+      const catalog = loadMaterialCatalog();
+      setAccessoryBrands(catalog.accessoryBrands ?? []);
       if (!systemId || systemId === "none") {
         setProfileSystem(null);
         return;
       }
-      const catalog = loadMaterialCatalog();
       setProfileSystem(findSystem("profiles", systemId, catalog) ?? null);
     });
   }, [systemId]);
 
-  const cells: Cell[] = [
-    {
-      key: "area",
-      label: "مساحة",
-      value: formatArea(materials.areaSqm),
-    },
-    {
-      key: "frame-h",
-      label: "حلق مفصلي",
-      value: formatMeters(materials.frameHingedM),
-      hint: materials.frameHingedM > 0 ? materials.frameLabel : undefined,
-      accent: materials.frameHingedM > 0,
-    },
-    {
-      key: "frame-s",
-      label: "حلق جرار",
-      value: formatMeters(materials.frameSlidingM),
-      accent: materials.frameSlidingM > 0,
-    },
-    {
-      key: "coupling",
-      label: "كوبلن",
-      value: formatMeters(materials.couplingM),
-      hint: materials.couplingM > 0 ? "تجميع" : undefined,
-      accent: materials.couplingM > 0,
-    },
-    {
-      key: "knife",
-      label: "سكينة",
-      value: formatMeters(materials.knifeM),
-      hint: materials.knifeM > 0 ? "لكل ضلفة جرار" : undefined,
-      accent: materials.knifeM > 0,
-    },
-    {
-      key: "bouclier",
-      label: "بوكلير",
-      value: formatMeters(materials.bouclierM),
-      hint: materials.bouclierM > 0 ? "مقابض متقابلة" : undefined,
-      accent: materials.bouclierM > 0,
-    },
-    {
-      key: "bouclier-cap",
-      label: "طبة بوكلير",
-      value:
-        materials.bouclierCapQty > 0
-          ? formatCount(materials.bouclierCapQty)
-          : "—",
-      hint: materials.bouclierCapQty > 0 ? "طقم لكل بوكلير" : undefined,
-      accent: materials.bouclierCapQty > 0,
-    },
-    {
-      key: "sash-h",
-      label: "ضلفة شباك مفصلي",
-      value: formatMeters(materials.sashHingedM),
-      accent: materials.sashHingedM > 0,
-    },
-    {
-      key: "sash-d",
-      label: "ضلفة باب مفصلي",
-      value: formatMeters(materials.sashDoorM),
-      accent: materials.sashDoorM > 0,
-    },
-    {
-      key: "sash-s",
-      label: "ضلفة جرار",
-      value: formatMeters(materials.sashSlidingM),
-      accent: materials.sashSlidingM > 0,
-    },
-    {
-      key: "bead-sh",
-      label: "باكتة سنجل مفصلي",
-      value: formatMeters(materials.beadSingleHingedM),
-      accent: materials.beadSingleHingedM > 0,
-    },
-    {
-      key: "bead-ss",
-      label: "باكتة سنجل جرار",
-      value: formatMeters(materials.beadSingleSlidingM),
-      accent: materials.beadSingleSlidingM > 0,
-    },
-    {
-      key: "bead-dh",
-      label: "باكتة دبل مفصلي",
-      value: formatMeters(materials.beadDoubleHingedM),
-      hint: materials.beadDoubleHingedM > 0 ? "ومنها البنل" : undefined,
-      accent: materials.beadDoubleHingedM > 0,
-    },
-    {
-      key: "bead-ds",
-      label: "باكتة دبل جرار",
-      value: formatMeters(materials.beadDoubleSlidingM),
-      hint: materials.beadDoubleSlidingM > 0 ? "ومنها البنل" : undefined,
-      accent: materials.beadDoubleSlidingM > 0,
-    },
-    {
-      key: "glass-area",
-      label: "مساحة زجاج",
-      value: formatArea(materials.glassAreaSqm),
-      hint: materials.glassAreaSqm > 0 ? "فعلي" : undefined,
-      accent: materials.glassAreaSqm > 0,
-    },
-    {
-      key: "mesh-area",
-      label: "مساحة سلك",
-      value: formatArea(materials.meshAreaSqm),
-      hint: materials.meshAreaSqm > 0 ? "شبكة" : undefined,
-      accent: materials.meshAreaSqm > 0,
-    },
-    {
-      key: "mesh-profile",
-      label: "ضلفة سلك جرار",
-      value: formatMeters(materials.meshSlidingProfileM),
-      hint: materials.meshSlidingProfileM > 0 ? "زي ضلفة الجرار" : undefined,
-      accent: materials.meshSlidingProfileM > 0,
-    },
-    {
-      key: "mesh-wheel",
-      label: "عجل سلك",
-      value: formatCount(materials.meshSlidingWheelQty),
-      hint: materials.meshSlidingWheelQty > 0 ? "٢/ضلفة" : undefined,
-      accent: materials.meshSlidingWheelQty > 0,
-    },
-    {
-      key: "mesh-handle",
-      label: "مقبض لطش",
-      value: formatCount(materials.meshPushHandleQty),
-      hint: materials.meshPushHandleQty > 0 ? "١/ضلفة" : undefined,
-      accent: materials.meshPushHandleQty > 0,
-    },
-    {
-      key: "four-leaf-meeting",
-      label: "تقابل ٤ ضلفة",
-      value:
-        materials.fourLeafMeetingQty > 0
-          ? `${formatCount(materials.fourLeafMeetingQty)} · ${formatMeters(materials.fourLeafMeetingM)}`
-          : formatMeters(materials.fourLeafMeetingM),
-      hint: materials.fourLeafMeetingQty > 0 ? "قطاع" : undefined,
-      accent: materials.fourLeafMeetingQty > 0,
-    },
-    {
-      key: "mesh-meeting",
-      label: "تقابل سلك جرار",
-      value:
-        materials.meshMeetingQty > 0
-          ? `${formatCount(materials.meshMeetingQty)} · ${formatMeters(materials.meshMeetingM)}`
-          : formatMeters(materials.meshMeetingM),
-      hint: materials.meshMeetingQty > 0 ? "قطاع" : undefined,
-      accent: materials.meshMeetingQty > 0,
-    },
-    {
-      key: "mullion",
-      label: "سوقاس",
-      value: formatMeters(materials.mullionTotalM),
-      hint: mullionHint(materials),
-      accent: materials.mullionTotalM > 0,
-    },
-  ];
+  const profileRows = useMemo(
+    () => buildProfileRows(profileCostBreakdown, materials),
+    [profileCostBreakdown, materials]
+  );
 
-  const showDetails =
-    materials.mullionFrameM > 0 ||
-    materials.mullionSashM > 0 ||
-    materials.knifeM > 0 ||
-    materials.bouclierM > 0;
+  const glassRows = useMemo(
+    () => buildGlassRows(glassBreakdown),
+    [glassBreakdown]
+  );
 
-  const profile = profileSystem?.profile;
-  const cuts =
-    profile && widthMm != null && heightMm != null && widthMm > 0 && heightMm > 0
-      ? calcCutSizes(widthMm, heightMm, profile.deductions)
-      : null;
+  const meshRows = useMemo(
+    () => buildMeshRows(meshBreakdown, materials),
+    [meshBreakdown, materials]
+  );
+
+  const accessoryRows = useMemo(
+    () => buildAccessoryRows(accessoriesBreakdown, accessoryBrands),
+    [accessoriesBreakdown, accessoryBrands]
+  );
+
+  const ironRows = useMemo(
+    () => buildIronRows(ironBreakdown),
+    [ironBreakdown]
+  );
+
+  const profileTotal = profileCostBreakdown?.hasPricing
+    ? profileCostBreakdown.totalUnitCost
+    : null;
+  const glassTotal = glassBreakdown?.hasPricing
+    ? glassBreakdown.totalUnitCost
+    : null;
+  const meshTotal = meshBreakdown?.hasPricing
+    ? meshBreakdown.totalUnitCost
+    : null;
+  const accessoryTotal = accessoryRows.some((r) => r.cost != null)
+    ? accessoryRows.reduce((s, r) => s + (r.cost ?? 0), 0)
+    : null;
+
+  const grandTotal =
+    (profileTotal ?? 0) +
+    (glassTotal ?? 0) +
+    (meshTotal ?? 0) +
+    (accessoryTotal ?? 0);
+  const hasAnyCost =
+    profileTotal != null ||
+    glassTotal != null ||
+    meshTotal != null ||
+    accessoryTotal != null;
 
   return (
     <section
@@ -259,802 +131,601 @@ export function MaterialsBar({
         </p>
       </div>
 
-      {profileCostBreakdown?.hasPricing &&
-      profileCostBreakdown.lines.length > 0 ? (
+      {hasAnyCost ? (
         <div className="flex items-center justify-between gap-2 border-b border-primary/20 bg-primary-soft/40 px-3 py-2.5">
-          <div className="min-w-0 text-right">
-            <p className="text-[11px] font-bold text-primary">تكلفة القطاعات</p>
-            <p className="mt-0.5 truncate text-[10px] text-muted">
-              {profileCostBreakdown.brandName
-                ? `قائمة ${profileCostBreakdown.brandName}`
-                : "من قائمة أسعار السيستم"}
-              {profileCostBreakdown.lines.length > 1
-                ? ` · ${profileCostBreakdown.lines.length} أصناف`
-                : ""}
-            </p>
-          </div>
-          <div className="shrink-0 text-left">
-            <p className="text-base font-bold tabular-nums text-foreground">
-              {formatCurrency(Math.round(profileCostBreakdown.totalCost))} ج.م
-            </p>
-            {profileCostBreakdown.totalCost !==
-            profileCostBreakdown.totalUnitCost ? (
-              <p className="text-[10px] text-muted">
-                للقطعة:{" "}
-                {formatCurrency(Math.round(profileCostBreakdown.totalUnitCost))}{" "}
-                ج.م
-              </p>
-            ) : null}
-          </div>
-        </div>
-      ) : systemId && systemId !== "none" ? (
-        <div className="border-b border-border bg-background/50 px-3 py-2 text-[10px] leading-relaxed text-muted">
-          مفيش تكلفة قطاعات ظاهرة — تأكد إن السيستم مربوط ببراند أسعار (خامات →
-          قطاعات → براندات).
+          <p className="text-[11px] font-bold text-primary">إجمالي التكلفة</p>
+          <p className="text-base font-bold tabular-nums text-foreground">
+            {formatCurrency(Math.round(grandTotal))} ج.م
+          </p>
         </div>
       ) : null}
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1080px] border-collapse text-center">
-          <thead>
-            <tr className="border-b border-border text-[11px] font-semibold text-muted">
-              <th className="px-2.5 py-2 text-start font-semibold">الجزء</th>
-              {cells.map((c) => (
-                <th key={c.key} className="px-2.5 py-2 font-semibold">
-                  {c.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="text-[13px]">
-              <td className="px-2.5 py-2.5 text-start font-semibold text-foreground">
-                {partLabel}
-              </td>
-              {cells.map((c) => (
-                <td
-                  key={c.key}
-                  className={`px-2.5 py-2.5 tabular-nums ${
-                    c.accent
-                      ? "font-bold text-primary"
-                      : "font-medium text-foreground"
-                  }`}
-                >
-                  <div>{c.value}</div>
-                  {c.hint ? (
-                    <div className="mt-0.5 text-[10px] font-normal text-muted">
-                      {c.hint}
-                    </div>
-                  ) : null}
-                </td>
-              ))}
-            </tr>
-            {showDetails ? (
-              <tr className="border-t border-border/80 bg-background/50 text-xs text-muted">
-                <td className="px-2.5 py-2 text-start">تفاصيل</td>
-                <td className="px-2.5 py-2" colSpan={cells.length}>
-                  سوقاس حلق: {formatMeters(materials.mullionFrameM)} · سوقاس ضلفة:{" "}
-                  {formatMeters(materials.mullionSashM)}
-                  {materials.knifeM > 0.0005
-                    ? ` · سكينة: ${formatMeters(materials.knifeM)}`
-                    : ""}
-                  {materials.bouclierM > 0.0005
-                    ? ` · بوكلير: ${formatMeters(materials.bouclierM)}`
-                    : ""}
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      <Section
+        title="القطاعات"
+        total={profileTotal}
+        emptyHint={
+          systemId && systemId !== "none"
+            ? "مفيش تكلفة قطاعات — تأكد إن السيستم مربوط ببراند أسعار"
+            : "اختار نظام قطاعات للبند"
+        }
+      >
+        {profileRows.length > 0 ? (
+          <RowsList rows={profileRows} />
+        ) : (
+          <UnpricedMaterialFallback materials={materials} />
+        )}
+      </Section>
 
-      {profileCostBreakdown?.hasPricing &&
-      profileCostBreakdown.lines.length > 0 ? (
-        <ProfileCostBreakdownPanel breakdown={profileCostBreakdown} />
+      {glassRows.length > 0 ? (
+        <Section title="الزجاج" total={glassTotal}>
+          <RowsList rows={glassRows} />
+        </Section>
       ) : null}
 
-      {profile ? (
-        <ProfileCutsPanel
-          systemName={profileSystem!.name}
-          profile={profile}
-          cuts={cuts}
-        />
+      {meshRows.length > 0 ? (
+        <Section title="السلك" total={meshTotal}>
+          <RowsList rows={meshRows} />
+        </Section>
       ) : null}
 
-      {glassBreakdown?.hasPricing && glassBreakdown.lines.length > 0 ? (
-        <GlassBreakdownPanel breakdown={glassBreakdown} />
+      {accessoryRows.length > 0 ? (
+        <Section
+          title="الاكسسوار"
+          total={accessoryTotal}
+          subtitle={
+            accessoriesBreakdown?.systemName
+              ? accessoriesBreakdown.systemName
+              : undefined
+          }
+        >
+          <RowsList rows={accessoryRows} />
+        </Section>
       ) : null}
 
-      {meshBreakdown && meshBreakdown.lines.length > 0 ? (
-        <MeshBreakdownPanel breakdown={meshBreakdown} />
-      ) : null}
-
-      {accessoriesBreakdown?.hasAccessories ? (
-        <AccessoriesBreakdownPanel breakdown={accessoriesBreakdown} />
-      ) : null}
-
-      {ironBreakdown && ironBreakdown.totalM > 0.0005 ? (
-        <IronBreakdownPanel breakdown={ironBreakdown} />
+      {ironRows.length > 0 ? (
+        <Section title="الحديد" total={null}>
+          <RowsList rows={ironRows} />
+        </Section>
       ) : null}
     </section>
   );
 }
 
-function ProfileCutsPanel({
-  systemName,
-  profile,
-  cuts,
+function Section({
+  title,
+  subtitle,
+  total,
+  emptyHint,
+  children,
 }: {
-  systemName: string;
-  profile: ProfileSystemDetails;
-  cuts: CutSizes | null;
+  title: string;
+  subtitle?: string;
+  total: number | null;
+  emptyHint?: string;
+  children: ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const steps =
-    cuts != null
-      ? getCutCalculationSteps(
-          cuts.openingWidthMm,
-          cuts.openingHeightMm,
-          profile.deductions
-        )
-      : null;
-
+  const hasChildren = children != null && children !== false;
   return (
-    <div className="border-t border-border bg-background/40 px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold text-primary">
-          نظام القطاعات: {systemName}
-        </p>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
-        >
-          {expanded ? "إخفاء" : "مقاسات القطع"}
-        </button>
-      </div>
-      {!expanded ? (
-        <p className="mt-0.5 text-[10px] leading-relaxed text-muted">
-          مقاس القطع بعد التخصيم — اضغط «مقاسات القطع» للتفاصيل.
-        </p>
-      ) : null}
-
-      {expanded ? (
-        <>
-      <p className="mt-0.5 text-[10px] leading-relaxed text-muted">
-        مقاس القطع بعد التخصيم — الأمتار في الجدول فوق من تقسيمات الرسم.
-      </p>
-
-      {profile.pieces.length > 0 ? (
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {profile.pieces.map((p) => (
-            <span
-              key={p.id}
-              className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] text-foreground"
-            >
-              {p.name} · {p.sectionWidthMm}مم · عود {p.barLengthM}م
-            </span>
-          ))}
+    <div className="border-t border-border px-3 py-2.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="min-w-0 text-right">
+          <p className="text-[11px] font-bold text-primary">{title}</p>
+          {subtitle ? (
+            <p className="truncate text-[10px] text-muted">{subtitle}</p>
+          ) : null}
         </div>
-      ) : null}
-
-      <div className="mt-2 grid gap-1 text-[11px] leading-relaxed text-muted">
-        <p>{frameWidthFormula(profile.deductions)}</p>
-        <p>{frameHeightFormula(profile.deductions)}</p>
-        <p>{sashWidthFormula(profile.deductions)}</p>
-        <p>{sashHeightFormula(profile.deductions)}</p>
+        {total != null ? (
+          <p className="shrink-0 text-[12px] font-bold tabular-nums text-foreground">
+            {formatCurrency(Math.round(total))} ج.م
+          </p>
+        ) : null}
       </div>
-
-      {steps && cuts ? (
-        <div className="mt-2 space-y-2">
-          <ol className="space-y-1 rounded-xl border border-border bg-card p-2 text-[10px] leading-relaxed">
-            {steps.map((s) => (
-              <CutStepLine key={s.step} step={s} />
-            ))}
-          </ol>
-          <div className="overflow-hidden rounded-xl border border-border bg-card text-[11px]">
-            <div className="grid grid-cols-3 border-b border-border text-center font-semibold text-muted">
-              <span className="px-2 py-1.5 text-start">النتيجة</span>
-              <span className="px-2 py-1.5">العرض</span>
-              <span className="px-2 py-1.5">الارتفاع</span>
-            </div>
-            <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
-              <span className="px-2 py-1.5 text-start text-[10px] text-muted">
-                فتحة {cuts.openingWidthMm}×{cuts.openingHeightMm}
-              </span>
-              <span className="px-2 py-1.5">{cuts.openingWidthMm}</span>
-              <span className="px-2 py-1.5">{cuts.openingHeightMm}</span>
-            </div>
-            <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
-              <span className="px-2 py-1.5 text-start font-medium">الحلق</span>
-              <span className="px-2 py-1.5 font-semibold text-primary">
-                {cuts.errors.frameWidth ? "خطأ" : `${cuts.frameWidthMm} مم`}
-              </span>
-              <span className="px-2 py-1.5 font-semibold text-primary">
-                {cuts.errors.frameHeight ? "خطأ" : `${cuts.frameHeightMm} مم`}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 text-center tabular-nums">
-              <span className="px-2 py-1.5 text-start font-medium">الضلفة</span>
-              <span className="px-2 py-1.5 font-semibold text-primary">
-                {cuts.errors.sashWidth ? "خطأ" : `${cuts.sashWidthMm} مم`}
-              </span>
-              <span className="px-2 py-1.5 font-semibold text-primary">
-                {cuts.errors.sashHeight ? "خطأ" : `${cuts.sashHeightMm} مم`}
-              </span>
-            </div>
-          </div>
-        </div>
-      ) : null}
-        </>
+      {children}
+      {emptyHint && !hasChildren ? (
+        <p className="text-[10px] text-muted">{emptyHint}</p>
       ) : null}
     </div>
   );
 }
 
-function CutStepLine({ step }: { step: CutCalculationStep }) {
-  const varKeys =
-    step.phase === "frame"
-      ? (["W", "H"] as const)
-      : (["W", "H", "FW", "FH"] as const);
+function RowsList({ rows }: { rows: MaterialRow[] }) {
+  if (rows.length === 0) return null;
   return (
-    <li>
-      <span className="font-semibold text-foreground">
-        {step.step}. {step.label}
-      </span>
-      <span className="font-mono text-muted"> {step.formula}</span>
-      {step.error ? (
-        <span className="text-red-600"> — {step.error}</span>
-      ) : (
-        <span className="text-muted">
-          {" "}
-          ({formatFormulaVars(step.vars, [...varKeys])}) →{" "}
-          <span className="font-semibold text-primary">{step.resultMm} مم</span>
-        </span>
-      )}
-    </li>
-  );
-}
-
-function mullionHint(m: MaterialsBreakdown): string | undefined {
-  const parts: string[] = [];
-  if (m.mullionFrameM > 0.0005) parts.push("حلق");
-  if (m.mullionSashM > 0.0005) parts.push("ضلفة");
-  if (parts.length === 0) return undefined;
-  if (parts.length === 2) return "حلق + ضلفة";
-  return parts[0];
-}
-
-function ProfileCostBreakdownPanel({
-  breakdown,
-}: {
-  breakdown: ProfileCostBreakdown;
-}) {
-  const [expanded, setExpanded] = useState(true);
-  const showExpand = breakdown.lines.length > 3;
-
-  return (
-    <div className="border-t border-border bg-background/40 px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold text-primary">
-          تفصيل تكلفة القطاعات
-          {breakdown.brandName ? `: ${breakdown.brandName}` : ""}
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold text-foreground">
-            {formatCurrency(Math.round(breakdown.totalCost))} ج.م
-          </span>
-          {showExpand ? (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
-            >
-              {expanded ? "إخفاء" : "تفاصيل"}
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="mt-1.5 grid grid-cols-2 gap-x-3 text-[10px] text-muted">
-        <span>
-          للقطعة: {formatCurrency(Math.round(breakdown.totalUnitCost))} ج.م
-        </span>
-        <span>
-          الإجمالي: {formatCurrency(Math.round(breakdown.totalCost))} ج.م
-        </span>
-      </div>
-
-      {(expanded || breakdown.lines.length <= 3) && (
-        <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[10px]">
-          <div className="grid grid-cols-5 border-b border-border text-center font-semibold text-muted">
-            <span className="px-1.5 py-1.5 text-start">النوع</span>
-            <span className="px-1.5 py-1.5">الكمية</span>
-            <span className="px-1.5 py-1.5">التسعير</span>
-            <span className="px-1.5 py-1.5">الوحدة</span>
-            <span className="px-1.5 py-1.5">تكلفة</span>
+    <ul className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border bg-background/40">
+      {rows.map((row) => (
+        <li key={row.key} className="px-2.5 py-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 text-right">
+              <p className="text-[12px] font-semibold text-foreground">
+                {row.label}
+              </p>
+              {row.sub ? (
+                <p className="mt-0.5 text-[10px] text-muted">{row.sub}</p>
+              ) : null}
+            </div>
+            <p className="shrink-0 text-[12px] font-semibold tabular-nums text-foreground">
+              {row.qty}
+            </p>
           </div>
-          {breakdown.lines.map((line, i) => (
-            <div
-              key={line.category}
-              className={`grid grid-cols-5 text-center tabular-nums ${
-                i > 0 ? "border-t border-border/60" : ""
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <p className="text-[10px] text-muted">
+              {row.unitHint ?? (row.cost != null ? "تكلفة" : "بدون سعر")}
+            </p>
+            <p
+              className={`text-[12px] font-bold tabular-nums ${
+                row.cost != null ? "text-primary" : "text-muted"
               }`}
             >
-              <span className="px-1.5 py-1.5 text-start font-medium text-foreground">
-                {line.label}
-                {line.productName ? (
-                  <span className="mt-0.5 block text-[9px] font-normal text-muted">
-                    {line.productName}
-                  </span>
-                ) : null}
-              </span>
-              <span className="px-1.5 py-1.5 text-foreground">
-                {line.billing === "kit"
-                  ? `${line.qty ?? 0} طقم`
-                  : `${line.lengthM.toFixed(2)} م`}
-              </span>
-              <span className="px-1.5 py-1.5 text-foreground">
-                {line.billing === "kit"
-                  ? `${line.unitPrice ?? 0} ج.م/طقم`
-                  : `${line.barPrice}/${line.barLengthM}م`}
-              </span>
-              <span className="px-1.5 py-1.5 text-foreground">
-                {line.billing === "kit"
-                  ? (line.unitPrice ?? 0)
-                  : line.pricePerM}
-              </span>
-              <span className="px-1.5 py-1.5 font-semibold text-primary">
-                {formatCurrency(Math.round(line.totalCost))}
-              </span>
-            </div>
-          ))}
-          <div className="grid grid-cols-5 border-t border-border bg-primary-soft/30 text-center font-semibold">
-            <span className="col-span-4 px-1.5 py-1.5 text-start text-foreground">
-              إجمالي تكلفة القطاعات
-            </span>
-            <span className="px-1.5 py-1.5 text-primary">
-              {formatCurrency(Math.round(breakdown.totalUnitCost))}
-            </span>
+              {row.cost != null
+                ? `${formatCurrency(Math.round(row.cost))} ج.م`
+                : "—"}
+            </p>
           </div>
-        </div>
-      )}
-    </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-function GlassBreakdownPanel({ breakdown }: { breakdown: GlassBreakdown }) {
-  const [expanded, setExpanded] = useState(false);
-  const showExpand = breakdown.lines.length > 1;
-  return (
-    <div className="border-t border-border bg-background/40 px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold text-primary">تكلفة الزجاج</p>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold text-foreground">
-            {formatCurrency(Math.round(breakdown.totalCost))} ج.م
-          </span>
-          {showExpand && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
-            >
-              {expanded ? "إخفاء" : "تفاصيل"}
-            </button>
-          )}
-        </div>
-      </div>
+function buildProfileRows(
+  breakdown: ProfileCostBreakdown | null | undefined,
+  materials: MaterialsBreakdown
+): MaterialRow[] {
+  if (breakdown?.hasPricing && breakdown.lines.length > 0) {
+    return breakdown.lines.map((line) => profileLineToRow(line));
+  }
 
-      <div className="mt-1.5 grid grid-cols-3 gap-x-3 text-[10px] text-muted">
-        <span>
-          للقطعة: {formatCurrency(Math.round(breakdown.totalUnitCost))} ج.م
-        </span>
-        <span>الكمية × {breakdown.totalCost / (breakdown.totalUnitCost || 1)}</span>
-        <span>
-          الإجمالي: {formatCurrency(Math.round(breakdown.totalCost))} ج.م
-        </span>
-      </div>
+  // بدون أسعار — أعرض الكميات فقط للأصناف الموجودة
+  const candidates: { key: string; label: string; qty: string; ok: boolean }[] =
+    [
+      {
+        key: "frame-h",
+        label: "حلق مفصلي",
+        qty: formatMeters(materials.frameHingedM),
+        ok: materials.frameHingedM > 0.0005,
+      },
+      {
+        key: "frame-s",
+        label: "حلق جرار",
+        qty: formatMeters(materials.frameSlidingM),
+        ok: materials.frameSlidingM > 0.0005,
+      },
+      {
+        key: "sash-h",
+        label: "ضلفة شباك مفصلي",
+        qty: formatMeters(materials.sashHingedM),
+        ok: materials.sashHingedM > 0.0005,
+      },
+      {
+        key: "sash-d",
+        label: "ضلفة باب مفصلي",
+        qty: formatMeters(materials.sashDoorM),
+        ok: materials.sashDoorM > 0.0005,
+      },
+      {
+        key: "sash-s",
+        label: "ضلفة جرار",
+        qty: formatMeters(materials.sashSlidingM),
+        ok: materials.sashSlidingM > 0.0005,
+      },
+      {
+        key: "mullion",
+        label: "سوقاس",
+        qty: formatMeters(materials.mullionTotalM),
+        ok: materials.mullionTotalM > 0.0005,
+      },
+      {
+        key: "bouclier",
+        label: "بوكلير",
+        qty: formatMeters(materials.bouclierM),
+        ok: materials.bouclierM > 0.0005,
+      },
+      {
+        key: "bouclier-cap",
+        label: "طبة بوكلير",
+        qty: formatCount(materials.bouclierCapQty),
+        ok: materials.bouclierCapQty > 0,
+      },
+      {
+        key: "coupling",
+        label: "كوبلن",
+        qty: formatMeters(materials.couplingM),
+        ok: materials.couplingM > 0.0005,
+      },
+      {
+        key: "knife",
+        label: "سكينة",
+        qty: formatMeters(materials.knifeM),
+        ok: materials.knifeM > 0.0005,
+      },
+      {
+        key: "bead-sh",
+        label: "باكتة سنجل مفصلي",
+        qty: formatMeters(materials.beadSingleHingedM),
+        ok: materials.beadSingleHingedM > 0.0005,
+      },
+      {
+        key: "bead-dh",
+        label: "باكتة دبل مفصلي",
+        qty: formatMeters(materials.beadDoubleHingedM),
+        ok: materials.beadDoubleHingedM > 0.0005,
+      },
+      {
+        key: "bead-ss",
+        label: "باكتة سنجل جرار",
+        qty: formatMeters(materials.beadSingleSlidingM),
+        ok: materials.beadSingleSlidingM > 0.0005,
+      },
+      {
+        key: "bead-ds",
+        label: "باكتة دبل جرار",
+        qty: formatMeters(materials.beadDoubleSlidingM),
+        ok: materials.beadDoubleSlidingM > 0.0005,
+      },
+      {
+        key: "mesh-profile",
+        label: "ضلفة سلك جرار",
+        qty: formatMeters(materials.meshSlidingProfileM),
+        ok: materials.meshSlidingProfileM > 0.0005,
+      },
+      {
+        key: "four-leaf",
+        label: "تقابل ٤ ضلفة",
+        qty: formatMeters(materials.fourLeafMeetingM),
+        ok: materials.fourLeafMeetingM > 0.0005,
+      },
+      {
+        key: "mesh-meeting",
+        label: "تقابل سلك",
+        qty: formatMeters(materials.meshMeetingM),
+        ok: materials.meshMeetingM > 0.0005,
+      },
+    ];
 
-      {expanded && (
-        <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[10px]">
-          <div className="grid grid-cols-4 border-b border-border text-center font-semibold text-muted">
-            <span className="px-2 py-1.5 text-start">ضلفة</span>
-            <span className="px-2 py-1.5">نوع</span>
-            <span className="px-2 py-1.5">م²</span>
-            <span className="px-2 py-1.5">تكلفة</span>
-          </div>
-          {breakdown.lines.map((line, i) => (
-            <div
-              key={line.paneId}
-              className={`grid grid-cols-4 text-center tabular-nums ${
-                i > 0 ? "border-t border-border/60" : ""
-              }`}
-            >
-              <span className="px-2 py-1.5 text-start font-medium text-foreground">
-                {i + 1}
-              </span>
-              <span className="px-2 py-1.5 text-foreground">
-                {line.label}
-              </span>
-              <span className="px-2 py-1.5 text-foreground">
-                {line.areaSqm.toFixed(2)}
-              </span>
-              <span className="px-2 py-1.5 font-semibold text-primary">
-                {formatCurrency(Math.round(line.totalCost))}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return candidates
+    .filter((c) => c.ok)
+    .map((c) => ({
+      key: c.key,
+      label: c.label,
+      qty: c.qty,
+      cost: null,
+    }));
 }
 
-function MeshBreakdownPanel({ breakdown }: { breakdown: MeshBreakdown }) {
-  const [expanded, setExpanded] = useState(false);
-  const showExpand = breakdown.lines.length > 1;
-  const showCost = breakdown.hasPricing;
-
-  return (
-    <div className="border-t border-border bg-background/40 px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold text-primary">حساب السلك</p>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold text-foreground">
-            {breakdown.totalAreaSqm.toFixed(2)} م²
-          </span>
-          {showCost ? (
-            <span className="text-[11px] font-bold text-foreground">
-              · {formatCurrency(Math.round(breakdown.totalCost))} ج.م
-            </span>
-          ) : null}
-          {showExpand ? (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
-            >
-              {expanded ? "إخفاء" : "تفاصيل"}
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
-        <span>مساحة: {breakdown.totalAreaSqm.toFixed(2)} م²</span>
-        {breakdown.totalSlidingProfileM > 0.0005 ? (
-          <span>ضلفة سلك: {breakdown.totalSlidingProfileM.toFixed(2)} م</span>
-        ) : null}
-        {breakdown.totalWheelQty > 0 ? (
-          <span>عجل: {breakdown.totalWheelQty} (٢/ضلفة)</span>
-        ) : null}
-        {breakdown.totalHandleQty > 0 ? (
-          <span>مقبض لطش: {breakdown.totalHandleQty}</span>
-        ) : null}
-        {showCost ? (
-          <span>
-            للقطعة: {formatCurrency(Math.round(breakdown.totalUnitCost))} ج.م
-          </span>
-        ) : null}
-      </div>
-
-      {(expanded || breakdown.lines.length === 1) && (
-        <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[10px]">
-          <div
-            className={`grid border-b border-border text-center font-semibold text-muted ${
-              breakdown.totalSlidingProfileM > 0.0005
-                ? showCost
-                  ? "grid-cols-6"
-                  : "grid-cols-5"
-                : showCost
-                  ? "grid-cols-5"
-                  : "grid-cols-4"
-            }`}
-          >
-            <span className="px-2 py-1.5 text-start">ضلفة</span>
-            <span className="px-2 py-1.5">نوع</span>
-            <span className="px-2 py-1.5">م²</span>
-            <span className="px-2 py-1.5">ج.م/م²</span>
-            {breakdown.totalSlidingProfileM > 0.0005 ? (
-              <span className="px-2 py-1.5">قطاع</span>
-            ) : null}
-            {showCost ? <span className="px-2 py-1.5">تكلفة</span> : null}
-          </div>
-          {breakdown.lines.map((line, i) => (
-            <div
-              key={line.paneId}
-              className={`grid text-center tabular-nums ${
-                breakdown.totalSlidingProfileM > 0.0005
-                  ? showCost
-                    ? "grid-cols-6"
-                    : "grid-cols-5"
-                  : showCost
-                    ? "grid-cols-5"
-                    : "grid-cols-4"
-              } ${i > 0 ? "border-t border-border/60" : ""}`}
-            >
-              <span className="px-2 py-1.5 text-start font-medium text-foreground">
-                {i + 1}
-              </span>
-              <span className="px-2 py-1.5 text-foreground">{line.label}</span>
-              <span className="px-2 py-1.5 text-foreground">
-                {line.areaSqm.toFixed(2)}
-              </span>
-              <span className="px-2 py-1.5 text-foreground">
-                {line.costPerSqm > 0 ? line.costPerSqm : "—"}
-              </span>
-              {breakdown.totalSlidingProfileM > 0.0005 ? (
-                <span className="px-2 py-1.5 text-foreground">
-                  {line.profileM > 0.0005 ? `${line.profileM.toFixed(2)} م` : "—"}
-                </span>
-              ) : null}
-              {showCost ? (
-                <span className="px-2 py-1.5 font-semibold text-primary">
-                  {formatCurrency(Math.round(line.totalCost))}
-                </span>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+function profileLineToRow(line: ProfileCostLine): MaterialRow {
+  if (line.billing === "kit") {
+    return {
+      key: line.category,
+      label: line.label,
+      qty: `${line.qty ?? 0} طقم`,
+      unitHint:
+        line.unitPrice != null
+          ? `${line.unitPrice} ج.م/طقم`
+          : "طقم لكل بوكلير",
+      cost: line.totalCost,
+      sub: line.productName,
+    };
+  }
+  return {
+    key: line.category,
+    label: line.label,
+    qty: `${line.lengthM.toFixed(2)} م`,
+    unitHint: `${line.barPrice} ج.م / عود ${line.barLengthM}م · ${line.pricePerM} ج.م/م`,
+    cost: line.totalCost,
+    sub: line.productName,
+  };
 }
 
-function AccessoriesBreakdownPanel({
-  breakdown,
+function UnpricedMaterialFallback({
+  materials,
 }: {
-  breakdown: AccessoriesBreakdown;
+  materials: MaterialsBreakdown;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const hasHinged =
-    breakdown.hingeQty > 0 ||
-    breakdown.hingedEspagnolettes.length > 0 ||
-    breakdown.boltQty > 0 ||
-    breakdown.bouclierBoltLockPieces.length > 0 ||
-    breakdown.protrudingHandleQty > 0;
-  const hasSliding =
-    breakdown.trackQty > 0 ||
-    breakdown.rollerQty > 0 ||
-    breakdown.brushLengthM > 0.0005 ||
-    breakdown.slidingEspagnolettes.length > 0 ||
-    breakdown.recessedHandleQty > 0;
-
-  return (
-    <div className="border-t border-border bg-background/40 px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold text-primary">
-          حساب الاكسسوار
-          {breakdown.systemName ? `: ${breakdown.systemName}` : ""}
-        </p>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
-        >
-          {expanded ? "إخفاء" : "تفاصيل"}
-        </button>
-      </div>
-
-      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
-        {breakdown.hingeQty > 0 ? (
-          <span>
-            مفصلات: {formatCount(breakdown.hingeQty)}
-            {accessoryBrandTag(breakdown.brandLabels, "hinge")}
-          </span>
-        ) : null}
-        {breakdown.hingedEspagnolettes.length > 0 ? (
-          <span>
-            سبلونة مفصلي:{" "}
-            {formatEspagnoletteSummary(breakdown.hingedEspagnolettes)}
-            {accessoryBrandTag(breakdown.brandLabels, "hinged-espagnolette")}
-          </span>
-        ) : null}
-        {breakdown.protrudingHandleQty > 0 ? (
-          <span>
-            مقبض بارز: {formatCount(breakdown.protrudingHandleQty)}
-            {accessoryBrandTag(breakdown.brandLabels, "protruding-handle")}
-          </span>
-        ) : null}
-        {breakdown.trackQty > 0 ? (
-          <span>
-            تراك: {formatCount(breakdown.trackQty)} ·{" "}
-            {formatMeters(breakdown.trackLengthM)}
-            {accessoryBrandTag(breakdown.brandLabels, "track")}
-          </span>
-        ) : null}
-        {breakdown.rollerQty > 0 ? (
-          <span>
-            عجل جرار: {formatCount(breakdown.rollerQty)}
-            {accessoryBrandTag(breakdown.brandLabels, "roller")}
-          </span>
-        ) : null}
-        {breakdown.brushLengthM > 0.0005 ? (
-          <span>
-            فرش: {formatMeters(breakdown.brushLengthM)}
-            {accessoryBrandTag(breakdown.brandLabels, "brush")}
-          </span>
-        ) : null}
-        {breakdown.slidingEspagnolettes.length > 0 ? (
-          <span>
-            سبلونة جرار:{" "}
-            {formatEspagnoletteSummary(breakdown.slidingEspagnolettes)}
-            {accessoryBrandTag(breakdown.brandLabels, "sliding-espagnolette")}
-          </span>
-        ) : null}
-        {breakdown.recessedHandleQty > 0 ? (
-          <span>
-            مقبض غاطس: {formatCount(breakdown.recessedHandleQty)}
-            {accessoryBrandTag(breakdown.brandLabels, "recessed-handle")}
-          </span>
-        ) : null}
-      </div>
-
-      {expanded ? (
-        <div className="mt-2 space-y-2 text-[10px] leading-relaxed text-muted">
-          {hasHinged ? (
-            <div className="rounded-xl border border-border bg-card p-2.5">
-              <p className="font-semibold text-foreground">مفصلي</p>
-              <p>
-                مفصلات: {formatCount(breakdown.hingeQty)}
-                {accessoryBrandTag(breakdown.brandLabels, "hinge")}
-              </p>
-              <p>
-                سبلونة:{" "}
-                {formatEspagnoletteSummary(breakdown.hingedEspagnolettes)}
-                {accessoryBrandTag(breakdown.brandLabels, "hinged-espagnolette")}
-              </p>
-              <p>
-                سكاك مفصلي:{" "}
-                {formatLockPiecesSummary(breakdown.hingedLockPieces)}
-                {accessoryBrandTag(breakdown.brandLabels, "hinged-lock")}
-              </p>
-              {breakdown.bouclierLockPieces.length > 0 ? (
-                <p>
-                  سكاك بوكلير:{" "}
-                  {formatLockPiecesSummary(breakdown.bouclierLockPieces)}
-                  {accessoryBrandTag(breakdown.brandLabels, "bouclier-lock")}
-                </p>
-              ) : null}
-              {breakdown.boltQty > 0 ? (
-                <p>
-                  ترباس: {formatCount(breakdown.boltQty)}
-                  {accessoryBrandTag(breakdown.brandLabels, "bouclier-bolt")}
-                </p>
-              ) : null}
-              {breakdown.bouclierBoltLockPieces.length > 0 ? (
-                <p>
-                  سكاك ترباس:{" "}
-                  {formatLockPiecesSummary(breakdown.bouclierBoltLockPieces)}
-                  {accessoryBrandTag(breakdown.brandLabels, "bouclier-bolt-lock")}
-                </p>
-              ) : null}
-              {breakdown.protrudingHandleQty > 0 ? (
-                <p>
-                  مقبض بارز: {formatCount(breakdown.protrudingHandleQty)}
-                  {accessoryBrandTag(breakdown.brandLabels, "protruding-handle")}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          {hasSliding ? (
-            <div className="rounded-xl border border-border bg-card p-2.5">
-              <p className="font-semibold text-foreground">جرار</p>
-              {breakdown.trackQty > 0 ? (
-                <p>
-                  تراك: {formatCount(breakdown.trackQty)} قطعة ·{" "}
-                  {formatMeters(breakdown.trackLengthM)}
-                  {accessoryBrandTag(breakdown.brandLabels, "track")}
-                </p>
-              ) : null}
-              {breakdown.rollerQty > 0 ? (
-                <p>
-                  عجل: {formatCount(breakdown.rollerQty)}
-                  {accessoryBrandTag(breakdown.brandLabels, "roller")}
-                </p>
-              ) : null}
-              {breakdown.brushLengthM > 0.0005 ? (
-                <p>
-                  فرش: {formatMeters(breakdown.brushLengthM)}
-                  {accessoryBrandTag(breakdown.brandLabels, "brush")}
-                </p>
-              ) : null}
-              <p>
-                سبلونة:{" "}
-                {formatEspagnoletteSummary(breakdown.slidingEspagnolettes)}
-                {accessoryBrandTag(breakdown.brandLabels, "sliding-espagnolette")}
-              </p>
-              <p>
-                سكاك جرار:{" "}
-                {formatLockPiecesSummary(breakdown.slidingLockPieces)}
-                {accessoryBrandTag(breakdown.brandLabels, "sliding-lock")}
-              </p>
-              {breakdown.recessedHandleQty > 0 ? (
-                <p>
-                  مقبض غاطس: {formatCount(breakdown.recessedHandleQty)}
-                  {accessoryBrandTag(breakdown.brandLabels, "recessed-handle")}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
+  const rows = buildProfileRows(null, materials);
+  if (rows.length === 0) {
+    return (
+      <p className="text-[10px] text-muted">مفيش قطاعات محسوبة على البند ده</p>
+    );
+  }
+  return <RowsList rows={rows} />;
 }
 
-function IronBreakdownPanel({ breakdown }: { breakdown: IronBreakdown }) {
-  const [expanded, setExpanded] = useState(false);
+function buildGlassRows(
+  breakdown: GlassBreakdown | null | undefined
+): MaterialRow[] {
+  if (!breakdown || breakdown.lines.length === 0) return [];
+  return breakdown.lines.map((line, i) => ({
+    key: `glass-${line.paneId}`,
+    label: `زجاج ضلفة ${i + 1}`,
+    qty: `${line.areaSqm.toFixed(2)} م²`,
+    unitHint:
+      line.costPerSqm > 0
+        ? `${line.costPerSqm} ج.م/م² · ${line.label}`
+        : line.label,
+    cost: breakdown.hasPricing && line.totalCost > 0 ? line.totalCost : null,
+    sub: [line.glazing === "double" ? "دبل" : "سنجل", line.georgian ? "جورجيا" : null]
+      .filter(Boolean)
+      .join(" · ") || undefined,
+  }));
+}
 
-  return (
-    <div className="border-t border-border bg-background/40 px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold text-primary">
-          حساب الحديد
-          {breakdown.systemName ? `: ${breakdown.systemName}` : ""}
-        </p>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
-        >
-          {expanded ? "إخفاء" : "تفاصيل"}
-        </button>
-      </div>
+function buildMeshRows(
+  breakdown: MeshBreakdown | null | undefined,
+  materials: MaterialsBreakdown
+): MaterialRow[] {
+  const rows: MaterialRow[] = [];
+  if (breakdown && breakdown.lines.length > 0) {
+    for (const [i, line] of breakdown.lines.entries()) {
+      rows.push({
+        key: `mesh-${line.paneId}`,
+        label: `سلك ضلفة ${i + 1}`,
+        qty: `${line.areaSqm.toFixed(2)} م²`,
+        unitHint:
+          line.costPerSqm > 0
+            ? `${line.costPerSqm} ج.م/م² · ${line.label}`
+            : line.label,
+        cost:
+          breakdown.hasPricing && line.totalCost > 0 ? line.totalCost : null,
+      });
+    }
+  } else if (materials.meshAreaSqm > 0.0005) {
+    rows.push({
+      key: "mesh-area",
+      label: "مساحة سلك",
+      qty: `${materials.meshAreaSqm.toFixed(2)} م²`,
+      cost: null,
+    });
+  }
 
-      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
-        <span className="font-semibold text-foreground">
-          إجمالي: {formatMeters(breakdown.totalM)}
-        </span>
-        {breakdown.frameHingedM > 0.0005 ? (
-          <span>حلق مفصلي: {formatMeters(breakdown.frameHingedM)}</span>
-        ) : null}
-        {breakdown.frameSlidingM > 0.0005 ? (
-          <span>حلق جرار: {formatMeters(breakdown.frameSlidingM)}</span>
-        ) : null}
-        {breakdown.sashHingedM > 0.0005 ? (
-          <span>ضلفة مفصلي: {formatMeters(breakdown.sashHingedM)}</span>
-        ) : null}
-        {breakdown.sashSlidingM > 0.0005 ? (
-          <span>ضلفة جرار: {formatMeters(breakdown.sashSlidingM)}</span>
-        ) : null}
-        {breakdown.sashDoorM > 0.0005 ? (
-          <span>ضلفة باب: {formatMeters(breakdown.sashDoorM)}</span>
-        ) : null}
-        {breakdown.mullionM > 0.0005 ? (
-          <span>سوقاس: {formatMeters(breakdown.mullionM)}</span>
-        ) : null}
-      </div>
+  if (materials.meshSlidingWheelQty > 0) {
+    rows.push({
+      key: "mesh-wheel",
+      label: "عجل سلك",
+      qty: formatCount(materials.meshSlidingWheelQty),
+      unitHint: "٢ لكل ضلفة",
+      cost: null,
+    });
+  }
+  if (materials.meshPushHandleQty > 0) {
+    rows.push({
+      key: "mesh-handle",
+      label: "مقبض لطش",
+      qty: formatCount(materials.meshPushHandleQty),
+      cost: null,
+    });
+  }
+  return rows;
+}
 
-      {expanded ? (
-        <div className="mt-2 overflow-hidden rounded-xl border border-border/80">
-          <div className="grid grid-cols-3 gap-px bg-border text-[10px] font-semibold text-muted">
-            <span className="bg-card px-2 py-1.5 text-start">النوع</span>
-            <span className="bg-card px-2 py-1.5">المقطع</span>
-            <span className="bg-card px-2 py-1.5">الطول</span>
-          </div>
-          {breakdown.lines.map((line) => (
-            <div
-              key={line.role}
-              className="grid grid-cols-3 gap-px border-t border-border/60 bg-border text-[10px]"
-            >
-              <span className="bg-card px-2 py-1.5 text-start text-foreground">
-                {line.pieceName ?? line.label}
-              </span>
-              <span className="bg-card px-2 py-1.5 text-foreground">
-                {line.sectionWidthMm && line.sectionHeightMm
-                  ? `${line.sectionWidthMm}×${line.sectionHeightMm} مم`
-                  : "—"}
-              </span>
-              <span className="bg-card px-2 py-1.5 font-semibold text-primary">
-                {formatMeters(line.lengthM)}
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
+function brandByCategoryId(
+  brands: AccessoryBrand[],
+  labels: AccessoriesBreakdown["brandLabels"],
+  category: AccessoryBrandCategory
+): AccessoryBrand | undefined {
+  const name = labels[category];
+  if (!name) return undefined;
+  return brands.find((b) => b.category === category && b.name === name);
+}
+
+function buildAccessoryRows(
+  breakdown: AccessoriesBreakdown | null | undefined,
+  brands: AccessoryBrand[]
+): MaterialRow[] {
+  if (!breakdown?.hasAccessories) return [];
+  const rows: MaterialRow[] = [];
+  const labels = breakdown.brandLabels;
+
+  function pushPiece(
+    key: string,
+    label: string,
+    qty: number,
+    category: AccessoryBrandCategory,
+    qtyLabel?: string
+  ) {
+    if (qty < 0.5) return;
+    const brand = brandByCategoryId(brands, labels, category);
+    const unit = brand?.unitPrice != null && brand.unitPrice > 0 ? brand.unitPrice : null;
+    const cost = unit != null ? Math.round(qty * unit * 100) / 100 : null;
+    rows.push({
+      key,
+      label,
+      qty: qtyLabel ?? formatCount(qty),
+      unitHint:
+        unit != null
+          ? `${unit} ج.م/قطعة${brand ? ` · ${brand.name}` : ""}`
+          : brand
+            ? brand.name
+            : undefined,
+      cost,
+      sub: accessoryBrandTag(labels, category).replace(/^ · /, "") || undefined,
+    });
+  }
+
+  function pushMeters(
+    key: string,
+    label: string,
+    meters: number,
+    category: AccessoryBrandCategory
+  ) {
+    if (meters < 0.0005) return;
+    const brand = brandByCategoryId(brands, labels, category);
+    const unit = brand?.unitPrice != null && brand.unitPrice > 0 ? brand.unitPrice : null;
+    const cost = unit != null ? Math.round(meters * unit * 100) / 100 : null;
+    rows.push({
+      key,
+      label,
+      qty: formatMeters(meters),
+      unitHint:
+        unit != null
+          ? `${unit} ج.م/م${brand ? ` · ${brand.name}` : ""}`
+          : brand
+            ? brand.name
+            : undefined,
+      cost,
+    });
+  }
+
+  pushPiece("hinge", "مفصلات", breakdown.hingeQty, "hinge");
+
+  const hingedEspQty = breakdown.hingedEspagnolettes.reduce(
+    (s, l) => s + l.qty,
+    0
   );
+  if (hingedEspQty > 0) {
+    const summary = breakdown.hingedEspagnolettes
+      .map((l) => `${l.qty}×${l.size}سم`)
+      .join(" · ");
+    pushPiece(
+      "hinged-esp",
+      "سبلونة مفصلي",
+      hingedEspQty,
+      "hinged-espagnolette",
+      summary
+    );
+  }
+
+  for (const piece of breakdown.hingedLockPieces) {
+    if (piece.qty < 0.5) continue;
+    pushPiece(
+      `hinged-lock-${piece.name}`,
+      piece.name,
+      piece.qty,
+      "hinged-lock"
+    );
+  }
+
+  for (const piece of breakdown.bouclierLockPieces) {
+    if (piece.qty < 0.5) continue;
+    pushPiece(
+      `bouclier-lock-${piece.name}`,
+      piece.name,
+      piece.qty,
+      "bouclier-lock"
+    );
+  }
+
+  pushPiece("bolt", "ترباس", breakdown.boltQty, "bouclier-bolt");
+
+  for (const piece of breakdown.bouclierBoltLockPieces) {
+    if (piece.qty < 0.5) continue;
+    pushPiece(
+      `bolt-lock-${piece.name}`,
+      piece.name,
+      piece.qty,
+      "bouclier-bolt-lock"
+    );
+  }
+
+  pushPiece(
+    "protruding-handle",
+    "مقبض بارز",
+    breakdown.protrudingHandleQty,
+    "protruding-handle"
+  );
+
+  if (breakdown.trackQty > 0) {
+    const brand = brandByCategoryId(brands, labels, "track");
+    const unit =
+      brand?.unitPrice != null && brand.unitPrice > 0 ? brand.unitPrice : null;
+    // التراك يتسعر بالمتر الطولي
+    const cost =
+      unit != null
+        ? Math.round(breakdown.trackLengthM * unit * 100) / 100
+        : null;
+    rows.push({
+      key: "track",
+      label: "تراك",
+      qty: `${formatCount(breakdown.trackQty)} · ${formatMeters(breakdown.trackLengthM)}`,
+      unitHint:
+        unit != null
+          ? `${unit} ج.م/م${brand ? ` · ${brand.name}` : ""}`
+          : brand
+            ? brand.name
+            : undefined,
+      cost,
+    });
+  }
+
+  pushPiece("roller", "عجل جرار", breakdown.rollerQty, "roller");
+  pushMeters("brush", "فرش", breakdown.brushLengthM, "brush");
+
+  const slidingEspQty = breakdown.slidingEspagnolettes.reduce(
+    (s, l) => s + l.qty,
+    0
+  );
+  if (slidingEspQty > 0) {
+    const summary = breakdown.slidingEspagnolettes
+      .map((l) => `${l.qty}×${l.size}سم`)
+      .join(" · ");
+    pushPiece(
+      "sliding-esp",
+      "سبلونة جرار",
+      slidingEspQty,
+      "sliding-espagnolette",
+      summary
+    );
+  }
+
+  for (const piece of breakdown.slidingLockPieces) {
+    if (piece.qty < 0.5) continue;
+    pushPiece(
+      `sliding-lock-${piece.name}`,
+      piece.name,
+      piece.qty,
+      "sliding-lock"
+    );
+  }
+
+  pushPiece(
+    "recessed-handle",
+    "مقبض غاطس",
+    breakdown.recessedHandleQty,
+    "recessed-handle"
+  );
+
+  return rows;
+}
+
+function buildIronRows(
+  breakdown: IronBreakdown | null | undefined
+): MaterialRow[] {
+  if (!breakdown || breakdown.totalM < 0.0005) return [];
+  const rows: MaterialRow[] = [];
+  const frameM = breakdown.frameHingedM + breakdown.frameSlidingM;
+  const sashM =
+    breakdown.sashHingedM + breakdown.sashSlidingM + breakdown.sashDoorM;
+  if (frameM > 0.0005) {
+    rows.push({
+      key: "iron-frame",
+      label: "حديد حلق",
+      qty: formatMeters(frameM),
+      cost: null,
+    });
+  }
+  if (sashM > 0.0005) {
+    rows.push({
+      key: "iron-sash",
+      label: "حديد ضلفة",
+      qty: formatMeters(sashM),
+      cost: null,
+    });
+  }
+  if (breakdown.mullionM > 0.0005) {
+    rows.push({
+      key: "iron-mullion",
+      label: "حديد سوقاس",
+      qty: formatMeters(breakdown.mullionM),
+      cost: null,
+    });
+  }
+  if (rows.length === 0) {
+    rows.push({
+      key: "iron-total",
+      label: "حديد",
+      qty: formatMeters(breakdown.totalM),
+      cost: null,
+      sub: breakdown.systemName,
+    });
+  }
+  return rows;
 }

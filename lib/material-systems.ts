@@ -341,6 +341,8 @@ export type AccessoryBrand = {
   id: string;
   name: string;
   category: AccessoryBrandCategory;
+  /** سعر الوحدة (ج.م) — قطعة أو متر حسب الفئة */
+  unitPrice?: number;
   notes?: string;
 };
 
@@ -2553,6 +2555,10 @@ export function normalizeAccessoryBrands(raw: unknown): AccessoryBrand[] {
       id,
       name,
       category,
+      unitPrice: (() => {
+        const n = Number(o.unitPrice);
+        return Number.isFinite(n) && n >= 0 ? n : undefined;
+      })(),
       notes: typeof o.notes === "string" ? o.notes.trim() || undefined : undefined,
     });
   }
