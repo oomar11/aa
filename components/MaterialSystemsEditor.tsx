@@ -201,8 +201,8 @@ export function MaterialSystemsEditor({ category }: Props) {
       {isGlass ? (
         <div className="space-y-3">
           <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-            كل زجاجة ليها سعر بالمتر المربع. في التصميم بتختار الزجاجة لكل
-            ضلفة — زجاجة واحدة = مفرد، زجاجتين = دبل + تدبيل.
+            كل زجاجة ليها سعر بالمتر المربع. الاختيار من تفاصيل البند —
+            زجاجة واحدة = مفرد، زجاجتين = دبل + تدبيل.
           </p>
           <section className="space-y-2 rounded-2xl border border-border bg-card p-3">
             <h3 className="text-xs font-bold text-foreground">

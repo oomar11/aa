@@ -507,6 +507,114 @@ export function resolveGlassBottleId(
   return GLASS_BOTTLE_ID_ALIASES[id] ?? id;
 }
 
+/** أنظمة الزجاج الجاهزة القديمة (اسطمبات) — تُزال عند الترحيل */
+const LEGACY_GLASS_STAMP_IDS = new Set([
+  "g464",
+  "g464-geo",
+  "g-tempered",
+  "g46464",
+]);
+
+function isLegacyGlassStamp(sys: MaterialSystem): boolean {
+  if (LEGACY_GLASS_STAMP_IDS.has(sys.id)) return true;
+  const g = sys.glass;
+  if (!g) return false;
+  if (g.glazing === "double" && !sys.id.startsWith("bottle-")) {
+    return !sys.id.startsWith("glass-");
+  }
+  if (/زجاج دبل|4-6-4|سيكوريت مفرد/.test(sys.name)) return true;
+  return false;
+}
+
+function glassSystemAsBottle(sys: MaterialSystem): GlassSystemDetails {
+  const g = sys.glass;
+  const pane1 = g?.pane1 ?? defaultGlassPane({ label: sys.name });
+  const price = g?.pane1PricePerSqm;
+  return {
+    glazing: "single",
+    pane1: { ...pane1, label: sys.name },
+    georgian: false,
+    pane1PricePerSqm: price,
+  };
+}
+
+/** ترحيل كتالوج الزجاج: إزالة الاسطمبات القديمة وتوحيد الزجاجات */
+function migrateGlassSystems(systems: MaterialSystem[]): MaterialSystem[] {
+  const defaults = getDefaultCatalog().glass;
+  const byId = new Map<string, MaterialSystem>();
+
+  function upsert(id: string, sys: MaterialSystem) {
+    const prev = byId.get(id);
+    if (!prev) {
+      byId.set(id, sys);
+      return;
+    }
+    const prevPrice = getGlassBottlePrice(prev);
+    const nextPrice = getGlassBottlePrice(sys);
+    if (nextPrice > 0 && prevPrice <= 0) byId.set(id, sys);
+  }
+
+  for (const sys of systems) {
+    if (isLegacyGlassStamp(sys)) continue;
+
+    const targetId = resolveGlassBottleId(sys.id) ?? sys.id;
+    const def = defaults.find((d) => d.id === targetId);
+
+    upsert(targetId, {
+      id: targetId,
+      name: def?.name ?? sys.name,
+      notes: sys.notes,
+      isDefault: Boolean(sys.isDefault || def?.isDefault),
+      glass: glassSystemAsBottle({ ...sys, name: def?.name ?? sys.name }),
+    });
+  }
+
+  for (const def of defaults) {
+    if (!byId.has(def.id)) byId.set(def.id, def);
+  }
+
+  let list = Array.from(byId.values());
+  let foundDefault = false;
+  list = list.map((s) => {
+    if (s.isDefault && !foundDefault) {
+      foundDefault = true;
+      return s;
+    }
+    return { ...s, isDefault: false };
+  });
+  if (!foundDefault) {
+    list = list.map((s) => ({
+      ...s,
+      isDefault: s.id === "bottle-clear",
+    }));
+  }
+
+  return list;
+}
+
+function normalizeGlassBottleDetails(
+  raw: unknown,
+  systemName: string
+): GlassSystemDetails {
+  const fallback: GlassSystemDetails = {
+    glazing: "single",
+    pane1: defaultGlassPane({ label: systemName }),
+    georgian: false,
+  };
+  if (!raw || typeof raw !== "object") return fallback;
+  const g = raw as Record<string, unknown>;
+  const pane1 = normalizeGlassPane(g.pane1, fallback.pane1);
+  const n = Number(g.pane1PricePerSqm);
+  const pane1Price =
+    Number.isFinite(n) && n >= 0 ? n : undefined;
+  return {
+    glazing: "single",
+    pane1: { ...pane1, label: systemName || pane1.label },
+    georgian: false,
+    pane1PricePerSqm: pane1Price,
+  };
+}
+
 export function getGlassBottlePrice(system: MaterialSystem | undefined): number {
   return system?.glass?.pane1PricePerSqm ?? 0;
 }
@@ -972,7 +1080,7 @@ function normalizeSystem(
     base.profile = normalizeProfileDetails(s.profile);
   }
   if (category === "glass") {
-    base.glass = normalizeGlassDetails(s.glass);
+    base.glass = normalizeGlassBottleDetails(s.glass, base.name);
   }
   return base;
 }
@@ -1020,10 +1128,7 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       });
 
       if (cat.id === "glass") {
-        const existingIds = new Set(merged.map((s) => s.id));
-        for (const def of defaults.glass) {
-          if (!existingIds.has(def.id)) merged.push(def);
-        }
+        merged = migrateGlassSystems(merged);
       }
 
       next[cat.id] = merged;
@@ -1100,7 +1205,12 @@ export function loadMaterialCatalog(): MaterialCatalog {
     if (!raw) return getDefaultCatalog();
     const parsed: unknown = JSON.parse(raw);
     if (!isCatalog(parsed)) return getDefaultCatalog();
-    return normalizeCatalog(parsed);
+    const normalized = normalizeCatalog(parsed);
+    const beforeGlass = (parsed as MaterialCatalog).glass;
+    if (JSON.stringify(beforeGlass) !== JSON.stringify(normalized.glass)) {
+      localStorage.setItem(MATERIALS_STORAGE_KEY, JSON.stringify(normalized));
+    }
+    return normalized;
   } catch {
     return getDefaultCatalog();
   }
