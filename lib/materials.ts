@@ -30,7 +30,6 @@ export type FrameKind = "hinged" | "sliding";
 export type JunctionKind =
   | "mullion"
   | "coupling"
-  | "knife"
   | "bouclier"
   | "none";
 
@@ -43,7 +42,7 @@ export type MaterialsBreakdown = {
   frameSlidingM: number;
   /** كوبلن تجميع بين مفصلي وجرار — متر طولي */
   couplingM: number;
-  /** سكينة بين ضلف الجرار — متر طولي */
+  /** سكينة — قطعة واحدة لكل ضلفة جرار (متر طولي) */
   knifeM: number;
   /** بوكلير (مقابض في وش بعض) — متر طولي */
   bouclierM: number;
@@ -91,7 +90,6 @@ type EdgeKey = string;
 type JunctionTotals = {
   mullionMm: number;
   couplingMm: number;
-  knifeMm: number;
   bouclierMm: number;
 };
 
@@ -144,11 +142,6 @@ export function frameKindForOpening(opening: PaneOpening): FrameKind {
   return "hinged";
 }
 
-function isSlidingOpening(opening: PaneOpening): boolean {
-  return frameKindForOpening(opening) === "sliding";
-}
-
-/** ضلفة متحركة (مش ثابتة ولا شفاط) */
 function isOpeningSash(opening: PaneOpening): boolean {
   return opening !== "fixed" && opening !== "exhaust";
 }
@@ -377,11 +370,12 @@ function edgePaneId(
 
 /**
  * تصنيف خط التقسيم بين جزئين متجاورين.
- * - جرار×جرار → سكينة (مش سوقاس)
  * - مقابض في وش بعض → بوكلير (مش سوقاس)
  * - ضلفة بوكلير ثابتة على الحافة → بوكلير
  * - مفصلي×جرار → كوبلن
  * - غير كده → سوقاس
+ *
+ * ملاحظة: السكينة تُحسب لكل ضلفة جرار على حدة (مش عند خط التقسيم).
  */
 export function classifyJunction(
   left: LayoutNode,
@@ -397,10 +391,6 @@ export function classifyJunction(
     if (leftId && rightId) {
       const leftOp = paneOpening(leftId, panes);
       const rightOp = paneOpening(rightId, panes);
-
-      if (isSlidingOpening(leftOp) && isSlidingOpening(rightOp)) {
-        return "knife";
-      }
 
       if (areFacingHandles(leftOp, rightOp)) {
         return "bouclier";
@@ -427,7 +417,7 @@ export function classifyJunction(
 
 /**
  * يمشي على شجرة التقسيم ويجمع أطوال:
- * سوقاس / سكينة / بوكلير / كوبلن
+ * سوقاس / بوكلير / كوبلن
  *
  * ملاحظة: لو في ضلفة بوكلير ثابتة، بنحسب ارتفاعها مرة واحدة
  * ومش بنضاعف الخطوط على جنبيها.
@@ -472,10 +462,6 @@ function collectJunctions(
       out.mullionMm += span;
       return;
     }
-    if (kind === "knife") {
-      out.knifeMm += span;
-      return;
-    }
     if (kind === "coupling") {
       out.couplingMm += span;
       return;
@@ -509,6 +495,22 @@ function sashMullionMm(
       const dy = line.y2 - line.y1;
       total += Math.hypot(dx, dy);
     }
+  }
+  return total;
+}
+
+/** طول سكينة ضلفة جرار واحدة — على الحافة الرأسية للسحب الأفقي */
+function knifeLengthForSlidingSash(box: PaneBox): number {
+  return box.h;
+}
+
+/** سكينة — قطعة واحدة لكل ضلفة جرار متحركة */
+function slidingKnifeProfileMm(boxes: PaneBox[]): number {
+  let total = 0;
+  for (const box of boxes) {
+    if (box.kind !== "sliding") continue;
+    if (!isOpeningSash(box.opening)) continue;
+    total += knifeLengthForSlidingSash(box);
   }
   return total;
 }
@@ -657,7 +659,7 @@ function frameLabelFor(
 /**
  * حساب خامات البند (للقطعة الواحدة — بدون ضرب الكمية).
  * الحلق: مفصلي أو جرار، ولو الاتنين موجودين يتحسب كوبلن عند خط الالتقاء.
- * بين ضلف الجرار: سكينة (مش سوقاس).
+ * السكينة: قطعة واحدة لكل ضلفة جرار متحركة.
  * مقابض في وش بعض: بوكلير (مش سوقاس).
  * السوقاس: باقي تقسيم الحلق + تقسيم الضلفة.
  */
@@ -688,7 +690,6 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const junctions: JunctionTotals = {
     mullionMm: 0,
     couplingMm: 0,
-    knifeMm: 0,
     bouclierMm: 0,
   };
   collectJunctions(
@@ -749,7 +750,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
   const couplingM = roundM(mmToM(junctions.couplingMm));
-  const knifeM = roundM(mmToM(junctions.knifeMm));
+  const knifeM = roundM(mmToM(slidingKnifeProfileMm(boxes)));
   const bouclierM = roundM(mmToM(junctions.bouclierMm));
   const mullionFrameM = roundM(mmToM(junctions.mullionMm));
   const mullionSashM = roundM(mmToM(mullionSashMm));
