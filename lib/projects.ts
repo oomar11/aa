@@ -18,6 +18,8 @@ export type Project = {
 /** @deprecated استخدم STORAGE_KEYS.projects */
 export const PROJECTS_STORAGE_KEY = STORAGE_KEYS.projects;
 
+export const PROJECTS_UPDATED_EVENT = "upvc-projects-updated";
+
 export const projects: Project[] = [
   {
     id: "p1",
@@ -140,18 +142,57 @@ export function loadLocalProjects(): Project[] {
   }
 }
 
-export function getProjectsForCustomer(customerId: string): Project[] {
-  const local = loadLocalProjects().filter((p) => p.customerId === customerId);
+export function loadDeletedProjectIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.deletedProjects);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDeletedProjectIds(ids: string[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEYS.deletedProjects, JSON.stringify(ids));
+}
+
+export function isProjectDeleted(projectId: string): boolean {
+  return loadDeletedProjectIds().includes(projectId);
+}
+
+function notifyProjectsUpdated() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(PROJECTS_UPDATED_EVENT));
+  window.dispatchEvent(new Event("upvc-accounting-updated"));
+}
+
+/** كل المشاريع الظاهرة (محلية + تجريبية) بعد استبعاد المحذوفة */
+export function listAllProjects(): Project[] {
+  const deleted = new Set(loadDeletedProjectIds());
+  const local = loadLocalProjects().filter((p) => !deleted.has(p.id));
   const localIds = new Set(local.map((p) => p.id));
   const seeded = projects.filter(
-    (p) => p.customerId === customerId && !localIds.has(p.id)
+    (p) => !localIds.has(p.id) && !deleted.has(p.id)
   );
-  return [...local, ...seeded].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  return [...local, ...seeded];
+}
+
+export function getProjectsForCustomer(customerId: string): Project[] {
+  return listAllProjects()
+    .filter((p) => p.customerId === customerId)
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 }
 
 export function getProjectById(projectId: string): Project | undefined {
+  if (isProjectDeleted(projectId)) return undefined;
   return (
     loadLocalProjects().find((p) => p.id === projectId) ??
     projects.find((p) => p.id === projectId)
@@ -173,6 +214,7 @@ function loadLocalItems(): Record<string, DesignItem[]> {
 }
 
 export function getItemsForProject(projectId: string): DesignItem[] {
+  if (isProjectDeleted(projectId)) return [];
   const local = loadLocalItems()[projectId];
   if (local) return local;
   return projectItems[projectId] ?? [];
@@ -185,10 +227,37 @@ export function saveItemsForProject(projectId: string, items: DesignItem[]) {
   localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(all));
 }
 
+function clearItemsForProject(projectId: string) {
+  if (typeof window === "undefined") return;
+  const all = loadLocalItems();
+  if (!(projectId in all)) return;
+  delete all[projectId];
+  localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(all));
+}
+
 export function upsertProjectOverride(project: Project) {
+  const previousDeleted = loadDeletedProjectIds();
+  const deleted = previousDeleted.filter((id) => id !== project.id);
+  if (deleted.length !== previousDeleted.length) {
+    saveDeletedProjectIds(deleted);
+  }
   const local = loadLocalProjects().filter((p) => p.id !== project.id);
   localStorage.setItem(
     PROJECTS_STORAGE_KEY,
     JSON.stringify([project, ...local])
   );
+}
+
+/** حذف نهائي للمشروع وبنوده من التخزين المحلي */
+export function deleteProject(projectId: string) {
+  if (typeof window === "undefined") return;
+  const local = loadLocalProjects().filter((p) => p.id !== projectId);
+  localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(local));
+
+  const deleted = new Set(loadDeletedProjectIds());
+  deleted.add(projectId);
+  saveDeletedProjectIds([...deleted]);
+
+  clearItemsForProject(projectId);
+  notifyProjectsUpdated();
 }

@@ -12,10 +12,12 @@ import {
 } from "@/lib/project-materials";
 import { defaultAccessoryDetails, loadMaterialCatalog } from "@/lib/material-systems";
 import {
+  deleteProject,
   getProjectById,
   upsertProjectOverride,
   type Project,
 } from "@/lib/projects";
+import { ROUTES } from "@/lib/routes";
 
 type Props = {
   customerId: string;
@@ -96,6 +98,20 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
         `/design/editor?customer=${customerId}&project=${projectId}`
       );
     }, 400);
+  }
+
+  function handleDelete() {
+    if (!project) return;
+    const label = project.name.trim() || "المشروع";
+    if (
+      !window.confirm(
+        `هل تريد حذف «${label}» نهائيًا؟ هتتحذف كل البنود المرتبطة بيه، ومفيش تراجع.`
+      )
+    ) {
+      return;
+    }
+    deleteProject(project.id);
+    router.replace(ROUTES.design.projects(customerId));
   }
 
   const fieldClass =
@@ -208,6 +224,14 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
         className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
       >
         حفظ
+      </button>
+
+      <button
+        type="button"
+        onClick={handleDelete}
+        className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/40 bg-card text-sm font-semibold text-[#E85A8A] transition-all hover:bg-[#E85A8A]/10 active:scale-[0.98]"
+      >
+        حذف المشروع
       </button>
     </form>
   );

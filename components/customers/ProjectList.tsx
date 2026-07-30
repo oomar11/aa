@@ -8,7 +8,12 @@ import {
   type Customer,
 } from "@/lib/customers";
 import { resolveCustomerBalance } from "@/lib/customer-balance";
-import { getProjectsForCustomer, type Project } from "@/lib/projects";
+import {
+  deleteProject,
+  getProjectsForCustomer,
+  PROJECTS_UPDATED_EVENT,
+  type Project,
+} from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -60,8 +65,28 @@ export function ProjectList({ customerId }: Props) {
       setProjectList(next.projectList);
     }
     window.addEventListener("upvc-accounting-updated", refresh);
-    return () => window.removeEventListener("upvc-accounting-updated", refresh);
+    window.addEventListener(PROJECTS_UPDATED_EVENT, refresh);
+    return () => {
+      window.removeEventListener("upvc-accounting-updated", refresh);
+      window.removeEventListener(PROJECTS_UPDATED_EVENT, refresh);
+    };
   }, [customerId]);
+
+  function handleDeleteProject(project: Project) {
+    const label = project.name.trim() || "المشروع";
+    if (
+      !window.confirm(
+        `هل تريد حذف «${label}» نهائيًا؟ هتتحذف كل البنود المرتبطة بيه، ومفيش تراجع.`
+      )
+    ) {
+      return;
+    }
+    deleteProject(project.id);
+    const next = snapshot(customerId);
+    setCustomer(next.customer);
+    setBalance(next.balance);
+    setProjectList(next.projectList);
+  }
 
   const openCount = useMemo(
     () => projectList.filter((p) => p.status === "open").length,
@@ -169,19 +194,26 @@ export function ProjectList({ customerId }: Props) {
                   </div>
                 </Link>
 
-                <div className="mt-3 flex gap-2 border-t border-border pt-3">
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
                   <Link
                     href={ROUTES.design.editor(customerId, project.id)}
-                    className="flex-1 rounded-xl bg-primary-soft px-3 py-2 text-center text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                    className="min-w-[7rem] flex-1 rounded-xl bg-primary-soft px-3 py-2 text-center text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
                   >
                     فتح البنود
                   </Link>
                   <Link
                     href={ROUTES.design.report(customerId, project.id)}
-                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-center text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-primary-soft"
+                    className="min-w-[7rem] flex-1 rounded-xl border border-border bg-background px-3 py-2 text-center text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-primary-soft"
                   >
                     تقرير / طباعة
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteProject(project)}
+                    className="min-w-[7rem] flex-1 rounded-xl border border-[#E85A8A]/35 bg-background px-3 py-2 text-center text-xs font-semibold text-[#E85A8A] transition-colors hover:bg-[#E85A8A]/10"
+                  >
+                    حذف
+                  </button>
                 </div>
               </div>
             </li>

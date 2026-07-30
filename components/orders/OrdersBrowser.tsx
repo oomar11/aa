@@ -10,10 +10,11 @@ import {
 import { resolveCustomerBalance } from "@/lib/customer-balance";
 import { itemTotalPrice } from "@/lib/design-items";
 import {
+  deleteProject,
   getItemsForProject,
   getProjectsForCustomer,
-  loadLocalProjects,
-  projects as seedProjects,
+  listAllProjects,
+  PROJECTS_UPDATED_EVENT,
   type Project,
 } from "@/lib/projects";
 import { formatCurrency, smartSearchMatch } from "@/lib/utils";
@@ -122,13 +123,8 @@ function mergeCustomers(): Customer[] {
 }
 
 function mergeProjects(): Project[] {
-  if (typeof window === "undefined") return seedProjects;
-  const localProjects = loadLocalProjects();
-  const localProjectIds = new Set(localProjects.map((p) => p.id));
-  return [
-    ...localProjects,
-    ...seedProjects.filter((p) => !localProjectIds.has(p.id)),
-  ];
+  if (typeof window === "undefined") return listAllProjects();
+  return listAllProjects();
 }
 
 function balanceMap(list: Customer[]): Record<string, number> {
@@ -160,8 +156,25 @@ export function OrdersBrowser() {
       setAllProjects(mergeProjects());
     }
     window.addEventListener("upvc-accounting-updated", refresh);
-    return () => window.removeEventListener("upvc-accounting-updated", refresh);
+    window.addEventListener(PROJECTS_UPDATED_EVENT, refresh);
+    return () => {
+      window.removeEventListener("upvc-accounting-updated", refresh);
+      window.removeEventListener(PROJECTS_UPDATED_EVENT, refresh);
+    };
   }, []);
+
+  function handleDeleteProject(project: Project) {
+    const label = project.name.trim() || "المشروع";
+    if (
+      !window.confirm(
+        `هل تريد حذف «${label}» نهائيًا؟ هتتحذف كل البنود المرتبطة بيه، ومفيش تراجع.`
+      )
+    ) {
+      return;
+    }
+    deleteProject(project.id);
+    setAllProjects(mergeProjects());
+  }
 
   const customerById = useMemo(() => {
     const map = new Map<string, Customer>();
@@ -411,34 +424,46 @@ export function OrdersBrowser() {
                               const projectSale = projectSaleTotal(project.id);
                               return (
                                 <li key={project.id}>
-                                  <Link
-                                    href={ROUTES.design.editor(
-                                      customer.id,
-                                      project.id
-                                    )}
-                                    className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-card active:bg-card"
-                                  >
-                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
-                                      {index + 1}
-                                    </span>
-                                    <div className="min-w-0 flex-1">
-                                      <p className="truncate text-sm font-semibold text-foreground">
-                                        {project.name}
-                                        {project.location ? (
-                                          <span className="font-normal text-muted">
-                                            {" "}
-                                            · {project.location}
-                                          </span>
-                                        ) : null}
-                                      </p>
-                                      <p className="mt-0.5 text-xs text-muted">
-                                        {statusLabel(project.status)}
-                                        {projectSale > 0
-                                          ? ` · بيع: ${formatCurrency(projectSale)} ج.م`
-                                          : ""}
-                                      </p>
-                                    </div>
-                                  </Link>
+                                  <div className="flex items-center gap-1 rounded-xl pe-1 transition-colors hover:bg-card">
+                                    <Link
+                                      href={ROUTES.design.editor(
+                                        customer.id,
+                                        project.id
+                                      )}
+                                      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2.5 active:bg-card"
+                                    >
+                                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
+                                        {index + 1}
+                                      </span>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-semibold text-foreground">
+                                          {project.name}
+                                          {project.location ? (
+                                            <span className="font-normal text-muted">
+                                              {" "}
+                                              · {project.location}
+                                            </span>
+                                          ) : null}
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-muted">
+                                          {statusLabel(project.status)}
+                                          {projectSale > 0
+                                            ? ` · بيع: ${formatCurrency(projectSale)} ج.م`
+                                            : ""}
+                                        </p>
+                                      </div>
+                                    </Link>
+                                    <button
+                                      type="button"
+                                      aria-label={`حذف ${project.name}`}
+                                      onClick={() =>
+                                        handleDeleteProject(project)
+                                      }
+                                      className="shrink-0 rounded-lg px-2.5 py-2 text-xs font-semibold text-[#E85A8A] transition-colors hover:bg-[#E85A8A]/10"
+                                    >
+                                      حذف
+                                    </button>
+                                  </div>
                                 </li>
                               );
                             })}
@@ -489,39 +514,50 @@ export function OrdersBrowser() {
             const projectSale = projectSaleTotal(project.id);
             return (
               <li key={project.id}>
-                <Link
-                  href={ROUTES.design.editor(
-                    project.customerId,
-                    project.id
-                  )}
-                  className="block rounded-2xl border border-border bg-card p-4 shadow-[0_2px_10px_rgba(15,20,28,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 active:scale-[0.99]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-base font-bold text-foreground">
-                        {project.name}
-                      </h3>
-                      <p className="mt-0.5 text-sm text-muted">
-                        {customer?.name ?? "عميل"}
-                        {project.location ? ` · ${project.location}` : ""}
-                      </p>
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_10px_rgba(15,20,28,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30">
+                  <Link
+                    href={ROUTES.design.editor(
+                      project.customerId,
+                      project.id
+                    )}
+                    className="block active:scale-[0.99]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-base font-bold text-foreground">
+                          {project.name}
+                        </h3>
+                        <p className="mt-0.5 text-sm text-muted">
+                          {customer?.name ?? "عميل"}
+                          {project.location ? ` · ${project.location}` : ""}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                          project.status === "open"
+                            ? "bg-primary-soft text-primary"
+                            : "bg-background text-muted"
+                        }`}
+                      >
+                        {statusLabel(project.status)}
+                      </span>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                        project.status === "open"
-                          ? "bg-primary-soft text-primary"
-                          : "bg-background text-muted"
-                      }`}
+                    {projectSale > 0 ? (
+                      <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        بيع: {formatCurrency(projectSale)} ج.م
+                      </p>
+                    ) : null}
+                  </Link>
+                  <div className="mt-3 flex justify-end border-t border-border pt-3">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProject(project)}
+                      className="rounded-xl border border-[#E85A8A]/35 px-3 py-2 text-xs font-semibold text-[#E85A8A] transition-colors hover:bg-[#E85A8A]/10"
                     >
-                      {statusLabel(project.status)}
-                    </span>
+                      حذف المشروع
+                    </button>
                   </div>
-                  {projectSale > 0 ? (
-                    <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      بيع: {formatCurrency(projectSale)} ج.م
-                    </p>
-                  ) : null}
-                </Link>
+                </div>
               </li>
             );
           })}

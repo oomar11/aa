@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   unit: "upvc-unit",
   customers: "upvc-customers",
   projects: "upvc-projects",
+  deletedProjects: "upvc-deleted-projects",
   projectItems: "upvc-project-items",
   materialSystems: "upvc-material-systems",
   templateOrder: "upvc-template-order",

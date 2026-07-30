@@ -8,11 +8,7 @@ import {
   type Customer,
 } from "@/lib/customers";
 import { loadCompany } from "@/lib/company";
-import {
-  loadLocalProjects,
-  projects as seedProjects,
-  type Project,
-} from "@/lib/projects";
+import { listAllProjects, type Project } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 
 function statusLabel(status: Project["status"]): string {
@@ -30,13 +26,7 @@ function mergeCustomers(): Customer[] {
 }
 
 function mergeProjects(): Project[] {
-  if (typeof window === "undefined") return seedProjects;
-  const localProjects = loadLocalProjects();
-  const localProjectIds = new Set(localProjects.map((p) => p.id));
-  return [
-    ...localProjects,
-    ...seedProjects.filter((p) => !localProjectIds.has(p.id)),
-  ];
+  return listAllProjects();
 }
 
 export function HomeDashboard() {
