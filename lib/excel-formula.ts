@@ -188,7 +188,7 @@ class Parser {
   }
 
   private parseComparison(): number {
-    let left = this.parseAdd();
+    const left = this.parseAdd();
     const op = this.peekOp();
     if (op && ["=", "<>", "<", ">", "<=", ">="].includes(op)) {
       this.eat();
