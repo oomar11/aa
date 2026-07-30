@@ -1461,6 +1461,8 @@ function profileCostEntries(m: MaterialsBreakdown): ProfileCostEntry[] {
     { category: "bead-double-hinged", lengthM: m.beadDoubleHingedM },
     { category: "bead-double-sliding", lengthM: m.beadDoubleSlidingM },
     { category: "mesh-sliding-profile", lengthM: m.meshSlidingProfileM },
+    { category: "four-leaf-meeting", lengthM: m.fourLeafMeetingM },
+    { category: "mesh-meeting", lengthM: m.meshMeetingM },
     { category: "mullion", lengthM: m.mullionTotalM },
   ];
   return entries.filter((e) => e.lengthM > 0.0005);

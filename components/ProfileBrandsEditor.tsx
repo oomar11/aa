@@ -113,7 +113,8 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
           <h3 className="text-xs font-bold text-foreground">براندات القطاعات</h3>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
             أضف براند (سيتي · بريمير · …) وحدد سعر المتر لكل نوع: حلق، ضلفة،
-            باكتة، سوقاس، …
+            باكتة، سوقاس، … — براند السيتي الافتراضي من قائمة السيتي بريمير
+            فبراير 2025 (سعر العود ÷ طول العود).
           </p>
         </div>
       ) : null}
@@ -216,6 +217,10 @@ export function ProfileBrandsEditor({ embedded = false }: Props) {
           <div>
             <p className="mb-2 text-[11px] font-semibold text-foreground">
               قائمة الأسعار (ج.م/متر طولي)
+            </p>
+            <p className="mb-2 text-[10px] leading-relaxed text-muted">
+              من سعر العود في قائمة المصنع: اقسم سعر العود على طوله (مثلاً 790÷6 =
+              132 للحلق المفصلي).
             </p>
             <div className="grid grid-cols-2 gap-2">
               {PROFILE_PRICE_CATEGORIES.map((cat) => (

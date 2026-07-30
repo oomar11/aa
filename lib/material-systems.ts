@@ -102,7 +102,9 @@ export type ProfilePriceCategory =
   | "bead-single-sliding"
   | "bead-double-hinged"
   | "bead-double-sliding"
-  | "mesh-sliding-profile";
+  | "mesh-sliding-profile"
+  | "four-leaf-meeting"
+  | "mesh-meeting";
 
 export const PROFILE_PRICE_CATEGORIES: {
   id: ProfilePriceCategory;
@@ -123,6 +125,8 @@ export const PROFILE_PRICE_CATEGORIES: {
   { id: "bead-double-hinged", label: "باكتة دبل مفصلي" },
   { id: "bead-double-sliding", label: "باكتة دبل جرار" },
   { id: "mesh-sliding-profile", label: "ضلفة سلك جرار" },
+  { id: "four-leaf-meeting", label: "تقابل ٤ ضلفة" },
+  { id: "mesh-meeting", label: "تقابل سلك" },
 ];
 
 export function profilePriceCategoryLabel(id: ProfilePriceCategory): string {
@@ -1051,31 +1055,59 @@ export function profileBarPricePerM(
   return Math.round((barPrice / barLengthM) * 100) / 100;
 }
 
-/** أسعار قطاع سيتي بريمير — فبراير 2025 (ج.م/متر طولي محسوب من سعر العود) */
+/** @deprecated استخدم profileBarPricePerM */
+export function barPriceToPerMeter(barPrice: number, barLengthM: number): number {
+  return profileBarPricePerM(barPrice, barLengthM);
+}
+
+const CITY_BRAND_NOTES =
+  "قائمة أسعار قطاع سيتي بريمير — فبراير 2025 (بدون نقل · الأسعار تشمل الكاوتش والألوان أبيض/بيج/رصاصي)";
+
+/**
+ * قائمة أسعار قطاع السيتي بريمير (فبراير 2025) — ج.م/متر طولي.
+ * المصدر: سعر العود ÷ طول العود من قائمة المصنع.
+ *
+ * مراجع سعر العود:
+ * - حلق مفصلي ببار 6سم: 790 / 6م
+ * - حلق جرار 3 سكة ببار 6سم: 1000 / 6.5م
+ * - ضلفة شباك مفصلي: 830 / 6م · ضلفة باب مفصلي: 980 / 6م
+ * - ضلفة شباك جرار: 750 / 6م
+ * - سوقاس ثابت: 875 / 6.5م · بوكلير متحرك: 710 / 6.5م
+ * - كوبلن: 240 / 6م · طبة وسكينة شباك جرار: 255 / 6.5م
+ * - باكتة 20مم: 165 / 6م · باكتة 35مم: 208 / 6م · باكتة 9مم: 140 / 6م
+ * - ضلفة سلك جرار: 380 / 6م · تقابل 4 ضلفة: 190 / 6م · تقابل سلك: 140 / 6م
+ */
 export function cityPremierProfileBrandPrices(): Partial<
   Record<ProfilePriceCategory, number>
 > {
   const bar = profileBarPricePerM;
-  const capKnifeWindow = bar(255, 6.5) / 2;
   return {
-    // مفصلي
-    "frame-hinged": bar(650, 6), // حلق مفصلى بدون بار
-    "sash-hinged": bar(830, 6), // ضلفه شباك مفصلى
-    "sash-door": bar(980, 6), // ضلفه باب مفصلى
-    bouclier: bar(710, 6.5), // ر قائم متحرك بوكلي
-    mullion: bar(875, 6.5), // قائم ثابت سوقاس مفصلي
-    "bead-double-hinged": bar(750, 6.5), // بانل 3 طبقات
+    // مفصلي — حلق ببار 6سم (القياسي مع الكاوتش/البار)
+    "frame-hinged": bar(790, 6),
+    "sash-hinged": bar(830, 6),
+    "sash-door": bar(980, 6),
+    bouclier: bar(710, 6.5),
+    mullion: bar(875, 6.5),
     "bead-single-hinged": bar(165, 6), // باكته 20 مم
-    coupling: bar(240, 6), // كوبلن تجميع مفصلى/ جرار
+    "bead-double-hinged": bar(208, 6), // باكته 35 مم (مش بانل)
+    coupling: bar(240, 6),
     // جرار
-    "frame-sliding": bar(1000, 6.5), // حلق جرار 3 سكه ببار
-    "sash-sliding": bar(750, 6), // ضلفه شباك جرار
-    knife: capKnifeWindow, // نصف طبه وسكينه شباك جرار
-    "bouclier-cap": capKnifeWindow,
-    "bead-single-sliding": bar(140, 6), // باكته 9 مم
+    "frame-sliding": bar(1000, 6.5),
+    "sash-sliding": bar(750, 6),
+    knife: bar(255, 6.5), // طبه وسكينه شباك جرار
+    "bead-single-sliding": bar(165, 6), // باكته 20 مم
     "bead-double-sliding": bar(208, 6), // باكته 35 مم
-    "mesh-sliding-profile": bar(380, 6), // ضلفه سلك جرار
+    "mesh-sliding-profile": bar(380, 6),
+    "four-leaf-meeting": bar(190, 6),
+    "mesh-meeting": bar(140, 6),
   };
+}
+
+/** قالب أسعار لبراند جديد — يبدأ من قائمة السيتي بريمير */
+export function defaultProfileBrandPrices(): Partial<
+  Record<ProfilePriceCategory, number>
+> {
+  return cityPremierProfileBrandPrices();
 }
 
 /** أسعار افتراضية قديمة — للترحيل فقط */
@@ -1097,6 +1129,9 @@ const LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES = {
   "mesh-sliding-profile": 38,
 } as const satisfies Partial<Record<ProfilePriceCategory, number>>;
 
+/** توقيع خاطئ من ترحيل سابق: باكتة دبل = سعر البانل */
+const LEGACY_PANEL_AS_DOUBLE_BEAD = profileBarPricePerM(750, 6.5);
+
 function profileBrandPricesMatch(
   prices: Partial<Record<ProfilePriceCategory, number>>,
   expected: Partial<Record<ProfilePriceCategory, number>>
@@ -1107,29 +1142,60 @@ function profileBrandPricesMatch(
   return true;
 }
 
-function migrateCityPremierProfileBrandPrices(
+/** يحدّث براند السيتي بريمير من الأسعار النموذجية/الناقصة إلى قائمة المصنع */
+export function migrateCityPremierProfileBrandPrices(
   brands: ProfileBrand[]
 ): ProfileBrand[] {
-  const cityPremier = cityPremierProfileBrandPrices();
+  const official = cityPremierProfileBrandPrices();
   return brands.map((brand) => {
     if (brand.id !== "brand-city") return brand;
-    if (!profileBrandPricesMatch(brand.prices, LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES)) {
-      return brand;
+
+    if (
+      profileBrandPricesMatch(brand.prices, LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES)
+    ) {
+      return {
+        ...brand,
+        name: "سيتي بريمير",
+        notes: CITY_BRAND_NOTES,
+        prices: { ...official },
+      };
     }
+
+    const merged = { ...brand.prices };
+    let changed = false;
+
+    // إصلاح ربط باكتة دبل بسعر البانل بالغلط
+    if ((merged["bead-double-hinged"] ?? 0) === LEGACY_PANEL_AS_DOUBLE_BEAD) {
+      merged["bead-double-hinged"] = official["bead-double-hinged"];
+      changed = true;
+    }
+
+    for (const cat of PROFILE_PRICE_CATEGORIES) {
+      if ((merged[cat.id] ?? 0) <= 0 && (official[cat.id] ?? 0) > 0) {
+        merged[cat.id] = official[cat.id];
+        changed = true;
+      }
+    }
+
+    const name = brand.name === "سيتي" ? "سيتي بريمير" : brand.name;
+    const notes =
+      !(brand.notes ?? "").includes("فبراير 2025") && changed
+        ? CITY_BRAND_NOTES
+        : brand.notes;
+
+    if (!changed && name === brand.name && notes === brand.notes) return brand;
     return {
       ...brand,
-      name: "سيتي بريمير",
-      notes:
-        "قائمة أسعار قطاع سيتي بريمير — فبراير 2025 (بدون نقل · الأسعار تشمل الكاوتش والألوان أبيض/بيج/رصاصي)",
-      prices: { ...cityPremier },
+      name,
+      notes: notes || CITY_BRAND_NOTES,
+      prices: merged,
     };
   });
 }
 
-export function defaultProfileBrandPrices(): Partial<
-  Record<ProfilePriceCategory, number>
-> {
-  return cityPremierProfileBrandPrices();
+/** @deprecated استخدم migrateCityPremierProfileBrandPrices */
+export function migrateCityBrandPrices(brands: ProfileBrand[]): ProfileBrand[] {
+  return migrateCityPremierProfileBrandPrices(brands);
 }
 
 export function defaultProfileBrands(): ProfileBrand[] {
@@ -1137,9 +1203,8 @@ export function defaultProfileBrands(): ProfileBrand[] {
     {
       id: "brand-city",
       name: "سيتي بريمير",
-      notes:
-        "قائمة أسعار قطاع سيتي بريمير — فبراير 2025 (بدون نقل · الأسعار تشمل الكاوتش والألوان أبيض/بيج/رصاصي)",
-      prices: defaultProfileBrandPrices(),
+      notes: CITY_BRAND_NOTES,
+      prices: cityPremierProfileBrandPrices(),
     },
     {
       id: "brand-premier",
@@ -1667,7 +1732,7 @@ export function getDefaultCatalog(): MaterialCatalog {
         id: "pvc1",
         name: "بريمير سيتي",
         notes:
-          "سيستم بريمير سيتي — بياخد قائمة أسعار سيتي بريمير للحلق والضلفة والباكتة والسوقاس",
+          "سيستم بريمير سيتي — تكلفة القطاعات من قائمة أسعار سيتي بريمير (فبراير 2025)",
         isDefault: true,
         profileBrandId: "brand-city",
         profile: {
@@ -1686,7 +1751,8 @@ export function getDefaultCatalog(): MaterialCatalog {
       withDefaultProfile({
         id: "pvc2",
         name: "بريمير سلايد",
-        notes: "سيستم جرار — قائمة أسعار سيتي بريمير",
+        notes:
+          "سيستم جرار — تكلفة القطاعات من قائمة أسعار سيتي بريمير (فبراير 2025)",
         profileBrandId: "brand-city",
         profile: {
           pieces: standardSlidingProfilePieces().map((p) => ({
@@ -2434,13 +2500,14 @@ function migrateProfileSystemLabels(systems: MaterialSystem[]): MaterialSystem[]
       fromNames: ["نظام PVC مخصص 1"],
       name: "بريمير سيتي",
       notes:
-        "سيستم بريمير سيتي — بياخد قائمة أسعار سيتي بريمير للحلق والضلفة والباكتة والسوقاس",
+        "سيستم بريمير سيتي — تكلفة القطاعات من قائمة أسعار سيتي بريمير (فبراير 2025)",
       brandId: "brand-city",
     },
     pvc2: {
       fromNames: ["نظام PVC مخصص 2"],
       name: "بريمير سلايد",
-      notes: "سيستم جرار — قائمة أسعار سيتي بريمير",
+      notes:
+        "سيستم جرار — تكلفة القطاعات من قائمة أسعار سيتي بريمير (فبراير 2025)",
       brandId: "brand-city",
     },
   };

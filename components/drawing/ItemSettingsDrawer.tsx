@@ -334,8 +334,8 @@ export function ItemSettingsDrawer({
 
           <Section title="نظام القطاعات">
             <p className="mb-2 text-[11px] text-muted">
-              مثال: بريمير سيتي بياخد قائمة أسعار سيتي بريمير للحلق والضلفة والباكتة
-              والسوقاس
+مثال: بريمير سيتي بياخد قائمة أسعار سيتي بريمير (فبراير 2025)
+              للحلق والضلفة والباكتة والسوقاس
             </p>
             <RadioList
               name="system"
