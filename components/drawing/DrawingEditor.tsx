@@ -61,8 +61,13 @@ import {
 } from "@/lib/drawing-ops";
 import {
   getItemsForProject,
+  getProjectById,
   saveItemsForProject,
 } from "@/lib/projects";
+import {
+  effectiveItemMaterials,
+  projectMaterialDefaultsFrom,
+} from "@/lib/project-materials";
 import { applyBouclierRules, isBouclierEligible } from "@/lib/bouclier";
 import { fromMm, toMm } from "@/lib/units";
 import type { LayoutNode } from "@/lib/window-layout";
@@ -198,6 +203,16 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
     saveItemsForProject(projectId, next);
   }, [projectId, itemId, router, backHref]);
 
+  const projectMaterials = useMemo(
+    () => projectMaterialDefaultsFrom(getProjectById(projectId)),
+    [projectId]
+  );
+
+  const calcItem = useMemo(() => {
+    if (!item) return null;
+    return effectiveItemMaterials(item, projectMaterials);
+  }, [item, projectMaterials]);
+
   const persistItem = useCallback(
     (next: DesignItem, pushHistory = true) => {
       const withRules: DesignItem = next.layout
@@ -225,42 +240,42 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   );
 
   const materials = useMemo(() => {
-    if (!item) return null;
-    return scaleMaterials(calcItemMaterials(item), item.qty);
-  }, [item]);
+    if (!calcItem) return null;
+    return scaleMaterials(calcItemMaterials(calcItem), calcItem.qty);
+  }, [calcItem]);
 
   const glassBreakdown = useMemo((): GlassBreakdown | null => {
-    if (!item) return null;
-    return calcGlassBreakdown(item);
-  }, [item]);
+    if (!calcItem) return null;
+    return calcGlassBreakdown(calcItem);
+  }, [calcItem]);
 
   const meshBreakdown = useMemo((): MeshBreakdown | null => {
-    if (!item) return null;
-    return calcMeshBreakdown(item);
-  }, [item]);
+    if (!calcItem) return null;
+    return calcMeshBreakdown(calcItem);
+  }, [calcItem]);
 
   const accessoriesBreakdown = useMemo((): AccessoriesBreakdown | null => {
-    if (!item) return null;
-    return scaleAccessories(calcItemAccessories(item), item.qty);
-  }, [item]);
+    if (!calcItem) return null;
+    return scaleAccessories(calcItemAccessories(calcItem), calcItem.qty);
+  }, [calcItem]);
 
   const profileCostBreakdown = useMemo((): ProfileCostBreakdown | null => {
-    if (!item) return null;
-    return calcProfileCostBreakdown(item, calcItemMaterials(item));
-  }, [item]);
+    if (!calcItem) return null;
+    return calcProfileCostBreakdown(calcItem, calcItemMaterials(calcItem));
+  }, [calcItem]);
 
   const ironBreakdown = useMemo((): IronBreakdown | null => {
-    if (!item || !item.ironId || item.ironId === "none") return null;
+    if (!calcItem || !calcItem.ironId || calcItem.ironId === "none") return null;
     const catalog = loadMaterialCatalog();
-    const ironSystem = findSystem("iron", item.ironId, catalog);
+    const ironSystem = findSystem("iron", calcItem.ironId, catalog);
     const profileSystem =
-      item.systemId && item.systemId !== "none"
-        ? findSystem("profiles", item.systemId, catalog)
+      calcItem.systemId && calcItem.systemId !== "none"
+        ? findSystem("profiles", calcItem.systemId, catalog)
         : null;
-    const raw = calcIronBreakdown(item, ironSystem, profileSystem);
+    const raw = calcIronBreakdown(calcItem, ironSystem, profileSystem);
     if (!raw) return null;
-    return scaleIronBreakdown(raw, item.qty);
-  }, [item]);
+    return scaleIronBreakdown(raw, calcItem.qty);
+  }, [calcItem]);
 
   const activeOpening = useMemo(() => {
     if (!item || !selectedPaneId) return null;
@@ -328,11 +343,16 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       notes: patch.notes,
       specialPrice: patch.specialPrice,
       discountId: patch.discountId,
-      systemId: patch.systemId,
-      accessoryId: patch.accessoryId,
-      glassPane1Id: patch.glassPane1Id,
-      glassPane2Id: patch.glassPane2Id,
-      glassGeorgian: patch.glassGeorgian,
+      systemId:
+        patch.systemId === "__project__" ? undefined : patch.systemId,
+      accessoryId:
+        patch.accessoryId === "__project__" ? undefined : patch.accessoryId,
+      glassPane1Id:
+        patch.glassFromProject ? undefined : patch.glassPane1Id,
+      glassPane2Id:
+        patch.glassFromProject ? undefined : patch.glassPane2Id,
+      glassGeorgian:
+        patch.glassFromProject ? undefined : patch.glassGeorgian,
       ironId: patch.ironId,
       frameColor: patch.frameColor,
     });
@@ -398,7 +418,8 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
     const created = createItemFromTemplate(
       templateId,
       layout,
-      items.length + 1
+      items.length + 1,
+      projectMaterials
     );
     saveItemsForProject(projectId, [created, ...items]);
     setPickerOpen(false);
@@ -529,7 +550,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
             partLabel={item.name || "شباك"}
             widthMm={item.widthMm}
             heightMm={item.heightMm}
-            systemId={item.systemId}
+            systemId={calcItem?.systemId ?? item.systemId}
           />
         ) : null}
       </main>
@@ -654,6 +675,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       <ItemSettingsDrawer
         open={settingsOpen}
         item={item}
+        projectDefaults={projectMaterials}
         onClose={() => setSettingsOpen(false)}
         onConfirm={handleSettingsConfirm}
       />

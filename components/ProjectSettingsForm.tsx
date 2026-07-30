@@ -3,6 +3,12 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { ScreenBack } from "@/components/ScreenBack";
+import { ProjectMaterialDefaultsFields } from "@/components/ProjectMaterialDefaultsFields";
+import {
+  defaultProjectMaterialDefaults,
+  type ProjectMaterialDefaults,
+} from "@/lib/project-materials";
+import { loadMaterialCatalog } from "@/lib/material-systems";
 import {
   getProjectById,
   upsertProjectOverride,
@@ -20,6 +26,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [status, setStatus] = useState<Project["status"]>("open");
+  const [materials, setMaterials] = useState<ProjectMaterialDefaults>({});
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -30,6 +37,15 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
     setName(found.name);
     setAddress(found.location ?? "");
     setStatus(found.status);
+    const catalog = loadMaterialCatalog();
+    const defaults = defaultProjectMaterialDefaults(catalog);
+    setMaterials({
+      systemId: found.systemId ?? defaults.systemId,
+      accessoryId: found.accessoryId ?? defaults.accessoryId,
+      glassPane1Id: found.glassPane1Id ?? defaults.glassPane1Id,
+      glassPane2Id: found.glassPane2Id,
+      glassGeorgian: found.glassGeorgian ?? defaults.glassGeorgian,
+    });
   }, [projectId]);
 
   function handleSubmit(e: FormEvent) {
@@ -55,6 +71,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
       name: trimmedName,
       location: trimmedAddress,
       status,
+      ...materials,
     };
 
     upsertProjectOverride(updated);
@@ -151,6 +168,19 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
           </button>
         </div>
       </fieldset>
+
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <h2 className="mb-3 text-sm font-bold text-foreground">
+          خامات المشروع الافتراضية
+        </h2>
+        <ProjectMaterialDefaultsFields
+          value={materials}
+          onChange={(next) => {
+            setMaterials(next);
+            setSaved(false);
+          }}
+        />
+      </div>
 
       {error ? (
         <p className="text-sm font-medium text-[#E85A8A]">{error}</p>

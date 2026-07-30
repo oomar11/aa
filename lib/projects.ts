@@ -2,6 +2,7 @@ import {
   sampleDesignItems,
   type DesignItem,
 } from "@/lib/design-items";
+import type { ProjectMaterialDefaults } from "@/lib/project-materials";
 
 export type Project = {
   id: string;
@@ -11,7 +12,7 @@ export type Project = {
   createdAt: string;
   status: "open" | "done";
   itemsCount: number;
-};
+} & ProjectMaterialDefaults;
 
 export const PROJECTS_STORAGE_KEY = "upvc-projects";
 

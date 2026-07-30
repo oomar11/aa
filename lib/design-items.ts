@@ -11,9 +11,11 @@ import {
   getDefaultGlassBottleId,
   getDefaultSystemId,
   getMeshCategories,
+  loadMaterialCatalog,
   resolveGlassBottleId,
   type MaterialCatalog,
 } from "@/lib/material-systems";
+import type { ProjectMaterialDefaults } from "@/lib/project-materials";
 import { suggestItemName } from "@/lib/item-naming";
 
 export type WindowStyle =
@@ -418,8 +420,12 @@ export function defaultPanesForLayout(
 export function createItemFromTemplate(
   templateId: string,
   layout: LayoutNode,
-  _index: number
+  _index: number,
+  project?: ProjectMaterialDefaults | null
 ): DesignItem {
+  const catalog =
+    typeof window !== "undefined" ? loadMaterialCatalog() : undefined;
+  const projectDefaults = project ?? {};
   const cloned = ensurePaneIds(cloneLayout(layout));
   const size = defaultSizeForLayout(cloned);
   const draft: DesignItem = {
@@ -438,9 +444,14 @@ export function createItemFromTemplate(
     notes: "",
     specialPrice: null,
     discountId: "none",
-    systemId: getDefaultSystemId("profiles"),
-    accessoryId: getDefaultSystemId("accessories"),
-    glassPane1Id: getDefaultGlassBottleId(),
+    systemId:
+      projectDefaults.systemId ?? getDefaultSystemId("profiles", catalog),
+    accessoryId:
+      projectDefaults.accessoryId ?? getDefaultSystemId("accessories", catalog),
+    glassPane1Id:
+      projectDefaults.glassPane1Id ?? getDefaultGlassBottleId(catalog),
+    glassPane2Id: projectDefaults.glassPane2Id,
+    glassGeorgian: projectDefaults.glassGeorgian,
     /** الحديد ثابت غالباً — يُملأ بالافتراضي عند فتح الإعدادات إن لزم */
     ironId: "iron-std",
   };

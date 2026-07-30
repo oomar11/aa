@@ -29,6 +29,7 @@ import {
   saveItemsForProject,
   type Project,
 } from "@/lib/projects";
+import { projectMaterialDefaultsFrom } from "@/lib/project-materials";
 import { formatCurrency } from "@/lib/utils";
 import { formatSizePair, type LengthUnit } from "@/lib/units";
 import { useUnit } from "@/components/UnitProvider";
@@ -161,7 +162,13 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
 
   function handleConfirmTemplate(templateId: string, layout: LayoutNode) {
     if (!customerId || !projectId) return;
-    const item = createItemFromTemplate(templateId, layout, items.length + 1);
+    const proj = getProjectById(projectId);
+    const item = createItemFromTemplate(
+      templateId,
+      layout,
+      items.length + 1,
+      projectMaterialDefaultsFrom(proj)
+    );
     persist([item, ...items]);
     setPickerOpen(false);
     router.push(drawHref(item.id));

@@ -1,7 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { ProjectMaterialDefaultsFields } from "@/components/ProjectMaterialDefaultsFields";
+import {
+  defaultProjectMaterialDefaults,
+  type ProjectMaterialDefaults,
+} from "@/lib/project-materials";
+import { loadMaterialCatalog } from "@/lib/material-systems";
 import {
   loadLocalProjects,
   PROJECTS_STORAGE_KEY,
@@ -16,7 +22,12 @@ export function NewProjectForm({ customerId }: Props) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [materials, setMaterials] = useState<ProjectMaterialDefaults>({});
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setMaterials(defaultProjectMaterialDefaults(loadMaterialCatalog()));
+  }, []);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -40,6 +51,7 @@ export function NewProjectForm({ customerId }: Props) {
       createdAt: new Date().toISOString().slice(0, 10),
       status: "open",
       itemsCount: 0,
+      ...materials,
     };
 
     const existing = loadLocalProjects();
@@ -90,6 +102,16 @@ export function NewProjectForm({ customerId }: Props) {
           className={fieldClass}
         />
       </label>
+
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <h2 className="mb-3 text-sm font-bold text-foreground">
+          خامات المشروع الافتراضية
+        </h2>
+        <ProjectMaterialDefaultsFields
+          value={materials}
+          onChange={setMaterials}
+        />
+      </div>
 
       {error ? (
         <p className="text-sm font-medium text-[#E85A8A]">{error}</p>

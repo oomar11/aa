@@ -13,7 +13,13 @@ import {
   loadSystemOptions,
   type DiscountId,
 } from "@/lib/item-catalogs";
-import { getDefaultGlassBottleId, getDefaultSystemId, glassBottleOptions, loadMaterialCatalog, resolveGlassBottleId } from "@/lib/material-systems";
+import { getDefaultGlassBottleId, getDefaultSystemId, glassBottleOptions, loadMaterialCatalog, findSystem, resolveGlassBottleId } from "@/lib/material-systems";
+import {
+  resolveItemGlassPane1Id,
+  resolveItemGlassPane2Id,
+  resolveItemGlassGeorgian,
+  type ProjectMaterialDefaults,
+} from "@/lib/project-materials";
 import { GlassBottlePicker } from "@/components/GlassBottlePicker";
 import { suggestItemName } from "@/lib/item-naming";
 
@@ -29,15 +35,20 @@ export type ItemSettingsPatch = {
   glassPane1Id?: string;
   glassPane2Id?: string;
   glassGeorgian?: boolean;
+  /** الزجاج من إعداد المشروع — يُمسح اختيار البند */
+  glassFromProject?: boolean;
   ironId: string;
   frameColor: FrameColorId;
 };
+
+const PROJECT_INHERIT_ID = "__project__";
 
 type CatalogOpts = { id: string; label: string }[];
 
 type Props = {
   open: boolean;
   item: DesignItem;
+  projectDefaults?: ProjectMaterialDefaults | null;
   onClose: () => void;
   onConfirm: (patch: ItemSettingsPatch) => void;
 };
@@ -47,7 +58,13 @@ function resolveIronId(item: DesignItem): string {
   return getDefaultSystemId("iron");
 }
 
-function toDraft(item: DesignItem): ItemSettingsPatch {
+function toDraft(
+  item: DesignItem,
+  projectDefaults?: ProjectMaterialDefaults | null
+): ItemSettingsPatch {
+  const catalog = loadMaterialCatalog();
+  const glassFromProject =
+    !item.glassPane1Id && !item.glassPane2Id && item.glassGeorgian == null;
   return {
     name: item.name || suggestItemName(item),
     nameIsCustom: Boolean(item.nameIsCustom),
@@ -58,20 +75,33 @@ function toDraft(item: DesignItem): ItemSettingsPatch {
         ? item.specialPrice
         : null,
     discountId: (item.discountId as DiscountId) || "none",
-    systemId: item.systemId || "none",
-    accessoryId: item.accessoryId || "none",
-    glassPane1Id:
-      resolveGlassBottleId(item.glassPane1Id) ??
-      getDefaultGlassBottleId(loadMaterialCatalog()),
-    glassPane2Id: item.glassPane2Id,
-    glassGeorgian: item.glassGeorgian,
+    systemId:
+      item.systemId === undefined
+        ? PROJECT_INHERIT_ID
+        : item.systemId || "none",
+    accessoryId:
+      item.accessoryId === undefined
+        ? PROJECT_INHERIT_ID
+        : item.accessoryId || "none",
+    glassFromProject,
+    glassPane1Id: resolveItemGlassPane1Id(item, projectDefaults, catalog),
+    glassPane2Id: resolveItemGlassPane2Id(item, projectDefaults),
+    glassGeorgian: resolveItemGlassGeorgian(item, projectDefaults),
     ironId: resolveIronId(item),
     frameColor: (item.frameColor as FrameColorId) || "white",
   };
 }
 
-export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
-  const [draft, setDraft] = useState<ItemSettingsPatch>(() => toDraft(item));
+export function ItemSettingsDrawer({
+  open,
+  item,
+  projectDefaults,
+  onClose,
+  onConfirm,
+}: Props) {
+  const [draft, setDraft] = useState<ItemSettingsPatch>(() =>
+    toDraft(item, projectDefaults)
+  );
   const [specialText, setSpecialText] = useState(
     item.specialPrice != null && item.specialPrice > 0
       ? String(item.specialPrice)
@@ -86,7 +116,7 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    const next = toDraft(item);
+    const next = toDraft(item, projectDefaults);
     setDraft(next);
     setSpecialText(
       next.specialPrice != null && next.specialPrice > 0
@@ -97,7 +127,7 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
     setAccessoryOpts(loadAccessoryOptions());
     setIronOpts(loadIronOptions());
     setBottleOpts(glassBottleOptions());
-  }, [open, item]);
+  }, [open, item, projectDefaults]);
 
   useEffect(() => {
     if (!open) return;
@@ -109,6 +139,23 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const catalog = loadMaterialCatalog();
+  const projectSystemLabel = projectDefaults?.systemId
+    ? findSystem("profiles", projectDefaults.systemId, catalog)?.name
+    : null;
+  const projectAccessoryLabel = projectDefaults?.accessoryId
+    ? findSystem("accessories", projectDefaults.accessoryId, catalog)?.name
+    : null;
+  const systemOptions = projectSystemLabel
+    ? [{ id: PROJECT_INHERIT_ID, label: `من المشروع (${projectSystemLabel})` }, ...systemOpts]
+    : systemOpts;
+  const accessoryOptions = projectAccessoryLabel
+    ? [
+        { id: PROJECT_INHERIT_ID, label: `من المشروع (${projectAccessoryLabel})` },
+        ...accessoryOpts,
+      ]
+    : accessoryOpts;
 
   function commit() {
     const parsed = specialText.trim() === "" ? null : Number(specialText);
@@ -290,7 +337,7 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
             </p>
             <RadioList
               name="system"
-              options={systemOpts}
+              options={systemOptions}
               value={draft.systemId}
               onChange={(id) => setDraft((d) => ({ ...d, systemId: id }))}
             />
@@ -299,7 +346,7 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
           <Section title="نظام الاكسسوار">
             <RadioList
               name="accessory"
-              options={accessoryOpts}
+              options={accessoryOptions}
               value={draft.accessoryId}
               onChange={(id) => setDraft((d) => ({ ...d, accessoryId: id }))}
             />
@@ -307,8 +354,33 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
 
           <Section title="الزجاج">
             <p className="mb-2 text-[11px] text-muted">
-              يُطبَّق على كل ضلفات البند — لو ماختارتش، بيتحدد شفاف تلقائياً
+              يُطبَّق على كل ضلفات البند — أو اتبع إعداد المشروع
             </p>
+            {projectDefaults?.glassPane1Id ? (
+              <label className="mb-2 flex cursor-pointer items-center gap-2 text-[11px] text-foreground">
+                <input
+                  type="checkbox"
+                  checked={Boolean(draft.glassFromProject)}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      glassFromProject: e.target.checked,
+                      glassPane1Id: e.target.checked
+                        ? resolveItemGlassPane1Id(item, projectDefaults, catalog)
+                        : d.glassPane1Id,
+                      glassPane2Id: e.target.checked
+                        ? resolveItemGlassPane2Id(item, projectDefaults)
+                        : d.glassPane2Id,
+                      glassGeorgian: e.target.checked
+                        ? resolveItemGlassGeorgian(item, projectDefaults)
+                        : d.glassGeorgian,
+                    }))
+                  }
+                  className="h-4 w-4 accent-[var(--primary)]"
+                />
+                من المشروع (زجاج افتراضي)
+              </label>
+            ) : null}
             <GlassBottlePicker
               pane1Id={draft.glassPane1Id}
               pane2Id={draft.glassPane2Id}
@@ -317,6 +389,7 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
               onChange={(next) =>
                 setDraft((d) => ({
                   ...d,
+                  glassFromProject: false,
                   glassPane1Id: next.pane1Id,
                   glassPane2Id: next.pane2Id,
                   glassGeorgian: next.georgian,
