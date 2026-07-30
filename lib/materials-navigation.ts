@@ -71,6 +71,10 @@ export function materialsMeshBreadcrumb(): Crumb[] {
   return [MATERIALS_HUB_CRUMB, { label: "السلك" }];
 }
 
+export function materialsDeductionsBreadcrumb(): Crumb[] {
+  return [MATERIALS_HUB_CRUMB, { label: "التخصيمات" }];
+}
+
 /** خطوات العمل لصفحات فيها أكثر من مرحلة */
 export type MaterialWorkflowStep = {
   step: number;

@@ -19,6 +19,7 @@ import {
   findGlassBottle,
   findMeshType,
   findSystem,
+  getCutDeductions,
   getProfileSystemRate,
   loadMaterialCatalog,
   meshCategoryCalcProfile,
@@ -28,8 +29,8 @@ import {
   profileSystemHasPricing,
   profilePriceCategoryLabel,
   type MaterialCatalog,
-  type ProfileDeductions,
   type ProfilePriceCategory,
+  type UnifiedCutDeductions,
 } from "@/lib/material-systems";
 
 /** نوع الحلق حسب فتح الضلفة */
@@ -234,7 +235,8 @@ function beadTotalsMm(
   boxes: PaneBox[],
   panes: Record<string, PaneConfig> | undefined,
   item: DesignItem,
-  catalog?: MaterialCatalog
+  catalog?: MaterialCatalog,
+  deductions?: UnifiedCutDeductions | null
 ): BeadTotalsMm {
   const cat =
     catalog ??
@@ -251,17 +253,21 @@ function beadTotalsMm(
     if (isExhaustPane(box.opening)) continue;
     if (meshReplacesPaneGlass(cfg, box.opening, cat)) continue;
 
+    const cuts = profileCutsFor(box.w, box.h, deductions);
+    const beadW = cuts.beadGlassW;
+    const beadH = cuts.beadGlassH;
+
     const isSliding = box.kind === "sliding";
     const isDoubleGlass = Boolean(resolvePaneGlass(cfg, item, cat).pane2Id);
     const grid = cfg.grid ?? "solid";
-    const cells = getGridCells(grid, 0, 0, box.w, box.h);
+    const cells = getGridCells(grid, 0, 0, beadW, beadH);
     const panelSet = new Set(cfg.panelCells ?? []);
     const hasPanels = Boolean(cfg.sandwichPanels);
     const isLouver =
       box.opening === "panel-h" || box.opening === "panel-v";
 
     if (isLouver) {
-      addBeadMm(totals, isSliding, true, panePerimeterMm(box.w, box.h));
+      addBeadMm(totals, isSliding, true, panePerimeterMm(beadW, beadH));
       continue;
     }
 
@@ -273,7 +279,7 @@ function beadTotalsMm(
       hasPanels && cells.every((_, i) => panelSet.has(i));
 
     if (solidFullPanel || allCellsPanel) {
-      addBeadMm(totals, isSliding, true, panePerimeterMm(box.w, box.h));
+      addBeadMm(totals, isSliding, true, panePerimeterMm(beadW, beadH));
       continue;
     }
 
@@ -293,7 +299,7 @@ function beadTotalsMm(
       totals,
       isSliding,
       isDoubleGlass,
-      panePerimeterMm(box.w, box.h)
+      panePerimeterMm(beadW, beadH)
     );
   }
 
@@ -637,37 +643,42 @@ function sashMullionMm(
   return total;
 }
 
-/** مقاسات القطع بعد تخصيم نظام القطاعات */
+/** مقاسات القطع بعد التخصيم الموحد */
 function profileCutsFor(
   w: number,
   h: number,
-  deductions?: ProfileDeductions | null
-): { frameW: number; frameH: number; sashW: number; sashH: number } {
-  if (!deductions) {
-    return { frameW: w, frameH: h, sashW: w, sashH: h };
-  }
-  const cuts = calcCutSizes(w, h, deductions);
+  deductions?: UnifiedCutDeductions | null
+): {
+  frameW: number;
+  frameH: number;
+  sashW: number;
+  sashH: number;
+  beadGlassW: number;
+  beadGlassH: number;
+} {
+  const cuts = calcCutSizes(w, h, deductions ?? undefined);
   return {
     frameW: cuts.frameWidthMm,
     frameH: cuts.frameHeightMm,
     sashW: cuts.sashWidthMm,
     sashH: cuts.sashHeightMm,
+    beadGlassW: cuts.beadGlassWidthMm,
+    beadGlassH: cuts.beadGlassHeightMm,
   };
 }
 
 /** طول سكينة ضلفة جرار واحدة — بعد تخصيم ارتفاع الضلفة */
 function knifeLengthForSlidingSash(
   box: PaneBox,
-  deductions?: ProfileDeductions | null
+  deductions?: UnifiedCutDeductions | null
 ): number {
-  if (!deductions) return box.h;
   return profileCutsFor(box.w, box.h, deductions).sashH;
 }
 
 /** سكينة — قطعة واحدة لكل ضلفة جرار متحركة */
 function slidingKnifeProfileMm(
   boxes: PaneBox[],
-  deductions?: ProfileDeductions | null
+  deductions?: UnifiedCutDeductions | null
 ): number {
   let total = 0;
   for (const box of boxes) {
@@ -767,7 +778,7 @@ function meshSlidingRowGroups(
 /** طبة بوكلير — قطعة واحدة بارتفاع الضلفة (بعد التخصيم) لكل بوكلير صالح */
 function bouclierCapStats(
   boxes: PaneBox[],
-  deductions?: ProfileDeductions | null
+  deductions?: UnifiedCutDeductions | null
 ): { qty: number; lengthMm: number } {
   const hinged = boxes.filter((b) => isHingedOpening(b.opening));
   const boucliers = boxes.filter((b) => b.bouclier && b.opening === "fixed");
@@ -804,7 +815,7 @@ function bouclierCapStats(
 /** تقابل ٤ ضلفة جرار — قطعة واحدة بارتفاع الضلفة (بعد التخصيم) لكل صف فيه ٤+ ضلف */
 function fourLeafMeetingStats(
   boxes: PaneBox[],
-  deductions?: ProfileDeductions | null
+  deductions?: UnifiedCutDeductions | null
 ): {
   qty: number;
   lengthMm: number;
@@ -837,12 +848,12 @@ function meshMeetingStats(
   return { qty, lengthMm };
 }
 
-/** محيط قطاع الضلفة لكل ضلفة متحركة — بعد تخصيم الضلفة من نظام القطاعات */
+/** محيط قطاع الضلفة لكل ضلفة متحركة — بعد التخصيم الموحد */
 function sashProfileMm(
   boxes: PaneBox[],
   panes: Record<string, PaneConfig> | undefined,
   catalog?: MaterialCatalog,
-  deductions?: ProfileDeductions | null
+  deductions?: UnifiedCutDeductions | null
 ): {
   hinged: number;
   sliding: number;
@@ -907,17 +918,24 @@ export function meshReplacesPaneGlass(
   return meshCategoryCalcProfile(kind, cat);
 }
 
-/** مساحة الزجاج الفعلية داخل الضلفة (مم²) — بدون بنل */
+/** مساحة الزجاج الفعلية داخل الضلفة (مم²) — بدون بنل · بعد تخصيم الباكتة/الزجاج */
 function paneGlassAreaMm2(
   w: number,
   h: number,
   opening: PaneOpening,
   cfg: PaneConfig,
-  catalog?: MaterialCatalog
+  catalog?: MaterialCatalog,
+  deductions?: UnifiedCutDeductions | null
 ): number {
   if (isExhaustPane(opening)) return 0;
   if (meshReplacesPaneGlass(cfg, opening, catalog)) return 0;
-  return paneFillAreaMm2(w, h, opening, cfg);
+  const cuts = profileCutsFor(w, h, deductions);
+  return paneFillAreaMm2(
+    cuts.beadGlassW,
+    cuts.beadGlassH,
+    opening,
+    cfg
+  );
 }
 
 /** مساحة السلك داخل الضلفة (مم²) */
@@ -980,12 +998,21 @@ function totalMeshAreaSqm(
 
 function totalGlassAreaSqm(
   boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined
+  panes: Record<string, PaneConfig> | undefined,
+  catalog?: MaterialCatalog,
+  deductions?: UnifiedCutDeductions | null
 ): number {
   let mm2 = 0;
   for (const box of boxes) {
     const cfg = normalizePaneConfig(panes?.[box.id]);
-    mm2 += paneGlassAreaMm2(box.w, box.h, box.opening, cfg);
+    mm2 += paneGlassAreaMm2(
+      box.w,
+      box.h,
+      box.opening,
+      cfg,
+      catalog,
+      deductions
+    );
   }
   return roundM(mm2 / 1_000_000);
 }
@@ -1011,8 +1038,8 @@ function frameLabelFor(
  * مقابض في وش بعض: بوكلير (مش سوقاس).
  * السوقاس: باقي تقسيم الحلق + تقسيم الضلفة.
  *
- * أطوال الحلق/الضلفة/السكينة/التقابل تُحسب بعد تخصيم نظام القطاعات
- * (نفس معادلات مقاس القطع) عشان التسعير يطابق الاستهلاك الفعلي.
+ * أطوال الحلق/الضلفة/السكينة/التقابل والباكتة والزجاج
+ * تُحسب بعد التخصيم الموحد (حلق +١١ · ضلفة −١٣ · باكتة/زجاج).
  */
 export function calcItemMaterials(
   item: DesignItem,
@@ -1035,11 +1062,7 @@ export function calcItemMaterials(
   const cat =
     catalog ??
     (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
-  const profileDetails =
-    item.systemId && item.systemId !== "none"
-      ? findSystem("profiles", item.systemId, cat)?.profile
-      : undefined;
-  const deductions = profileDetails?.deductions ?? null;
+  const deductions = getCutDeductions(cat);
 
   const hingedBoxes = boxes.filter((b) => b.kind === "hinged");
   const slidingBoxes = boxes.filter((b) => b.kind === "sliding");
@@ -1111,8 +1134,8 @@ export function calcItemMaterials(
 
   const mullionSashMm = sashMullionMm(boxes, panes);
   const sashMm = sashProfileMm(boxes, panes, cat, deductions);
-  const beadMm = beadTotalsMm(boxes, panes, item, cat);
-  const glassAreaSqm = totalGlassAreaSqm(boxes, panes);
+  const beadMm = beadTotalsMm(boxes, panes, item, cat, deductions);
+  const glassAreaSqm = totalGlassAreaSqm(boxes, panes, cat, deductions);
   const meshAreaSqm = totalMeshAreaSqm(boxes, panes);
   const slidingMesh = slidingMeshSashStats(boxes, panes, cat);
   const meshSlidingProfileM = roundM(mmToM(slidingMesh.profileMm));
@@ -1327,7 +1350,14 @@ export function calcGlassBreakdown(
     }
 
     const areaSqm = roundM(
-      paneGlassAreaMm2(box.w, box.h, box.opening, cfg, cat) / 1_000_000
+      paneGlassAreaMm2(
+        box.w,
+        box.h,
+        box.opening,
+        cfg,
+        cat,
+        getCutDeductions(cat)
+      ) / 1_000_000
     );
     if (areaSqm < 0.0005) continue;
     lines.push({

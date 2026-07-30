@@ -173,22 +173,41 @@ export type ProfilePiece = {
 };
 
 /**
- * تخصيمات القطع (تخزين داخلي بصيغة معادلة).
- * الواجهة الافتراضية: رقم خصم بالمم → يتحول لـ =W-10 مثلاً.
- * الوضع المتقدم: معادلة حرة (W/H/FW/FH + MIN/MAX/IF…).
+ * تخصيمات القطع القديمة (معادلات) — للترحيل فقط.
+ * الحساب الفعلي من `UnifiedCutDeductions` على مستوى الكتالوج.
  */
 export type ProfileAxisFormulas = {
   width: string;
   height: string;
 };
 
+/** @deprecated استخدم UnifiedCutDeductions */
 export type ProfileDeductions = {
   frame: ProfileAxisFormulas;
   sash: ProfileAxisFormulas;
 };
 
+/**
+ * تخصيمات موحدة لحساب تقديري الخامات (لكل البرنامج).
+ * — الحلق أكبر من الفتحة
+ * — الضلفة أصغر من الحلق
+ * — الباكتة والزجاج أصغر من الضلفة (نفس الرقم)
+ */
+export type UnifiedCutDeductions = {
+  /** زيادة الحلق عن الفتحة (مم) — افتراضي 110 (= 11 سم) */
+  frameAddMm: number;
+  /** نقص الضلفة عن الحلق (مم) — افتراضي 130 (= 13 سم) */
+  sashLessMm: number;
+  /** نقص الباكتة والزجاج عن الضلفة (مم) — افتراضي 40 (= 4 سم) */
+  beadGlassLessMm: number;
+};
+
 export type ProfileSystemDetails = {
   pieces: ProfilePiece[];
+  /**
+   * @deprecated التخصيم بقى موحد على الكتالوج (`cutDeductions`)
+   * بتتخزن متزامنة للترحيل فقط.
+   */
   deductions: ProfileDeductions;
   /**
    * قائمة أسعار النظام بالعود: سعر العود + طول العود.
@@ -511,6 +530,10 @@ export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]> & {
   /** كتالوج براندات الاكسسوار حسب الفئة */
   accessoryBrands?: AccessoryBrand[];
   /**
+   * تخصيمات موحدة لحساب تقديري الخامات (حلق · ضلفة · باكتة · زجاج)
+   */
+  cutDeductions?: UnifiedCutDeductions;
+  /**
    * @deprecated أسعار القطاعات بقت على كل نظام (`profile.rates`) — للترحيل فقط
    */
   profileBrands?: ProfileBrand[];
@@ -591,7 +614,7 @@ export function getCategoryMeta(id: MaterialCategory) {
 }
 
 /** بطاقات صفحة الخامات — السلك صفحة مستقلة مش جزء من الاكسسوار */
-export type MaterialHubId = MaterialCategory | "mesh";
+export type MaterialHubId = MaterialCategory | "mesh" | "deductions";
 
 export type MaterialHubGroup = "systems" | "other";
 
@@ -608,7 +631,7 @@ export const MATERIAL_HUB_GROUPS: {
   {
     id: "other",
     title: "خامات تانية",
-    hint: "زجاج · سلك · حديد",
+    hint: "تخصيمات · زجاج · سلك · حديد",
   },
 ];
 
@@ -624,7 +647,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "profiles",
     label: "القطاعات",
-    description: "أسعار العود · العيدان · التخصيم",
+    description: "أسعار المتر بالعود · العيدان",
     accent: "#E8956F",
     shadow: "rgba(232,149,111,0.35)",
     href: "/materials/profiles",
@@ -638,6 +661,15 @@ export const MATERIAL_HUB_ITEMS: {
     shadow: "rgba(107,138,216,0.35)",
     href: "/materials/accessories",
     group: "systems",
+  },
+  {
+    id: "deductions",
+    label: "التخصيمات",
+    description: "حلق +١١ · ضلفة −١٣ · باكتة وزجاج — تقديري الخامات",
+    accent: "#C47B5A",
+    shadow: "rgba(196,123,90,0.35)",
+    href: "/materials/deductions",
+    group: "other",
   },
   {
     id: "glass",
@@ -668,11 +700,67 @@ export const MATERIAL_HUB_ITEMS: {
   },
 ];
 
-export function defaultDeductions(): ProfileDeductions {
+/** القيم الافتراضية الموحدة (سم → مم) */
+export function defaultUnifiedCutDeductions(): UnifiedCutDeductions {
   return {
-    frame: { width: "=W", height: "=H" },
-    sash: { width: "=FW-10", height: "=FH-10" },
+    frameAddMm: 110,
+    sashLessMm: 130,
+    beadGlassLessMm: 40,
   };
+}
+
+/** يحوّل التخصيم الموحد لمعادلات قديمة (ترحيل / توافق) */
+export function unifiedToProfileDeductions(
+  u: UnifiedCutDeductions
+): ProfileDeductions {
+  const frame = Math.round(u.frameAddMm);
+  const sash = Math.round(u.sashLessMm);
+  return {
+    frame: {
+      width: frame === 0 ? "=W" : frame > 0 ? `=W+${frame}` : `=W${frame}`,
+      height: frame === 0 ? "=H" : frame > 0 ? `=H+${frame}` : `=H${frame}`,
+    },
+    sash: {
+      width: sash === 0 ? "=FW" : `=FW-${sash}`,
+      height: sash === 0 ? "=FH" : `=FH-${sash}`,
+    },
+  };
+}
+
+export function defaultDeductions(): ProfileDeductions {
+  return unifiedToProfileDeductions(defaultUnifiedCutDeductions());
+}
+
+export function normalizeUnifiedCutDeductions(
+  raw: unknown
+): UnifiedCutDeductions {
+  const fallback = defaultUnifiedCutDeductions();
+  if (!raw || typeof raw !== "object") return fallback;
+  const o = raw as Record<string, unknown>;
+  const frameAddMm = Number(o.frameAddMm);
+  const sashLessMm = Number(o.sashLessMm);
+  const beadGlassLessMm = Number(o.beadGlassLessMm);
+  return {
+    frameAddMm:
+      Number.isFinite(frameAddMm) && frameAddMm >= 0
+        ? Math.round(frameAddMm)
+        : fallback.frameAddMm,
+    sashLessMm:
+      Number.isFinite(sashLessMm) && sashLessMm >= 0
+        ? Math.round(sashLessMm)
+        : fallback.sashLessMm,
+    beadGlassLessMm:
+      Number.isFinite(beadGlassLessMm) && beadGlassLessMm >= 0
+        ? Math.round(beadGlassLessMm)
+        : fallback.beadGlassLessMm,
+  };
+}
+
+/** يقرأ التخصيم الموحد من الكتالوج */
+export function getCutDeductions(
+  catalog?: MaterialCatalog | null
+): UnifiedCutDeductions {
+  return normalizeUnifiedCutDeductions(catalog?.cutDeductions);
 }
 
 export function defaultProfilePieces(): ProfilePiece[] {
@@ -1895,7 +1983,10 @@ export function paneGlassHasPricing(
 
 /** القيم الافتراضية — متوافقة مع الاختيارات القديمة في التصميم */
 export function getDefaultCatalog(): MaterialCatalog {
+  const cutDeductions = defaultUnifiedCutDeductions();
+  const syncedDeductions = unifiedToProfileDeductions(cutDeductions);
   return {
+    cutDeductions,
     profiles: [
       withDefaultProfile({
         id: "pvc1",
@@ -1910,10 +2001,7 @@ export function getDefaultCatalog(): MaterialCatalog {
               id: `pvc1-${p.role}`,
             })),
           ],
-          deductions: {
-            frame: { width: "=W", height: "=H" },
-            sash: { width: "=FW-10", height: "=FH-10" },
-          },
+          deductions: syncedDeductions,
           rates: cityPremierProfileBarRates(),
         },
       }),
@@ -1927,10 +2015,7 @@ export function getDefaultCatalog(): MaterialCatalog {
             ...p,
             id: `pvc2-${p.role}`,
           })),
-          deductions: {
-            frame: { width: "=W", height: "=H" },
-            sash: { width: "=FW-40", height: "=FH-60" },
-          },
+          deductions: syncedDeductions,
           rates: cityPremierProfileBarRates(),
         },
       }),
@@ -2866,6 +2951,17 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       : normalizeMeshTypes(raw.meshTypes, next.meshCategories);
   next.accessoryBrands = accessoryBrands;
   next.profileBrands = profileBrands;
+  next.cutDeductions = normalizeUnifiedCutDeductions(raw.cutDeductions);
+
+  // زامن تخصيم كل نظام قطاعات مع التخصيم الموحد
+  const synced = unifiedToProfileDeductions(next.cutDeductions);
+  next.profiles = next.profiles.map((s) => ({
+    ...s,
+    profile: {
+      ...(s.profile ?? defaultProfileDetails()),
+      deductions: synced,
+    },
+  }));
 
   return next;
 }
@@ -3187,7 +3283,7 @@ export function catalogOptionsFor(
   ];
 }
 
-/** مقاسات القطع بعد التخصيم من مقاس الفتحة */
+/** مقاسات القطع بعد التخصيم الموحد من مقاس الفتحة */
 export type CutSizes = {
   openingWidthMm: number;
   openingHeightMm: number;
@@ -3195,185 +3291,174 @@ export type CutSizes = {
   frameHeightMm: number;
   sashWidthMm: number;
   sashHeightMm: number;
-  deductions: ProfileDeductions;
+  /** باكتة وزجاج — نفس المقاس */
+  beadGlassWidthMm: number;
+  beadGlassHeightMm: number;
+  deductions: UnifiedCutDeductions;
   errors: {
     frameWidth?: string;
     frameHeight?: string;
     sashWidth?: string;
     sashHeight?: string;
+    beadGlassWidth?: string;
+    beadGlassHeight?: string;
   };
 };
 
-function evalCut(
-  formula: string,
-  vars: Record<string, number>
-): { value: number; error?: string } {
-  const result = evaluateFormula(formula, vars);
-  if (!result.ok) return { value: 0, error: result.error };
-  return { value: Math.max(0, Math.round(result.value * 1000) / 1000) };
+function roundCutMm(n: number): number {
+  return Math.max(0, Math.round(n * 1000) / 1000);
 }
 
+/**
+ * يقبل التخصيم الموحد، أو معادلات قديمة (ProfileDeductions) للتوافق.
+ */
 export function calcCutSizes(
   openingWidthMm: number,
   openingHeightMm: number,
-  deductions: ProfileDeductions
+  deductions?: UnifiedCutDeductions | ProfileDeductions | null
 ): CutSizes {
-  const base = {
-    W: openingWidthMm,
-    H: openingHeightMm,
-    FW: openingWidthMm,
-    FH: openingHeightMm,
-  };
+  const unified = isUnifiedCutDeductions(deductions)
+    ? normalizeUnifiedCutDeductions(deductions)
+    : isLegacyProfileDeductions(deductions)
+      ? legacyProfileToUnified(deductions)
+      : defaultUnifiedCutDeductions();
 
-  const frameW = evalCut(deductions.frame.width, base);
-  const frameH = evalCut(deductions.frame.height, base);
-
-  const withFrame = {
-    ...base,
-    FW: frameW.value,
-    FH: frameH.value,
-  };
-
-  const sashW = evalCut(deductions.sash.width, withFrame);
-  const sashH = evalCut(deductions.sash.height, withFrame);
+  const frameWidthMm = roundCutMm(openingWidthMm + unified.frameAddMm);
+  const frameHeightMm = roundCutMm(openingHeightMm + unified.frameAddMm);
+  const sashWidthMm = roundCutMm(frameWidthMm - unified.sashLessMm);
+  const sashHeightMm = roundCutMm(frameHeightMm - unified.sashLessMm);
+  const beadGlassWidthMm = roundCutMm(sashWidthMm - unified.beadGlassLessMm);
+  const beadGlassHeightMm = roundCutMm(sashHeightMm - unified.beadGlassLessMm);
 
   return {
     openingWidthMm,
     openingHeightMm,
-    frameWidthMm: frameW.value,
-    frameHeightMm: frameH.value,
-    sashWidthMm: sashW.value,
-    sashHeightMm: sashH.value,
-    deductions,
-    errors: {
-      frameWidth: frameW.error,
-      frameHeight: frameH.error,
-      sashWidth: sashW.error,
-      sashHeight: sashH.error,
-    },
+    frameWidthMm,
+    frameHeightMm,
+    sashWidthMm,
+    sashHeightMm,
+    beadGlassWidthMm,
+    beadGlassHeightMm,
+    deductions: unified,
+    errors: {},
+  };
+}
+
+function isUnifiedCutDeductions(
+  value: unknown
+): value is UnifiedCutDeductions {
+  if (!value || typeof value !== "object") return false;
+  const o = value as Record<string, unknown>;
+  return (
+    "frameAddMm" in o || "sashLessMm" in o || "beadGlassLessMm" in o
+  );
+}
+
+function isLegacyProfileDeductions(
+  value: unknown
+): value is ProfileDeductions {
+  if (!value || typeof value !== "object") return false;
+  const o = value as Record<string, unknown>;
+  return Boolean(o.frame && o.sash);
+}
+
+/** يستخرج أرقام بسيطة من معادلات قديمة لو أمكن */
+function legacyProfileToUnified(d: ProfileDeductions): UnifiedCutDeductions {
+  const fallback = defaultUnifiedCutDeductions();
+  const fw = evaluateFormula(ensureEqualsPrefix(d.frame.width), {
+    W: 1000,
+    H: 1000,
+    FW: 1000,
+    FH: 1000,
+  });
+  const sw = evaluateFormula(ensureEqualsPrefix(d.sash.width), {
+    W: 1000,
+    H: 1000,
+    FW: fw.ok ? fw.value : 1000,
+    FH: 1000,
+  });
+  const frameAddMm = fw.ok ? Math.round(fw.value - 1000) : fallback.frameAddMm;
+  const sashLessMm = sw.ok
+    ? Math.round((fw.ok ? fw.value : 1000) - sw.value)
+    : fallback.sashLessMm;
+  return {
+    frameAddMm: Number.isFinite(frameAddMm) ? Math.max(0, frameAddMm) : fallback.frameAddMm,
+    sashLessMm: Number.isFinite(sashLessMm) ? Math.max(0, sashLessMm) : fallback.sashLessMm,
+    beadGlassLessMm: fallback.beadGlassLessMm,
   };
 }
 
 /** خطوة واحدة في سلسلة حساب مقاس القطع */
 export type CutCalculationStep = {
   step: number;
-  phase: "frame" | "sash";
+  phase: "frame" | "sash" | "bead-glass";
   label: string;
   formula: string;
-  /** المتغيرات المستخدمة في هذه الخطوة */
-  vars: { W: number; H: number; FW: number; FH: number };
   resultMm: number;
   error?: string;
 };
 
-const VAR_LABELS: Record<string, string> = {
-  W: "W",
-  H: "H",
-  FW: "FW",
-  FH: "FH",
-};
-
-/** يعرض المتغيرات المستخدمة في المعادلة بصيغة W=1200 · H=1400 */
-export function formatFormulaVars(
-  vars: { W: number; H: number; FW: number; FH: number },
-  keys: ("W" | "H" | "FW" | "FH")[]
-): string {
-  return keys.map((k) => `${VAR_LABELS[k]}=${vars[k]}`).join(" · ");
-}
-
-/** يستخرج المتغيرات المستخدمة فعلياً من صيغة المعادلة */
-function varsUsedInFormula(formula: string): ("W" | "H" | "FW" | "FH")[] {
-  const body = formula.trim().replace(/^=/, "").toUpperCase();
-  const found: ("W" | "H" | "FW" | "FH")[] = [];
-  let masked = body;
-  for (const k of ["FW", "FH"] as const) {
-    if (masked.includes(k)) {
-      found.push(k);
-      masked = masked.split(k).join("");
-    }
-  }
-  for (const k of ["W", "H"] as const) {
-    if (masked.includes(k)) found.push(k);
-  }
-  return found;
-}
-
-/** سلسلة خطوات حساب مقاس الحلق والضلفة — للشرح والمعاينة */
+/** سلسلة خطوات حساب مقاس الحلق والضلفة والباكتة/الزجاج */
 export function getCutCalculationSteps(
   openingWidthMm: number,
   openingHeightMm: number,
-  deductions: ProfileDeductions
+  deductions?: UnifiedCutDeductions | ProfileDeductions | null
 ): CutCalculationStep[] {
-  const base = {
-    W: openingWidthMm,
-    H: openingHeightMm,
-    FW: openingWidthMm,
-    FH: openingHeightMm,
-  };
-
-  const frameW = evalCut(deductions.frame.width, base);
-  const frameH = evalCut(deductions.frame.height, base);
-
-  const withFrame = {
-    ...base,
-    FW: frameW.value,
-    FH: frameH.value,
-  };
-
-  const sashW = evalCut(deductions.sash.width, withFrame);
-  const sashH = evalCut(deductions.sash.height, withFrame);
-
-  const steps: CutCalculationStep[] = [
+  const cuts = calcCutSizes(openingWidthMm, openingHeightMm, deductions);
+  const d = cuts.deductions;
+  return [
     {
       step: 1,
       phase: "frame",
       label: "عرض الحلق",
-      formula: ensureEqualsPrefix(deductions.frame.width),
-      vars: base,
-      resultMm: frameW.value,
-      error: frameW.error,
+      formula: `الفتحة ${openingWidthMm} + ${d.frameAddMm}`,
+      resultMm: cuts.frameWidthMm,
     },
     {
       step: 2,
       phase: "frame",
       label: "ارتفاع الحلق",
-      formula: ensureEqualsPrefix(deductions.frame.height),
-      vars: base,
-      resultMm: frameH.value,
-      error: frameH.error,
+      formula: `الفتحة ${openingHeightMm} + ${d.frameAddMm}`,
+      resultMm: cuts.frameHeightMm,
     },
     {
       step: 3,
       phase: "sash",
       label: "عرض الضلفة",
-      formula: ensureEqualsPrefix(deductions.sash.width),
-      vars: withFrame,
-      resultMm: sashW.value,
-      error: sashW.error,
+      formula: `الحلق ${cuts.frameWidthMm} − ${d.sashLessMm}`,
+      resultMm: cuts.sashWidthMm,
     },
     {
       step: 4,
       phase: "sash",
       label: "ارتفاع الضلفة",
-      formula: ensureEqualsPrefix(deductions.sash.height),
-      vars: withFrame,
-      resultMm: sashH.value,
-      error: sashH.error,
+      formula: `الحلق ${cuts.frameHeightMm} − ${d.sashLessMm}`,
+      resultMm: cuts.sashHeightMm,
+    },
+    {
+      step: 5,
+      phase: "bead-glass",
+      label: "عرض الباكتة / الزجاج",
+      formula: `الضلفة ${cuts.sashWidthMm} − ${d.beadGlassLessMm}`,
+      resultMm: cuts.beadGlassWidthMm,
+    },
+    {
+      step: 6,
+      phase: "bead-glass",
+      label: "ارتفاع الباكتة / الزجاج",
+      formula: `الضلفة ${cuts.sashHeightMm} − ${d.beadGlassLessMm}`,
+      resultMm: cuts.beadGlassHeightMm,
     },
   ];
-
-  return steps;
 }
 
 /** نص مختصر لخطوة حساب واحدة */
 export function formatCutStepSummary(step: CutCalculationStep): string {
   if (step.error) return `${step.label}: خطأ — ${step.error}`;
-  const keys = varsUsedInFormula(step.formula);
-  const varsText = formatFormulaVars(step.vars, keys);
-  return `${step.label}: ${step.formula} (${varsText}) → ${step.resultMm} مم`;
+  return `${step.label}: ${step.formula} → ${step.resultMm} مم`;
 }
 
-/** نصوص مقاس القطع للعرض (عربي بسيط لو التخصيم ثابت) */
+/** نصوص مقاس القطع للعرض (عربي بسيط) */
 export function frameWidthFormula(d: ProfileDeductions): string {
   return describeFormulaAr(d.frame.width, "عرض الحلق");
 }
@@ -3388,6 +3473,17 @@ export function sashWidthFormula(d: ProfileDeductions): string {
 
 export function sashHeightFormula(d: ProfileDeductions): string {
   return describeFormulaAr(d.sash.height, "ارتفاع الضلفة");
+}
+
+/** يحفظ التخصيم الموحد ويزامن أنظمة القطاعات */
+export function saveCutDeductions(
+  catalog: MaterialCatalog,
+  next: UnifiedCutDeductions
+): MaterialCatalog {
+  return saveMaterialCatalog({
+    ...catalog,
+    cutDeductions: normalizeUnifiedCutDeductions(next),
+  });
 }
 
 export function formatBarLength(m: number): string {

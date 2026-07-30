@@ -244,11 +244,7 @@ export function IronSystemDetailEditor({ systemId }: Props) {
 
   const previewCuts = calcCutSizes(
     Math.max(0, Number(previewW) || 0),
-    Math.max(0, Number(previewH) || 0),
-    {
-      frame: { width: "=W", height: "=H" },
-      sash: { width: "=FW-10", height: "=FH-10" },
-    }
+    Math.max(0, Number(previewH) || 0)
   );
 
   const previewIronFrameW = (() => {

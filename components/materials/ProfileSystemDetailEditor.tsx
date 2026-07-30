@@ -11,14 +11,9 @@ import { MaterialSectionTabs } from "@/components/materials/MaterialSectionTabs"
 import { NumericInput } from "@/components/ui/NumericInput";
 import {
   DEFAULT_BAR_LENGTH_M,
-  calcCutSizes,
-  defaultDeductions,
   defaultProfileDetails,
   findSystem,
-  formatFormulaVars,
-  frameHeightFormula,
-  frameWidthFormula,
-  getCutCalculationSteps,
+  getCutDeductions,
   loadMaterialCatalog,
   makeProfileBarRate,
   mergeStandardProfilePieces,
@@ -30,41 +25,28 @@ import {
   profileRoleDefaultName,
   profileRoleLabel,
   saveMaterialCatalog,
-  sashHeightFormula,
-  sashWidthFormula,
+  unifiedToProfileDeductions,
   upsertSystem,
   type MaterialCatalog,
   type MaterialSystem,
   type ProfileBarRate,
-  type ProfileDeductions,
   type ProfilePiece,
   type ProfilePieceRole,
   type ProfilePriceCategory,
   type ProfileSystemDetails,
 } from "@/lib/material-systems";
-import {
-  FORMULA_VAR_HELP,
-  areAllDeductionsSimple,
-  describeFormulaAr,
-  ensureEqualsPrefix,
-  offsetToFormula,
-  parseSimpleDeduct,
-  validateFormula,
-  type FormulaBaseVar,
-} from "@/lib/excel-formula";
 import { ROUTES } from "@/lib/routes";
 
 type Props = {
   systemId: string;
 };
 
-type ProfileDetailTab = "meta" | "prices" | "pieces" | "cuts";
+type ProfileDetailTab = "meta" | "prices" | "pieces";
 
 const PROFILE_DETAIL_TABS: { id: ProfileDetailTab; label: string }[] = [
   { id: "meta", label: "بيانات" },
   { id: "prices", label: "الأسعار" },
   { id: "pieces", label: "العيدان" },
-  { id: "cuts", label: "التخصيم" },
 ];
 
 function rateSummary(rate: ProfileBarRate | undefined): string | null {
@@ -72,7 +54,6 @@ function rateSummary(rate: ProfileBarRate | undefined): string | null {
   const perM = profileBarPricePerM(rate.barPrice, rate.barLengthM);
   return `${rate.barPrice} ج.م/عود · ${rate.barLengthM} م ← ${perM} ج.م/م`;
 }
-
 
 type PieceDraft = {
   id: string;
@@ -82,77 +63,6 @@ type PieceDraft = {
   barLengthM: string;
   notes: string;
 };
-
-type FormulaMode = "simple" | "advanced";
-
-type DeductPreset = {
-  id: string;
-  label: string;
-  /** موجب = زيادة · سالب = تخصيم */
-  frameW: number;
-  frameH: number;
-  sashW: number;
-  sashH: number;
-};
-
-const DEDUCT_PRESETS: DeductPreset[] = [
-  { id: "none", label: "بدون تعديل", frameW: 0, frameH: 0, sashW: 0, sashH: 0 },
-  {
-    id: "frame-bar50",
-    label: "حلق +٥٠ (بار)",
-    frameW: 50,
-    frameH: 50,
-    sashW: 0,
-    sashH: 0,
-  },
-  {
-    id: "frame-bar50-sash10",
-    label: "حلق +٥٠ · ضلفة −١٠",
-    frameW: 50,
-    frameH: 50,
-    sashW: -10,
-    sashH: -10,
-  },
-  {
-    id: "sash10",
-    label: "ضلفة −١٠",
-    frameW: 0,
-    frameH: 0,
-    sashW: -10,
-    sashH: -10,
-  },
-  {
-    id: "frame5-sash10",
-    label: "حلق −٥ · ضلفة −١٠",
-    frameW: -5,
-    frameH: -5,
-    sashW: -10,
-    sashH: -10,
-  },
-];
-
-function offsetMmFromFormula(formula: string): number {
-  const parsed = parseSimpleDeduct(formula);
-  return parsed.simple ? parsed.offsetMm : 0;
-}
-
-function deductionsFromSimpleMm(mm: {
-  frameW: number;
-  frameH: number;
-  sashW: number;
-  sashH: number;
-}): ProfileDeductions {
-  return {
-    frame: {
-      width: offsetToFormula("W", mm.frameW),
-      height: offsetToFormula("H", mm.frameH),
-    },
-    sash: {
-      width: offsetToFormula("FW", mm.sashW),
-      height: offsetToFormula("FH", mm.sashH),
-    },
-  };
-}
 
 function toPieceDraft(p?: ProfilePiece): PieceDraft {
   return {
@@ -196,12 +106,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     Partial<Record<ProfilePriceCategory, ProfileBarRate>>
   >({});
   const [pieces, setPieces] = useState<ProfilePiece[]>([]);
-  const [deductions, setDeductions] =
-    useState<ProfileDeductions>(defaultDeductions);
-  const [formulaMode, setFormulaMode] = useState<FormulaMode>("simple");
   const [pieceDraft, setPieceDraft] = useState<PieceDraft | null>(null);
-  const [previewW, setPreviewW] = useState("1200");
-  const [previewH, setPreviewH] = useState("1400");
   const [flash, setFlash] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [tab, setTab] = useState<ProfileDetailTab>("meta");
@@ -231,20 +136,11 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       );
       setRates(details.rates ?? {});
       setPieces(details.pieces);
-      setDeductions(details.deductions);
-      const formulas = [
-        details.deductions.frame.width,
-        details.deductions.frame.height,
-        details.deductions.sash.width,
-        details.deductions.sash.height,
-      ];
-      setFormulaMode(areAllDeductionsSimple(formulas) ? "simple" : "advanced");
     });
   }, [systemId]);
 
   function persistProfile(
     nextPieces: ProfilePiece[],
-    nextDeductions: ProfileDeductions,
     name = systemName,
     notes = systemNotes,
     nextRates = rates,
@@ -254,7 +150,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     const kitN = Number(kitPriceRaw);
     const profile: ProfileSystemDetails = {
       pieces: nextPieces,
-      deductions: nextDeductions,
+      deductions: unifiedToProfileDeductions(getCutDeductions(catalog)),
       rates: { ...nextRates },
       bouclierCapKitPrice:
         Number.isFinite(kitN) && kitN >= 0 ? kitN : undefined,
@@ -283,13 +179,12 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       );
       setRates(details.rates ?? {});
       setPieces(details.pieces);
-      setDeductions(details.deductions);
     }
   }
 
   function saveMeta(e: FormEvent) {
     e.preventDefault();
-    persistProfile(pieces, deductions);
+    persistProfile(pieces);
     showFlash("تم حفظ بيانات النظام");
   }
 
@@ -307,81 +202,8 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
 
   function saveRates(e: FormEvent) {
     e.preventDefault();
-    persistProfile(pieces, deductions, systemName, systemNotes, rates);
+    persistProfile(pieces, systemName, systemNotes, rates);
     showFlash("تم حفظ أسعار النظام");
-  }
-
-  function saveDeductions(e: FormEvent) {
-    e.preventDefault();
-    const normalized: ProfileDeductions = {
-      frame: {
-        width: ensureEqualsPrefix(deductions.frame.width),
-        height: ensureEqualsPrefix(deductions.frame.height),
-      },
-      sash: {
-        width: ensureEqualsPrefix(deductions.sash.width),
-        height: ensureEqualsPrefix(deductions.sash.height),
-      },
-    };
-    setDeductions(normalized);
-    persistProfile(pieces, normalized);
-    showFlash("تم حفظ التعديلات");
-  }
-
-  function setSimpleOffset(
-    part: "frame" | "sash",
-    axis: "width" | "height",
-    offsetMm: number
-  ) {
-    const n = Number.isFinite(offsetMm) ? offsetMm : 0;
-    const base: FormulaBaseVar =
-      part === "frame"
-        ? axis === "width"
-          ? "W"
-          : "H"
-        : axis === "width"
-          ? "FW"
-          : "FH";
-    setDeductions((d) => ({
-      ...d,
-      [part]: {
-        ...d[part],
-        [axis]: offsetToFormula(base, n),
-      },
-    }));
-  }
-
-  function applyPreset(preset: DeductPreset) {
-    const next = deductionsFromSimpleMm(preset);
-    setDeductions(next);
-    setFormulaMode("simple");
-    persistProfile(pieces, next);
-    showFlash(`تم تطبيق: ${preset.label}`);
-  }
-
-  function switchMode(mode: FormulaMode) {
-    if (mode === "simple") {
-      const formulas = [
-        deductions.frame.width,
-        deductions.frame.height,
-        deductions.sash.width,
-        deductions.sash.height,
-      ];
-      if (!areAllDeductionsSimple(formulas)) {
-        const ok = window.confirm(
-          "في معادلات متقدمة. التحويل للوضع السهل هيخلّي التعديل أرقام ثابتة بس (+/−). كمّل؟"
-        );
-        if (!ok) return;
-        const next = deductionsFromSimpleMm({
-          frameW: offsetMmFromFormula(deductions.frame.width),
-          frameH: offsetMmFromFormula(deductions.frame.height),
-          sashW: offsetMmFromFormula(deductions.sash.width),
-          sashH: offsetMmFromFormula(deductions.sash.height),
-        });
-        setDeductions(next);
-      }
-    }
-    setFormulaMode(mode);
   }
 
   function openNewPiece() {
@@ -404,7 +226,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       ? pieces.map((p) => (p.id === parsed.id ? parsed : p))
       : [...pieces, parsed];
     setPieces(next);
-    persistProfile(next, deductions);
+    persistProfile(next);
     setPieceDraft(null);
     showFlash(exists ? "تم تعديل العود" : "تمت إضافة العود");
   }
@@ -412,7 +234,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   function addStandardPieces(kind: "hinged" | "sliding") {
     const next = mergeStandardProfilePieces(pieces, kind);
     setPieces(next);
-    persistProfile(next, deductions);
+    persistProfile(next);
     showFlash(
       kind === "hinged"
         ? "تمت إضافة قطاعات المفصلي القياسية"
@@ -440,7 +262,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     if (!window.confirm("حذف هذا العود؟")) return;
     const next = pieces.filter((p) => p.id !== id);
     setPieces(next);
-    persistProfile(next, deductions);
+    persistProfile(next);
     if (pieceDraft?.id === id) setPieceDraft(null);
     showFlash("تم الحذف");
   }
@@ -469,18 +291,18 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     );
   }
 
-  const previewCuts = calcCutSizes(
-    Math.max(0, Number(previewW) || 0),
-    Math.max(0, Number(previewH) || 0),
-    deductions
-  );
-
   return (
     <div className="flex flex-col gap-3">
       <div className="px-1">
         <h1 className="text-xl font-bold text-foreground">{system.name}</h1>
         <p className="mt-0.5 text-xs text-muted">
-          بيانات · الأسعار · العيدان · التخصيم
+          بيانات · الأسعار · العيدان — التخصيم من{" "}
+          <Link
+            href={ROUTES.materials.deductions}
+            className="font-semibold text-primary"
+          >
+            التخصيمات الموحدة
+          </Link>
         </p>
       </div>
 
@@ -501,655 +323,325 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       />
 
       {tab === "meta" ? (
-      <>
-      {/* بيانات النظام */}
-      <form
-        onSubmit={saveMeta}
-        className="space-y-3 rounded-2xl border border-border bg-card p-3"
-      >
-        <h3 className="text-xs font-bold text-foreground">بيانات النظام</h3>
-        <input
-          type="text"
-          value={systemName}
-          onChange={(e) => setSystemName(e.target.value)}
-          placeholder="اسم السيستم (مثلاً: بريمير سيتي)"
-          required
-          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-        />
-        <label className="block text-[11px] text-muted">
-          سعر طقم طبة البوكلير (ج.م/طقم)
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={bouclierCapKitPrice}
-            onChange={(e) => setBouclierCapKitPrice(e.target.value)}
-            placeholder="مثلاً: 45"
-            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-          />
-        </label>
-        <textarea
-          value={systemNotes}
-          onChange={(e) => setSystemNotes(e.target.value)}
-          placeholder="ملاحظات (اختياري)"
-          rows={2}
-          className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-        />
-        <button
-          type="submit"
-          className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+        <form
+          onSubmit={saveMeta}
+          className="space-y-3 rounded-2xl border border-border bg-card p-3"
         >
-          حفظ البيانات
-        </button>
-      </form>
-      </>
+          <h3 className="text-xs font-bold text-foreground">بيانات النظام</h3>
+          <input
+            type="text"
+            value={systemName}
+            onChange={(e) => setSystemName(e.target.value)}
+            placeholder="اسم السيستم (مثلاً: بريمير سيتي)"
+            required
+            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+          />
+          <label className="block text-[11px] text-muted">
+            سعر طقم طبة البوكلير (ج.م/طقم)
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={bouclierCapKitPrice}
+              onChange={(e) => setBouclierCapKitPrice(e.target.value)}
+              placeholder="مثلاً: 45"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            />
+          </label>
+          <textarea
+            value={systemNotes}
+            onChange={(e) => setSystemNotes(e.target.value)}
+            placeholder="ملاحظات (اختياري)"
+            rows={2}
+            className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+          />
+          <button
+            type="submit"
+            className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+          >
+            حفظ البيانات
+          </button>
+        </form>
       ) : null}
 
       {tab === "prices" ? (
-      <form
-        onSubmit={saveRates}
-        className="space-y-3 rounded-2xl border border-border bg-card p-3"
-      >
-        <div>
-          <h3 className="text-xs font-bold text-foreground">أسعار العود</h3>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-            سعر العود ÷ الطول = سعر المتر
-          </p>
-        </div>
-        <div className="space-y-2">
-          {PROFILE_PRICE_CATEGORIES.map((cat) => {
-            const rate = rates[cat.id] ?? makeProfileBarRate(0, 6);
-            const summary = rateSummary(rate.barPrice > 0 ? rate : undefined);
-            return (
-              <div
-                key={cat.id}
-                className="rounded-xl border border-border/70 bg-background/60 p-2"
-              >
-                <p className="text-[11px] font-semibold text-foreground">
-                  {profilePriceCategoryLabel(cat.id)}
-                </p>
-                {rate.productName ? (
-                  <p className="mt-0.5 text-[10px] text-muted">
-                    {rate.productName}
-                  </p>
-                ) : null}
-                <div className="mt-1.5 grid grid-cols-2 gap-2">
-                  <label className="block text-[10px] text-muted">
-                    سعر العود (ج.م)
-                    <NumericInput
-                      min={0}
-                      step={1}
-                      value={rate.barPrice}
-                      onChange={(v) => setRateValue(cat.id, "barPrice", v)}
-                      placeholder="0"
-                      className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-                    />
-                  </label>
-                  <label className="block text-[10px] text-muted">
-                    طول العود (م)
-                    <NumericInput
-                      min={0.1}
-                      step={0.1}
-                      fallback={6}
-                      blankZero={false}
-                      value={rate.barLengthM}
-                      onChange={(v) => setRateValue(cat.id, "barLengthM", v)}
-                      placeholder="6"
-                      className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-                    />
-                  </label>
-                </div>
-                {summary ? (
-                  <p className="mt-1 text-[10px] font-medium text-primary">
-                    {summary}
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-        <button
-          type="submit"
-          className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+        <form
+          onSubmit={saveRates}
+          className="space-y-3 rounded-2xl border border-border bg-card p-3"
         >
-          حفظ الأسعار
-        </button>
-      </form>
+          <div>
+            <h3 className="text-xs font-bold text-foreground">أسعار العود</h3>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+              سعر العود ÷ الطول = سعر المتر
+            </p>
+          </div>
+          <div className="space-y-2">
+            {PROFILE_PRICE_CATEGORIES.map((cat) => {
+              const rate = rates[cat.id] ?? makeProfileBarRate(0, 6);
+              const summary = rateSummary(rate.barPrice > 0 ? rate : undefined);
+              return (
+                <div
+                  key={cat.id}
+                  className="rounded-xl border border-border/70 bg-background/60 p-2"
+                >
+                  <p className="text-[11px] font-semibold text-foreground">
+                    {profilePriceCategoryLabel(cat.id)}
+                  </p>
+                  {rate.productName ? (
+                    <p className="mt-0.5 text-[10px] text-muted">
+                      {rate.productName}
+                    </p>
+                  ) : null}
+                  <div className="mt-1.5 grid grid-cols-2 gap-2">
+                    <label className="block text-[10px] text-muted">
+                      سعر العود (ج.م)
+                      <NumericInput
+                        min={0}
+                        step={1}
+                        value={rate.barPrice}
+                        onChange={(v) => setRateValue(cat.id, "barPrice", v)}
+                        placeholder="0"
+                        className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                      />
+                    </label>
+                    <label className="block text-[10px] text-muted">
+                      طول العود (م)
+                      <NumericInput
+                        min={0.1}
+                        step={0.1}
+                        fallback={6}
+                        blankZero={false}
+                        value={rate.barLengthM}
+                        onChange={(v) => setRateValue(cat.id, "barLengthM", v)}
+                        placeholder="6"
+                        className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                      />
+                    </label>
+                  </div>
+                  {summary ? (
+                    <p className="mt-1 text-[10px] font-medium text-primary">
+                      {summary}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <button
+            type="submit"
+            className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+          >
+            حفظ الأسعار
+          </button>
+        </form>
       ) : null}
 
       {tab === "pieces" ? (
-      <>
-      {/* العيدان */}
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
-          <h3 className="text-xs font-bold text-foreground">القطاعات / العيدان</h3>
-          <button
-            type="button"
-            onClick={openNewPiece}
-            className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground"
-          >
-            + عود جديد
-          </button>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5 border-b border-border bg-background/50 px-3 py-2">
-          <button
-            type="button"
-            onClick={() => addStandardPieces("hinged")}
-            className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[10px] font-semibold text-primary"
-          >
-            + قطاعات مفصلي قياسية
-          </button>
-          <button
-            type="button"
-            onClick={() => addStandardPieces("sliding")}
-            className="rounded-lg border border-border px-2.5 py-1 text-[10px] font-semibold text-foreground"
-          >
-            + قطاعات جرار قياسية
-          </button>
-        </div>
-        <p className="border-b border-border px-3 py-2 text-[10px] leading-relaxed text-muted">
-          باكتة سنجل/دبل حسب نوع الزجاج — البنل باكتة دبل · ضلفة شباك مفصلي
-          منفصلة عن ضلفة باب مفصلي
-        </p>
-
-        {pieceDraft ? (
-          <form
-            onSubmit={savePiece}
-            className="space-y-2.5 border-b border-border bg-primary-soft/40 p-3"
-          >
-            <p className="text-[11px] font-bold text-primary">
-              {pieces.some((p) => p.id === pieceDraft.id)
-                ? "تعديل العود"
-                : "عود جديد"}
-            </p>
-            <input
-              type="text"
-              value={pieceDraft.name}
-              onChange={(e) =>
-                setPieceDraft((d) => (d ? { ...d, name: e.target.value } : d))
-              }
-              placeholder="اسم العود (مثلاً: حلق مفصلي)"
-              required
-              autoFocus
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-            <select
-              value={pieceDraft.role}
-              onChange={(e) =>
-                onPieceRoleChange(e.target.value as ProfilePieceRole)
-              }
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+        <section className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+            <h3 className="text-xs font-bold text-foreground">
+              القطاعات / العيدان
+            </h3>
+            <button
+              type="button"
+              onClick={openNewPiece}
+              className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground"
             >
-              <RoleOptionGroup label="حلق وضلف" roles={["frame-hinged", "frame-sliding", "sash-hinged", "sash-door", "sash-sliding"]} />
-              <RoleOptionGroup label="باكتة" roles={["bead-single-hinged", "bead-double-hinged", "bead-single-sliding", "bead-double-sliding"]} />
-              <RoleOptionGroup label="أخرى" roles={["mullion", "coupling", "knife", "four-leaf-meeting", "mesh-meeting", "bouclier-cap", "other"]} />
-            </select>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block text-[11px] text-muted">
-                عرض المقطع (مم)
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={pieceDraft.sectionWidthMm}
-                  onChange={(e) =>
-                    setPieceDraft((d) =>
-                      d ? { ...d, sectionWidthMm: e.target.value } : d
-                    )
-                  }
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                />
-              </label>
-              <label className="block text-[11px] text-muted">
-                طول العود (م)
-                <input
-                  type="number"
-                  min={0.1}
-                  step={0.1}
-                  value={pieceDraft.barLengthM}
-                  onChange={(e) =>
-                    setPieceDraft((d) =>
-                      d ? { ...d, barLengthM: e.target.value } : d
-                    )
-                  }
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                />
-              </label>
-            </div>
-            <input
-              type="text"
-              value={pieceDraft.notes}
-              onChange={(e) =>
-                setPieceDraft((d) =>
-                  d ? { ...d, notes: e.target.value } : d
-                )
-              }
-              placeholder="ملاحظة (اختياري)"
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setPieceDraft(null)}
-                className="h-10 rounded-xl border border-border bg-background text-sm font-semibold"
-              >
-                إلغاء
-              </button>
-              <button
-                type="submit"
-                className="h-10 rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
-              >
-                حفظ العود
-              </button>
-            </div>
-          </form>
-        ) : null}
+              + عود جديد
+            </button>
+          </div>
 
-        {pieces.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-muted">
-            مفيش عيدان — اضغط «عود جديد»
+          <div className="flex flex-wrap gap-1.5 border-b border-border bg-background/50 px-3 py-2">
+            <button
+              type="button"
+              onClick={() => addStandardPieces("hinged")}
+              className="rounded-lg border border-primary/40 bg-primary-soft px-2.5 py-1 text-[10px] font-semibold text-primary"
+            >
+              + قطاعات مفصلي قياسية
+            </button>
+            <button
+              type="button"
+              onClick={() => addStandardPieces("sliding")}
+              className="rounded-lg border border-border px-2.5 py-1 text-[10px] font-semibold text-foreground"
+            >
+              + قطاعات جرار قياسية
+            </button>
+          </div>
+          <p className="border-b border-border px-3 py-2 text-[10px] leading-relaxed text-muted">
+            باكتة سنجل/دبل حسب نوع الزجاج — البنل باكتة دبل · ضلفة شباك مفصلي
+            منفصلة عن ضلفة باب مفصلي
           </p>
-        ) : (
-          <ul>
-            {pieces.map((piece, i) => (
-              <li
-                key={piece.id}
-                className={`px-3 py-3 ${i > 0 ? "border-t border-border" : ""}`}
+
+          {pieceDraft ? (
+            <form
+              onSubmit={savePiece}
+              className="space-y-2.5 border-b border-border bg-primary-soft/40 p-3"
+            >
+              <p className="text-[11px] font-bold text-primary">
+                {pieces.some((p) => p.id === pieceDraft.id)
+                  ? "تعديل العود"
+                  : "عود جديد"}
+              </p>
+              <input
+                type="text"
+                value={pieceDraft.name}
+                onChange={(e) =>
+                  setPieceDraft((d) => (d ? { ...d, name: e.target.value } : d))
+                }
+                placeholder="اسم العود (مثلاً: حلق مفصلي)"
+                required
+                autoFocus
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+              <select
+                value={pieceDraft.role}
+                onChange={(e) =>
+                  onPieceRoleChange(e.target.value as ProfilePieceRole)
+                }
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1 text-right">
-                    <p className="text-sm font-semibold text-foreground">
-                      {piece.name}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-muted">
-                      {profileRoleLabel(piece.role)} · مقطع{" "}
-                      {piece.sectionWidthMm} مم · طول العود{" "}
-                      {piece.barLengthM} م
-                    </p>
-                    {piece.notes ? (
-                      <p className="mt-0.5 text-[11px] text-muted">
-                        {piece.notes}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-1">
-                    <button
-                      type="button"
-                      onClick={() => openEditPiece(piece)}
-                      className="rounded-lg border border-border px-2 py-1 text-[11px] font-medium"
-                    >
-                      تعديل
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deletePiece(piece.id)}
-                      className="rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-red-600"
-                    >
-                      حذف
-                    </button>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      </>
-      ) : null}
-
-      {tab === "cuts" ? (
-      <>
-      {/* تعديلات مقاس القطع */}
-      <form
-        onSubmit={saveDeductions}
-        className="space-y-3 rounded-2xl border border-border bg-card p-3"
-      >
-        <div>
-          <h3 className="text-xs font-bold text-foreground">
-            تعديلات مقاس القطع
-          </h3>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-            تقدر <strong className="text-foreground">تزوّد</strong> أو{" "}
-            <strong className="text-foreground">تنقص</strong> من المقاس —
-            مثلاً الحلق أكبر من الفتحة لو فيه بار.
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-primary/25 bg-primary-soft/30 px-3 py-2.5 text-[11px] leading-relaxed text-foreground">
-          <p className="font-bold text-primary">بالبلدي كده (خطوتين)</p>
-          <ol className="mt-1.5 list-inside list-decimal space-y-1 text-muted">
-            <li>
-              <span className="text-foreground">الحلق</span> من الفتحة: زوّد لو
-              فيه بار، أو انقص لو محتاج تخصيم
-            </li>
-            <li>
-              <span className="text-foreground">الضلفة</span> من الحلق: عادةً
-              تخصيم (أصغر من الحلق)
-            </li>
-          </ol>
-          <p className="mt-2 border-t border-primary/20 pt-2 text-[10px] text-muted">
-            أمتار الخامات في الرسم تتحسب من تقسيمات الرسم. التعديلات هنا لمقاس
-            القطع فقط.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1">
-          <button
-            type="button"
-            onClick={() => switchMode("simple")}
-            className={`h-9 rounded-lg text-xs font-semibold transition-colors ${
-              formulaMode === "simple"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted hover:bg-card"
-            }`}
-          >
-            سهل — أرقام
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode("advanced")}
-            className={`h-9 rounded-lg text-xs font-semibold transition-colors ${
-              formulaMode === "advanced"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted hover:bg-card"
-            }`}
-          >
-            متقدم — معادلة
-          </button>
-        </div>
-
-        {formulaMode === "simple" ? (
-          <>
-            <div>
-              <p className="mb-1.5 text-[11px] font-semibold text-muted">
-                قوالب جاهزة
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {DEDUCT_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => applyPreset(preset)}
-                    className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-[11px] font-medium text-foreground hover:border-primary hover:text-primary"
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-background p-3">
-              <p className="mb-1 text-[11px] font-bold text-primary">
-                الخطوة ١ — الحلق من الفتحة
-              </p>
-              <p className="mb-2 text-[10px] text-muted">
-                + زيادة (بار) · − تخصيم · ٠ نفس الفتحة
-              </p>
-              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <SimpleOffsetField
-                  label="تعديل العرض"
-                  value={offsetMmFromFormula(deductions.frame.width)}
-                  onChange={(v) => setSimpleOffset("frame", "width", v)}
-                  explainPlus="عرض الحلق = عرض الفتحة + الزيادة"
-                  explainMinus="عرض الحلق = عرض الفتحة − التخصيم"
+                <RoleOptionGroup
+                  label="حلق وضلف"
+                  roles={[
+                    "frame-hinged",
+                    "frame-sliding",
+                    "sash-hinged",
+                    "sash-door",
+                    "sash-sliding",
+                  ]}
                 />
-                <SimpleOffsetField
-                  label="تعديل الارتفاع"
-                  value={offsetMmFromFormula(deductions.frame.height)}
-                  onChange={(v) => setSimpleOffset("frame", "height", v)}
-                  explainPlus="ارتفاع الحلق = ارتفاع الفتحة + الزيادة"
-                  explainMinus="ارتفاع الحلق = ارتفاع الفتحة − التخصيم"
+                <RoleOptionGroup
+                  label="باكتة"
+                  roles={[
+                    "bead-single-hinged",
+                    "bead-double-hinged",
+                    "bead-single-sliding",
+                    "bead-double-sliding",
+                  ]}
                 />
+                <RoleOptionGroup
+                  label="أخرى"
+                  roles={[
+                    "mullion",
+                    "coupling",
+                    "knife",
+                    "four-leaf-meeting",
+                    "mesh-meeting",
+                    "bouclier-cap",
+                    "other",
+                  ]}
+                />
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block text-[11px] text-muted">
+                  عرض المقطع (مم)
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={pieceDraft.sectionWidthMm}
+                    onChange={(e) =>
+                      setPieceDraft((d) =>
+                        d ? { ...d, sectionWidthMm: e.target.value } : d
+                      )
+                    }
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  />
+                </label>
+                <label className="block text-[11px] text-muted">
+                  طول العود (م)
+                  <input
+                    type="number"
+                    min={0.1}
+                    step={0.1}
+                    value={pieceDraft.barLengthM}
+                    onChange={(e) =>
+                      setPieceDraft((d) =>
+                        d ? { ...d, barLengthM: e.target.value } : d
+                      )
+                    }
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  />
+                </label>
               </div>
-              <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
-                <p>{describeFormulaAr(deductions.frame.width, "عرض الحلق")}</p>
-                <p>
-                  {describeFormulaAr(deductions.frame.height, "ارتفاع الحلق")}
-                </p>
+              <input
+                type="text"
+                value={pieceDraft.notes}
+                onChange={(e) =>
+                  setPieceDraft((d) =>
+                    d ? { ...d, notes: e.target.value } : d
+                  )
+                }
+                placeholder="ملاحظة (اختياري)"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPieceDraft(null)}
+                  className="h-10 rounded-xl border border-border bg-background text-sm font-semibold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="h-10 rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+                >
+                  حفظ العود
+                </button>
               </div>
-            </div>
+            </form>
+          ) : null}
 
-            <div className="rounded-xl border border-border bg-background p-3">
-              <p className="mb-1 text-[11px] font-bold text-primary">
-                الخطوة ٢ — الضلفة من الحلق
-              </p>
-              <p className="mb-2 text-[10px] text-muted">
-                + زيادة · − تخصيم · ٠ نفس الحلق
-              </p>
-              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <SimpleOffsetField
-                  label="تعديل العرض"
-                  value={offsetMmFromFormula(deductions.sash.width)}
-                  onChange={(v) => setSimpleOffset("sash", "width", v)}
-                  explainPlus="عرض الضلفة = عرض الحلق + الزيادة"
-                  explainMinus="عرض الضلفة = عرض الحلق − التخصيم"
-                />
-                <SimpleOffsetField
-                  label="تعديل الارتفاع"
-                  value={offsetMmFromFormula(deductions.sash.height)}
-                  onChange={(v) => setSimpleOffset("sash", "height", v)}
-                  explainPlus="ارتفاع الضلفة = ارتفاع الحلق + الزيادة"
-                  explainMinus="ارتفاع الضلفة = ارتفاع الحلق − التخصيم"
-                />
-              </div>
-              <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
-                <p>{describeFormulaAr(deductions.sash.width, "عرض الضلفة")}</p>
-                <p>
-                  {describeFormulaAr(deductions.sash.height, "ارتفاع الضلفة")}
-                </p>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-2 text-[11px] leading-relaxed text-muted">
-              الوضع المتقدم للمعادلات الحرة زي إكسل. الخطوة ١ تحسب الحلق من{" "}
-              <span className="font-mono text-foreground">W/H</span>، والخطوة ٢
-              تحسب الضلفة من{" "}
-              <span className="font-mono text-foreground">FW/FH</span>.
+          {pieces.length === 0 ? (
+            <p className="px-4 py-6 text-center text-sm text-muted">
+              مفيش عيدان — اضغط «عود جديد»
             </p>
-
-            <div className="rounded-xl border border-border bg-background p-3">
-              <p className="mb-1 text-[11px] font-bold text-primary">
-                الخطوة ١ — معادلات الحلق
-              </p>
-              <p className="mb-2 text-[10px] text-muted">
-                استخدم <span className="font-mono text-foreground">W</span> و{" "}
-                <span className="font-mono text-foreground">H</span> (مقاس الفتحة)
-              </p>
-              <div className="space-y-2.5">
-                <FormulaField
-                  label="عرض الحلق → FW"
-                  value={deductions.frame.width}
-                  onChange={(width) =>
-                    setDeductions((d) => ({
-                      ...d,
-                      frame: { ...d.frame, width },
-                    }))
-                  }
-                  hint="مثال: =W أو =W-10"
-                  preferredVars={["W", "H"]}
-                />
-                <FormulaField
-                  label="ارتفاع الحلق → FH"
-                  value={deductions.frame.height}
-                  onChange={(height) =>
-                    setDeductions((d) => ({
-                      ...d,
-                      frame: { ...d.frame, height },
-                    }))
-                  }
-                  hint="مثال: =H أو =H-5"
-                  preferredVars={["W", "H"]}
-                />
-              </div>
-              <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
-                <p>{frameWidthFormula(deductions)}</p>
-                <p>{frameHeightFormula(deductions)}</p>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-background p-3">
-              <p className="mb-1 text-[11px] font-bold text-primary">
-                الخطوة ٢ — معادلات الضلفة
-              </p>
-              <p className="mb-2 text-[10px] text-muted">
-                بعد حساب الحلق، استخدم{" "}
-                <span className="font-mono text-foreground">FW</span> و{" "}
-                <span className="font-mono text-foreground">FH</span>
-              </p>
-              <div className="space-y-2.5">
-                <FormulaField
-                  label="عرض الضلفة"
-                  value={deductions.sash.width}
-                  onChange={(width) =>
-                    setDeductions((d) => ({
-                      ...d,
-                      sash: { ...d.sash, width },
-                    }))
-                  }
-                  hint="مثال: =FW-10"
-                  preferredVars={["FW", "FH", "W", "H"]}
-                />
-                <FormulaField
-                  label="ارتفاع الضلفة"
-                  value={deductions.sash.height}
-                  onChange={(height) =>
-                    setDeductions((d) => ({
-                      ...d,
-                      sash: { ...d.sash, height },
-                    }))
-                  }
-                  hint="مثال: =FH-10 أو =H-2*35"
-                  preferredVars={["FW", "FH", "W", "H"]}
-                />
-              </div>
-              <div className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
-                <p>{sashWidthFormula(deductions)}</p>
-                <p>{sashHeightFormula(deductions)}</p>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-2 text-[10px] leading-relaxed text-muted">
-              <p className="font-semibold text-foreground">المتغيرات المتاحة</p>
-              {FORMULA_VAR_HELP.map((v) => (
-                <p key={v.key}>
-                  <span className="font-mono text-primary">{v.key}</span> —{" "}
-                  {v.label}
-                </p>
+          ) : (
+            <ul>
+              {pieces.map((piece, i) => (
+                <li
+                  key={piece.id}
+                  className={`px-3 py-3 ${i > 0 ? "border-t border-border" : ""}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 text-right">
+                      <p className="text-sm font-semibold text-foreground">
+                        {piece.name}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted">
+                        {profileRoleLabel(piece.role)} · مقطع{" "}
+                        {piece.sectionWidthMm} مم · طول العود {piece.barLengthM}{" "}
+                        م
+                      </p>
+                      {piece.notes ? (
+                        <p className="mt-0.5 text-[11px] text-muted">
+                          {piece.notes}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openEditPiece(piece)}
+                        className="rounded-lg border border-border px-2 py-1 text-[11px] font-medium"
+                      >
+                        تعديل
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deletePiece(piece.id)}
+                        className="rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-red-600"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </div>
+                </li>
               ))}
-              <p className="mt-1.5 border-t border-border/60 pt-1.5">
-                دوال: MIN MAX ABS ROUND FLOOR CEIL IF · مثال:{" "}
-                <span className="font-mono text-foreground">=W-2*60</span>
-              </p>
-            </div>
-          </>
-        )}
-
-        <button
-          type="submit"
-          className="h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
-        >
-          حفظ التعديلات
-        </button>
-      </form>
-
-      {/* معاينة على مقاس */}
-      <section className="space-y-2 rounded-2xl border border-border bg-card p-3">
-        <h3 className="text-xs font-bold text-foreground">جرّب على مقاس فتحة</h3>
-        <p className="text-[10px] leading-relaxed text-muted">
-          اكتب أي مقاس فتحة وشوف مقاس قطع الحلق والضلفة بعد التعديل خطوة بخطوة.
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <label className="block text-[11px] text-muted">
-            عرض الفتحة W (مم)
-            <input
-              type="number"
-              min={0}
-              value={previewW}
-              onChange={(e) => setPreviewW(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-          </label>
-          <label className="block text-[11px] text-muted">
-            ارتفاع الفتحة H (مم)
-            <input
-              type="number"
-              min={0}
-              value={previewH}
-              onChange={(e) => setPreviewH(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-          </label>
-        </div>
-
-        <CutStepsList
-          steps={getCutCalculationSteps(
-            Math.max(0, Number(previewW) || 0),
-            Math.max(0, Number(previewH) || 0),
-            deductions
+            </ul>
           )}
-        />
-
-        <div className="overflow-hidden rounded-xl border border-border bg-background text-sm">
-          <div className="grid grid-cols-3 border-b border-border text-center text-[11px] font-semibold text-muted">
-            <span className="px-2 py-2">الجزء</span>
-            <span className="px-2 py-2">العرض</span>
-            <span className="px-2 py-2">الارتفاع</span>
-          </div>
-          <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
-            <span className="px-2 py-2.5 text-start text-xs font-semibold">
-              الفتحة
-            </span>
-            <span className="px-2 py-2.5">{previewCuts.openingWidthMm}</span>
-            <span className="px-2 py-2.5">{previewCuts.openingHeightMm}</span>
-          </div>
-          <div className="grid grid-cols-3 border-b border-border text-center tabular-nums">
-            <span className="px-2 py-2.5 text-start text-xs font-semibold text-primary">
-              الحلق (FW × FH)
-            </span>
-            <span className="px-2 py-2.5 font-semibold text-primary">
-              {previewCuts.errors.frameWidth
-                ? "!"
-                : previewCuts.frameWidthMm}
-            </span>
-            <span className="px-2 py-2.5 font-semibold text-primary">
-              {previewCuts.errors.frameHeight
-                ? "!"
-                : previewCuts.frameHeightMm}
-            </span>
-          </div>
-          <div className="grid grid-cols-3 text-center tabular-nums">
-            <span className="px-2 py-2.5 text-start text-xs font-semibold text-primary">
-              الضلفة
-            </span>
-            <span className="px-2 py-2.5 font-semibold text-primary">
-              {previewCuts.errors.sashWidth ? "!" : previewCuts.sashWidthMm}
-            </span>
-            <span className="px-2 py-2.5 font-semibold text-primary">
-              {previewCuts.errors.sashHeight ? "!" : previewCuts.sashHeightMm}
-            </span>
-          </div>
-        </div>
-        {Object.values(previewCuts.errors).some(Boolean) ? (
-          <ul className="space-y-0.5 text-[11px] text-red-600">
-            {previewCuts.errors.frameWidth ? (
-              <li>عرض الحلق: {previewCuts.errors.frameWidth}</li>
-            ) : null}
-            {previewCuts.errors.frameHeight ? (
-              <li>ارتفاع الحلق: {previewCuts.errors.frameHeight}</li>
-            ) : null}
-            {previewCuts.errors.sashWidth ? (
-              <li>عرض الضلفة: {previewCuts.errors.sashWidth}</li>
-            ) : null}
-            {previewCuts.errors.sashHeight ? (
-              <li>ارتفاع الضلفة: {previewCuts.errors.sashHeight}</li>
-            ) : null}
-          </ul>
-        ) : null}
-      </section>
-      </>
+        </section>
       ) : null}
     </div>
   );
@@ -1170,173 +662,5 @@ function RoleOptionGroup({
         </option>
       ))}
     </optgroup>
-  );
-}
-
-function CutStepsList({
-  steps,
-}: {
-  steps: ReturnType<typeof getCutCalculationSteps>;
-}) {
-  return (
-    <ol className="space-y-1.5 rounded-xl border border-border bg-background/80 p-2.5 text-[11px]">
-      {steps.map((s) => (
-        <li key={s.step} className="leading-relaxed">
-          <span
-            className={`font-semibold ${
-              s.phase === "frame" ? "text-primary" : "text-foreground"
-            }`}
-          >
-            {s.step}. {s.label}
-          </span>
-          <span className="mx-1 font-mono text-muted">{s.formula}</span>
-          {s.error ? (
-            <span className="text-red-600"> — {s.error}</span>
-          ) : (
-            <span className="text-muted">
-              {" "}
-              ({formatFormulaVars(
-                s.vars,
-                s.phase === "frame" ? ["W", "H"] : ["W", "H", "FW", "FH"]
-              )}) →{" "}
-              <strong className="text-primary">{s.resultMm} مم</strong>
-            </span>
-          )}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-
-function SimpleOffsetField({
-  label,
-  value,
-  onChange,
-  explainPlus,
-  explainMinus,
-}: {
-  label: string;
-  /** موجب = زيادة · سالب = تخصيم */
-  value: number;
-  onChange: (next: number) => void;
-  explainPlus: string;
-  explainMinus: string;
-}) {
-  const direction: "plus" | "minus" | "zero" =
-    value > 0 ? "plus" : value < 0 ? "minus" : "zero";
-  const amount = Math.abs(Number.isFinite(value) ? value : 0);
-
-  function setDirection(next: "plus" | "minus") {
-    if (amount === 0) {
-      onChange(next === "plus" ? 1 : -1);
-      return;
-    }
-    onChange(next === "plus" ? amount : -amount);
-  }
-
-  function setAmount(n: number) {
-    if (n === 0) {
-      onChange(0);
-      return;
-    }
-    const sign = direction === "plus" ? 1 : -1;
-    onChange(sign * n);
-  }
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-2.5">
-      <p className="text-[11px] font-semibold text-foreground">{label}</p>
-      <div className="mt-1.5 grid grid-cols-2 gap-1 rounded-lg border border-border bg-background p-0.5">
-        <button
-          type="button"
-          onClick={() => setDirection("minus")}
-          className={`h-8 rounded-md text-[11px] font-semibold transition-colors ${
-            direction === "minus"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted hover:bg-card"
-          }`}
-        >
-          − تخصيم
-        </button>
-        <button
-          type="button"
-          onClick={() => setDirection("plus")}
-          className={`h-8 rounded-md text-[11px] font-semibold transition-colors ${
-            direction === "plus"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted hover:bg-card"
-          }`}
-        >
-          + زيادة
-        </button>
-      </div>
-      <label className="mt-2 block text-[10px] text-muted">
-        المقدار (مم)
-        <NumericInput
-          min={0}
-          step={1}
-          value={amount}
-          onChange={setAmount}
-          className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm tabular-nums text-foreground outline-none focus:border-primary"
-        />
-      </label>
-      <p className="mt-1 text-[10px] leading-snug text-muted">
-        {direction === "plus"
-          ? explainPlus
-          : direction === "minus"
-            ? explainMinus
-            : "نفس المقاس بدون تعديل"}
-        {amount > 0 ? (
-          <span className="mt-0.5 block font-semibold text-primary">
-            {direction === "plus" ? `+${amount}` : `−${amount}`} مم
-          </span>
-        ) : null}
-      </p>
-    </div>
-  );
-}
-
-function FormulaField({
-  label,
-  value,
-  onChange,
-  hint,
-  preferredVars,
-}: {
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
-  hint?: string;
-  preferredVars?: ("W" | "H" | "FW" | "FH")[];
-}) {
-  const check = validateFormula(value || "=");
-  const varsHint =
-    preferredVars && preferredVars.length > 0
-      ? `المتغيرات: ${preferredVars.join(" · ")}`
-      : null;
-  return (
-    <label className="block text-[11px] text-muted">
-      {label}
-      <input
-        type="text"
-        dir="ltr"
-        spellCheck={false}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={() => onChange(ensureEqualsPrefix(value))}
-        placeholder="=W-10"
-        className={`mt-1 w-full rounded-xl border bg-card px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary ${
-          check.ok ? "border-border" : "border-red-400"
-        }`}
-      />
-      {varsHint ? (
-        <p className="mt-0.5 text-[10px] text-muted">{varsHint}</p>
-      ) : null}
-      {hint ? <p className="mt-0.5 text-[10px] text-muted">{hint}</p> : null}
-      {!check.ok ? (
-        <p className="mt-0.5 text-[10px] text-red-600">{check.error}</p>
-      ) : null}
-    </label>
   );
 }

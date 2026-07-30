@@ -14,7 +14,7 @@ export default function MaterialsPage() {
       <PageHeader
         breadcrumb={materialsHubBreadcrumb()}
         title="الخامات"
-        description="أنظمة وأسعار القطاعات والاكسسوار والزجاج والسلك والحديد"
+        description="أنظمة وأسعار القطاعات والاكسسوار · التخصيمات · الزجاج والسلك والحديد"
       />
 
       <div className="flex flex-col gap-5">

@@ -38,6 +38,7 @@ export const ROUTES = {
     accessoryBrands: "/materials/accessories/brands",
     accessorySystem: (systemId: string) =>
       `/materials/accessories/${systemId}`,
+    deductions: "/materials/deductions",
     glass: "/materials/glass",
     glassSystem: (systemId: string) => `/materials/glass/${systemId}`,
     iron: "/materials/iron",
@@ -65,7 +66,7 @@ export const APP_SECTIONS = [
   {
     id: "materials",
     label: "الخامات",
-    description: "قطاعات · اكسسوار · زجاج · سلك · حديد",
+    description: "قطاعات · اكسسوار · تخصيمات · زجاج · سلك · حديد",
     href: ROUTES.materials.hub,
     color: "#E8956F",
   },

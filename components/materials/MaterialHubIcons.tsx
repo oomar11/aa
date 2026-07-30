@@ -74,6 +74,33 @@ export function MaterialHubIcon({ id }: { id: string }) {
       </svg>
     );
   }
+  if (id === "deductions") {
+    return (
+      <svg viewBox="0 0 40 40" className={cls} fill="none" aria-hidden>
+        <rect
+          x="8"
+          y="8"
+          width="24"
+          height="24"
+          rx="3"
+          fill="currentColor"
+          opacity="0.9"
+        />
+        <path
+          d="M14 20h12M20 14v12"
+          stroke="rgba(255,255,255,0.85)"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
+        <path
+          d="M12 28h16"
+          stroke="rgba(0,0,0,0.2)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 40 40" className={cls} fill="none" aria-hidden>
       <rect x="7" y="18" width="26" height="8" rx="1.5" fill="currentColor" />

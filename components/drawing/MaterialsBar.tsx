@@ -168,7 +168,7 @@ export function MaterialsBar({
         <p className="text-xs font-semibold text-primary">حساب الخامات</p>
         <p className="truncate text-[11px] text-muted">
           {profileSystem
-            ? `${partLabel} · ${profileSystem.name} · أطوال بعد التخصيم`
+            ? `${partLabel} · ${profileSystem.name} · تقديري بعد التخصيم`
             : partLabel}
         </p>
       </div>

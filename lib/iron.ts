@@ -21,6 +21,7 @@ import {
 import {
   calcCutSizes,
   defaultIronDetails,
+  getCutDeductions,
   ironPieceForRole,
   ironRoleLabel,
   loadMaterialCatalog,
@@ -294,8 +295,7 @@ function emptyBreakdown(): IronBreakdown {
  */
 export function calcIronBreakdown(
   item: DesignItem,
-  ironSystem?: MaterialSystem | null,
-  profileSystem?: MaterialSystem | null
+  ironSystem?: MaterialSystem | null
 ): IronBreakdown | null {
   const ironId = item.ironId;
   if (!ironId || ironId === "none") return null;
@@ -320,16 +320,8 @@ export function calcIronBreakdown(
   collectPaneBoxes(layout, 0, 0, widthMm, heightMm, panes, boxes);
   if (boxes.length === 0) return emptyBreakdown();
 
-  const profileDeductions =
-    profileSystem?.profile?.deductions ??
-    catalog?.profiles.find((s) => s.id === item.systemId)?.profile
-      ?.deductions;
-  const cuts = profileDeductions
-    ? calcCutSizes(widthMm, heightMm, profileDeductions)
-    : {
-        frameWidthMm: widthMm,
-        frameHeightMm: heightMm,
-      };
+  const cutDeductions = getCutDeductions(catalog);
+  const cuts = calcCutSizes(widthMm, heightMm, cutDeductions);
   const fw = cuts.frameWidthMm;
   const fh = cuts.frameHeightMm;
 
@@ -354,9 +346,7 @@ export function calcIronBreakdown(
     const hingedAabb = aabbOf(hingedBoxes);
     const slidingAabb = aabbOf(slidingBoxes);
     if (hingedAabb) {
-      const hCuts = profileDeductions
-        ? calcCutSizes(hingedAabb.w, hingedAabb.h, profileDeductions)
-        : { frameWidthMm: hingedAabb.w, frameHeightMm: hingedAabb.h };
+      const hCuts = calcCutSizes(hingedAabb.w, hingedAabb.h, cutDeductions);
       const peri = frameIronPerimeterMm(
         hCuts.frameWidthMm,
         hCuts.frameHeightMm,
@@ -365,9 +355,7 @@ export function calcIronBreakdown(
       addLine(lines, totals, "frame-hinged", peri, details);
     }
     if (slidingAabb) {
-      const sCuts = profileDeductions
-        ? calcCutSizes(slidingAabb.w, slidingAabb.h, profileDeductions)
-        : { frameWidthMm: slidingAabb.w, frameHeightMm: slidingAabb.h };
+      const sCuts = calcCutSizes(slidingAabb.w, slidingAabb.h, cutDeductions);
       const peri = frameIronPerimeterMm(
         sCuts.frameWidthMm,
         sCuts.frameHeightMm,
