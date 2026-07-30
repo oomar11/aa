@@ -34,11 +34,22 @@ export default function MaterialsPage() {
               <span className="text-base font-semibold">{cat.label}</span>
             </Link>
           ))}
+          <Link
+            href="/materials/mesh"
+            className="flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-2xl p-4 text-white transition-all duration-300 ease-out hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+            style={{
+              background: "#5B9A6F",
+              boxShadow: "0 6px 20px rgba(91,154,111,0.35)",
+            }}
+          >
+            <MeshCategoryIcon />
+            <span className="text-base font-semibold">سلك</span>
+          </Link>
         </section>
 
         <p className="px-1 text-center text-[11px] leading-relaxed text-muted">
-          كل تصميم يختار نظام قطاعات واكسسوار وزجاج (مفرد/دبل + جورجيا). الحديد
-          غالباً بيفضل على الافتراضي.
+          كل تصميم يختار نظام قطاعات واكسسوار وزجاج وسلك. الحديد غالباً بيفضل
+          على الافتراضي.
         </p>
       </main>
       <BottomNav />
@@ -124,6 +135,28 @@ function CategoryIcon({ category }: { category: string }) {
         rx="1"
         fill="currentColor"
         opacity="0.75"
+      />
+    </svg>
+  );
+}
+
+function MeshCategoryIcon() {
+  const cls = "h-10 w-10";
+  return (
+    <svg viewBox="0 0 40 40" className={cls} fill="none" aria-hidden>
+      <rect
+        x="7"
+        y="7"
+        width="26"
+        height="26"
+        rx="3"
+        fill="currentColor"
+        opacity="0.85"
+      />
+      <path
+        d="M10 13h20M10 20h20M10 27h20M13 10v20M20 10v20M27 10v20"
+        stroke="rgba(0,0,0,0.2)"
+        strokeWidth="1.2"
       />
     </svg>
   );
