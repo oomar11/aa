@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
+import { MeshCategoriesEditor } from "@/components/MeshCategoriesEditor";
 import { MaterialSystemsEditor } from "@/components/MaterialSystemsEditor";
 import { MeshTypesEditor } from "@/components/MeshTypesEditor";
 import { ScreenBack } from "@/components/ScreenBack";
@@ -27,7 +28,12 @@ export default async function MaterialCategoryPage({ params }: Props) {
           رجوع للخامات
         </ScreenBack>
         <MaterialSystemsEditor category={category as MaterialCategory} />
-        {category === "accessories" ? <MeshTypesEditor /> : null}
+        {category === "accessories" ? (
+          <>
+            <MeshCategoriesEditor />
+            <MeshTypesEditor />
+          </>
+        ) : null}
       </main>
       <BottomNav />
     </div>

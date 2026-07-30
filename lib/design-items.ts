@@ -5,7 +5,7 @@ import {
   ensurePaneIds,
   listPaneIds,
 } from "@/lib/window-layout";
-import { getDefaultGlassBottleId, type MaterialCatalog } from "@/lib/material-systems";
+import { getDefaultGlassBottleId, getMeshCategories, type MaterialCatalog } from "@/lib/material-systems";
 import { suggestItemName } from "@/lib/item-naming";
 
 export type WindowStyle =
@@ -55,22 +55,26 @@ export type PaneGrid =
   | "bot-2v"
   | "diamond";
 
-/** تصنيف السلك — الجرار بس اللي بياخد قطاع زي ضلفة جرار */
-export type MeshKind = "sliding" | "fixed" | "roll" | "hinged";
+/** معرّف تصنيف السلك (من كتالوج الخامات) */
+export type MeshKind = string;
 
-export const MESH_KINDS: { id: MeshKind; label: string }[] = [
-  { id: "sliding", label: "سلك جرار" },
-  { id: "fixed", label: "سلك ثابت" },
-  { id: "roll", label: "سلك رول" },
-  { id: "hinged", label: "سلك مفصلي" },
-];
-
-export function meshKindLabel(kind: MeshKind): string {
-  return MESH_KINDS.find((k) => k.id === kind)?.label ?? kind;
+/** يحدد تصنيف السلك الافتراضي من نوع الفتح */
+export function inferMeshKind(
+  opening: PaneOpening,
+  catalog?: MaterialCatalog
+): MeshKind {
+  const tag = openingMeshDefaultTag(opening);
+  const cats = getMeshCategories(catalog);
+  const match = cats.find((c) => c.defaultFor === tag);
+  if (match) return match.id;
+  if (tag === "sliding") return "sliding";
+  if (tag === "hinged") return "hinged";
+  return "fixed";
 }
 
-/** يحدد سلك جرار تلقائياً لو الضلفة جرار/سحاب */
-export function inferMeshKind(opening: PaneOpening): MeshKind {
+function openingMeshDefaultTag(
+  opening: PaneOpening
+): "sliding" | "hinged" | "fixed" {
   if (
     opening === "drawer-left" ||
     opening === "drawer-right" ||
@@ -94,10 +98,11 @@ export function inferMeshKind(opening: PaneOpening): MeshKind {
 
 export function resolvePaneMeshKind(
   cfg: PaneConfig,
-  opening: PaneOpening
+  opening: PaneOpening,
+  catalog?: MaterialCatalog
 ): MeshKind {
   if (cfg.meshKind) return cfg.meshKind;
-  return inferMeshKind(opening);
+  return inferMeshKind(opening, catalog);
 }
 
 export type PaneConfig = {

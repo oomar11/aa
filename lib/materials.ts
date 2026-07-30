@@ -1,7 +1,6 @@
 import {
   gridCellCount,
   itemUnitAreaSqm,
-  meshKindLabel,
   normalizePaneConfig,
   resolvePaneGlass,
   resolvePaneMeshKind,
@@ -18,6 +17,8 @@ import {
   findGlassBottle,
   findMeshType,
   loadMaterialCatalog,
+  meshCategoryCalcProfile,
+  meshKindLabel,
   paneGlassHasPricing,
   type MaterialCatalog,
 } from "@/lib/material-systems";
@@ -597,13 +598,18 @@ function paneMeshAreaMm2(
 /** قطاع ضلفة سلك جرار — محيط الضلفة لما السلك نوعه جرار */
 function meshSlidingProfileMm(
   boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined
+  panes: Record<string, PaneConfig> | undefined,
+  catalog?: MaterialCatalog
 ): number {
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
   let total = 0;
   for (const box of boxes) {
     const cfg = normalizePaneConfig(panes?.[box.id]);
     if (!cfg.mesh) continue;
-    if (resolvePaneMeshKind(cfg, box.opening) !== "sliding") continue;
+    const kind = resolvePaneMeshKind(cfg, box.opening, cat);
+    if (!meshCategoryCalcProfile(kind, cat)) continue;
     total += panePerimeterMm(box.w, box.h);
   }
   return total;
@@ -984,7 +990,7 @@ export function calcMeshBreakdown(
     const cfg = normalizePaneConfig(panes[box.id]);
     if (!cfg.mesh) continue;
 
-    const meshKind = resolvePaneMeshKind(cfg, box.opening);
+    const meshKind = resolvePaneMeshKind(cfg, box.opening, cat);
     const meshType =
       findMeshType(cfg.meshTypeId, cat) ??
       defaultMeshTypeForKind(meshKind, cat);
@@ -993,13 +999,12 @@ export function calcMeshBreakdown(
     const areaSqm = roundM(
       paneMeshAreaMm2(box.w, box.h, box.opening, cfg) / 1_000_000
     );
-    const profileM =
-      meshKind === "sliding"
-        ? roundM(panePerimeterMm(box.w, box.h) / 1000)
-        : 0;
+    const profileM = meshCategoryCalcProfile(meshKind, cat)
+      ? roundM(panePerimeterMm(box.w, box.h) / 1000)
+      : 0;
     const label = meshType
-      ? `${meshType.name} · ${meshKindLabel(meshKind)}`
-      : meshKindLabel(meshKind);
+      ? `${meshType.name} · ${meshKindLabel(meshKind, cat)}`
+      : meshKindLabel(meshKind, cat);
 
     lines.push({
       paneId: box.id,
