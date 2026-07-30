@@ -55,6 +55,51 @@ export type PaneGrid =
   | "bot-2v"
   | "diamond";
 
+/** تصنيف السلك — الجرار بس اللي بياخد قطاع زي ضلفة جرار */
+export type MeshKind = "sliding" | "fixed" | "roll" | "hinged";
+
+export const MESH_KINDS: { id: MeshKind; label: string }[] = [
+  { id: "sliding", label: "سلك جرار" },
+  { id: "fixed", label: "سلك ثابت" },
+  { id: "roll", label: "سلك رول" },
+  { id: "hinged", label: "سلك مفصلي" },
+];
+
+export function meshKindLabel(kind: MeshKind): string {
+  return MESH_KINDS.find((k) => k.id === kind)?.label ?? kind;
+}
+
+/** يحدد سلك جرار تلقائياً لو الضلفة جرار/سحاب */
+export function inferMeshKind(opening: PaneOpening): MeshKind {
+  if (
+    opening === "drawer-left" ||
+    opening === "drawer-right" ||
+    opening === "sliding-left" ||
+    opening === "sliding-right"
+  ) {
+    return "sliding";
+  }
+  if (
+    opening === "casement-left" ||
+    opening === "casement-right" ||
+    opening === "door-left" ||
+    opening === "door-right" ||
+    opening === "tilt-turn" ||
+    opening === "tilt-turn-left"
+  ) {
+    return "hinged";
+  }
+  return "fixed";
+}
+
+export function resolvePaneMeshKind(
+  cfg: PaneConfig,
+  opening: PaneOpening
+): MeshKind {
+  if (cfg.meshKind) return cfg.meshKind;
+  return inferMeshKind(opening);
+}
+
 export type PaneConfig = {
   opening: PaneOpening;
   /** بوكلير — ثابت بين مفصليين والمقابض باتجاه بعض */
@@ -69,6 +114,12 @@ export type PaneConfig = {
   panelCells?: number[];
   /** شبكة / سلك */
   mesh?: boolean;
+  /** نوع السلك من كتالوج الخامات */
+  meshTypeId?: string;
+  /** تصنيف السلك: جرار (قطاع) أو مساحة فقط */
+  meshKind?: MeshKind;
+  /** المستخدم غيّر التصنيف يدوياً — متعملش auto من نوع الفتح */
+  meshKindManual?: boolean;
   /** باب بدل شباك عادي */
   isDoor?: boolean;
   /** الزجاجة الأولى — مفرد */

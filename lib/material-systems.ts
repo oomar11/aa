@@ -1,5 +1,6 @@
 /** أنظمة الخامات: قطاعات · اكسسوار · زجاج · حديد */
 
+import type { MeshKind } from "@/lib/design-items";
 import {
   deductToFormula,
   ensureEqualsPrefix,
@@ -156,8 +157,18 @@ export type GlassRates = {
   georgianCostPerSqm: number;
 };
 
+/** نوع سلك في كتالوج الخامات */
+export type MeshType = {
+  id: string;
+  name: string;
+  kind: MeshKind;
+  pricePerSqm: number;
+  notes?: string;
+};
+
 export type MaterialCatalog = Record<MaterialCategory, MaterialSystem[]> & {
   glassRates?: GlassRates;
+  meshTypes?: MeshType[];
 };
 
 export const MATERIALS_STORAGE_KEY = "upvc-material-systems";
@@ -297,6 +308,75 @@ export function defaultGlassRates(): GlassRates {
     doublingCostPerSqm: 50,
     georgianCostPerSqm: 100,
   };
+}
+
+export function defaultMeshTypes(): MeshType[] {
+  return [
+    {
+      id: "mesh-sliding",
+      name: "سلك جرار فايبر",
+      kind: "sliding",
+      pricePerSqm: 45,
+    },
+    {
+      id: "mesh-fixed",
+      name: "سلك ثابت فايبر",
+      kind: "fixed",
+      pricePerSqm: 35,
+    },
+    {
+      id: "mesh-roll",
+      name: "سلك رول",
+      kind: "roll",
+      pricePerSqm: 40,
+    },
+    {
+      id: "mesh-hinged",
+      name: "سلك مفصلي",
+      kind: "hinged",
+      pricePerSqm: 38,
+    },
+  ];
+}
+
+export function getMeshTypes(catalog?: MaterialCatalog): MeshType[] {
+  const cat = catalog ?? (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  return cat.meshTypes ?? defaultMeshTypes();
+}
+
+export function findMeshType(
+  id: string | undefined | null,
+  catalog?: MaterialCatalog
+): MeshType | undefined {
+  if (!id) return undefined;
+  return getMeshTypes(catalog).find((m) => m.id === id);
+}
+
+export function meshTypeOptions(
+  catalog?: MaterialCatalog
+): { id: string; label: string; kind: MeshType["kind"]; pricePerSqm: number }[] {
+  return getMeshTypes(catalog).map((m) => ({
+    id: m.id,
+    label: m.name,
+    kind: m.kind,
+    pricePerSqm: m.pricePerSqm,
+  }));
+}
+
+export function meshTypeHasPricing(
+  meshTypeId: string | undefined,
+  catalog?: MaterialCatalog
+): boolean {
+  const t = findMeshType(meshTypeId, catalog);
+  return Boolean(t && t.pricePerSqm > 0);
+}
+
+export function defaultMeshTypeForKind(
+  kind: MeshType["kind"],
+  catalog?: MaterialCatalog
+): MeshType | undefined {
+  const types = getMeshTypes(catalog);
+  return types.find((t) => t.kind === kind) ?? types[0];
 }
 
 /** زجاجة واحدة في كتالوج الخامات */
@@ -537,6 +617,7 @@ export function getDefaultCatalog(): MaterialCatalog {
       { id: "iron-heavy", name: "حديد تسليح ثقيل" },
     ],
     glassRates: defaultGlassRates(),
+    meshTypes: defaultMeshTypes(),
   };
 }
 
@@ -815,8 +896,38 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
   }
 
   next.glassRates = normalizeGlassRates(raw.glassRates);
+  next.meshTypes = normalizeMeshTypes(raw.meshTypes);
 
   return next;
+}
+
+function normalizeMeshTypes(raw: unknown): MeshType[] {
+  if (!Array.isArray(raw) || raw.length === 0) return defaultMeshTypes();
+  const out: MeshType[] = [];
+  const seen = new Set<string>();
+  const kinds = new Set(["sliding", "fixed", "roll", "hinged"]);
+
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const id = typeof o.id === "string" ? o.id.trim() : "";
+    const name = typeof o.name === "string" ? o.name.trim() : "";
+    if (!id || !name || seen.has(id)) continue;
+    const kind = kinds.has(o.kind as string)
+      ? (o.kind as MeshType["kind"])
+      : "fixed";
+    const price = Number(o.pricePerSqm);
+    seen.add(id);
+    out.push({
+      id,
+      name,
+      kind,
+      pricePerSqm: Number.isFinite(price) && price >= 0 ? price : 0,
+      notes: typeof o.notes === "string" ? o.notes.trim() || undefined : undefined,
+    });
+  }
+
+  return out.length > 0 ? out : defaultMeshTypes();
 }
 
 export function loadMaterialCatalog(): MaterialCatalog {

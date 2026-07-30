@@ -33,7 +33,7 @@ import {
   type PaneOpening,
 } from "@/lib/design-items";
 import { withSuggestedName } from "@/lib/item-naming";
-import { calcGlassBreakdown, calcItemMaterials, scaleMaterials, type GlassBreakdown } from "@/lib/materials";
+import { calcGlassBreakdown, calcItemMaterials, calcMeshBreakdown, scaleMaterials, type GlassBreakdown, type MeshBreakdown } from "@/lib/materials";
 import {
   equalizeSplitRatios,
   ratioFromMm,
@@ -218,6 +218,11 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   const glassBreakdown = useMemo((): GlassBreakdown | null => {
     if (!item) return null;
     return calcGlassBreakdown(item);
+  }, [item]);
+
+  const meshBreakdown = useMemo((): MeshBreakdown | null => {
+    if (!item) return null;
+    return calcMeshBreakdown(item);
   }, [item]);
 
   const activeOpening = useMemo(() => {
@@ -480,6 +485,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
           <MaterialsBar
             materials={materials}
             glassBreakdown={glassBreakdown}
+            meshBreakdown={meshBreakdown}
             partLabel={item.name || "شباك"}
             widthMm={item.widthMm}
             heightMm={item.heightMm}
