@@ -69,3 +69,19 @@ export function loadIronOptions(): { id: string; label: string }[] {
 export function discountPercent(id?: string | null): number {
   return DISCOUNT_OPTIONS.find((d) => d.id === id)?.percent ?? 0;
 }
+
+/** تطبيق نسبة الخصم على مبلغ خامات أو بيع */
+export function applyDiscountAmount(
+  amount: number,
+  discountId?: string | null
+): number {
+  const percent = discountPercent(discountId);
+  if (percent <= 0 || !Number.isFinite(amount)) return amount;
+  return amount * (1 - percent / 100);
+}
+
+export function discountLabel(discountId?: string | null): string | null {
+  const opt = DISCOUNT_OPTIONS.find((d) => d.id === discountId);
+  if (!opt || opt.percent <= 0) return null;
+  return opt.label;
+}

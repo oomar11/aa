@@ -1,5 +1,10 @@
 /** أنظمة الخامات: قطاعات · اكسسوار · زجاج · حديد */
 
+import {
+  defaultVorneAccessoryBrands,
+  defaultVorneCategoryBrands,
+  migrateVorneAccessoryBrands,
+} from "@/lib/accessory-price-list-2026";
 import type { MeshKind } from "@/lib/design-items";
 import {
   deductToFormula,
@@ -343,6 +348,8 @@ export type AccessoryBrand = {
   category: AccessoryBrandCategory;
   /** سعر الوحدة (ج.م) — قطعة أو متر حسب الفئة */
   unitPrice?: number;
+  /** أسعار السبلونة حسب المقاس (سم) — تُستخدم بدل unitPrice عند الحساب */
+  sizePrices?: Partial<Record<number, number>>;
   notes?: string;
 };
 
@@ -826,7 +833,7 @@ export function defaultSlidingLockPieces(): AccessoryLockPiece[] {
 
 export function defaultAccessoryDetails(): AccessorySystemDetails {
   return {
-    categoryBrands: {},
+    categoryBrands: defaultVorneCategoryBrands(),
     hingesPerSash: 2,
     hingesPerDoor: 3,
     espagnoletteCatalog: defaultEspagnoletteCatalog(),
@@ -1018,7 +1025,7 @@ export function isAccessoryBrandCategory(
 }
 
 export function defaultAccessoryBrands(): AccessoryBrand[] {
-  return [];
+  return defaultVorneAccessoryBrands();
 }
 
 export function findAccessoryBrand(
@@ -2569,11 +2576,28 @@ export function normalizeAccessoryBrands(raw: unknown): AccessoryBrand[] {
         const n = Number(o.unitPrice);
         return Number.isFinite(n) && n >= 0 ? n : undefined;
       })(),
+      sizePrices: normalizeAccessorySizePrices(o.sizePrices),
       notes: typeof o.notes === "string" ? o.notes.trim() || undefined : undefined,
     });
   }
 
-  return out;
+  return out.length > 0 ? out : defaultAccessoryBrands();
+}
+
+function normalizeAccessorySizePrices(
+  raw: unknown
+): Partial<Record<number, number>> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const out: Partial<Record<number, number>> = {};
+  for (const [key, val] of Object.entries(o)) {
+    const size = Number(key);
+    const price = Number(val);
+    if (Number.isFinite(size) && size > 0 && Number.isFinite(price) && price >= 0) {
+      out[size] = price;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 export function normalizeAccessoryDetails(
@@ -2590,7 +2614,12 @@ export function normalizeAccessoryDetails(
   );
 
   return {
-    categoryBrands: normalizeCategoryBrands(o.categoryBrands, brands),
+    categoryBrands: (() => {
+      const mapped = normalizeCategoryBrands(o.categoryBrands, brands);
+      return Object.keys(mapped).length > 0
+        ? mapped
+        : defaultVorneCategoryBrands();
+    })(),
     hingesPerSash: normalizePositiveInt(o.hingesPerSash, fallback.hingesPerSash),
     hingesPerDoor: normalizePositiveInt(o.hingesPerDoor, fallback.hingesPerDoor),
     espagnoletteCatalog,
@@ -2730,10 +2759,11 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
   const defaults = getDefaultCatalog();
   const next = {} as MaterialCatalog;
 
-  const accessoryBrands =
+  const accessoryBrands = migrateVorneAccessoryBrands(
     raw.accessoryBrands === undefined
       ? defaults.accessoryBrands ?? defaultAccessoryBrands()
-      : normalizeAccessoryBrands(raw.accessoryBrands);
+      : normalizeAccessoryBrands(raw.accessoryBrands)
+  );
 
   const profileBrands = migrateCityPremierProfileBrandPrices(
     raw.profileBrands === undefined

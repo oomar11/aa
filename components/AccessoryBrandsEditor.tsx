@@ -84,6 +84,7 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
         draft.unitPrice != null && draft.unitPrice >= 0
           ? draft.unitPrice
           : undefined,
+      sizePrices: draft.sizePrices,
       notes: draft.notes?.trim() || undefined,
     };
     const exists = brands.some((b) => b.id === item.id);
@@ -169,9 +170,12 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
                               {brand.name}
                             </p>
                             <p className="truncate text-[10px] text-muted">
-                              {brand.unitPrice != null && brand.unitPrice > 0
-                                ? `${brand.unitPrice} ج.م/وحدة`
-                                : "السعر مش متحدد"}
+                              {brand.sizePrices &&
+                              Object.keys(brand.sizePrices).length > 0
+                                ? `أسعار حسب المقاس (${Object.keys(brand.sizePrices).length} مقاس)`
+                                : brand.unitPrice != null && brand.unitPrice > 0
+                                  ? `${brand.unitPrice} ج.م/وحدة`
+                                  : "السعر مش متحدد"}
                               {brand.notes ? ` · ${brand.notes}` : ""}
                             </p>
                           </div>
@@ -218,6 +222,16 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
             autoFocus
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           />
+          {draft.sizePrices && Object.keys(draft.sizePrices).length > 0 ? (
+            <p className="rounded-lg border border-border/70 bg-background px-2 py-1.5 text-[10px] text-muted">
+              أسعار السبلونة حسب المقاس مفعّلة (
+              {Object.entries(draft.sizePrices)
+                .sort(([a], [b]) => Number(a) - Number(b))
+                .map(([size, price]) => `${size}سم: ${price}`)
+                .join(" · ")}
+              )
+            </p>
+          ) : null}
           <label className="block text-[11px] text-muted">
             سعر الوحدة (ج.م) — قطعة أو متر حسب الفئة
             <input

@@ -16,6 +16,7 @@ import {
   type MaterialCatalog,
 } from "@/lib/material-systems";
 import type { ProjectMaterialDefaults } from "@/lib/project-materials";
+import { applyDiscountAmount } from "@/lib/item-catalogs";
 import { suggestItemName } from "@/lib/item-naming";
 
 export type WindowStyle =
@@ -396,15 +397,7 @@ export function itemTotalPrice(item: DesignItem): number {
   const base = hasSpecial
     ? (item.specialPrice as number) * qty
     : itemUnitAreaSqm(item) * item.pricePerSqm * qty;
-  const percent =
-    item.discountId === "d1"
-      ? 1
-      : item.discountId === "d3"
-        ? 3
-        : item.discountId === "d5"
-          ? 5
-          : 0;
-  return base * (1 - percent / 100);
+  return applyDiscountAmount(base, item.discountId);
 }
 
 export function defaultPanesForLayout(

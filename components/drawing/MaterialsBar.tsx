@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AccessoriesBreakdown } from "@/lib/accessories";
 import { accessoryBrandTag } from "@/lib/accessories";
+import { accessoryBrandResolvedPrice } from "@/lib/accessory-price-list-2026";
 import type {
   GlassBreakdown,
   MaterialsBreakdown,
@@ -23,6 +24,12 @@ import {
   type AccessoryBrandCategory,
   type MaterialSystem,
 } from "@/lib/material-systems";
+import {
+  applyDiscountAmount,
+  discountLabel,
+  discountPercent,
+  type DiscountId,
+} from "@/lib/item-catalogs";
 import { formatCurrency } from "@/lib/utils";
 
 type Props = {
@@ -36,6 +43,8 @@ type Props = {
   widthMm?: number;
   heightMm?: number;
   systemId?: string | null;
+  /** خصم البند — يُطبَّق على إجمالي تكلفة الخامات */
+  discountId?: DiscountId | string | null;
 };
 
 type MaterialRow = {
@@ -56,6 +65,7 @@ export function MaterialsBar({
   ironBreakdown,
   partLabel = "شباك",
   systemId,
+  discountId,
 }: Props) {
   const [profileSystem, setProfileSystem] = useState<MaterialSystem | null>(
     null
@@ -142,6 +152,12 @@ export function MaterialsBar({
     glassTotal != null ||
     meshTotal != null ||
     accessoryTotal != null;
+  const discountPct = discountPercent(discountId);
+  const discountedTotal =
+    hasAnyCost && discountPct > 0
+      ? applyDiscountAmount(grandTotal, discountId)
+      : grandTotal;
+  const discountText = discountLabel(discountId);
 
   return (
     <section
@@ -156,11 +172,38 @@ export function MaterialsBar({
       </div>
 
       {hasAnyCost ? (
-        <div className="flex items-center justify-between gap-2 border-b border-primary/20 bg-primary-soft/40 px-3 py-2.5">
-          <p className="text-[11px] font-bold text-primary">إجمالي التكلفة</p>
-          <p className="text-base font-bold tabular-nums text-foreground">
-            {formatCurrency(Math.round(grandTotal))} ج.م
-          </p>
+        <div className="border-b border-primary/20 bg-primary-soft/40 px-3 py-2.5">
+          {discountPct > 0 ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] text-muted">قبل الخصم</p>
+                <p className="text-sm font-semibold tabular-nums text-foreground">
+                  {formatCurrency(Math.round(grandTotal))} ج.م
+                </p>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-medium text-primary">
+                  {discountText ?? `خصم ${discountPct}%`}
+                </p>
+                <p className="text-[11px] tabular-nums text-muted">
+                  −{formatCurrency(Math.round(grandTotal - discountedTotal))} ج.م
+                </p>
+              </div>
+              <div className="flex items-center justify-between gap-2 border-t border-primary/15 pt-1">
+                <p className="text-[11px] font-bold text-primary">بعد الخصم</p>
+                <p className="text-base font-bold tabular-nums text-foreground">
+                  {formatCurrency(Math.round(discountedTotal))} ج.م
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-bold text-primary">إجمالي التكلفة</p>
+              <p className="text-base font-bold tabular-nums text-foreground">
+                {formatCurrency(Math.round(grandTotal))} ج.م
+              </p>
+            </div>
+          )}
         </div>
       ) : null}
 
@@ -544,11 +587,12 @@ function buildAccessoryRows(
     label: string,
     qty: number,
     category: AccessoryBrandCategory,
-    qtyLabel?: string
+    qtyLabel?: string,
+    size?: number
   ) {
     if (qty < 0.5) return;
     const brand = brandByCategoryId(brands, labels, category);
-    const unit = brand?.unitPrice != null && brand.unitPrice > 0 ? brand.unitPrice : null;
+    const unit = accessoryBrandResolvedPrice(brand, size);
     const cost = unit != null ? Math.round(qty * unit * 100) / 100 : null;
     rows.push({
       key,
@@ -556,7 +600,7 @@ function buildAccessoryRows(
       qty: qtyLabel ?? formatCount(qty),
       unitHint:
         unit != null
-          ? `${unit} ج.م/قطعة${brand ? ` · ${brand.name}` : ""}`
+          ? `${unit} ج.م/قطعة${brand ? ` · ${brand.name}` : ""}${size != null ? ` · ${size}سم` : ""}`
           : brand
             ? brand.name
             : undefined,
@@ -573,7 +617,7 @@ function buildAccessoryRows(
   ) {
     if (meters < 0.0005) return;
     const brand = brandByCategoryId(brands, labels, category);
-    const unit = brand?.unitPrice != null && brand.unitPrice > 0 ? brand.unitPrice : null;
+    const unit = accessoryBrandResolvedPrice(brand);
     const cost = unit != null ? Math.round(meters * unit * 100) / 100 : null;
     rows.push({
       key,
@@ -596,16 +640,27 @@ function buildAccessoryRows(
     0
   );
   if (hingedEspQty > 0) {
+    const brand = brandByCategoryId(brands, labels, "hinged-espagnolette");
+    let espCost = 0;
+    let priced = false;
+    for (const line of breakdown.hingedEspagnolettes) {
+      const unit = accessoryBrandResolvedPrice(brand, line.size);
+      if (unit != null) {
+        espCost += line.qty * unit;
+        priced = true;
+      }
+    }
     const summary = breakdown.hingedEspagnolettes
       .map((l) => `${l.qty}×${l.size}سم`)
       .join(" · ");
-    pushPiece(
-      "hinged-esp",
-      "سبلونة مفصلي",
-      hingedEspQty,
-      "hinged-espagnolette",
-      summary
-    );
+    rows.push({
+      key: "hinged-esp",
+      label: "سبلونة مفصلي",
+      qty: summary,
+      unitHint: brand?.name,
+      cost: priced ? Math.round(espCost * 100) / 100 : null,
+      sub: accessoryBrandTag(labels, "hinged-espagnolette").replace(/^ · /, "") || undefined,
+    });
   }
 
   for (const piece of breakdown.hingedLockPieces) {
@@ -649,8 +704,7 @@ function buildAccessoryRows(
 
   if (breakdown.trackQty > 0) {
     const brand = brandByCategoryId(brands, labels, "track");
-    const unit =
-      brand?.unitPrice != null && brand.unitPrice > 0 ? brand.unitPrice : null;
+    const unit = accessoryBrandResolvedPrice(brand);
     // التراك يتسعر بالمتر الطولي
     const cost =
       unit != null
@@ -678,16 +732,27 @@ function buildAccessoryRows(
     0
   );
   if (slidingEspQty > 0) {
+    const brand = brandByCategoryId(brands, labels, "sliding-espagnolette");
+    let espCost = 0;
+    let priced = false;
+    for (const line of breakdown.slidingEspagnolettes) {
+      const unit = accessoryBrandResolvedPrice(brand, line.size);
+      if (unit != null) {
+        espCost += line.qty * unit;
+        priced = true;
+      }
+    }
     const summary = breakdown.slidingEspagnolettes
       .map((l) => `${l.qty}×${l.size}سم`)
       .join(" · ");
-    pushPiece(
-      "sliding-esp",
-      "سبلونة جرار",
-      slidingEspQty,
-      "sliding-espagnolette",
-      summary
-    );
+    rows.push({
+      key: "sliding-esp",
+      label: "سبلونة جرار",
+      qty: summary,
+      unitHint: brand?.name,
+      cost: priced ? Math.round(espCost * 100) / 100 : null,
+      sub: accessoryBrandTag(labels, "sliding-espagnolette").replace(/^ · /, "") || undefined,
+    });
   }
 
   for (const piece of breakdown.slidingLockPieces) {

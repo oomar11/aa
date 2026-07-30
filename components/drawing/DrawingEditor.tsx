@@ -47,6 +47,7 @@ import {
 import {
   findSystem,
   loadMaterialCatalog,
+  ACCESSORY_BRANDS_UPDATED,
   PROFILE_BRANDS_UPDATED,
 } from "@/lib/material-systems";
 import {
@@ -268,7 +269,11 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   useEffect(() => {
     const bump = () => setCatalogTick((n) => n + 1);
     window.addEventListener(PROFILE_BRANDS_UPDATED, bump);
-    return () => window.removeEventListener(PROFILE_BRANDS_UPDATED, bump);
+    window.addEventListener(ACCESSORY_BRANDS_UPDATED, bump);
+    return () => {
+      window.removeEventListener(PROFILE_BRANDS_UPDATED, bump);
+      window.removeEventListener(ACCESSORY_BRANDS_UPDATED, bump);
+    };
   }, []);
 
   const profileCostBreakdown = useMemo((): ProfileCostBreakdown | null => {
@@ -566,6 +571,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
             widthMm={item.widthMm}
             heightMm={item.heightMm}
             systemId={calcItem?.systemId ?? item.systemId}
+            discountId={item.discountId}
           />
         ) : null}
       </main>
