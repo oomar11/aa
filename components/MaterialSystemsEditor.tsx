@@ -216,9 +216,10 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isProfiles ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          اضغط «تفاصيل» عشان تدخل العيدان وتخصيمات مقاس القطع. الوضع الافتراضي
-          سهل: تدخل رقم الخصم بالمم (مثلاً ضلفة −١٠). في وضع متقدم لو حابب
-          معادلات حرة. البراندات وقوائم الأسعار من{" "}
+          كل سيستم بيتربط ببراند أسعار. مثال: سيستم{" "}
+          <span className="font-semibold text-foreground">بريمير سيتي</span> +
+          براند <span className="font-semibold text-foreground">سيتي</span> =
+          قائمة أسعار السيتي للحلق والضلفة والباكتة والسوقاس. البراندات من{" "}
           <Link
             href="/materials/profiles/brands"
             className="font-semibold text-primary underline-offset-2 hover:underline"

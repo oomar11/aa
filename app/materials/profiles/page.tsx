@@ -16,7 +16,8 @@ export default function ProfilesMaterialsPage() {
         <div className="px-1">
           <h1 className="text-xl font-bold">القطاعات</h1>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            أنظمة البروفيل · البراندات · العيدان · التخصيمات
+            سيستم زي بريمير سيتي مربوط ببراند أسعار السيتي — حلق · ضلفة · باكتة ·
+            سوقاس
           </p>
         </div>
 
