@@ -1,5 +1,8 @@
-import { ScreenBack } from "@/components/layout/ScreenBack";
 import { NewProjectForm } from "@/components/customers/NewProjectForm";
+import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
+import { AppShell } from "@/components/layout/AppShell";
+import { ScreenBack } from "@/components/layout/ScreenBack";
+import { ROUTES } from "@/lib/routes";
 
 type Props = {
   searchParams: Promise<{ customer?: string }>;
@@ -11,27 +14,44 @@ export default async function NewProjectPage({ searchParams }: Props) {
 
   if (!customerId) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-3 bg-background px-6 py-6">
-        <ScreenBack href="/design/customers">رجوع لاختيار عميل</ScreenBack>
+      <AppShell
+        showHeader={false}
+        fullHeight
+        mainClassName="flex flex-1 flex-col gap-3 px-6 py-6"
+      >
+        <ScreenBack href={ROUTES.orders}>رجوع للطلبات</ScreenBack>
         <p className="text-center font-semibold text-foreground">مفيش عميل محدد</p>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
-      <header className="px-4 pt-5 pb-3">
-        <ScreenBack href={`/design/projects?customer=${customerId}`}>رجوع</ScreenBack>
-        <div className="mt-3 text-center">
-          <p className="text-sm font-medium text-primary">UPVC Design</p>
-          <h1 className="mt-2 text-xl font-bold text-foreground">مشروع جديد</h1>
-          <p className="mt-1 text-xs text-muted">اكتب اسم المشروع وعنوانه</p>
-        </div>
-      </header>
-
-      <main className="flex-1 px-4 pb-16">
+    <AppShell
+      showHeader={false}
+      fullHeight
+      mainClassName="flex flex-1 flex-col px-4 pb-24 pt-5"
+    >
+      <ScreenBack href={ROUTES.design.projects(customerId)}>
+        رجوع للمشاريع
+      </ScreenBack>
+      <AppBreadcrumb
+        className="mt-3"
+        items={[
+          { label: "الطلبات", href: ROUTES.orders },
+          {
+            label: "مشاريع العميل",
+            href: ROUTES.design.projects(customerId),
+          },
+          { label: "مشروع جديد" },
+        ]}
+      />
+      <div className="mt-3 text-center">
+        <h1 className="text-xl font-bold text-foreground">مشروع جديد</h1>
+        <p className="mt-1 text-xs text-muted">اكتب اسم المشروع وعنوانه</p>
+      </div>
+      <div className="mt-4 flex-1">
         <NewProjectForm customerId={customerId} />
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

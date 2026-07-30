@@ -1,5 +1,6 @@
 import { ScreenBack } from "@/components/layout/ScreenBack";
 import { DrawingEditor } from "@/components/drawing/DrawingEditor";
+import { ROUTES } from "@/lib/routes";
 
 type Props = {
   searchParams: Promise<{
@@ -18,13 +19,17 @@ export default async function DrawPage({ searchParams }: Props) {
         <ScreenBack
           href={
             params.customer && params.project
-              ? `/design/editor?customer=${params.customer}&project=${params.project}`
-              : "/"
+              ? ROUTES.design.editor(params.customer, params.project)
+              : ROUTES.orders
           }
         >
-          {params.customer && params.project ? "الرجوع للمشروع" : "الرجوع للرئيسية"}
+          {params.customer && params.project
+            ? "الرجوع لبنود المشروع"
+            : "الرجوع للطلبات"}
         </ScreenBack>
-        <p className="text-center font-semibold text-foreground">بيانات الرسم غير مكتملة</p>
+        <p className="text-center font-semibold text-foreground">
+          بيانات الرسم غير مكتملة
+        </p>
       </div>
     );
   }
@@ -37,4 +42,3 @@ export default async function DrawPage({ searchParams }: Props) {
     />
   );
 }
-

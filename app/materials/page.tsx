@@ -3,16 +3,13 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MaterialHubIcon } from "@/components/materials/MaterialHubIcons";
 import { MATERIAL_HUB_ITEMS } from "@/lib/material-systems";
-import { ROUTES } from "@/lib/routes";
 
 export default function MaterialsPage() {
   return (
     <AppShell>
       <PageHeader
-        backHref={ROUTES.home}
-        backLabel="رجوع للرئيسية"
         title="الخامات"
-        description="قطاعات · اكسسوار · زجاج · سلك · حديد — وربطها بالتصميمات"
+        description="أسعار وأنظمة القطاعات والاكسسوار والزجاج والسلك والحديد"
       />
 
       <section className="mt-4 grid grid-cols-2 gap-3">
@@ -31,11 +28,6 @@ export default function MaterialsPage() {
           </Link>
         ))}
       </section>
-
-      <p className="mt-4 px-1 text-center text-[11px] leading-relaxed text-muted">
-        السلك والبراندات لهم صفحات خاصة داخل الخامات. كل تصميم يختار القطاعات
-        والاكسسوار والزجاج والسلك.
-      </p>
     </AppShell>
   );
 }

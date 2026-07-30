@@ -11,7 +11,7 @@ export default function DesignSettingsPage() {
       <PageHeader
         backHref={ROUTES.settings}
         backLabel="رجوع للإعدادات"
-        title="إعدادات التصميم"
+        title="ترتيب الأشكال"
         description="رتّب ظهور التمبلتات في شاشة اختيار الشكل"
       />
       <section className="rounded-2xl border border-border bg-card p-3">

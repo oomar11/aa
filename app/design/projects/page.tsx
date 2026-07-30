@@ -1,5 +1,8 @@
-import { ScreenBack } from "@/components/layout/ScreenBack";
 import { ProjectList } from "@/components/customers/ProjectList";
+import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
+import { AppShell } from "@/components/layout/AppShell";
+import { ScreenBack } from "@/components/layout/ScreenBack";
+import { ROUTES } from "@/lib/routes";
 
 type Props = {
   searchParams: Promise<{ customer?: string }>;
@@ -11,24 +14,34 @@ export default async function ProjectsPage({ searchParams }: Props) {
 
   if (!customerId) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-3 bg-background px-6 py-6">
-        <ScreenBack href="/design/customers">رجوع لاختيار عميل</ScreenBack>
+      <AppShell
+        showHeader={false}
+        fullHeight
+        mainClassName="flex flex-1 flex-col gap-3 px-6 py-6"
+      >
+        <ScreenBack href={ROUTES.orders}>رجوع للطلبات</ScreenBack>
         <p className="text-center font-semibold text-foreground">مفيش عميل محدد</p>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
-      <header className="px-4 pt-5 pb-3">
-        <ScreenBack href="/design/customers">رجوع للعملاء</ScreenBack>
-        <div className="mt-3 text-center">
-          <p className="text-sm font-medium text-primary">UPVC Design</p>
-        </div>
-      </header>
-      <main className="flex-1 px-4 pb-16">
+    <AppShell
+      showHeader={false}
+      fullHeight
+      mainClassName="flex flex-1 flex-col px-4 pb-24 pt-5"
+    >
+      <ScreenBack href={ROUTES.orders}>رجوع للطلبات</ScreenBack>
+      <AppBreadcrumb
+        className="mt-3"
+        items={[
+          { label: "الطلبات", href: ROUTES.orders },
+          { label: "مشاريع العميل" },
+        ]}
+      />
+      <div className="mt-4 flex-1">
         <ProjectList customerId={customerId} />
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }
