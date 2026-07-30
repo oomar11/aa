@@ -408,7 +408,23 @@ export function defaultGlassBottle(opts: {
 }
 
 export function getDefaultGlassBottleId(catalog?: MaterialCatalog): string {
-  return getDefaultSystemId("glass", catalog);
+  const id = getDefaultSystemId("glass", catalog);
+  return resolveGlassBottleId(id) ?? id;
+}
+
+/** معرفات زجاج قديمة → المعرف الجديد */
+const GLASS_BOTTLE_ID_ALIASES: Record<string, string> = {
+  "bottle-clear-4": "bottle-clear",
+  "bottle-satin-4": "bottle-satin",
+  "bottle-reflective-4": "bottle-reflective-blue",
+  "bottle-tempered-6": "bottle-clear",
+};
+
+export function resolveGlassBottleId(
+  id: string | undefined | null
+): string | undefined {
+  if (!id) return undefined;
+  return GLASS_BOTTLE_ID_ALIASES[id] ?? id;
 }
 
 export function getGlassBottlePrice(system: MaterialSystem | undefined): number {
@@ -419,8 +435,9 @@ export function findGlassBottle(
   id: string | undefined | null,
   catalog?: MaterialCatalog
 ): MaterialSystem | undefined {
-  if (!id) return undefined;
-  return getSystemsForCategory("glass", catalog).find((s) => s.id === id);
+  const resolved = resolveGlassBottleId(id);
+  if (!resolved) return undefined;
+  return getSystemsForCategory("glass", catalog).find((s) => s.id === resolved);
 }
 
 export function glassBottleOptions(
@@ -578,33 +595,61 @@ export function getDefaultCatalog(): MaterialCatalog {
     ],
     glass: [
       defaultGlassBottle({
-        id: "bottle-clear-4",
-        name: "شفاف 4 مم",
+        id: "bottle-clear",
+        name: "شفاف",
         kind: "clear",
         thicknessMm: 4,
         pricePerSqm: 80,
         isDefault: true,
       }),
       defaultGlassBottle({
-        id: "bottle-satin-4",
-        name: "مصنفر 4 مم",
+        id: "bottle-satin",
+        name: "مصنفر",
         kind: "satin",
         thicknessMm: 4,
         pricePerSqm: 120,
       }),
       defaultGlassBottle({
-        id: "bottle-tempered-6",
-        name: "سيكوريت 6 مم",
-        kind: "tempered",
-        thicknessMm: 6,
-        pricePerSqm: 150,
-      }),
-      defaultGlassBottle({
-        id: "bottle-reflective-4",
-        name: "عاكس 4 مم",
+        id: "bottle-reflective-blue",
+        name: "عاكس ازرق",
         kind: "reflective",
         thicknessMm: 4,
-        pricePerSqm: 100,
+        pricePerSqm: 110,
+      }),
+      defaultGlassBottle({
+        id: "bottle-reflective-green",
+        name: "عاكس اخضر",
+        kind: "reflective",
+        thicknessMm: 4,
+        pricePerSqm: 110,
+      }),
+      defaultGlassBottle({
+        id: "bottle-reflective-brown",
+        name: "عاكس بني",
+        kind: "reflective",
+        thicknessMm: 4,
+        pricePerSqm: 110,
+      }),
+      defaultGlassBottle({
+        id: "bottle-reflective-white",
+        name: "عاكس ابيض",
+        kind: "reflective",
+        thicknessMm: 4,
+        pricePerSqm: 115,
+      }),
+      defaultGlassBottle({
+        id: "bottle-reflective-black",
+        name: "عاكس اسود",
+        kind: "reflective",
+        thicknessMm: 4,
+        pricePerSqm: 115,
+      }),
+      defaultGlassBottle({
+        id: "bottle-nashiji",
+        name: "نشيجي",
+        kind: "other",
+        thicknessMm: 4,
+        pricePerSqm: 130,
       }),
     ],
     iron: [
@@ -871,7 +916,7 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       next[cat.id] = defaults[cat.id];
     } else {
       let foundDefault = false;
-      next[cat.id] = systems.map((s) => {
+      let merged = systems.map((s) => {
         let enriched = s;
         if (cat.id === "profiles" && !enriched.profile) {
           enriched = { ...enriched, profile: defaultProfileDetails() };
@@ -892,6 +937,15 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
         }
         return { ...enriched, isDefault: false };
       });
+
+      if (cat.id === "glass") {
+        const existingIds = new Set(merged.map((s) => s.id));
+        for (const def of defaults.glass) {
+          if (!existingIds.has(def.id)) merged.push(def);
+        }
+      }
+
+      next[cat.id] = merged;
     }
   }
 

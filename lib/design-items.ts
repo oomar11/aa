@@ -5,7 +5,7 @@ import {
   ensurePaneIds,
   listPaneIds,
 } from "@/lib/window-layout";
-import { getDefaultGlassBottleId, type MaterialCatalog } from "@/lib/material-systems";
+import { getDefaultGlassBottleId, resolveGlassBottleId, type MaterialCatalog } from "@/lib/material-systems";
 import { suggestItemName } from "@/lib/item-naming";
 
 export type WindowStyle =
@@ -190,8 +190,9 @@ export function resolvePaneGlass(
   pane2Id?: string;
   georgian: boolean;
 } {
-  const pane1Id = item.glassPane1Id ?? getDefaultGlassBottleId(catalog);
-  const pane2Id = item.glassPane2Id;
+  const pane1Id =
+    resolveGlassBottleId(item.glassPane1Id) ?? getDefaultGlassBottleId(catalog);
+  const pane2Id = resolveGlassBottleId(item.glassPane2Id);
   return {
     pane1Id,
     pane2Id,
