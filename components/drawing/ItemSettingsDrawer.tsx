@@ -301,7 +301,7 @@ export function ItemSettingsDrawer({ open, item, onClose, onConfirm }: Props) {
 
           <Section title="الزجاج">
             <p className="mb-2 text-[11px] text-muted">
-              الافتراضي لكل الضلف — ممكن تغيّره لكل ضلفة من خصائص الضلفة
+              يُطبَّق على كل ضلفات البند
             </p>
             <GlassBottlePicker
               pane1Id={draft.glassPane1Id}

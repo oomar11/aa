@@ -128,22 +128,15 @@ export function normalizePaneConfig(
   return { ...base, panelCells: cells };
 }
 
-/** زجاج الضلفة: override على مستوى الضلفة أو الافتراضي من البند */
+/** زجاج البند — يُطبَّق على كل الضلف */
 export function resolvePaneGlass(
-  cfg: PaneConfig,
+  _cfg: PaneConfig,
   item: Pick<DesignItem, "glassPane1Id" | "glassPane2Id" | "glassGeorgian">
 ): {
   pane1Id?: string;
   pane2Id?: string;
   georgian: boolean;
 } {
-  if (cfg.glassPane1Id) {
-    return {
-      pane1Id: cfg.glassPane1Id,
-      pane2Id: cfg.glassPane2Id,
-      georgian: Boolean(cfg.glassGeorgian && cfg.glassPane2Id),
-    };
-  }
   return {
     pane1Id: item.glassPane1Id,
     pane2Id: item.glassPane2Id,
