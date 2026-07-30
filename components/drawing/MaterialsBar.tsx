@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { GlassBreakdown, MaterialsBreakdown } from "@/lib/materials";
+import type { GlassBreakdown, MaterialsBreakdown, MeshBreakdown } from "@/lib/materials";
 import { formatArea, formatMeters } from "@/lib/materials";
 import {
   calcCutSizes,
@@ -20,6 +20,7 @@ import { formatCurrency } from "@/lib/utils";
 type Props = {
   materials: MaterialsBreakdown;
   glassBreakdown?: GlassBreakdown | null;
+  meshBreakdown?: MeshBreakdown | null;
   partLabel?: string;
   /** مقاس الفتحة للبند */
   widthMm?: number;
@@ -39,6 +40,7 @@ type Cell = {
 export function MaterialsBar({
   materials,
   glassBreakdown,
+  meshBreakdown,
   partLabel = "شباك",
   widthMm,
   heightMm,
@@ -132,6 +134,20 @@ export function MaterialsBar({
       accent: materials.glassAreaSqm > 0,
     },
     {
+      key: "mesh-area",
+      label: "مساحة سلك",
+      value: formatArea(materials.meshAreaSqm),
+      hint: materials.meshAreaSqm > 0 ? "شبكة" : undefined,
+      accent: materials.meshAreaSqm > 0,
+    },
+    {
+      key: "mesh-profile",
+      label: "ضلفة سلك جرار",
+      value: formatMeters(materials.meshSlidingProfileM),
+      hint: materials.meshSlidingProfileM > 0 ? "قطاع" : undefined,
+      accent: materials.meshSlidingProfileM > 0,
+    },
+    {
       key: "mullion",
       label: "سوقاس",
       value: formatMeters(materials.mullionTotalM),
@@ -165,7 +181,7 @@ export function MaterialsBar({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] border-collapse text-center">
+        <table className="w-full min-w-[1080px] border-collapse text-center">
           <thead>
             <tr className="border-b border-border text-[11px] font-semibold text-muted">
               <th className="px-2.5 py-2 text-start font-semibold">الجزء</th>
@@ -228,6 +244,10 @@ export function MaterialsBar({
 
       {glassBreakdown?.hasPricing && glassBreakdown.lines.length > 0 ? (
         <GlassBreakdownPanel breakdown={glassBreakdown} />
+      ) : null}
+
+      {meshBreakdown && meshBreakdown.lines.length > 0 ? (
+        <MeshBreakdownPanel breakdown={meshBreakdown} />
       ) : null}
     </section>
   );
@@ -368,6 +388,111 @@ function GlassBreakdownPanel({ breakdown }: { breakdown: GlassBreakdown }) {
               <span className="px-2 py-1.5 font-semibold text-primary">
                 {formatCurrency(Math.round(line.totalCost))}
               </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MeshBreakdownPanel({ breakdown }: { breakdown: MeshBreakdown }) {
+  const [expanded, setExpanded] = useState(false);
+  const showExpand = breakdown.lines.length > 1;
+  const showCost = breakdown.hasPricing;
+
+  return (
+    <div className="border-t border-border bg-background/40 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-primary">حساب السلك</p>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-foreground">
+            {breakdown.totalAreaSqm.toFixed(2)} م²
+          </span>
+          {showCost ? (
+            <span className="text-[11px] font-bold text-foreground">
+              · {formatCurrency(Math.round(breakdown.totalCost))} ج.م
+            </span>
+          ) : null}
+          {showExpand ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="rounded-md px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary-soft"
+            >
+              {expanded ? "إخفاء" : "تفاصيل"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
+        <span>مساحة: {breakdown.totalAreaSqm.toFixed(2)} م²</span>
+        {breakdown.totalSlidingProfileM > 0.0005 ? (
+          <span>ضلفة جرار: {breakdown.totalSlidingProfileM.toFixed(2)} م</span>
+        ) : null}
+        {showCost ? (
+          <span>
+            للقطعة: {formatCurrency(Math.round(breakdown.totalUnitCost))} ج.م
+          </span>
+        ) : null}
+      </div>
+
+      {(expanded || breakdown.lines.length === 1) && (
+        <div className="mt-2 overflow-hidden rounded-xl border border-border bg-card text-[10px]">
+          <div
+            className={`grid border-b border-border text-center font-semibold text-muted ${
+              breakdown.totalSlidingProfileM > 0.0005
+                ? showCost
+                  ? "grid-cols-6"
+                  : "grid-cols-5"
+                : showCost
+                  ? "grid-cols-5"
+                  : "grid-cols-4"
+            }`}
+          >
+            <span className="px-2 py-1.5 text-start">ضلفة</span>
+            <span className="px-2 py-1.5">نوع</span>
+            <span className="px-2 py-1.5">م²</span>
+            <span className="px-2 py-1.5">ج.م/م²</span>
+            {breakdown.totalSlidingProfileM > 0.0005 ? (
+              <span className="px-2 py-1.5">قطاع</span>
+            ) : null}
+            {showCost ? <span className="px-2 py-1.5">تكلفة</span> : null}
+          </div>
+          {breakdown.lines.map((line, i) => (
+            <div
+              key={line.paneId}
+              className={`grid text-center tabular-nums ${
+                breakdown.totalSlidingProfileM > 0.0005
+                  ? showCost
+                    ? "grid-cols-6"
+                    : "grid-cols-5"
+                  : showCost
+                    ? "grid-cols-5"
+                    : "grid-cols-4"
+              } ${i > 0 ? "border-t border-border/60" : ""}`}
+            >
+              <span className="px-2 py-1.5 text-start font-medium text-foreground">
+                {i + 1}
+              </span>
+              <span className="px-2 py-1.5 text-foreground">{line.label}</span>
+              <span className="px-2 py-1.5 text-foreground">
+                {line.areaSqm.toFixed(2)}
+              </span>
+              <span className="px-2 py-1.5 text-foreground">
+                {line.costPerSqm > 0 ? line.costPerSqm : "—"}
+              </span>
+              {breakdown.totalSlidingProfileM > 0.0005 ? (
+                <span className="px-2 py-1.5 text-foreground">
+                  {line.profileM > 0.0005 ? `${line.profileM.toFixed(2)} م` : "—"}
+                </span>
+              ) : null}
+              {showCost ? (
+                <span className="px-2 py-1.5 font-semibold text-primary">
+                  {formatCurrency(Math.round(line.totalCost))}
+                </span>
+              ) : null}
             </div>
           ))}
         </div>

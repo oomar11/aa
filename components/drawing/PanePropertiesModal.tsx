@@ -4,14 +4,18 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   defaultPaneConfig,
   gridCellCount,
+  inferMeshKind,
   normalizePaneConfig,
+  resolvePaneMeshKind,
   type PaneConfig,
   type PaneGrid,
   type PaneOpening,
+  type MeshKind,
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { GlassBottlePicker } from "@/components/GlassBottlePicker";
-import { glassBottleOptions } from "@/lib/material-systems";
+import { MeshTypePicker } from "@/components/MeshTypePicker";
+import { glassBottleOptions, meshTypeOptions } from "@/lib/material-systems";
 
 type Props = {
   open: boolean;
@@ -140,10 +144,14 @@ export function PanePropertiesModal({
   const [bottleOpts, setBottleOpts] = useState<
     { id: string; label: string; pricePerSqm: number }[]
   >([]);
+  const [meshOpts, setMeshOpts] = useState<
+    { id: string; label: string; kind: MeshKind; pricePerSqm: number }[]
+  >([]);
 
   useEffect(() => {
     if (!open) return;
     setBottleOpts(glassBottleOptions());
+    setMeshOpts(meshTypeOptions());
   }, [open]);
 
   useEffect(() => {
@@ -217,6 +225,19 @@ export function PanePropertiesModal({
           next.opening = "casement-left";
         } else if (d.opening === "door-right") {
           next.opening = "casement-right";
+        }
+      }
+      if (key === "mesh") {
+        if (value) {
+          const kind = inferMeshKind(d.opening);
+          next.meshKind = kind;
+          next.meshKindManual = false;
+          const match = meshOpts.find((m) => m.kind === kind) ?? meshOpts[0];
+          if (match) next.meshTypeId = match.id;
+        } else {
+          next.meshTypeId = undefined;
+          next.meshKind = undefined;
+          next.meshKindManual = undefined;
         }
       }
       if (key === "glassType") {
@@ -347,12 +368,16 @@ export function PanePropertiesModal({
               {expandedExtra === "mesh" && (
                 <div className="mx-auto w-full max-w-sm space-y-3">
                   <div className="rounded-xl border border-border bg-card p-3">
-                    <p className="mb-2 text-[12px] leading-relaxed text-muted">
-                      الشبكة بتتحط على أجزاء الزجاج بس (مش على البنل).
-                    </p>
-                    <div className="rounded-lg border border-border bg-background px-2.5 py-2 text-[12px] font-medium text-foreground">
-                      التغطية: كل أجزاء الزجاج في الضلفة
-                    </div>
+                    <MeshTypePicker
+                      meshTypeId={draft.meshTypeId}
+                      meshKind={resolvePaneMeshKind(draft, draft.opening)}
+                      meshKindManual={draft.meshKindManual}
+                      meshOpts={meshOpts}
+                      hint="الشبكة بتتحط على أجزاء الزجاج بس (مش على البنل). سلك الجرار بيتحسب قطاع زي ضلفة جرار + مساحة السلك."
+                      onChange={(next) =>
+                        setDraft((d) => ({ ...d, ...next }))
+                      }
+                    />
                   </div>
                   <button
                     type="button"
@@ -458,7 +483,18 @@ export function PanePropertiesModal({
                             label={o.label}
                             active={active}
                             onClick={() =>
-                              setDraft((d) => ({ ...d, opening: o.id }))
+                              setDraft((d) => {
+                                const next = { ...d, opening: o.id };
+                                if (d.mesh && !d.meshKindManual) {
+                                  const kind = inferMeshKind(o.id);
+                                  next.meshKind = kind;
+                                  const match = meshOpts.find(
+                                    (m) => m.kind === kind
+                                  );
+                                  if (match) next.meshTypeId = match.id;
+                                }
+                                return next;
+                              })
                             }
                           >
                             <OpeningIcon type={o.id} />

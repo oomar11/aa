@@ -1,9 +1,12 @@
 import {
   gridCellCount,
   itemUnitAreaSqm,
+  meshKindLabel,
   normalizePaneConfig,
   resolvePaneGlass,
+  resolvePaneMeshKind,
   type DesignItem,
+  type MeshKind,
   type PaneConfig,
   type PaneOpening,
 } from "@/lib/design-items";
@@ -11,7 +14,9 @@ import { getGridCells, gridLines } from "@/lib/pane-grid";
 import type { LayoutNode } from "@/lib/window-layout";
 import {
   calcPaneGlassCostPerSqm,
+  defaultMeshTypeForKind,
   findGlassBottle,
+  findMeshType,
   loadMaterialCatalog,
   paneGlassHasPricing,
   type MaterialCatalog,
@@ -55,6 +60,10 @@ export type MaterialsBreakdown = {
   beadM: number;
   /** مساحة الزجاج الفعلية م² (بدون بنل) */
   glassAreaSqm: number;
+  /** مساحة السلك م² */
+  meshAreaSqm: number;
+  /** قطاع ضلفة سلك جرار — متر طولي */
+  meshSlidingProfileM: number;
   /** إجمالي الحلق */
   frameTotalM: number;
   /** إجمالي السوقاس */
@@ -112,6 +121,8 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     sashSlidingM: 0,
     beadM: 0,
     glassAreaSqm: 0,
+    meshAreaSqm: 0,
+    meshSlidingProfileM: 0,
     frameTotalM: 0,
     mullionTotalM: 0,
     isMixedFrame: false,
@@ -511,12 +522,13 @@ function sashProfileMm(
   let door = 0;
   for (const box of boxes) {
     if (!isOpeningSash(box.opening)) continue;
+    const cfg = normalizePaneConfig(panes?.[box.id]);
+    if (cfg.mesh) continue;
     const peri = panePerimeterMm(box.w, box.h);
     if (box.kind === "sliding") {
       sliding += peri;
       continue;
     }
-    const cfg = normalizePaneConfig(panes?.[box.id]);
     if (isDoorPane(box.opening, cfg)) door += peri;
     else hinged += peri;
   }
@@ -537,8 +549,8 @@ function beadProfileMm(
   return total;
 }
 
-/** مساحة الزجاج الفعلية داخل الضلفة (مم²) — بدون بنل أو شبكة سلك */
-function paneGlassAreaMm2(
+/** مساحة ملء الضلفة (زجاج أو سلك) بدون بنل — مم² */
+function paneFillAreaMm2(
   w: number,
   h: number,
   opening: PaneOpening,
@@ -546,8 +558,6 @@ function paneGlassAreaMm2(
 ): number {
   if (opening === "panel-h" || opening === "panel-v") return 0;
   const norm = normalizePaneConfig(cfg);
-  if (norm.mesh) return 0;
-
   const grid = norm.grid ?? "solid";
   const cells = getGridCells(grid, 0, 0, w, h);
   const panelSet = new Set(norm.panelCells ?? []);
@@ -558,6 +568,58 @@ function paneGlassAreaMm2(
     mm2 += cell.w * cell.h;
   });
   return mm2;
+}
+
+/** مساحة الزجاج الفعلية داخل الضلفة (مم²) — بدون بنل أو شبكة سلك */
+function paneGlassAreaMm2(
+  w: number,
+  h: number,
+  opening: PaneOpening,
+  cfg: PaneConfig
+): number {
+  const norm = normalizePaneConfig(cfg);
+  if (norm.mesh) return 0;
+  return paneFillAreaMm2(w, h, opening, cfg);
+}
+
+/** مساحة السلك داخل الضلفة (مم²) */
+function paneMeshAreaMm2(
+  w: number,
+  h: number,
+  opening: PaneOpening,
+  cfg: PaneConfig
+): number {
+  const norm = normalizePaneConfig(cfg);
+  if (!norm.mesh) return 0;
+  return paneFillAreaMm2(w, h, opening, cfg);
+}
+
+/** قطاع ضلفة سلك جرار — محيط الضلفة لما السلك نوعه جرار */
+function meshSlidingProfileMm(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined
+): number {
+  let total = 0;
+  for (const box of boxes) {
+    const cfg = normalizePaneConfig(panes?.[box.id]);
+    if (!cfg.mesh) continue;
+    if (resolvePaneMeshKind(cfg, box.opening) !== "sliding") continue;
+    total += panePerimeterMm(box.w, box.h);
+  }
+  return total;
+}
+
+function totalMeshAreaSqm(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined
+): number {
+  let mm2 = 0;
+  for (const box of boxes) {
+    const cfg = normalizePaneConfig(panes?.[box.id]);
+    if (!cfg.mesh) continue;
+    mm2 += paneMeshAreaMm2(box.w, box.h, box.opening, cfg);
+  }
+  return roundM(mm2 / 1_000_000);
 }
 
 function totalGlassAreaSqm(
@@ -678,6 +740,8 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const sashMm = sashProfileMm(boxes, panes);
   const beadMm = beadProfileMm(boxes, panes);
   const glassAreaSqm = totalGlassAreaSqm(boxes, panes, item);
+  const meshAreaSqm = totalMeshAreaSqm(boxes, panes);
+  const meshSlidingProfileMmVal = meshSlidingProfileMm(boxes, panes);
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
@@ -690,6 +754,7 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   const sashDoorM = roundM(mmToM(sashMm.door));
   const sashSlidingM = roundM(mmToM(sashMm.sliding));
   const beadM = roundM(mmToM(beadMm));
+  const meshSlidingProfileM = roundM(mmToM(meshSlidingProfileMmVal));
   const frameTotalM = roundM(frameHingedM + frameSlidingM);
   const mullionTotalM = roundM(mullionFrameM + mullionSashM);
 
@@ -707,6 +772,8 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     sashSlidingM,
     beadM,
     glassAreaSqm,
+    meshAreaSqm,
+    meshSlidingProfileM,
     frameTotalM,
     mullionTotalM,
     isMixedFrame,
@@ -736,6 +803,8 @@ export function scaleMaterials(
     sashSlidingM: roundM(m.sashSlidingM * q),
     beadM: roundM(m.beadM * q),
     glassAreaSqm: roundM(m.glassAreaSqm * q),
+    meshAreaSqm: roundM(m.meshAreaSqm * q),
+    meshSlidingProfileM: roundM(m.meshSlidingProfileM * q),
     frameTotalM: roundM(m.frameTotalM * q),
     mullionTotalM: roundM(m.mullionTotalM * q),
   };
@@ -857,6 +926,110 @@ export function calcGlassBreakdown(
   return {
     hasPricing: true,
     lines,
+    totalUnitCost,
+    totalCost: roundM(totalUnitCost * qty),
+  };
+}
+
+// ─── حساب السلك لكل ضلفة ────────────────────────────────────────
+
+export type PaneMeshLine = {
+  paneId: string;
+  meshKind: MeshKind;
+  /** اسم نوع السلك */
+  label: string;
+  /** مساحة السلك م² */
+  areaSqm: number;
+  /** سعر المتر المربع */
+  costPerSqm: number;
+  /** قطاع ضلفة سلك جرار — متر (٠ للأنواع التانية) */
+  profileM: number;
+  /** تكلفة قماش السلك */
+  totalCost: number;
+};
+
+export type MeshBreakdown = {
+  hasPricing: boolean;
+  lines: PaneMeshLine[];
+  totalAreaSqm: number;
+  totalSlidingProfileM: number;
+  totalUnitCost: number;
+  totalCost: number;
+};
+
+export function calcMeshBreakdown(
+  item: DesignItem,
+  catalog?: MaterialCatalog
+): MeshBreakdown {
+  const cat = catalog ?? (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
+  const empty: MeshBreakdown = {
+    hasPricing: false,
+    lines: [],
+    totalAreaSqm: 0,
+    totalSlidingProfileM: 0,
+    totalUnitCost: 0,
+    totalCost: 0,
+  };
+
+  const widthMm = Math.max(0, item.widthMm || 0);
+  const heightMm = Math.max(0, item.heightMm || 0);
+  if (widthMm <= 0 || heightMm <= 0) return empty;
+
+  const layout: LayoutNode =
+    item.layout ?? ({ type: "pane", id: "root" } as LayoutNode);
+  const panes = item.panes ?? {};
+
+  const boxes: PaneBox[] = [];
+  collectPaneBoxes(layout, 0, 0, widthMm, heightMm, panes, boxes);
+
+  const lines: PaneMeshLine[] = [];
+
+  for (const box of boxes) {
+    const cfg = normalizePaneConfig(panes[box.id]);
+    if (!cfg.mesh) continue;
+
+    const meshKind = resolvePaneMeshKind(cfg, box.opening);
+    const meshType =
+      findMeshType(cfg.meshTypeId, cat) ??
+      defaultMeshTypeForKind(meshKind, cat);
+    const costPerSqm = meshType?.pricePerSqm ?? 0;
+
+    const areaSqm = roundM(
+      paneMeshAreaMm2(box.w, box.h, box.opening, cfg) / 1_000_000
+    );
+    const profileM =
+      meshKind === "sliding"
+        ? roundM(panePerimeterMm(box.w, box.h) / 1000)
+        : 0;
+    const label = meshType
+      ? `${meshType.name} · ${meshKindLabel(meshKind)}`
+      : meshKindLabel(meshKind);
+
+    lines.push({
+      paneId: box.id,
+      meshKind,
+      label,
+      areaSqm,
+      costPerSqm,
+      profileM,
+      totalCost: roundM(areaSqm * costPerSqm),
+    });
+  }
+
+  if (lines.length === 0) return empty;
+
+  const totalAreaSqm = roundM(lines.reduce((s, l) => s + l.areaSqm, 0));
+  const totalSlidingProfileM = roundM(
+    lines.reduce((s, l) => s + l.profileM, 0)
+  );
+  const totalUnitCost = roundM(lines.reduce((s, l) => s + l.totalCost, 0));
+  const qty = Math.max(1, item.qty || 1);
+
+  return {
+    hasPricing: lines.some((l) => l.costPerSqm > 0),
+    lines,
+    totalAreaSqm,
+    totalSlidingProfileM,
     totalUnitCost,
     totalCost: roundM(totalUnitCost * qty),
   };
