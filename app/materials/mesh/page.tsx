@@ -13,9 +13,15 @@ export default function MeshMaterialsPage() {
         backLabel="رجوع للخامات"
         breadcrumb={materialsMeshBreadcrumb()}
         title="السلك"
-        description="تصنيفات وأنواع السلك — الأسعار والحساب في التصميم"
+        description="خطوتين: التصنيفات → الأنواع والأسعار. الاختيار يظهر في الرسم وشريط الخامات."
       />
+      <p className="px-1 text-[10px] font-bold tracking-wide text-muted">
+        ١ — التصنيفات
+      </p>
       <MeshCategoriesEditor />
+      <p className="px-1 text-[10px] font-bold tracking-wide text-muted">
+        ٢ — الأنواع والأسعار
+      </p>
       <MeshTypesEditor />
     </AppShell>
   );

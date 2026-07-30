@@ -16,7 +16,7 @@ export default function AccessoryBrandsPage() {
         backLabel="رجوع للاكسسوار"
         breadcrumb={materialsAccessoryBrandsBreadcrumb()}
         title="براندات الاكسسوار"
-        description="أسعار المفصلات والسبلونة والسكاك والتراك والعجل والفرش — قائمة فورنا 2026 مُحمّلة افتراضياً"
+        description="أسعار فورنا يوليو 2026 جاهزة. عدّل أو أضف براند، وبعدين اختاره من تفاصيل نظام الاكسسوار."
       />
       <MaterialWorkflowGuide steps={accessoryWorkflowSteps("brands")} />
       <AccessoryBrandsEditor embedded />

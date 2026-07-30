@@ -16,7 +16,7 @@ export default function ProfileBrandsPage() {
         backLabel="رجوع للقطاعات"
         breadcrumb={materialsProfileBrandsBreadcrumb()}
         title="براندات القطاعات"
-        description="أسعار الحلق والضلفة والباكتة والسوقاس بالعود — سعر العود ÷ طوله"
+        description="سيتي بريمير وغيرها — سعر العود + طوله. بعد ما تحفظ، اربط البراند من تفاصيل كل نظام قطاعات."
       />
       <MaterialWorkflowGuide steps={profileWorkflowSteps("brands")} />
       <ProfileBrandsEditor embedded />

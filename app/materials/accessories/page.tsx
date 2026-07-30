@@ -9,7 +9,7 @@ export default function AccessoriesMaterialsPage() {
   return (
     <MaterialCategoryShell
       title="الاكسسوار"
-      description="أنظمة المفصلي والجرار — مرتبطة بأسعار البراندات"
+      description="خطوتين: براندات الأسعار → أنظمة الاستخدام. من تفاصيل كل نظام بتظبط المفصلي والجرار والسبلونة."
       breadcrumb={materialsAccessoriesBreadcrumb()}
       workflowSteps={accessoryWorkflowSteps("systems")}
     >

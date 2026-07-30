@@ -71,7 +71,11 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
     return () => window.removeEventListener(ACCESSORY_BRANDS_UPDATED, onBrands);
   }, []);
 
-  function persist(nextDetails: AccessorySystemDetails, name?: string, notes?: string) {
+  function persist(
+    nextDetails: AccessorySystemDetails,
+    name?: string,
+    notes?: string
+  ) {
     if (!catalog || !system) return;
     const nextSystem: MaterialSystem = {
       ...system,
@@ -128,10 +132,10 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="px-1">
-        <h1 className="text-xl font-bold">تفاصيل الاكسسوار</h1>
+        <h1 className="text-xl font-bold">{system.name}</h1>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          قواعد الكميات للمفصلي والجرار — السبلونة · السكاك · التراك · الفرش ·
-          التقابل
+          عدّل الاسم تحت، وبعدين استخدم التبويبات: براندات · مفصلي · جرار ·
+          سبلونة
         </p>
       </div>
 
@@ -177,11 +181,6 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
         brandCatalog={brandCatalog}
         onNotify={showFlash}
       />
-
-      <p className="px-1 pb-2 text-center text-[11px] leading-relaxed text-muted">
-        ضلفتين مفصلي + بوكلير = سبلونة واحدة + سكاك بوكلير + ترباس + سكاك ترباس + طبة (طقم على السيستم).
-        الجرار: تراك ٢ بعرض الحلق · عجل ٢/ضلفة · فرش محيط×٢ + سكينة×١ · مقبض غاطس على الضلفة الغاطسة.
-      </p>
     </div>
   );
 }

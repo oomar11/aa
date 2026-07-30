@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { MaterialSectionTabs } from "@/components/materials/MaterialSectionTabs";
 import {
   ACCESSORY_BRAND_CATEGORIES,
   accessoryBrandCategoryLabel,
@@ -14,8 +15,21 @@ import {
   type AccessorySystemDetails,
   type EspagnoletteCatalogEntry,
 } from "@/lib/material-systems";
+import { ROUTES } from "@/lib/routes";
 
 type LockKind = "hinged" | "bouclier" | "bouclier-bolt" | "sliding";
+
+type AccessoryFormTab = "brands" | "hinged" | "sliding" | "espagnolette";
+
+const ACCESSORY_FORM_TABS: {
+  id: AccessoryFormTab;
+  label: string;
+}[] = [
+  { id: "brands", label: "براندات" },
+  { id: "hinged", label: "مفصلي" },
+  { id: "sliding", label: "جرار" },
+  { id: "espagnolette", label: "سبلونة" },
+];
 
 type Props = {
   details: AccessorySystemDetails;
@@ -55,9 +69,13 @@ export function AccessoryDetailsForm({
   onNotify,
   compact = false,
 }: Props) {
+  const [tab, setTab] = useState<AccessoryFormTab>("brands");
+
   function patchDetails(patch: Partial<AccessorySystemDetails>) {
     onChange({ ...details, ...patch });
   }
+
+  const show = (id: AccessoryFormTab) => compact || tab === id;
 
   function updateCatalogEntry(
     id: string,
@@ -144,6 +162,16 @@ export function AccessoryDetailsForm({
 
   return (
     <div className={`flex flex-col ${gapClass}`}>
+      {!compact ? (
+        <MaterialSectionTabs
+          tabs={ACCESSORY_FORM_TABS}
+          active={tab}
+          onChange={setTab}
+          label="أقسام الاكسسوار"
+        />
+      ) : null}
+
+      {show("espagnolette") ? (
       <Section
         title="مقاسات السبلونة"
         hint="عدّل المقاس (سم) · أقصى ارتفاع ضلفة (مم) · تفعيل للمفصلي أو الجرار"
@@ -260,7 +288,9 @@ export function AccessoryDetailsForm({
           hint="٢٠٠ = ٢٠ سم"
         />
       </Section>
+      ) : null}
 
+      {show("brands") ? (
       <Section
         title="براندات لكل فئة"
         hint="اختَر البراند من كتالوج البراندات"
@@ -289,7 +319,9 @@ export function AccessoryDetailsForm({
           );
         })}
       </Section>
+      ) : null}
 
+      {show("hinged") ? (
       <Section
         title="اكسسوار المفصلي"
         hint="مفصلات · سبلونة · سكاك · بوكلير"
@@ -353,7 +385,9 @@ export function AccessoryDetailsForm({
           onRemove={(id) => removeLockPiece("bouclier-bolt", id)}
         />
       </Section>
+      ) : null}
 
+      {show("sliding") ? (
       <Section
         title="اكسسوار الجرار"
         hint="تراك · عجل · فرش · سبلونة · مقبض غاطس"
@@ -403,6 +437,7 @@ export function AccessoryDetailsForm({
           onRemove={(id) => removeLockPiece("sliding", id)}
         />
       </Section>
+      ) : null}
     </div>
   );
 }
@@ -440,7 +475,7 @@ function BrandSelect({
         <span className="mt-0.5 block text-[10px] text-muted/80">
           مفيش براندات —{" "}
           <Link
-            href="/materials/accessories/brands"
+            href={ROUTES.materials.accessoryBrands}
             className="font-semibold text-primary underline-offset-2 hover:underline"
           >
             أضف من صفحة البراندات

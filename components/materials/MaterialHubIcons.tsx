@@ -1,6 +1,6 @@
 import { ROUTES } from "@/lib/routes";
 
-const cls = "h-10 w-10";
+const cls = "h-8 w-8";
 
 export function MaterialHubIcon({ id }: { id: string }) {
   if (id === "profiles") {

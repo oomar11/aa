@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Crumb } from "@/components/layout/AppBreadcrumb";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -6,37 +5,11 @@ import { MaterialWorkflowGuide } from "@/components/materials/MaterialWorkflowGu
 import type { MaterialWorkflowStep } from "@/lib/materials-navigation";
 import { ROUTES } from "@/lib/routes";
 
-type BrandLinkProps = {
-  href: string;
-  title: string;
-  description: string;
-};
-
-function BrandLink({ href, title, description }: BrandLinkProps) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-3.5 transition-colors hover:border-primary/40 hover:bg-primary-soft/30"
-    >
-      <div className="min-w-0 text-right">
-        <p className="text-sm font-semibold text-foreground">{title}</p>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-          {description}
-        </p>
-      </div>
-      <span className="shrink-0 text-lg text-muted" aria-hidden>
-        ‹
-      </span>
-    </Link>
-  );
-}
-
 type MaterialCategoryShellProps = {
   title: string;
   description: string;
   breadcrumb?: Crumb[];
   workflowSteps?: MaterialWorkflowStep[];
-  brandLink?: BrandLinkProps;
   children: React.ReactNode;
 };
 
@@ -46,7 +19,6 @@ export function MaterialCategoryShell({
   description,
   breadcrumb,
   workflowSteps,
-  brandLink,
   children,
 }: MaterialCategoryShellProps) {
   return (
@@ -58,10 +30,7 @@ export function MaterialCategoryShell({
         title={title}
         description={description}
       />
-      {workflowSteps ? (
-        <MaterialWorkflowGuide steps={workflowSteps} />
-      ) : null}
-      {brandLink && !workflowSteps ? <BrandLink {...brandLink} /> : null}
+      {workflowSteps ? <MaterialWorkflowGuide steps={workflowSteps} /> : null}
       {children}
     </AppShell>
   );

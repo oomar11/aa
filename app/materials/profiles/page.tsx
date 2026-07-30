@@ -9,7 +9,7 @@ export default function ProfilesMaterialsPage() {
   return (
     <MaterialCategoryShell
       title="القطاعات"
-      description="أنظمة البروفيل — العيدان ومعادلات التخصيم — مرتبطة بأسعار البراندات"
+      description="خطوتين: براندات الأسعار → أنظمة البروفيل. كل نظام بيتربط ببراند عشان التسعير في الرسم."
       breadcrumb={materialsProfilesBreadcrumb()}
       workflowSteps={profileWorkflowSteps("systems")}
     >

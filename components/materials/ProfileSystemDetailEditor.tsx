@@ -1,12 +1,13 @@
 "use client";
 
-import { ScreenBack } from "@/components/layout/ScreenBack";
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
   useState,
   type FormEvent,
 } from "react";
+import { MaterialSectionTabs } from "@/components/materials/MaterialSectionTabs";
 import {
   DEFAULT_BAR_LENGTH_M,
   calcCutSizes,
@@ -45,10 +46,20 @@ import {
   validateFormula,
   type FormulaBaseVar,
 } from "@/lib/excel-formula";
+import { ROUTES } from "@/lib/routes";
 
 type Props = {
   systemId: string;
 };
+
+type ProfileDetailTab = "meta" | "pieces" | "cuts";
+
+const PROFILE_DETAIL_TABS: { id: ProfileDetailTab; label: string }[] = [
+  { id: "meta", label: "بيانات" },
+  { id: "pieces", label: "العيدان" },
+  { id: "cuts", label: "التخصيم" },
+];
+
 
 type PieceDraft = {
   id: string;
@@ -178,6 +189,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   const [previewH, setPreviewH] = useState("1400");
   const [flash, setFlash] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
+  const [tab, setTab] = useState<ProfileDetailTab>("meta");
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -405,7 +417,12 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">
           النظام مش موجود
         </p>
-        <ScreenBack href="/materials/profiles">رجوع للقطاعات</ScreenBack>
+        <Link
+          href={ROUTES.materials.profiles}
+          className="block text-center text-sm font-semibold text-primary"
+        >
+          رجوع للقطاعات
+        </Link>
       </div>
     );
   }
@@ -427,9 +444,9 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="px-1">
-        <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
+        <h1 className="text-xl font-bold text-foreground">{system.name}</h1>
         <p className="mt-0.5 text-xs text-muted">
-          العيدان · الباكتة · ضلفة الشباك والباب · تعديلات مقاس القطع
+          استخدم التبويبات: بيانات النظام · العيدان · تخصيم مقاس القطع
         </p>
       </div>
 
@@ -442,6 +459,15 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
         </p>
       ) : null}
 
+      <MaterialSectionTabs
+        tabs={PROFILE_DETAIL_TABS}
+        active={tab}
+        onChange={setTab}
+        label="أقسام نظام القطاعات"
+      />
+
+      {tab === "meta" ? (
+      <>
       {/* بيانات النظام */}
       <form
         onSubmit={saveMeta}
@@ -449,10 +475,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       >
         <h3 className="text-xs font-bold text-foreground">بيانات النظام</h3>
         <p className="text-[11px] leading-relaxed text-muted">
-          مثال: سيستم <span className="font-semibold text-foreground">بريمير سيتي</span>{" "}
-          مربوط ببراند أسعار{" "}
-          <span className="font-semibold text-foreground">سيتي</span> — الحلق
-          والضلفة والباكتة والسوقاس من قائمة السيتي.
+          اربط السيستم ببراند أسعار — مثال: بريمير سيتي ← براند سيتي
         </p>
         <input
           type="text"
@@ -517,7 +540,11 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           حفظ البيانات
         </button>
       </form>
+      </>
+      ) : null}
 
+      {tab === "pieces" ? (
+      <>
       {/* العيدان */}
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
@@ -694,7 +721,11 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           </ul>
         )}
       </section>
+      </>
+      ) : null}
 
+      {tab === "cuts" ? (
+      <>
       {/* تعديلات مقاس القطع */}
       <form
         onSubmit={saveDeductions}
@@ -1044,6 +1075,8 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           </ul>
         ) : null}
       </section>
+      </>
+      ) : null}
     </div>
   );
 }

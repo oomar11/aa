@@ -570,7 +570,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "iron",
     label: "الحديد",
-    description: "تسليح الحلق · الضلفة · السوقاس — مفصلي وجرار",
+    description: "تسليح الحلق والضلفة والسوقاس",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
   },
@@ -583,6 +583,25 @@ export function getCategoryMeta(id: MaterialCategory) {
 /** بطاقات صفحة الخامات — السلك صفحة مستقلة مش جزء من الاكسسوار */
 export type MaterialHubId = MaterialCategory | "mesh";
 
+export type MaterialHubGroup = "systems" | "other";
+
+export const MATERIAL_HUB_GROUPS: {
+  id: MaterialHubGroup;
+  title: string;
+  hint: string;
+}[] = [
+  {
+    id: "systems",
+    title: "أنظمة وبراندات",
+    hint: "أولاً البراندات (الأسعار) · بعدين الأنظمة اللي بتستخدمها في التصميم",
+  },
+  {
+    id: "other",
+    title: "خامات تانية",
+    hint: "زجاج وسلك وحديد — أسعار وأنواع جاهزة للاختيار من الرسم",
+  },
+];
+
 export const MATERIAL_HUB_ITEMS: {
   id: MaterialHubId;
   label: string;
@@ -590,23 +609,53 @@ export const MATERIAL_HUB_ITEMS: {
   accent: string;
   shadow: string;
   href: string;
+  group: MaterialHubGroup;
 }[] = [
-  ...MATERIAL_CATEGORIES.filter((c) => c.id !== "iron").map((c) => ({
-    ...c,
-    href: `/materials/${c.id}`,
-  })),
+  {
+    id: "profiles",
+    label: "القطاعات",
+    description: "أنظمة البروفيل + براندات أسعار العود (سيتي · بريمير…)",
+    accent: "#E8956F",
+    shadow: "rgba(232,149,111,0.35)",
+    href: "/materials/profiles",
+    group: "systems",
+  },
+  {
+    id: "accessories",
+    label: "الاكسسوار",
+    description: "أنظمة المفصلي والجرار + براندات الأسعار (فورنا…)",
+    accent: "#6B8AD8",
+    shadow: "rgba(107,138,216,0.35)",
+    href: "/materials/accessories",
+    group: "systems",
+  },
+  {
+    id: "glass",
+    label: "الزجاج",
+    description: "كتالوج الزجاجات · التدبيل · جورجيا",
+    accent: "#4BA3F5",
+    shadow: "rgba(75,163,245,0.35)",
+    href: "/materials/glass",
+    group: "other",
+  },
   {
     id: "mesh",
     label: "السلك",
-    description: "تصنيفات وأنواع السلك · الأسعار والحساب",
+    description: "تصنيفات وأنواع السلك والأسعار",
     accent: "#5B9A6F",
     shadow: "rgba(91,154,111,0.35)",
     href: "/materials/mesh",
+    group: "other",
   },
-  ...MATERIAL_CATEGORIES.filter((c) => c.id === "iron").map((c) => ({
-    ...c,
-    href: `/materials/${c.id}`,
-  })),
+  {
+    id: "iron",
+    label: "الحديد",
+    description: "تسليح الحلق والضلفة والسوقاس",
+    accent: "#7A8799",
+    shadow: "rgba(122,135,153,0.35)",
+    href: "/materials/iron",
+    group: "other",
+  },
 ];
 
 export function defaultDeductions(): ProfileDeductions {
