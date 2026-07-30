@@ -1040,35 +1040,105 @@ export function newProfileBrandId(): string {
   return `pbrand-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
 }
 
+/** تحويل سعر العود (ج.م/عود) إلى سعر المتر الطولي */
+export function profileBarPricePerM(
+  barPrice: number,
+  barLengthM: number
+): number {
+  if (!Number.isFinite(barPrice) || !Number.isFinite(barLengthM) || barLengthM <= 0) {
+    return 0;
+  }
+  return Math.round((barPrice / barLengthM) * 100) / 100;
+}
+
+/** أسعار قطاع سيتي بريمير — فبراير 2025 (ج.م/متر طولي محسوب من سعر العود) */
+export function cityPremierProfileBrandPrices(): Partial<
+  Record<ProfilePriceCategory, number>
+> {
+  const bar = profileBarPricePerM;
+  const capKnifeWindow = bar(255, 6.5) / 2;
+  return {
+    // مفصلي
+    "frame-hinged": bar(650, 6), // حلق مفصلى بدون بار
+    "sash-hinged": bar(830, 6), // ضلفه شباك مفصلى
+    "sash-door": bar(980, 6), // ضلفه باب مفصلى
+    bouclier: bar(710, 6.5), // ر قائم متحرك بوكلي
+    mullion: bar(875, 6.5), // قائم ثابت سوقاس مفصلي
+    "bead-double-hinged": bar(750, 6.5), // بانل 3 طبقات
+    "bead-single-hinged": bar(165, 6), // باكته 20 مم
+    coupling: bar(240, 6), // كوبلن تجميع مفصلى/ جرار
+    // جرار
+    "frame-sliding": bar(1000, 6.5), // حلق جرار 3 سكه ببار
+    "sash-sliding": bar(750, 6), // ضلفه شباك جرار
+    knife: capKnifeWindow, // نصف طبه وسكينه شباك جرار
+    "bouclier-cap": capKnifeWindow,
+    "bead-single-sliding": bar(140, 6), // باكته 9 مم
+    "bead-double-sliding": bar(208, 6), // باكته 35 مم
+    "mesh-sliding-profile": bar(380, 6), // ضلفه سلك جرار
+  };
+}
+
+/** أسعار افتراضية قديمة — للترحيل فقط */
+const LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES = {
+  "frame-hinged": 42,
+  "frame-sliding": 48,
+  "sash-hinged": 52,
+  "sash-door": 58,
+  "sash-sliding": 38,
+  mullion: 50,
+  coupling: 45,
+  knife: 28,
+  bouclier: 35,
+  "bouclier-cap": 8,
+  "bead-single-hinged": 12,
+  "bead-single-sliding": 12,
+  "bead-double-hinged": 18,
+  "bead-double-sliding": 18,
+  "mesh-sliding-profile": 38,
+} as const satisfies Partial<Record<ProfilePriceCategory, number>>;
+
+function profileBrandPricesMatch(
+  prices: Partial<Record<ProfilePriceCategory, number>>,
+  expected: Partial<Record<ProfilePriceCategory, number>>
+): boolean {
+  for (const [key, value] of Object.entries(expected)) {
+    if ((prices[key as ProfilePriceCategory] ?? 0) !== value) return false;
+  }
+  return true;
+}
+
+function migrateCityPremierProfileBrandPrices(
+  brands: ProfileBrand[]
+): ProfileBrand[] {
+  const cityPremier = cityPremierProfileBrandPrices();
+  return brands.map((brand) => {
+    if (brand.id !== "brand-city") return brand;
+    if (!profileBrandPricesMatch(brand.prices, LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES)) {
+      return brand;
+    }
+    return {
+      ...brand,
+      name: "سيتي بريمير",
+      notes:
+        "قائمة أسعار قطاع سيتي بريمير — فبراير 2025 (بدون نقل · الأسعار تشمل الكاوتش والألوان أبيض/بيج/رصاصي)",
+      prices: { ...cityPremier },
+    };
+  });
+}
+
 export function defaultProfileBrandPrices(): Partial<
   Record<ProfilePriceCategory, number>
 > {
-  return {
-    "frame-hinged": 42,
-    "frame-sliding": 48,
-    "sash-hinged": 52,
-    "sash-door": 58,
-    "sash-sliding": 38,
-    mullion: 50,
-    coupling: 45,
-    knife: 28,
-    bouclier: 35,
-    "bouclier-cap": 8,
-    "bead-single-hinged": 12,
-    "bead-single-sliding": 12,
-    "bead-double-hinged": 18,
-    "bead-double-sliding": 18,
-    "mesh-sliding-profile": 38,
-  };
+  return cityPremierProfileBrandPrices();
 }
 
 export function defaultProfileBrands(): ProfileBrand[] {
   return [
     {
       id: "brand-city",
-      name: "سيتي",
+      name: "سيتي بريمير",
       notes:
-        "قائمة أسعار السيتي — للحلق والضلفة والباكتة والسوقاس (مثلاً سيستم بريمير سيتي)",
+        "قائمة أسعار قطاع سيتي بريمير — فبراير 2025 (بدون نقل · الأسعار تشمل الكاوتش والألوان أبيض/بيج/رصاصي)",
       prices: defaultProfileBrandPrices(),
     },
     {
@@ -1597,7 +1667,7 @@ export function getDefaultCatalog(): MaterialCatalog {
         id: "pvc1",
         name: "بريمير سيتي",
         notes:
-          "سيستم بريمير سيتي — بياخد قائمة أسعار السيتي للحلق والضلفة والباكتة والسوقاس",
+          "سيستم بريمير سيتي — بياخد قائمة أسعار سيتي بريمير للحلق والضلفة والباكتة والسوقاس",
         isDefault: true,
         profileBrandId: "brand-city",
         profile: {
@@ -1616,7 +1686,7 @@ export function getDefaultCatalog(): MaterialCatalog {
       withDefaultProfile({
         id: "pvc2",
         name: "بريمير سلايد",
-        notes: "سيستم جرار — قائمة أسعار السيتي",
+        notes: "سيستم جرار — قائمة أسعار سيتي بريمير",
         profileBrandId: "brand-city",
         profile: {
           pieces: standardSlidingProfilePieces().map((p) => ({
@@ -2364,13 +2434,13 @@ function migrateProfileSystemLabels(systems: MaterialSystem[]): MaterialSystem[]
       fromNames: ["نظام PVC مخصص 1"],
       name: "بريمير سيتي",
       notes:
-        "سيستم بريمير سيتي — بياخد قائمة أسعار السيتي للحلق والضلفة والباكتة والسوقاس",
+        "سيستم بريمير سيتي — بياخد قائمة أسعار سيتي بريمير للحلق والضلفة والباكتة والسوقاس",
       brandId: "brand-city",
     },
     pvc2: {
       fromNames: ["نظام PVC مخصص 2"],
       name: "بريمير سلايد",
-      notes: "سيستم جرار — قائمة أسعار السيتي",
+      notes: "سيستم جرار — قائمة أسعار سيتي بريمير",
       brandId: "brand-city",
     },
   };
@@ -2402,10 +2472,11 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       ? defaults.accessoryBrands ?? defaultAccessoryBrands()
       : normalizeAccessoryBrands(raw.accessoryBrands);
 
-  const profileBrands =
+  const profileBrands = migrateCityPremierProfileBrandPrices(
     raw.profileBrands === undefined
       ? defaults.profileBrands ?? defaultProfileBrands()
-      : normalizeProfileBrands(raw.profileBrands);
+      : normalizeProfileBrands(raw.profileBrands)
+  );
 
   const profileBrandIds = new Set(profileBrands.map((b) => b.id));
 
