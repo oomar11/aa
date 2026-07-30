@@ -261,9 +261,9 @@ export type GlassSystemDetails = {
 /** مقاس السبلونة بالسم */
 export type EspagnoletteSize = number;
 
-/** المقاسات القياسية الافتراضية */
+/** المقاسات القياسية الافتراضية — متوافقة مع قائمة فورنا يوليو 2026 */
 export const DEFAULT_ESPAGNOLETTE_SIZE_VALUES = [
-  40, 60, 80, 100, 140, 160, 180,
+  30, 40, 60, 80, 100, 120, 140, 160, 180, 200,
 ] as const;
 
 /** @deprecated استخدم DEFAULT_ESPAGNOLETTE_SIZE_VALUES */

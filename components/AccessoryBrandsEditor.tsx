@@ -5,6 +5,7 @@ import {
   ACCESSORY_BRAND_CATEGORIES,
   ACCESSORY_BRANDS_UPDATED,
   accessoryBrandCategoryLabel,
+  DEFAULT_ESPAGNOLETTE_SIZE_VALUES,
   defaultAccessoryBrands,
   loadMaterialCatalog,
   newAccessoryBrandId,
@@ -20,6 +21,12 @@ const GROUP_LABELS: Record<"hinged" | "bouclier" | "sliding", string> = {
   bouclier: "بوكلير",
   sliding: "جرار",
 };
+
+function isEspagnoletteCategory(category: AccessoryBrandCategory): boolean {
+  return (
+    category === "hinged-espagnolette" || category === "sliding-espagnolette"
+  );
+}
 
 type Props = {
   /** إخفاء العنوان عند استخدام المحرر داخل صفحة مخصصة */
@@ -63,11 +70,28 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
       id: newAccessoryBrandId(),
       name: "",
       category,
+      sizePrices: isEspagnoletteCategory(category) ? {} : undefined,
     });
   }
 
   function openEdit(brand: AccessoryBrand) {
-    setDraft({ ...brand });
+    setDraft({
+      ...brand,
+      sizePrices: brand.sizePrices ? { ...brand.sizePrices } : 
+        isEspagnoletteCategory(brand.category) ? {} : undefined,
+    });
+  }
+
+  function setSizePrice(size: number, raw: string) {
+    if (!draft) return;
+    const next = { ...(draft.sizePrices ?? {}) };
+    if (raw === "") {
+      delete next[size];
+    } else {
+      const n = Number(raw);
+      if (Number.isFinite(n) && n >= 0) next[size] = n;
+    }
+    setDraft({ ...draft, sizePrices: next });
   }
 
   function saveDraft() {
@@ -77,6 +101,25 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
       showFlash("اكتب اسم البراند");
       return;
     }
+
+    let sizePrices = draft.sizePrices;
+    if (sizePrices) {
+      const cleaned: Partial<Record<number, number>> = {};
+      for (const [k, v] of Object.entries(sizePrices)) {
+        const size = Math.round(Number(k));
+        const price = Number(v);
+        if (
+          Number.isFinite(size) &&
+          size > 0 &&
+          Number.isFinite(price) &&
+          price >= 0
+        ) {
+          cleaned[size] = price;
+        }
+      }
+      sizePrices = Object.keys(cleaned).length > 0 ? cleaned : undefined;
+    }
+
     const item: AccessoryBrand = {
       ...draft,
       name,
@@ -84,7 +127,7 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
         draft.unitPrice != null && draft.unitPrice >= 0
           ? draft.unitPrice
           : undefined,
-      sizePrices: draft.sizePrices,
+      sizePrices,
       notes: draft.notes?.trim() || undefined,
     };
     const exists = brands.some((b) => b.id === item.id);
@@ -222,22 +265,38 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
             autoFocus
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           />
-          {draft.sizePrices && Object.keys(draft.sizePrices).length > 0 ? (
-            <p className="rounded-lg border border-border/70 bg-background px-2 py-1.5 text-[10px] text-muted">
-              أسعار السبلونة حسب المقاس مفعّلة (
-              {Object.entries(draft.sizePrices)
-                .sort(([a], [b]) => Number(a) - Number(b))
-                .map(([size, price]) => `${size}سم: ${price}`)
-                .join(" · ")}
-              )
-            </p>
+          {isEspagnoletteCategory(draft.category) ? (
+            <div className="space-y-1.5 rounded-xl border border-border/80 bg-background/60 p-2.5">
+              <p className="text-[11px] font-bold text-foreground">
+                أسعار حسب مقاس السبلونة (سم)
+              </p>
+              <p className="text-[10px] text-muted">
+                من قائمة المصنع — كل مقاس له سعره في حساب الخامات
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {DEFAULT_ESPAGNOLETTE_SIZE_VALUES.map((size) => (
+                  <label key={size} className="text-[10px] text-muted">
+                    {size} سم
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={draft.sizePrices?.[size] ?? ""}
+                      onChange={(e) => setSizePrice(size, e.target.value)}
+                      placeholder="—"
+                      className="mt-0.5 w-full rounded-lg border border-border bg-card px-2 py-1.5 text-xs outline-none focus:border-primary"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
           ) : null}
           <label className="block text-[11px] text-muted">
-            سعر الوحدة (ج.م) — قطعة أو متر حسب الفئة
+            سعر الوحدة (ج.م) — احتياطي لو مفيش سعر للمقاس
             <input
               type="number"
               min={0}
-              step={1}
+              step={0.1}
               value={draft.unitPrice ?? ""}
               onChange={(e) => {
                 const n = Number(e.target.value);
@@ -251,7 +310,7 @@ export function AccessoryBrandsEditor({ embedded = false }: Props) {
                         : draft.unitPrice,
                 });
               }}
-              placeholder="مثلاً: 25"
+              placeholder="مثلاً: 79.2"
               className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
             />
           </label>

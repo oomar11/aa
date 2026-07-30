@@ -14,6 +14,7 @@ import { getGridCells, gridLines } from "@/lib/pane-grid";
 import type { LayoutNode } from "@/lib/window-layout";
 import {
   calcPaneGlassCostPerSqm,
+  calcCutSizes,
   defaultMeshTypeForKind,
   findGlassBottle,
   findMeshType,
@@ -29,6 +30,7 @@ import {
   resolveProfileBrandForSystem,
   type MaterialCatalog,
   type ProfileBrand,
+  type ProfileDeductions,
   type ProfilePriceCategory,
 } from "@/lib/material-systems";
 
@@ -637,18 +639,43 @@ function sashMullionMm(
   return total;
 }
 
-/** طول سكينة ضلفة جرار واحدة — على الحافة الرأسية للسحب الأفقي */
-function knifeLengthForSlidingSash(box: PaneBox): number {
-  return box.h;
+/** مقاسات القطع بعد تخصيم نظام القطاعات */
+function profileCutsFor(
+  w: number,
+  h: number,
+  deductions?: ProfileDeductions | null
+): { frameW: number; frameH: number; sashW: number; sashH: number } {
+  if (!deductions) {
+    return { frameW: w, frameH: h, sashW: w, sashH: h };
+  }
+  const cuts = calcCutSizes(w, h, deductions);
+  return {
+    frameW: cuts.frameWidthMm,
+    frameH: cuts.frameHeightMm,
+    sashW: cuts.sashWidthMm,
+    sashH: cuts.sashHeightMm,
+  };
+}
+
+/** طول سكينة ضلفة جرار واحدة — بعد تخصيم ارتفاع الضلفة */
+function knifeLengthForSlidingSash(
+  box: PaneBox,
+  deductions?: ProfileDeductions | null
+): number {
+  if (!deductions) return box.h;
+  return profileCutsFor(box.w, box.h, deductions).sashH;
 }
 
 /** سكينة — قطعة واحدة لكل ضلفة جرار متحركة */
-function slidingKnifeProfileMm(boxes: PaneBox[]): number {
+function slidingKnifeProfileMm(
+  boxes: PaneBox[],
+  deductions?: ProfileDeductions | null
+): number {
   let total = 0;
   for (const box of boxes) {
     if (box.kind !== "sliding") continue;
     if (!isOpeningSash(box.opening)) continue;
-    total += knifeLengthForSlidingSash(box);
+    total += knifeLengthForSlidingSash(box, deductions);
   }
   return total;
 }
@@ -739,8 +766,11 @@ function meshSlidingRowGroups(
   return rows.map((r) => r.sort((a, b) => a.x - b.x));
 }
 
-/** طبة بوكلير — قطعة واحدة بارتفاع الضلفة لكل بوكلير صالح */
-function bouclierCapStats(boxes: PaneBox[]): { qty: number; lengthMm: number } {
+/** طبة بوكلير — قطعة واحدة بارتفاع الضلفة (بعد التخصيم) لكل بوكلير صالح */
+function bouclierCapStats(
+  boxes: PaneBox[],
+  deductions?: ProfileDeductions | null
+): { qty: number; lengthMm: number } {
   const hinged = boxes.filter((b) => isHingedOpening(b.opening));
   const boucliers = boxes.filter((b) => b.bouclier && b.opening === "fixed");
   let qty = 0;
@@ -767,13 +797,17 @@ function bouclierCapStats(boxes: PaneBox[]): { qty: number; lengthMm: number } {
     if (!left || !right) continue;
     if (!areFacingHandles(left.opening, right.opening)) continue;
     qty += 1;
-    lengthMm += mid.h;
+    const cuts = profileCutsFor(mid.w, mid.h, deductions);
+    lengthMm += cuts.sashH > 0 ? cuts.sashH : mid.h;
   }
   return { qty, lengthMm };
 }
 
-/** تقابل ٤ ضلفة جرار — قطعة واحدة بارتفاع الضلفة لكل صف فيه ٤+ ضلف */
-function fourLeafMeetingStats(boxes: PaneBox[]): {
+/** تقابل ٤ ضلفة جرار — قطعة واحدة بارتفاع الضلفة (بعد التخصيم) لكل صف فيه ٤+ ضلف */
+function fourLeafMeetingStats(
+  boxes: PaneBox[],
+  deductions?: ProfileDeductions | null
+): {
   qty: number;
   lengthMm: number;
 } {
@@ -782,7 +816,9 @@ function fourLeafMeetingStats(boxes: PaneBox[]): {
   for (const row of slidingRowGroups(boxes)) {
     if (row.length < 4) continue;
     qty += 1;
-    lengthMm += row[0]!.h;
+    const first = row[0]!;
+    const cuts = profileCutsFor(first.w, first.h, deductions);
+    lengthMm += cuts.sashH > 0 ? cuts.sashH : first.h;
   }
   return { qty, lengthMm };
 }
@@ -803,11 +839,12 @@ function meshMeetingStats(
   return { qty, lengthMm };
 }
 
-/** محيط قطاع الضلفة لكل ضلفة متحركة */
+/** محيط قطاع الضلفة لكل ضلفة متحركة — بعد تخصيم الضلفة من نظام القطاعات */
 function sashProfileMm(
   boxes: PaneBox[],
   panes: Record<string, PaneConfig> | undefined,
-  catalog?: MaterialCatalog
+  catalog?: MaterialCatalog,
+  deductions?: ProfileDeductions | null
 ): {
   hinged: number;
   sliding: number;
@@ -823,7 +860,8 @@ function sashProfileMm(
     if (!isOpeningSash(box.opening)) continue;
     const cfg = normalizePaneConfig(panes?.[box.id]);
     if (meshReplacesPaneGlass(cfg, box.opening, cat)) continue;
-    const peri = panePerimeterMm(box.w, box.h);
+    const cuts = profileCutsFor(box.w, box.h, deductions);
+    const peri = panePerimeterMm(cuts.sashW, cuts.sashH);
     if (box.kind === "sliding") {
       sliding += peri;
       continue;
@@ -974,8 +1012,14 @@ function frameLabelFor(
  * السكينة: قطعة واحدة لكل ضلفة جرار متحركة.
  * مقابض في وش بعض: بوكلير (مش سوقاس).
  * السوقاس: باقي تقسيم الحلق + تقسيم الضلفة.
+ *
+ * أطوال الحلق/الضلفة/السكينة/التقابل تُحسب بعد تخصيم نظام القطاعات
+ * (نفس معادلات مقاس القطع) عشان التسعير يطابق الاستهلاك الفعلي.
  */
-export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
+export function calcItemMaterials(
+  item: DesignItem,
+  catalog?: MaterialCatalog
+): MaterialsBreakdown {
   const widthMm = Math.max(0, item.widthMm || 0);
   const heightMm = Math.max(0, item.heightMm || 0);
   const areaSqm = itemUnitAreaSqm(item);
@@ -989,6 +1033,15 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   if (boxes.length === 0 || widthMm <= 0 || heightMm <= 0) {
     return emptyBreakdown(areaSqm);
   }
+
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
+  const profileDetails =
+    item.systemId && item.systemId !== "none"
+      ? findSystem("profiles", item.systemId, cat)?.profile
+      : undefined;
+  const deductions = profileDetails?.deductions ?? null;
 
   const hingedBoxes = boxes.filter((b) => b.kind === "hinged");
   const slidingBoxes = boxes.filter((b) => b.kind === "sliding");
@@ -1035,7 +1088,8 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
   }
 
   if (!isMixedFrame) {
-    const peri = 2 * (widthMm + heightMm);
+    const cuts = profileCutsFor(widthMm, heightMm, deductions);
+    const peri = 2 * (cuts.frameW + cuts.frameH);
     if (hasSliding) frameSlidingMm = peri;
     else frameHingedMm = peri;
   } else {
@@ -1043,38 +1097,41 @@ export function calcItemMaterials(item: DesignItem): MaterialsBreakdown {
     const slidingAabb = aabbOf(slidingBoxes);
     const couplingMm = junctions.couplingMm;
     if (hingedAabb) {
-      frameHingedMm = 2 * (hingedAabb.w + hingedAabb.h) - couplingMm;
+      const hCuts = profileCutsFor(hingedAabb.w, hingedAabb.h, deductions);
+      frameHingedMm = 2 * (hCuts.frameW + hCuts.frameH) - couplingMm;
     }
     if (slidingAabb) {
-      frameSlidingMm = 2 * (slidingAabb.w + slidingAabb.h) - couplingMm;
+      const sCuts = profileCutsFor(slidingAabb.w, slidingAabb.h, deductions);
+      frameSlidingMm = 2 * (sCuts.frameW + sCuts.frameH) - couplingMm;
     }
     frameHingedMm = Math.max(0, frameHingedMm);
     frameSlidingMm = Math.max(0, frameSlidingMm);
   }
 
+  // سوقاس/بوكلير/كوبلن: أطوال التقسيم من اللليآوت (مقاس الفتحة).
+  // الحلق والضلفة والسكينة والتقابل بتاخد مقاس القطع بعد التخصيم.
+
   const mullionSashMm = sashMullionMm(boxes, panes);
-  const sashMm = sashProfileMm(boxes, panes);
-  const beadMm = beadTotalsMm(boxes, panes, item);
+  const sashMm = sashProfileMm(boxes, panes, cat, deductions);
+  const beadMm = beadTotalsMm(boxes, panes, item, cat);
   const glassAreaSqm = totalGlassAreaSqm(boxes, panes);
   const meshAreaSqm = totalMeshAreaSqm(boxes, panes);
-  const cat =
-    typeof window !== "undefined" ? loadMaterialCatalog() : undefined;
   const slidingMesh = slidingMeshSashStats(boxes, panes, cat);
   const meshSlidingProfileM = roundM(mmToM(slidingMesh.profileMm));
   const meshSlidingSashCount = slidingMesh.sashCount;
   const meshSlidingWheelQty = meshSlidingSashCount * MESH_SLIDING_WHEELS_PER_SASH;
   const meshPushHandleQty = meshSlidingSashCount * MESH_PUSH_HANDLE_PER_SASH;
-  const fourLeafMeeting = fourLeafMeetingStats(boxes);
+  const fourLeafMeeting = fourLeafMeetingStats(boxes, deductions);
   const meshMeeting = meshMeetingStats(boxes, panes, cat);
   const fourLeafMeetingM = roundM(mmToM(fourLeafMeeting.lengthMm));
   const meshMeetingM = roundM(mmToM(meshMeeting.lengthMm));
-  const bouclierCap = bouclierCapStats(boxes);
+  const bouclierCap = bouclierCapStats(boxes, deductions);
   const bouclierCapM = roundM(mmToM(bouclierCap.lengthMm));
 
   const frameHingedM = roundM(mmToM(frameHingedMm));
   const frameSlidingM = roundM(mmToM(frameSlidingMm));
   const couplingM = roundM(mmToM(junctions.couplingMm));
-  const knifeM = roundM(mmToM(slidingKnifeProfileMm(boxes)));
+  const knifeM = roundM(mmToM(slidingKnifeProfileMm(boxes, deductions)));
   const bouclierM = roundM(mmToM(junctions.bouclierMm));
   const mullionFrameM = roundM(mmToM(junctions.mullionMm));
   const mullionSashM = roundM(mmToM(mullionSashMm));

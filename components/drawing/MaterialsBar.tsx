@@ -166,9 +166,11 @@ export function MaterialsBar({
     >
       <div className="flex items-center justify-between border-b border-border bg-primary-soft/60 px-3 py-2">
         <p className="text-xs font-semibold text-primary">حساب الخامات</p>
-        <p className="truncate text-xs text-muted">
-          {profileSystem ? `${partLabel} · ${profileSystem.name}` : partLabel}
-        </p>
+          <p className="text-[11px] text-muted">
+            {profileSystem
+              ? `${partLabel} · ${profileSystem.name} · أطوال بعد التخصيم`
+              : partLabel}
+          </p>
       </div>
 
       {hasAnyCost ? (

@@ -16,8 +16,8 @@ export default function ProfilesMaterialsPage() {
         <div className="px-1">
           <h1 className="text-xl font-bold">القطاعات</h1>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            سيستم زي بريمير سيتي مربوط ببراند سيتي بريمير — تسعير بالعود (سعر
-            العود ÷ طوله) من قائمة فبراير 2025
+            تسعير بالعود بعد تخصيم مقاس القطع (سعر العود ÷ طوله) — معادلات
+            التخصيم في تفاصيل السيستم
           </p>
         </div>
 
