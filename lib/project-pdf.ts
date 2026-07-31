@@ -37,17 +37,36 @@ export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
+  if (typeof document !== "undefined" && document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      /* ignore */
+    }
+  }
+
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i]!;
+    // ثبّت المقاس قبل التصوير عشان مفيش ضغط/تداخل للنص
+    page.style.width = `${REPORT_PAGE_WIDTH_PX}px`;
+    page.style.height = `${REPORT_PAGE_HEIGHT_PX}px`;
+    page.style.boxSizing = "border-box";
+    page.style.overflow = "hidden";
+
     const canvas = await domToCanvas(page, {
       scale: 2,
       backgroundColor: "#ffffff",
-      quality: 1,
       width: REPORT_PAGE_WIDTH_PX,
       height: REPORT_PAGE_HEIGHT_PX,
+      style: {
+        fontFamily:
+          'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif',
+        letterSpacing: "0px",
+        wordSpacing: "0px",
+      },
     });
 
-    const imgData = canvas.toDataURL("image/jpeg", 0.93);
+    const imgData = canvas.toDataURL("image/jpeg", 0.94);
     if (i > 0) pdf.addPage();
     pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
   }

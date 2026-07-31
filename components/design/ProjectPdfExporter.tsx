@@ -120,8 +120,14 @@ export const ProjectPdfExporter = forwardRef<ProjectPdfExporterHandle, Props>(
               <div
                 ref={hostRef}
                 aria-hidden
-                className="pointer-events-none fixed top-0 left-[-12000px] z-[-1] overflow-visible bg-white text-[#152033]"
-                style={{ width: REPORT_PAGE_WIDTH_PX }}
+                className="pointer-events-none fixed top-0 left-0 z-[-1] overflow-visible bg-white text-[#152033]"
+                style={{
+                  width: REPORT_PAGE_WIDTH_PX,
+                  // على الشاشة لكن شفاف — تصوير offscreen بيخلّط مقاسات الخط العربي
+                  opacity: 0.01,
+                  fontFamily:
+                    'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif',
+                }}
               >
                 <ProjectReport
                   customerId={customerId}
@@ -249,12 +255,19 @@ export const ProjectPdfExporter = forwardRef<ProjectPdfExporterHandle, Props>(
   }
 );
 
-function waitForPaint() {
-  return new Promise<void>((resolve) => {
+async function waitForPaint() {
+  if (typeof document !== "undefined" && document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      /* ignore */
+    }
+  }
+  await new Promise<void>((resolve) => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        // انتظر رسم SVG للبنود قبل التصوير
-        window.setTimeout(resolve, 280);
+        // انتظر رسم SVG والخطوط قبل التصوير
+        window.setTimeout(resolve, 420);
       });
     });
   });

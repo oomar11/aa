@@ -126,10 +126,11 @@ export function WindowPreview({
   const showDims =
     showDimensions &&
     Boolean(widthMm && heightMm && widthMm > 0 && heightMm > 0);
-  const dimPadTop = showDims ? 18 : 5;
-  const dimPadLeft = showDims ? 22 : 5;
-  const dimPadRight = showDims ? 6 : 5;
-  const dimPadBottom = showDims ? 6 : 5;
+  // مساحة كافية لمقاس العرض/الارتفاع فقط — بدون مقاسات تقسيم عشان متتداخلش
+  const dimPadTop = showDims ? 22 : 5;
+  const dimPadLeft = showDims ? 28 : 5;
+  const dimPadRight = showDims ? 8 : 5;
+  const dimPadBottom = showDims ? 8 : 5;
   const vbW = showDims ? dimPadLeft + winW + dimPadRight : winW;
   const vbH = showDims ? dimPadTop + winH + dimPadBottom : winH;
   const frame: Rect = showDims
@@ -325,7 +326,6 @@ export function WindowPreview({
 
       {showDims && widthMm && heightMm ? (
         <PreviewDimensions
-          tree={tree}
           frame={frame}
           widthMm={widthMm}
           heightMm={heightMm}
@@ -337,30 +337,30 @@ export function WindowPreview({
   );
 }
 
-/** مقاسات العرض/الارتفاع (+ تقسيم المستوى الأول) على معاينة التقرير */
+/** خط ثابت للـ SVG — متغيرات CSS غالباً متتحلش صح وقت تصوير PDF */
+const PREVIEW_DIM_FONT =
+  'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif';
+
+/** مقاسات العرض والارتفاع الكلية فقط على معاينة التقرير */
 function PreviewDimensions({
-  tree,
   frame,
   widthMm,
   heightMm,
   unit,
   color,
 }: {
-  tree: LayoutNode;
   frame: Rect;
   widthMm: number;
   heightMm: number;
   unit: LengthUnit;
   color: string;
 }) {
-  const widthY = frame.y - 11;
-  const heightX = frame.x - 12;
-  const fontSize = 8.5;
-  const segments = rootSplitSegments(tree, frame, widthMm, heightMm);
+  const widthY = frame.y - 12;
+  const heightX = frame.x - 14;
+  const fontSize = 9;
 
   return (
     <g aria-hidden>
-      {/* العرض الكلي */}
       <PreviewDimH
         x1={frame.x}
         x2={frame.x + frame.w}
@@ -371,7 +371,6 @@ function PreviewDimensions({
         fontSize={fontSize}
         strong
       />
-      {/* الارتفاع الكلي */}
       <PreviewDimV
         y1={frame.y}
         y2={frame.y + frame.h}
@@ -382,74 +381,8 @@ function PreviewDimensions({
         fontSize={fontSize}
         strong
       />
-      {/* مقاسات التقسيم الأول */}
-      {segments.width.map((seg) => (
-        <PreviewDimH
-          key={seg.id}
-          x1={seg.x1}
-          x2={seg.x2}
-          y={frame.y - 4.5}
-          frameY={frame.y}
-          label={formatLength(seg.mm, unit)}
-          color={color}
-          fontSize={7.2}
-        />
-      ))}
-      {segments.height.map((seg) => (
-        <PreviewDimV
-          key={seg.id}
-          y1={seg.y1}
-          y2={seg.y2}
-          x={frame.x - 4.5}
-          frameX={frame.x}
-          label={formatLength(seg.mm, unit)}
-          color={color}
-          fontSize={7.2}
-        />
-      ))}
     </g>
   );
-}
-
-function rootSplitSegments(
-  tree: LayoutNode,
-  frame: Rect,
-  widthMm: number,
-  heightMm: number
-): {
-  width: { id: string; x1: number; x2: number; mm: number }[];
-  height: { id: string; y1: number; y2: number; mm: number }[];
-} {
-  const width: { id: string; x1: number; x2: number; mm: number }[] = [];
-  const height: { id: string; y1: number; y2: number; mm: number }[] = [];
-  if (tree.type !== "split" || tree.children.length < 2) {
-    return { width, height };
-  }
-  const total = tree.ratios.reduce((a, b) => a + b, 0) || 1;
-  let offset = 0;
-  tree.ratios.forEach((ratio, i) => {
-    const portion = ratio / total;
-    if (tree.dir === "v") {
-      const w = frame.w * portion;
-      width.push({
-        id: `pw-${i}`,
-        x1: frame.x + offset,
-        x2: frame.x + offset + w,
-        mm: Math.round(widthMm * portion),
-      });
-      offset += w;
-    } else {
-      const h = frame.h * portion;
-      height.push({
-        id: `ph-${i}`,
-        y1: frame.y + offset,
-        y2: frame.y + offset + h,
-        mm: Math.round(heightMm * portion),
-      });
-      offset += h;
-    }
-  });
-  return { width, height };
 }
 
 function PreviewDimH({
@@ -521,7 +454,7 @@ function PreviewDimH({
         fill={color}
         fontSize={fontSize}
         fontWeight={strong ? 700 : 600}
-        style={{ fontFamily: "var(--font-cairo), sans-serif" }}
+        fontFamily={PREVIEW_DIM_FONT}
       >
         {label}
       </text>
@@ -598,7 +531,7 @@ function PreviewDimV({
         fill={color}
         fontSize={fontSize}
         fontWeight={strong ? 700 : 600}
-        style={{ fontFamily: "var(--font-cairo), sans-serif" }}
+        fontFamily={PREVIEW_DIM_FONT}
       >
         {label}
       </text>

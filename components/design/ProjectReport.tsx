@@ -108,7 +108,11 @@ export function ProjectReport({
   return (
     <div
       className="project-report bg-white text-[#152033]"
-      style={{ width: REPORT_PAGE_WIDTH_PX }}
+      style={{
+        width: REPORT_PAGE_WIDTH_PX,
+        fontFamily:
+          'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif',
+      }}
       data-export={exportOnly ? "1" : "0"}
     >
       <div className="report-sheet">
@@ -266,26 +270,35 @@ function ReportItemCard({
   const name = item.name?.trim() || suggestItemName(item);
   const area = itemAreaSqm(item);
   const price = itemTotalPrice(item);
-  const materials = reportMaterialRows(item, project, catalog).slice(0, 4);
+  const materials = reportMaterialRows(item, project, catalog).slice(0, 3);
 
   return (
     <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[#d9e0ea] bg-white p-2.5">
       <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[#eef1f5] pb-1.5">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold text-[#2b7de9]">
+          <p
+            className="text-[10px] font-semibold text-[#2b7de9]"
+            style={{ lineHeight: "14px" }}
+          >
             بند {index + 1}
           </p>
-          <h4 className="truncate text-[13px] font-bold leading-tight text-[#152033]">
+          <h4
+            className="truncate text-[13px] font-bold text-[#152033]"
+            style={{ lineHeight: "18px" }}
+          >
             {name}
           </h4>
         </div>
-        <p className="shrink-0 text-[12px] font-bold text-[#2b7de9]">
+        <p
+          className="shrink-0 text-[12px] font-bold text-[#2b7de9]"
+          style={{ lineHeight: "18px" }}
+        >
           {formatCurrency(Math.round(price))} ج.م
         </p>
       </div>
 
-      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden">
-        <div className="flex min-h-[96px] flex-[1.35] items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-1.5">
+      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+        <div className="flex min-h-[110px] flex-1 items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-2">
           <WindowPreview
             style={item.style}
             templateId={item.templateId}
@@ -301,7 +314,7 @@ function ReportItemCard({
           />
         </div>
 
-        <div className="grid shrink-0 grid-cols-2 gap-1 text-[10px]">
+        <div className="grid shrink-0 grid-cols-2 gap-1.5 text-[10px]">
           <Meta
             label="المقاس"
             value={formatSizePair(item.widthMm, item.heightMm, unit)}
@@ -316,11 +329,15 @@ function ReportItemCard({
         </div>
 
         {materials.length > 0 ? (
-          <dl className="min-h-0 shrink-0 space-y-0.5 overflow-hidden rounded-md bg-[#f7f9fc] px-2 py-1 text-[10px] leading-snug">
+          <dl className="grid shrink-0 gap-1 rounded-md bg-[#f7f9fc] px-2 py-1.5 text-[10px]">
             {materials.map((row) => (
-              <div key={row.label} className="flex justify-between gap-2">
+              <div
+                key={row.label}
+                className="flex items-baseline justify-between gap-2"
+                style={{ lineHeight: "15px", minHeight: "15px" }}
+              >
                 <dt className="shrink-0 text-[#6b7585]">{row.label}</dt>
-                <dd className="truncate text-left font-medium text-[#152033]">
+                <dd className="truncate text-left font-semibold text-[#152033]">
                   {row.value}
                 </dd>
               </div>
@@ -342,10 +359,13 @@ function Meta({
   ltr?: boolean;
 }) {
   return (
-    <div className="rounded-md bg-[#f7f9fc] px-1.5 py-1">
-      <p className="text-[9px] text-[#6b7585]">{label}</p>
+    <div className="rounded-md bg-[#f7f9fc] px-1.5 py-1.5">
+      <p className="text-[9px] text-[#6b7585]" style={{ lineHeight: "13px" }}>
+        {label}
+      </p>
       <p
-        className="mt-0.5 truncate font-semibold text-[#152033]"
+        className="mt-1 truncate font-semibold text-[#152033]"
+        style={{ lineHeight: "15px" }}
         dir={ltr ? "ltr" : undefined}
       >
         {value}
