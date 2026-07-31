@@ -28,6 +28,7 @@ import {
   type LayoutNode,
 } from "@/lib/window-layout";
 import { getTemplateById } from "@/lib/window-templates";
+import { formatLength, type LengthUnit } from "@/lib/units";
 
 type Props = {
   style: WindowStyle;
@@ -40,6 +41,10 @@ type Props = {
   className?: string;
   /** فرض ألوان فاتحة (تقارير الطباعة) بغض النظر عن الثيم */
   forceLight?: boolean;
+  /** إظهار مقاسات العرض/الارتفاع على الرسم (للتقرير) */
+  showDimensions?: boolean;
+  /** وحدة عرض المقاسات */
+  unit?: LengthUnit;
 };
 
 function sum(nums: number[]) {
@@ -86,6 +91,8 @@ export function WindowPreview({
   heightMm,
   className = "",
   forceLight = false,
+  showDimensions = false,
+  unit = "mm",
 }: Props) {
   const { theme } = useTheme();
   const isDark = forceLight ? false : theme === "dark";
@@ -101,28 +108,33 @@ export function WindowPreview({
 
   const tree = ensurePaneIds(resolved);
   const auto = getLayoutPreviewSize(tree);
-  let vbW = auto.width;
-  let vbH = auto.height;
+  let winW = auto.width;
+  let winH = auto.height;
   if (widthMm && heightMm && widthMm > 0 && heightMm > 0) {
     const aspect = widthMm / heightMm;
-    const maxW = 140;
-    const maxH = 150;
+    const maxW = showDimensions ? 150 : 140;
+    const maxH = showDimensions ? 140 : 150;
     if (aspect >= 1) {
-      vbW = maxW;
-      vbH = Math.max(56, Math.round(maxW / aspect));
+      winW = maxW;
+      winH = Math.max(56, Math.round(maxW / aspect));
     } else {
-      vbH = maxH;
-      vbW = Math.max(48, Math.round(maxH * aspect));
+      winH = maxH;
+      winW = Math.max(48, Math.round(maxH * aspect));
     }
   }
 
-  const pad = 5;
-  const frame: Rect = {
-    x: pad,
-    y: pad,
-    w: vbW - pad * 2,
-    h: vbH - pad * 2,
-  };
+  const showDims =
+    showDimensions &&
+    Boolean(widthMm && heightMm && widthMm > 0 && heightMm > 0);
+  const dimPadTop = showDims ? 18 : 5;
+  const dimPadLeft = showDims ? 22 : 5;
+  const dimPadRight = showDims ? 6 : 5;
+  const dimPadBottom = showDims ? 6 : 5;
+  const vbW = showDims ? dimPadLeft + winW + dimPadRight : winW;
+  const vbH = showDims ? dimPadTop + winH + dimPadBottom : winH;
+  const frame: Rect = showDims
+    ? { x: dimPadLeft, y: dimPadTop, w: winW, h: winH }
+    : { x: 5, y: 5, w: winW - 10, h: winH - 10 };
 
   const paneRects: PaneRect[] = [];
   const svgPerMm =
@@ -310,7 +322,287 @@ export function WindowPreview({
           strokeWidth={0.4}
         />
       ))}
+
+      {showDims && widthMm && heightMm ? (
+        <PreviewDimensions
+          tree={tree}
+          frame={frame}
+          widthMm={widthMm}
+          heightMm={heightMm}
+          unit={unit}
+          color={isDark ? "#9eb6d4" : "#2b7de9"}
+        />
+      ) : null}
     </svg>
+  );
+}
+
+/** مقاسات العرض/الارتفاع (+ تقسيم المستوى الأول) على معاينة التقرير */
+function PreviewDimensions({
+  tree,
+  frame,
+  widthMm,
+  heightMm,
+  unit,
+  color,
+}: {
+  tree: LayoutNode;
+  frame: Rect;
+  widthMm: number;
+  heightMm: number;
+  unit: LengthUnit;
+  color: string;
+}) {
+  const widthY = frame.y - 11;
+  const heightX = frame.x - 12;
+  const fontSize = 8.5;
+  const segments = rootSplitSegments(tree, frame, widthMm, heightMm);
+
+  return (
+    <g aria-hidden>
+      {/* العرض الكلي */}
+      <PreviewDimH
+        x1={frame.x}
+        x2={frame.x + frame.w}
+        y={widthY}
+        frameY={frame.y}
+        label={formatLength(widthMm, unit)}
+        color={color}
+        fontSize={fontSize}
+        strong
+      />
+      {/* الارتفاع الكلي */}
+      <PreviewDimV
+        y1={frame.y}
+        y2={frame.y + frame.h}
+        x={heightX}
+        frameX={frame.x}
+        label={formatLength(heightMm, unit)}
+        color={color}
+        fontSize={fontSize}
+        strong
+      />
+      {/* مقاسات التقسيم الأول */}
+      {segments.width.map((seg) => (
+        <PreviewDimH
+          key={seg.id}
+          x1={seg.x1}
+          x2={seg.x2}
+          y={frame.y - 4.5}
+          frameY={frame.y}
+          label={formatLength(seg.mm, unit)}
+          color={color}
+          fontSize={7.2}
+        />
+      ))}
+      {segments.height.map((seg) => (
+        <PreviewDimV
+          key={seg.id}
+          y1={seg.y1}
+          y2={seg.y2}
+          x={frame.x - 4.5}
+          frameX={frame.x}
+          label={formatLength(seg.mm, unit)}
+          color={color}
+          fontSize={7.2}
+        />
+      ))}
+    </g>
+  );
+}
+
+function rootSplitSegments(
+  tree: LayoutNode,
+  frame: Rect,
+  widthMm: number,
+  heightMm: number
+): {
+  width: { id: string; x1: number; x2: number; mm: number }[];
+  height: { id: string; y1: number; y2: number; mm: number }[];
+} {
+  const width: { id: string; x1: number; x2: number; mm: number }[] = [];
+  const height: { id: string; y1: number; y2: number; mm: number }[] = [];
+  if (tree.type !== "split" || tree.children.length < 2) {
+    return { width, height };
+  }
+  const total = tree.ratios.reduce((a, b) => a + b, 0) || 1;
+  let offset = 0;
+  tree.ratios.forEach((ratio, i) => {
+    const portion = ratio / total;
+    if (tree.dir === "v") {
+      const w = frame.w * portion;
+      width.push({
+        id: `pw-${i}`,
+        x1: frame.x + offset,
+        x2: frame.x + offset + w,
+        mm: Math.round(widthMm * portion),
+      });
+      offset += w;
+    } else {
+      const h = frame.h * portion;
+      height.push({
+        id: `ph-${i}`,
+        y1: frame.y + offset,
+        y2: frame.y + offset + h,
+        mm: Math.round(heightMm * portion),
+      });
+      offset += h;
+    }
+  });
+  return { width, height };
+}
+
+function PreviewDimH({
+  x1,
+  x2,
+  y,
+  frameY,
+  label,
+  color,
+  fontSize,
+  strong = false,
+}: {
+  x1: number;
+  x2: number;
+  y: number;
+  frameY: number;
+  label: string;
+  color: string;
+  fontSize: number;
+  strong?: boolean;
+}) {
+  const mid = (x1 + x2) / 2;
+  const bw = Math.max(label.length * fontSize * 0.62 + 6, 18);
+  const bh = fontSize + 3;
+  return (
+    <g>
+      <line
+        x1={x1}
+        y1={frameY}
+        x2={x1}
+        y2={y}
+        stroke={color}
+        strokeWidth={0.7}
+        opacity={0.55}
+      />
+      <line
+        x1={x2}
+        y1={frameY}
+        x2={x2}
+        y2={y}
+        stroke={color}
+        strokeWidth={0.7}
+        opacity={0.55}
+      />
+      <line
+        x1={x1}
+        y1={y}
+        x2={x2}
+        y2={y}
+        stroke={color}
+        strokeWidth={strong ? 1.1 : 0.85}
+      />
+      <circle cx={x1} cy={y} r={strong ? 1.4 : 1.1} fill={color} />
+      <circle cx={x2} cy={y} r={strong ? 1.4 : 1.1} fill={color} />
+      <rect
+        x={mid - bw / 2}
+        y={y - bh / 2}
+        width={bw}
+        height={bh}
+        rx={2}
+        fill="#ffffff"
+        stroke={color}
+        strokeWidth={0.7}
+      />
+      <text
+        x={mid}
+        y={y + fontSize * 0.35}
+        textAnchor="middle"
+        fill={color}
+        fontSize={fontSize}
+        fontWeight={strong ? 700 : 600}
+        style={{ fontFamily: "var(--font-cairo), sans-serif" }}
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
+function PreviewDimV({
+  y1,
+  y2,
+  x,
+  frameX,
+  label,
+  color,
+  fontSize,
+  strong = false,
+}: {
+  y1: number;
+  y2: number;
+  x: number;
+  frameX: number;
+  label: string;
+  color: string;
+  fontSize: number;
+  strong?: boolean;
+}) {
+  const mid = (y1 + y2) / 2;
+  const bw = Math.max(label.length * fontSize * 0.62 + 6, 18);
+  const bh = fontSize + 3;
+  return (
+    <g>
+      <line
+        x1={frameX}
+        y1={y1}
+        x2={x}
+        y2={y1}
+        stroke={color}
+        strokeWidth={0.7}
+        opacity={0.55}
+      />
+      <line
+        x1={frameX}
+        y1={y2}
+        x2={x}
+        y2={y2}
+        stroke={color}
+        strokeWidth={0.7}
+        opacity={0.55}
+      />
+      <line
+        x1={x}
+        y1={y1}
+        x2={x}
+        y2={y2}
+        stroke={color}
+        strokeWidth={strong ? 1.1 : 0.85}
+      />
+      <circle cx={x} cy={y1} r={strong ? 1.4 : 1.1} fill={color} />
+      <circle cx={x} cy={y2} r={strong ? 1.4 : 1.1} fill={color} />
+      <rect
+        x={x - bw / 2}
+        y={mid - bh / 2}
+        width={bw}
+        height={bh}
+        rx={2}
+        fill="#ffffff"
+        stroke={color}
+        strokeWidth={0.7}
+      />
+      <text
+        x={x}
+        y={mid + fontSize * 0.35}
+        textAnchor="middle"
+        fill={color}
+        fontSize={fontSize}
+        fontWeight={strong ? 700 : 600}
+        style={{ fontFamily: "var(--font-cairo), sans-serif" }}
+      >
+        {label}
+      </text>
+    </g>
   );
 }
 

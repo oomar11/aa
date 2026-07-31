@@ -295,6 +295,8 @@ function ReportItemCard({
             widthMm={item.widthMm}
             heightMm={item.heightMm}
             forceLight
+            showDimensions
+            unit={unit}
             className="h-full w-auto max-h-full max-w-full"
           />
         </div>
