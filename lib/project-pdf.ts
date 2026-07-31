@@ -51,7 +51,7 @@ export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
   return pdf.output("blob");
 }
 
-export type SharePdfResult = "shared" | "downloaded" | "cancelled";
+export type SharePdfResult = "shared" | "opened" | "cancelled" | "unsupported";
 
 export function canSharePdfFile(file: File): boolean {
   return (
@@ -70,8 +70,7 @@ export async function sharePdfFile(
   title?: string
 ): Promise<SharePdfResult> {
   if (!canSharePdfFile(file)) {
-    downloadPdfFile(file);
-    return "downloaded";
+    return "unsupported";
   }
 
   try {
@@ -84,30 +83,20 @@ export async function sharePdfFile(
     if (err instanceof DOMException && err.name === "AbortError") {
       return "cancelled";
     }
-    downloadPdfFile(file);
-    return "downloaded";
+    return "unsupported";
   }
 }
 
-export function downloadPdfFile(file: File) {
+/** فتح ملف PDF في تاب جديدة للمعاينة — من غير تنزيل */
+export function openPdfFile(file: File): SharePdfResult {
   const url = URL.createObjectURL(file);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = file.name;
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
-
-/** @deprecated استخدم sharePdfFile */
-export async function shareOrDownloadPdf(
-  file: File,
-  opts?: { title?: string; text?: string }
-): Promise<SharePdfResult> {
-  void opts?.text;
-  return sharePdfFile(file, opts?.title);
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  if (!opened) {
+    // بعض المتصفحات تمنع النوافذ المنبثقة — نفتح في نفس التاب
+    window.location.assign(url);
+  }
+  return "opened";
 }
 
 export async function buildProjectPdfFile(

@@ -12,13 +12,13 @@ import { ProjectReport } from "@/components/design/ProjectReport";
 import {
   buildProjectPdfFile,
   canSharePdfFile,
-  downloadPdfFile,
+  openPdfFile,
   sharePdfFile,
   type SharePdfResult,
 } from "@/lib/project-pdf";
 
 export type ProjectPdfExporterHandle = {
-  /** يجهّز PDF ويعرض شاشة مشاركة/تنزيل */
+  /** يجهّز PDF ويعرض شاشة فتح/مشاركة */
   openShare: () => Promise<void>;
 };
 
@@ -87,15 +87,21 @@ export const ProjectPdfExporter = forwardRef<ProjectPdfExporterHandle, Props>(
           file,
           `تقرير مشروع${projectName ? ` — ${projectName}` : ""}`
         );
+        if (result === "unsupported") {
+          window.alert(
+            "المشاركة غير متاحة على هذا الجهاز. جرّب فتح الملف ثم شاركه من هناك."
+          );
+          return;
+        }
         if (result !== "cancelled") close();
       } finally {
         setBusyAction(false);
       }
     }
 
-    function handleDownloadClick() {
+    function handleOpenClick() {
       if (!file || busyAction) return;
-      downloadPdfFile(file);
+      openPdfFile(file);
       close();
     }
 
@@ -198,24 +204,24 @@ export const ProjectPdfExporter = forwardRef<ProjectPdfExporterHandle, Props>(
                       </p>
 
                       <div className="mt-4 flex flex-col gap-2">
-                        {shareAvailable ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={handleOpenClick}
+                            disabled={busyAction}
+                            className="rounded-xl border border-border bg-background px-3 py-3 text-sm font-bold text-foreground disabled:opacity-60"
+                          >
+                            فتح
+                          </button>
                           <button
                             type="button"
                             onClick={() => void handleShareClick()}
-                            disabled={busyAction}
+                            disabled={busyAction || !shareAvailable}
                             className="rounded-xl bg-primary px-3 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
                           >
-                            {busyAction ? "جاري الفتح…" : "مشاركة ملف PDF"}
+                            {busyAction ? "…" : "مشاركة"}
                           </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={handleDownloadClick}
-                          disabled={busyAction}
-                          className="rounded-xl border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground disabled:opacity-60"
-                        >
-                          {shareAvailable ? "تنزيل PDF" : "حفظ PDF على الجهاز"}
-                        </button>
+                        </div>
                         <button
                           type="button"
                           onClick={close}
