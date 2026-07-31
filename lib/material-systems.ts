@@ -668,6 +668,15 @@ export function notifyMaterialCatalogUpdated() {
 /** طول العود الافتراضي بالمتر */
 export const DEFAULT_BAR_LENGTH_M = 5.8;
 
+/** عدد الأعواد المطلوبة من الطول بالمتر (تقريب لأعلى) */
+export function barsNeeded(
+  lengthM: number,
+  barLengthM: number = DEFAULT_BAR_LENGTH_M
+): number {
+  if (!(lengthM > 0) || !(barLengthM > 0)) return 0;
+  return Math.ceil(lengthM / barLengthM);
+}
+
 export const MATERIAL_CATEGORIES: {
   id: MaterialCategory;
   label: string;

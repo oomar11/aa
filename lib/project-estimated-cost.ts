@@ -24,6 +24,8 @@ import {
   scaleIronBreakdown,
 } from "@/lib/iron";
 import {
+  DEFAULT_BAR_LENGTH_M,
+  barsNeeded,
   findSystem,
   getIronSystem,
   loadMaterialCatalog,
@@ -55,7 +57,7 @@ export type CostSectionId =
   | "accessories"
   | "iron";
 
-export type CostUnit = "م" | "م²" | "قطعة" | "طقم";
+export type CostUnit = "م" | "م²" | "قطعة" | "طقم" | "عود";
 
 export type EstimatedCostLine = {
   key: string;
@@ -145,7 +147,9 @@ function roundMoney(n: number): number {
 }
 
 function roundAmount(n: number, unit: CostUnit): number {
-  if (unit === "قطعة" || unit === "طقم") return Math.round(n * 100) / 100;
+  if (unit === "قطعة" || unit === "طقم" || unit === "عود") {
+    return Math.round(n * 100) / 100;
+  }
   return Math.round(n * 1000) / 1000;
 }
 
@@ -367,32 +371,39 @@ function contributeItem(
   const frameColor =
     FRAME_COLORS[normalizeFrameColor(effective.frameColor)].label;
 
-  // قطاعات — المواد بوحدة واحدة، التكلفة الكلية × الكمية
+  // قطاعات — الكمية والتكلفة بالأعواد (مش بالمتر)
   const profile = calcProfileCostBreakdown(effective, unitMats, catalog);
   let profiles = 0;
   if (profile.hasPricing) {
-    profiles = profile.totalCost;
     for (const line of profile.lines) {
       if (line.billing === "kit") {
+        const kitCost = roundMoney(line.totalCost * qty);
+        profiles += kitCost;
         addCostLine(lineMap, {
           section: "profiles",
           label: line.label,
           amount: (line.qty ?? 0) * qty,
           unit: "طقم",
-          cost: roundMoney(line.totalCost * qty),
+          cost: kitCost,
           note: joinNotes(systemNote, line.productName, `لون: ${frameColor}`),
         });
       } else {
+        const barLen =
+          line.barLengthM > 0 ? line.barLengthM : DEFAULT_BAR_LENGTH_M;
+        const bars = barsNeeded(line.lengthM * qty, barLen);
+        const barCost =
+          line.barPrice > 0 ? roundMoney(bars * line.barPrice) : null;
+        if (barCost != null) profiles += barCost;
         addCostLine(lineMap, {
           section: "profiles",
           label: line.label,
-          amount: line.lengthM * qty,
-          unit: "م",
-          cost: roundMoney(line.totalCost * qty),
+          amount: bars,
+          unit: "عود",
+          cost: barCost,
           note: joinNotes(
             systemNote,
             line.productName,
-            `عود ${line.barLengthM}م`,
+            `طول العود ${barLen}م`,
             `لون: ${frameColor}`
           ),
         });
@@ -443,36 +454,56 @@ function contributeItem(
 
   const ironRaw = calcIronBreakdown(effective, getIronSystem(catalog));
   const iron = ironRaw ? scaleIronBreakdown(ironRaw, qty) : null;
-  const ironTotal = iron && iron.totalCost > 0 ? iron.totalCost : 0;
+  let ironTotal = 0;
   if (iron) {
     for (const line of iron.lines) {
+      const barLen =
+        line.barLengthM && line.barLengthM > 0
+          ? line.barLengthM
+          : DEFAULT_BAR_LENGTH_M;
       if (line.lengthM > 0.0005) {
+        const bars =
+          line.barsApprox != null && line.barsApprox > 0
+            ? Math.ceil(line.barsApprox)
+            : barsNeeded(line.lengthM, barLen);
+        if (bars < 1) continue;
+        const barCost =
+          line.barPrice != null && line.barPrice > 0
+            ? roundMoney(bars * line.barPrice)
+            : line.totalCost != null && line.totalCost > 0
+              ? roundMoney(line.totalCost)
+              : null;
+        if (barCost != null) ironTotal += barCost;
         addCostLine(lineMap, {
           section: "iron",
           label: line.label,
-          amount: line.lengthM,
-          unit: "م",
-          cost:
-            line.totalCost != null && line.totalCost > 0
-              ? roundMoney(line.totalCost)
-              : null,
-          note: joinNotes(iron.systemName, line.pieceName),
+          amount: bars,
+          unit: "عود",
+          cost: barCost,
+          note: joinNotes(
+            iron.systemName,
+            line.pieceName,
+            `طول العود ${barLen}م`
+          ),
         });
       } else if (line.qty != null && line.qty > 0) {
+        const pieceCost =
+          line.totalCost != null && line.totalCost > 0
+            ? roundMoney(line.totalCost)
+            : null;
+        if (pieceCost != null) ironTotal += pieceCost;
         addCostLine(lineMap, {
           section: "iron",
           label: line.label,
           amount: line.qty,
           unit: "قطعة",
-          cost:
-            line.totalCost != null && line.totalCost > 0
-              ? roundMoney(line.totalCost)
-              : null,
+          cost: pieceCost,
           note: joinNotes(iron.systemName, line.pieceName),
         });
       }
     }
   }
+  ironTotal = roundMoney(ironTotal);
 
   const beforeDiscount = roundMoney(
     profiles + glassTotal + meshTotal + accessories + ironTotal
@@ -508,6 +539,10 @@ export function costQtyLabel(line: EstimatedCostLine): string {
   if (line.unit === "طقم") {
     const n = Math.round(line.amount);
     return n < 1 ? "—" : `${n} طقم`;
+  }
+  if (line.unit === "عود") {
+    const n = Math.round(line.amount);
+    return n < 1 ? "—" : `${n} عود`;
   }
   return formatCount(line.amount);
 }

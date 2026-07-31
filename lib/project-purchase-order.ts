@@ -20,6 +20,8 @@ import {
   type IronBreakdown,
 } from "@/lib/iron";
 import {
+  DEFAULT_BAR_LENGTH_M,
+  barsNeeded,
   findSystem,
   getIronSystem,
   loadMaterialCatalog,
@@ -53,7 +55,7 @@ export type PurchaseSectionId =
   | "accessories"
   | "iron";
 
-export type PurchaseUnit = "م" | "م²" | "قطعة" | "طقم";
+export type PurchaseUnit = "م" | "م²" | "قطعة" | "طقم" | "عود";
 
 export type PurchaseLine = {
   key: string;
@@ -114,7 +116,9 @@ function mergeCustomers(): Customer[] {
 }
 
 function roundAmount(n: number, unit: PurchaseUnit): number {
-  if (unit === "قطعة" || unit === "طقم") return Math.round(n * 100) / 100;
+  if (unit === "قطعة" || unit === "طقم" || unit === "عود") {
+    return Math.round(n * 100) / 100;
+  }
   return Math.round(n * 1000) / 1000;
 }
 
@@ -165,6 +169,10 @@ function formatPurchaseQty(line: PurchaseLine): string {
     const n = Math.round(line.amount);
     return n < 1 ? "—" : `${n} طقم`;
   }
+  if (line.unit === "عود") {
+    const n = Math.round(line.amount);
+    return n < 1 ? "—" : `${n} عود`;
+  }
   return formatCount(line.amount);
 }
 
@@ -193,15 +201,18 @@ function addProfileLines(
           note: joinNotes(systemNote, line.productName, tint),
         });
       } else {
+        const barLen =
+          line.barLengthM > 0 ? line.barLengthM : DEFAULT_BAR_LENGTH_M;
+        const bars = barsNeeded(line.lengthM * q, barLen);
         addLine(map, {
           section: "profiles",
           label: line.label,
-          amount: line.lengthM * q,
-          unit: "م",
+          amount: bars,
+          unit: "عود",
           note: joinNotes(
             systemNote,
             line.productName,
-            `عود ${line.barLengthM}م`,
+            `طول العود ${barLen}م`,
             tint
           ),
         });
@@ -210,7 +221,7 @@ function addProfileLines(
     return;
   }
 
-  // بدون تسعير: من الـ breakdown بالمتر
+  // بدون تسعير: تحويل الأطوال لأعواد بطول العود الافتراضي
   const fallback: { label: string; meters: number }[] = [
     { label: "حلق مفصلي", meters: materials.frameHingedM },
     { label: "حلق جرار", meters: materials.frameSlidingM },
@@ -231,12 +242,14 @@ function addProfileLines(
     { label: "تقابل سلك", meters: materials.meshMeetingM },
   ];
   for (const row of fallback) {
+    const bars = barsNeeded(row.meters, DEFAULT_BAR_LENGTH_M);
+    if (bars < 1) continue;
     addLine(map, {
       section: "profiles",
       label: row.label,
-      amount: row.meters,
-      unit: "م",
-      note: joinNotes(systemNote, tint),
+      amount: bars,
+      unit: "عود",
+      note: joinNotes(systemNote, `طول العود ${DEFAULT_BAR_LENGTH_M}م`, tint),
     });
   }
   if (materials.bouclierCapQty > 0) {
@@ -485,16 +498,26 @@ function addAccessoryLines(
 function addIronLines(map: Map<string, PurchaseLine>, iron: IronBreakdown | null) {
   if (!iron?.lines.length) return;
   for (const line of iron.lines) {
-    // ملاحظة بدون عدد الأعواد عشان يتجمّع نفس الصنف عبر البنود
-    const note =
-      [iron.systemName, line.pieceName].filter(Boolean).join(" · ") ||
-      undefined;
+    const barLen =
+      line.barLengthM && line.barLengthM > 0
+        ? line.barLengthM
+        : DEFAULT_BAR_LENGTH_M;
+    const note = joinNotes(
+      iron.systemName,
+      line.pieceName,
+      line.lengthM > 0.0005 ? `طول العود ${barLen}م` : undefined
+    );
     if (line.lengthM > 0.0005) {
+      const bars =
+        line.barsApprox != null && line.barsApprox > 0
+          ? Math.ceil(line.barsApprox)
+          : barsNeeded(line.lengthM, barLen);
+      if (bars < 1) continue;
       addLine(map, {
         section: "iron",
         label: line.label,
-        amount: line.lengthM,
-        unit: "م",
+        amount: bars,
+        unit: "عود",
         note,
       });
     } else if (line.qty != null && line.qty > 0) {
