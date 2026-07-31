@@ -617,9 +617,9 @@ function LinesPage({
                   <thead>
                     <tr style={{ background: "#f7f9fc" }}>
                       <th style={thStyle("36%")}>الصنف</th>
-                      <th style={thStyle("16%", "center")}>الكمية</th>
-                      <th style={thStyle("18%", "left")}>التكلفة</th>
-                      <th style={thStyle("30%")}>ملاحظات</th>
+                      <th style={thStyle("26%", "center")}>الكمية</th>
+                      <th style={thStyle("16%", "left")}>التكلفة</th>
+                      <th style={thStyle("22%")}>ملاحظات</th>
                     </tr>
                   </thead>
                   <tbody>
