@@ -289,7 +289,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
     const raw = calcIronBreakdown(calcItem, ironSystem, profileSystem);
     if (!raw) return null;
     return scaleIronBreakdown(raw, calcItem.qty);
-  }, [calcItem]);
+  }, [calcItem, catalogTick]);
 
   const activeOpening = useMemo(() => {
     if (!item || !selectedPaneId) return null;

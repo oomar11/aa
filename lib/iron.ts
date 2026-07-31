@@ -1,6 +1,6 @@
 /**
- * حساب حديد التسليح للحلق · الضلفة · السوقاس.
- * الحديد أصغر من القطاع حسب معادلات نظام الحديد (افتراضي −١٠ سم).
+ * حساب حديد التسليح الموحّد + تراك الجرار + شريحة المفصلة.
+ * الحديد أصغر من القطاع حسب تخصيمات النظام (افتراضي −١٠ سم).
  */
 
 import {
@@ -14,7 +14,6 @@ import { gridLines } from "@/lib/pane-grid";
 import {
   classifyJunction,
   frameKindForOpening,
-  isDoorPane,
   meshReplacesPaneGlass,
   type FrameKind,
 } from "@/lib/materials";
@@ -47,21 +46,35 @@ export type IronLine = {
   role: IronPieceRole;
   label: string;
   lengthM: number;
+  /** عدد القطع (للتراك وشريحة المفصلة) */
+  qty?: number;
+  /** عدد الأعواد التقريبي = ceil(lengthM / barLengthM) */
+  barsApprox?: number;
   sectionWidthMm?: number;
   sectionHeightMm?: number;
   pieceName?: string;
+  pricePerM?: number;
+  totalCost?: number;
 };
 
 export type IronBreakdown = {
   lines: IronLine[];
+  frameM: number;
+  sashM: number;
+  mullionM: number;
+  trackM: number;
+  trackQty: number;
+  hingeStripM: number;
+  hingeStripQty: number;
+  totalM: number;
+  totalCost: number;
+  systemName?: string;
+  /** @deprecated توافق مع العرض القديم */
   frameHingedM: number;
   frameSlidingM: number;
   sashHingedM: number;
   sashSlidingM: number;
   sashDoorM: number;
-  mullionM: number;
-  totalM: number;
-  systemName?: string;
 };
 
 function sum(nums: number[]) {
@@ -84,6 +97,13 @@ function evalIronMm(formula: string, vars: Record<string, number>): number {
 
 function isOpeningSash(opening: PaneOpening): boolean {
   return opening !== "fixed" && opening !== "exhaust";
+}
+
+/** مفصلي أو قلاب أو باب — جنب فيه مفصلات (مش جرار) */
+function isHingedFamily(opening: PaneOpening): boolean {
+  if (!isOpeningSash(opening)) return false;
+  if (opening.startsWith("panel")) return false;
+  return frameKindForOpening(opening) === "hinged";
 }
 
 function paneOpening(
@@ -189,6 +209,26 @@ function mullionIronLengthMm(
   return evalIronMm(deductions.mullion, { L: segmentMm });
 }
 
+function hingeStripLengthMm(
+  sashH: number,
+  fw: number,
+  fh: number,
+  deductions: IronDeductions
+): number {
+  const formula =
+    deductions.hingeStrip?.trim() ||
+    deductions.sash.height ||
+    "=SH-100";
+  return evalIronMm(formula, {
+    W: sashH,
+    H: sashH,
+    FW: fw,
+    FH: fh,
+    SW: sashH,
+    SH: sashH,
+  });
+}
+
 function collectFrameMullions(
   node: LayoutNode,
   w: number,
@@ -249,43 +289,76 @@ function collectSashMullions(
   }
 }
 
+function barsFor(lengthM: number, barLengthM: number): number | undefined {
+  if (!(barLengthM > 0) || lengthM <= 0) return undefined;
+  return Math.ceil(lengthM / barLengthM);
+}
+
 function addLine(
   lines: IronLine[],
-  totals: Record<IronPieceRole, number>,
+  totals: Partial<Record<IronPieceRole, number>>,
   role: IronPieceRole,
   lengthMm: number,
-  details: IronSystemDetails
+  details: IronSystemDetails,
+  qty?: number
 ) {
-  if (lengthMm <= 0.5) return;
+  if (lengthMm <= 0.5 && !(qty != null && qty > 0 && lengthMm > 0)) {
+    if (!(qty != null && qty > 0 && lengthMm > 0.01)) return;
+  }
+  if (lengthMm <= 0.5 && (qty == null || qty <= 0)) return;
+
   const piece = ironPieceForRole(details, role);
   if (!piece) return;
   const lengthM = roundM(mmToM(lengthMm));
-  totals[role] = (totals[role] ?? 0) + lengthM;
+  totals[role] = roundM((totals[role] ?? 0) + lengthM);
   const existing = lines.find((l) => l.role === role);
+  const pricePerM = piece.pricePerM;
+  const addedCost =
+    pricePerM != null && pricePerM > 0
+      ? roundM(lengthM * pricePerM)
+      : undefined;
+
   if (existing) {
     existing.lengthM = roundM(existing.lengthM + lengthM);
+    if (qty != null) existing.qty = (existing.qty ?? 0) + qty;
+    existing.barsApprox = barsFor(existing.lengthM, piece.barLengthM);
+    if (addedCost != null) {
+      existing.totalCost = roundM((existing.totalCost ?? 0) + addedCost);
+    }
     return;
   }
+
   lines.push({
     role,
     label: ironRoleLabel(role),
     lengthM,
-    sectionWidthMm: piece.sectionWidthMm,
-    sectionHeightMm: piece.sectionHeightMm,
+    qty,
+    barsApprox: barsFor(lengthM, piece.barLengthM),
+    sectionWidthMm: piece.sectionWidthMm || undefined,
+    sectionHeightMm: piece.sectionHeightMm || undefined,
     pieceName: piece.name,
+    pricePerM: pricePerM != null && pricePerM > 0 ? pricePerM : undefined,
+    totalCost: addedCost,
   });
 }
 
 function emptyBreakdown(): IronBreakdown {
   return {
     lines: [],
+    frameM: 0,
+    sashM: 0,
+    mullionM: 0,
+    trackM: 0,
+    trackQty: 0,
+    hingeStripM: 0,
+    hingeStripQty: 0,
+    totalM: 0,
+    totalCost: 0,
     frameHingedM: 0,
     frameSlidingM: 0,
     sashHingedM: 0,
     sashSlidingM: 0,
     sashDoorM: 0,
-    mullionM: 0,
-    totalM: 0,
   };
 }
 
@@ -303,9 +376,7 @@ export function calcIronBreakdown(
   const catalog =
     typeof window !== "undefined" ? loadMaterialCatalog() : undefined;
   const system =
-    ironSystem ??
-    catalog?.iron.find((s) => s.id === ironId) ??
-    null;
+    ironSystem ?? catalog?.iron.find((s) => s.id === ironId) ?? null;
   if (!system) return null;
 
   const details = system.iron ?? defaultIronDetails();
@@ -322,8 +393,7 @@ export function calcIronBreakdown(
 
   const profileDeductions =
     profileSystem?.profile?.deductions ??
-    catalog?.profiles.find((s) => s.id === item.systemId)?.profile
-      ?.deductions;
+    catalog?.profiles.find((s) => s.id === item.systemId)?.profile?.deductions;
   const cuts = profileDeductions
     ? calcCutSizes(widthMm, heightMm, profileDeductions)
     : {
@@ -333,51 +403,14 @@ export function calcIronBreakdown(
   const fw = cuts.frameWidthMm;
   const fh = cuts.frameHeightMm;
 
-  const hingedBoxes = boxes.filter((b) => b.kind === "hinged");
-  const slidingBoxes = boxes.filter((b) => b.kind === "sliding");
-  const hasHinged = hingedBoxes.length > 0;
-  const hasSliding = slidingBoxes.length > 0;
-  const isMixedFrame = hasHinged && hasSliding;
-
   const lines: IronLine[] = [];
-  const totals = {} as Record<IronPieceRole, number>;
+  const totals: Partial<Record<IronPieceRole, number>> = {};
 
-  // ── حلق ─────────────────────────────────────────────
-  if (!isMixedFrame) {
-    const peri = frameIronPerimeterMm(fw, fh, details.deductions);
-    if (hasSliding && peri > 0) {
-      addLine(lines, totals, "frame-sliding", peri, details);
-    } else if (hasHinged && peri > 0) {
-      addLine(lines, totals, "frame-hinged", peri, details);
-    }
-  } else {
-    const hingedAabb = aabbOf(hingedBoxes);
-    const slidingAabb = aabbOf(slidingBoxes);
-    if (hingedAabb) {
-      const hCuts = profileDeductions
-        ? calcCutSizes(hingedAabb.w, hingedAabb.h, profileDeductions)
-        : { frameWidthMm: hingedAabb.w, frameHeightMm: hingedAabb.h };
-      const peri = frameIronPerimeterMm(
-        hCuts.frameWidthMm,
-        hCuts.frameHeightMm,
-        details.deductions
-      );
-      addLine(lines, totals, "frame-hinged", peri, details);
-    }
-    if (slidingAabb) {
-      const sCuts = profileDeductions
-        ? calcCutSizes(slidingAabb.w, slidingAabb.h, profileDeductions)
-        : { frameWidthMm: slidingAabb.w, frameHeightMm: slidingAabb.h };
-      const peri = frameIronPerimeterMm(
-        sCuts.frameWidthMm,
-        sCuts.frameHeightMm,
-        details.deductions
-      );
-      addLine(lines, totals, "frame-sliding", peri, details);
-    }
-  }
+  // ── حلق (موحّد) ─────────────────────────────────────
+  const framePeri = frameIronPerimeterMm(fw, fh, details.deductions);
+  addLine(lines, totals, "frame", framePeri, details);
 
-  // ── ضلفة ────────────────────────────────────────────
+  // ── ضلفة (موحّد لكل الفتحات) ─────────────────────────
   const cat = catalog;
   for (const box of boxes) {
     if (!isOpeningSash(box.opening)) continue;
@@ -385,15 +418,7 @@ export function calcIronBreakdown(
     if (meshReplacesPaneGlass(cfg, box.opening, cat)) continue;
 
     const peri = sashIronPerimeterMm(box.w, box.h, fw, fh, details.deductions);
-    if (peri <= 0) continue;
-
-    if (box.kind === "sliding") {
-      addLine(lines, totals, "sash-sliding", peri, details);
-    } else if (isDoorPane(box.opening, cfg)) {
-      addLine(lines, totals, "sash-door", peri, details);
-    } else {
-      addLine(lines, totals, "sash-hinged", peri, details);
-    }
+    addLine(lines, totals, "sash", peri, details);
   }
 
   // ── سوقاس ───────────────────────────────────────────
@@ -415,31 +440,65 @@ export function calcIronBreakdown(
     addLine(lines, totals, "mullion", mullionMm, details);
   }
 
-  const frameHingedM = totals["frame-hinged"] ?? 0;
-  const frameSlidingM = totals["frame-sliding"] ?? 0;
-  const sashHingedM = totals["sash-hinged"] ?? 0;
-  const sashSlidingM = totals["sash-sliding"] ?? 0;
-  const sashDoorM = totals["sash-door"] ?? 0;
+  // ── تراك جرار ───────────────────────────────────────
+  const slidingBoxes = boxes.filter((b) => b.kind === "sliding");
+  let trackQty = 0;
+  let trackM = 0;
+  if (slidingBoxes.length > 0 && ironPieceForRole(details, "track")) {
+    const aabb = aabbOf(slidingBoxes);
+    const frameW = aabb?.w || widthMm;
+    trackQty = Math.max(0, details.tracksPerFrame || 0);
+    if (trackQty > 0 && frameW > 0) {
+      const trackMm = trackQty * frameW;
+      trackM = roundM(mmToM(trackMm));
+      addLine(lines, totals, "track", trackMm, details, trackQty);
+    }
+  }
+
+  // ── شريحة مفصلة (مفصلي + قلاب) ───────────────────────
+  let hingeStripQty = 0;
+  let hingeStripM = 0;
+  if (ironPieceForRole(details, "hinge-strip")) {
+    for (const box of boxes) {
+      if (!isHingedFamily(box.opening)) continue;
+      const cfg = normalizePaneConfig(panes?.[box.id]);
+      if (meshReplacesPaneGlass(cfg, box.opening, cat)) continue;
+      const lenMm = hingeStripLengthMm(box.h, fw, fh, details.deductions);
+      if (lenMm <= 0.5) continue;
+      hingeStripQty += 1;
+      hingeStripM = roundM(hingeStripM + mmToM(lenMm));
+      addLine(lines, totals, "hinge-strip", lenMm, details, 1);
+    }
+  }
+
+  const frameM = totals.frame ?? 0;
+  const sashM = totals.sash ?? 0;
   const mullionM = totals.mullion ?? 0;
   const totalM = roundM(
-    frameHingedM +
-      frameSlidingM +
-      sashHingedM +
-      sashSlidingM +
-      sashDoorM +
-      mullionM
+    frameM + sashM + mullionM + trackM + hingeStripM
+  );
+  const totalCost = roundM(
+    lines.reduce((s, l) => s + (l.totalCost ?? 0), 0)
   );
 
   return {
     lines: lines.sort((a, b) => a.label.localeCompare(b.label, "ar")),
-    frameHingedM,
-    frameSlidingM,
-    sashHingedM,
-    sashSlidingM,
-    sashDoorM,
+    frameM,
+    sashM,
     mullionM,
+    trackM,
+    trackQty,
+    hingeStripM,
+    hingeStripQty,
     totalM,
+    totalCost,
     systemName: system.name,
+    // توافق قديم للعرض
+    frameHingedM: frameM,
+    frameSlidingM: 0,
+    sashHingedM: sashM,
+    sashSlidingM: 0,
+    sashDoorM: 0,
   };
 }
 
@@ -455,13 +514,24 @@ export function scaleIronBreakdown(
     lines: breakdown.lines.map((l) => ({
       ...l,
       lengthM: scale(l.lengthM),
+      qty: l.qty != null ? l.qty * n : undefined,
+      barsApprox:
+        l.barsApprox != null ? Math.ceil((l.barsApprox * n) ) : undefined,
+      totalCost: l.totalCost != null ? scale(l.totalCost) : undefined,
     })),
+    frameM: scale(breakdown.frameM),
+    sashM: scale(breakdown.sashM),
+    mullionM: scale(breakdown.mullionM),
+    trackM: scale(breakdown.trackM),
+    trackQty: breakdown.trackQty * n,
+    hingeStripM: scale(breakdown.hingeStripM),
+    hingeStripQty: breakdown.hingeStripQty * n,
+    totalM: scale(breakdown.totalM),
+    totalCost: scale(breakdown.totalCost),
     frameHingedM: scale(breakdown.frameHingedM),
     frameSlidingM: scale(breakdown.frameSlidingM),
     sashHingedM: scale(breakdown.sashHingedM),
     sashSlidingM: scale(breakdown.sashSlidingM),
     sashDoorM: scale(breakdown.sashDoorM),
-    mullionM: scale(breakdown.mullionM),
-    totalM: scale(breakdown.totalM),
   };
 }

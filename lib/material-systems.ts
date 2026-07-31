@@ -405,26 +405,49 @@ export type AccessorySystemDetails = {
   recessedHandlesPerRecessedSash: number;
 };
 
-/** دور عود الحديد داخل القطاع */
+/** دور عود الحديد — موحّد بدون مفصلي/جرار */
 export type IronPieceRole =
-  | "frame-hinged"
-  | "frame-sliding"
-  | "sash-hinged"
-  | "sash-sliding"
-  | "sash-door"
-  | "mullion";
+  | "frame"
+  | "sash"
+  | "mullion"
+  | "track"
+  | "hinge-strip";
 
-export const IRON_PIECE_ROLES: { id: IronPieceRole; label: string }[] = [
-  { id: "frame-hinged", label: "حلق مفصلي" },
-  { id: "frame-sliding", label: "حلق جرار" },
-  { id: "sash-hinged", label: "ضلفة مفصلي" },
-  { id: "sash-sliding", label: "ضلفة جرار" },
-  { id: "sash-door", label: "ضلفة باب مفصلي" },
-  { id: "mullion", label: "سوقاس" },
+export const IRON_PIECE_ROLES: {
+  id: IronPieceRole;
+  label: string;
+  hint: string;
+}[] = [
+  { id: "frame", label: "حديد حلق", hint: "تسليح محيط الحلق" },
+  { id: "sash", label: "حديد ضلفة", hint: "تسليح محيط الضلفة" },
+  { id: "mullion", label: "حديد سوقاس", hint: "تسليح قوائم التقسيم" },
+  { id: "track", label: "تراك جرار", hint: "تراكات على حلق الجرار" },
+  {
+    id: "hinge-strip",
+    label: "شريحة مفصلة",
+    hint: "عود بارتفاع جنب المفصلات — مفصلي وقلاب",
+  },
 ];
+
+const LEGACY_IRON_ROLE_MAP: Record<string, IronPieceRole> = {
+  "frame-hinged": "frame",
+  "frame-sliding": "frame",
+  "sash-hinged": "sash",
+  "sash-sliding": "sash",
+  "sash-door": "sash",
+  mullion: "mullion",
+  track: "track",
+  "hinge-strip": "hinge-strip",
+  frame: "frame",
+  sash: "sash",
+};
 
 export function ironRoleLabel(role: IronPieceRole): string {
   return IRON_PIECE_ROLES.find((r) => r.id === role)?.label ?? role;
+}
+
+export function ironRoleHint(role: IronPieceRole): string {
+  return IRON_PIECE_ROLES.find((r) => r.id === role)?.hint ?? "";
 }
 
 /** عود حديد داخل نظام التسليح */
@@ -438,25 +461,34 @@ export type IronPiece = {
   sectionHeightMm: number;
   /** طول العود بالمتر (المخزون) */
   barLengthM: number;
-  /** يُحسب له حديد في التصميم */
+  /** يُحسب في التصميم */
   enabled: boolean;
+  /** سعر المتر (اختياري — للتراك غالباً) */
+  pricePerM?: number;
   notes?: string;
 };
 
 /**
- * معادلات تخصيم الحديد عن القطاع.
- * الحلق/الضلفة: FW · FH · SW · SH — السوقاس: L طول القطعة.
+ * تخصيمات الحديد عن القطاع.
+ * التخزين بصيغة معادلة؛ الواجهة تعرض رقم خصم بالمم.
  */
 export type IronDeductions = {
   frame: ProfileAxisFormulas;
   sash: ProfileAxisFormulas;
   /** صيغة طول سوقاس الحديد — المتغير L */
   mullion: string;
+  /**
+   * صيغة طول شريحة المفصلة — المتغيرات SH / H.
+   * لو فاضية تُستخدم معادلة ارتفاع الضلفة.
+   */
+  hingeStrip?: string;
 };
 
 export type IronSystemDetails = {
   pieces: IronPiece[];
   deductions: IronDeductions;
+  /** عدد تراكات الجرار على الحلق (افتراضي ٢) */
+  tracksPerFrame: number;
 };
 
 export type MaterialSystem = {
@@ -580,7 +612,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "iron",
     label: "الحديد",
-    description: "تسليح الحلق والضلفة والسوقاس",
+    description: "تسليح موحّد · تراك · شريحة مفصلة",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
   },
@@ -660,7 +692,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "iron",
     label: "الحديد",
-    description: "تسليح الحلق والضلفة والسوقاس",
+    description: "تسليح موحّد · تراك جرار · شريحة مفصلة",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
     href: "/materials/iron",
@@ -930,53 +962,27 @@ export function defaultIronDeductions(): IronDeductions {
     frame: { width: "=FW-100", height: "=FH-100" },
     sash: { width: "=SW-100", height: "=SH-100" },
     mullion: "=L-100",
+    hingeStrip: "=SH-100",
   };
 }
 
 export function defaultIronPieces(): IronPiece[] {
   return [
     {
-      id: "iron-frame-h",
-      name: "حديد حلق مفصلي",
-      role: "frame-hinged",
+      id: "iron-frame",
+      name: "حديد حلق",
+      role: "frame",
       sectionWidthMm: 40,
       sectionHeightMm: 20,
       barLengthM: DEFAULT_BAR_LENGTH_M,
       enabled: true,
     },
     {
-      id: "iron-frame-s",
-      name: "حديد حلق جرار",
-      role: "frame-sliding",
-      sectionWidthMm: 40,
-      sectionHeightMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-sash-h",
-      name: "حديد ضلفة مفصلي",
-      role: "sash-hinged",
+      id: "iron-sash",
+      name: "حديد ضلفة",
+      role: "sash",
       sectionWidthMm: 35,
       sectionHeightMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-sash-s",
-      name: "حديد ضلفة جرار",
-      role: "sash-sliding",
-      sectionWidthMm: 35,
-      sectionHeightMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-sash-door",
-      name: "حديد ضلفة باب",
-      role: "sash-door",
-      sectionWidthMm: 45,
-      sectionHeightMm: 25,
       barLengthM: DEFAULT_BAR_LENGTH_M,
       enabled: true,
     },
@@ -989,6 +995,24 @@ export function defaultIronPieces(): IronPiece[] {
       barLengthM: DEFAULT_BAR_LENGTH_M,
       enabled: true,
     },
+    {
+      id: "iron-track",
+      name: "تراك جرار",
+      role: "track",
+      sectionWidthMm: 0,
+      sectionHeightMm: 0,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+    {
+      id: "iron-hinge-strip",
+      name: "شريحة مفصلة",
+      role: "hinge-strip",
+      sectionWidthMm: 20,
+      sectionHeightMm: 3,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
   ];
 }
 
@@ -996,6 +1020,7 @@ export function defaultIronDetails(): IronSystemDetails {
   return {
     pieces: defaultIronPieces(),
     deductions: defaultIronDeductions(),
+    tracksPerFrame: 2,
   };
 }
 
@@ -1010,8 +1035,53 @@ export function ironPieceForRole(
   return details.pieces.find((p) => p.role === role && p.enabled);
 }
 
+/** خصم بسيط بالمم من معادلة حديد (=FW-100 · =SW-100 · =L-100 · =SH-100) */
+export function ironOffsetMmFromFormula(formula: string): number {
+  const m = formula
+    .trim()
+    .match(/^=?\s*(FW|FH|SW|SH|L|W|H)\s*(?:([+-])\s*(\d+(?:\.\d+)?))?\s*$/i);
+  if (!m) return 100;
+  if (!m[2] || !m[3]) return 0;
+  const amount = Number(m[3]);
+  if (!Number.isFinite(amount) || amount < 0) return 100;
+  // نعرض قيمة التخصيم كموجب (السالب في المعادلة = خصم)
+  return m[2] === "-" ? amount : 0;
+}
+
+function ironOffsetFormula(baseVar: string, deductMm: number): string {
+  const d = Math.abs(Number(deductMm) || 0);
+  if (d <= 0) return `=${baseVar}`;
+  return `=${baseVar}-${d}`;
+}
+
 export function ironDeductionSummary(d: IronDeductions): string {
-  return `حلق ${ensureEqualsPrefix(d.frame.width)} · ضلفة ${ensureEqualsPrefix(d.sash.width)} · سوقاس ${ensureEqualsPrefix(d.mullion)}`;
+  const frame = ironOffsetMmFromFormula(d.frame.width);
+  const sash = ironOffsetMmFromFormula(d.sash.width);
+  const mullion = ironOffsetMmFromFormula(d.mullion);
+  return `حلق −${frame} مم · ضلفة −${sash} مم · سوقاس −${mullion} مم`;
+}
+
+/** يبني معادلات تخصيم الحديد من أرقام خصم بسيطة بالمم */
+export function ironDeductionsFromOffsets(mm: {
+  frameW: number;
+  frameH: number;
+  sashW: number;
+  sashH: number;
+  mullion: number;
+  hingeStrip: number;
+}): IronDeductions {
+  return {
+    frame: {
+      width: ironOffsetFormula("FW", mm.frameW),
+      height: ironOffsetFormula("FH", mm.frameH),
+    },
+    sash: {
+      width: ironOffsetFormula("SW", mm.sashW),
+      height: ironOffsetFormula("SH", mm.sashH),
+    },
+    mullion: ironOffsetFormula("L", mm.mullion),
+    hingeStrip: ironOffsetFormula("SH", mm.hingeStrip),
+  };
 }
 
 /**
@@ -2036,20 +2106,25 @@ export function getDefaultCatalog(): MaterialCatalog {
       {
         id: "iron-std",
         name: "حديد تسليح قياسي",
-        notes: "الحديد أصغر ١٠ سم من الحلق والضلفة والسوقاس",
+        notes: "حديد موحّد للحلق والضلفة والسوقاس · تراك جرار · شريحة مفصلة",
         isDefault: true,
         iron: defaultIronDetails(),
       },
       {
         id: "iron-heavy",
         name: "حديد تسليح ثقيل",
+        notes: "نفس الأدوار بمقطع أكبر",
         iron: {
           ...defaultIronDetails(),
-          pieces: defaultIronPieces().map((p) => ({
-            ...p,
-            sectionWidthMm: p.sectionWidthMm + 5,
-            sectionHeightMm: p.sectionHeightMm + 5,
-          })),
+          pieces: defaultIronPieces().map((p) =>
+            p.role === "track"
+              ? p
+              : {
+                  ...p,
+                  sectionWidthMm: p.sectionWidthMm + 5,
+                  sectionHeightMm: p.sectionHeightMm + 5,
+                }
+          ),
         },
       },
     ],
@@ -2118,8 +2193,11 @@ function normalizePiece(raw: unknown): ProfilePiece | null {
 }
 
 function normalizeIronRole(raw: unknown): IronPieceRole {
-  const ok = IRON_PIECE_ROLES.some((r) => r.id === raw);
-  return ok ? (raw as IronPieceRole) : "frame-hinged";
+  if (typeof raw === "string") {
+    const mapped = LEGACY_IRON_ROLE_MAP[raw];
+    if (mapped) return mapped;
+  }
+  return "frame";
 }
 
 function normalizeIronPiece(raw: unknown): IronPiece | null {
@@ -2130,6 +2208,7 @@ function normalizeIronPiece(raw: unknown): IronPiece | null {
   const sectionWidthMm = Number(p.sectionWidthMm);
   const sectionHeightMm = Number(p.sectionHeightMm);
   const barLengthM = Number(p.barLengthM);
+  const pricePerM = Number(p.pricePerM);
   return {
     id: p.id.trim(),
     name: p.name.trim(),
@@ -2147,6 +2226,8 @@ function normalizeIronPiece(raw: unknown): IronPiece | null {
         ? barLengthM
         : DEFAULT_BAR_LENGTH_M,
     enabled: p.enabled !== false,
+    pricePerM:
+      Number.isFinite(pricePerM) && pricePerM >= 0 ? pricePerM : undefined,
     notes: typeof p.notes === "string" ? p.notes : undefined,
   };
 }
@@ -2155,15 +2236,100 @@ function normalizeIronDeductions(raw: unknown): IronDeductions {
   const fallback = defaultIronDeductions();
   if (!raw || typeof raw !== "object") return fallback;
   const d = raw as Record<string, unknown>;
+  const ironVars = ["W", "H", "FW", "FH", "SW", "SH", "L"];
   const frame = normalizeAxisFormulas(d.frame, fallback.frame, "frame");
-  const sash = normalizeAxisFormulas(d.sash, fallback.sash, "sash");
+  // معادلات الضلفة تستخدم SW/SH — تحقّق بمتغيرات الحديد
+  let sash = fallback.sash;
+  if (d.sash && typeof d.sash === "object") {
+    const s = d.sash as Record<string, unknown>;
+    const width =
+      typeof s.width === "string" && s.width.trim()
+        ? ensureEqualsPrefix(s.width)
+        : fallback.sash.width;
+    const height =
+      typeof s.height === "string" && s.height.trim()
+        ? ensureEqualsPrefix(s.height)
+        : fallback.sash.height;
+    sash = {
+      width: validateFormula(width, ironVars).ok ? width : fallback.sash.width,
+      height: validateFormula(height, ironVars).ok
+        ? height
+        : fallback.sash.height,
+    };
+  }
+  // الحلق FW/FH — الـ normalizeAxisFormulas كفاية، لكن ثبّت أيضاً
+  void frame;
+  const frameNorm = (() => {
+    if (!d.frame || typeof d.frame !== "object") return fallback.frame;
+    const f = d.frame as Record<string, unknown>;
+    const width =
+      typeof f.width === "string" && f.width.trim()
+        ? ensureEqualsPrefix(f.width)
+        : fallback.frame.width;
+    const height =
+      typeof f.height === "string" && f.height.trim()
+        ? ensureEqualsPrefix(f.height)
+        : fallback.frame.height;
+    return {
+      width: validateFormula(width, ironVars).ok ? width : fallback.frame.width,
+      height: validateFormula(height, ironVars).ok
+        ? height
+        : fallback.frame.height,
+    };
+  })();
+
   let mullion = fallback.mullion;
   if (typeof d.mullion === "string" && d.mullion.trim()) {
     const formula = ensureEqualsPrefix(d.mullion);
-    const check = validateFormula(formula);
+    const check = validateFormula(formula, ironVars);
     if (check.ok) mullion = formula;
   }
-  return { frame, sash, mullion };
+  let hingeStrip = fallback.hingeStrip ?? "=SH-100";
+  if (typeof d.hingeStrip === "string" && d.hingeStrip.trim()) {
+    const formula = ensureEqualsPrefix(d.hingeStrip);
+    const check = validateFormula(formula, ironVars);
+    if (check.ok) hingeStrip = formula;
+  } else {
+    hingeStrip = sash.height;
+  }
+  return { frame: frameNorm, sash, mullion, hingeStrip };
+}
+
+/** يدمج العيدان القديمة (مفصلي/جرار) في أدوار موحّدة ويضيف التراك وشريحة المفصلة */
+function migrateUnifiedIronPieces(pieces: IronPiece[]): IronPiece[] {
+  const defaults = defaultIronPieces();
+  const byRole = new Map<IronPieceRole, IronPiece>();
+
+  for (const piece of pieces) {
+    const role = normalizeIronRole(piece.role);
+    const existing = byRole.get(role);
+    if (!existing) {
+      byRole.set(role, { ...piece, role });
+      continue;
+    }
+    // فضّل المفعّل، ولو الاتنين مفعّلين خُد الأكبر مقطعاً
+    if (!existing.enabled && piece.enabled) {
+      byRole.set(role, { ...piece, role });
+    } else if (existing.enabled === piece.enabled) {
+      const existingArea = existing.sectionWidthMm * existing.sectionHeightMm;
+      const nextArea = piece.sectionWidthMm * piece.sectionHeightMm;
+      if (nextArea > existingArea) byRole.set(role, { ...piece, role });
+    }
+  }
+
+  return defaults.map((def) => {
+    const found = byRole.get(def.role);
+    if (!found) return def;
+    return {
+      ...def,
+      ...found,
+      role: def.role,
+      name: found.name?.includes("مفصلي") || found.name?.includes("جرار")
+        ? def.name
+        : found.name || def.name,
+      id: found.id || def.id,
+    };
+  });
 }
 
 function normalizeIronDetails(raw: unknown): IronSystemDetails {
@@ -2180,9 +2346,16 @@ function normalizeIronDetails(raw: unknown): IronSystemDetails {
       pieces.push(piece);
     }
   }
+  const tracksRaw = Number(d.tracksPerFrame);
   return {
-    pieces: pieces.length > 0 ? pieces : fallback.pieces,
+    pieces: migrateUnifiedIronPieces(
+      pieces.length > 0 ? pieces : fallback.pieces
+    ),
     deductions: normalizeIronDeductions(d.deductions),
+    tracksPerFrame:
+      Number.isFinite(tracksRaw) && tracksRaw > 0
+        ? Math.round(tracksRaw)
+        : fallback.tracksPerFrame,
   };
 }
 

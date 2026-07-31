@@ -384,16 +384,10 @@ export function AccessoryDetailsForm({
       {show("sliding") ? (
       <Section
         title="اكسسوار الجرار"
-        hint="تراك · عجل · فرش · سبلونة · مقبض غاطس"
+        hint="عجل · فرش · سبلونة · مقبض غاطس — التراك مع الحديد"
         compact={compact}
       >
         <div className="grid grid-cols-2 gap-2">
-          <NumberField
-            label="تراك على الحلق"
-            value={details.tracksPerFrame}
-            onChange={(v) => patchDetails({ tracksPerFrame: v })}
-            hint="بعرض الحلق"
-          />
           <NumberField
             label="عجل / ضلفة جرار"
             value={details.rollersPerSlidingSash}

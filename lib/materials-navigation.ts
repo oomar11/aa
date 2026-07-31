@@ -85,7 +85,7 @@ export function accessoryWorkflowSteps(active: "brands" | "systems"): MaterialWo
     {
       step: 1,
       title: "البراندات",
-      description: "أسعار المفصلات والسبلونة والسكاك والتراك",
+      description: "أسعار المفصلات والسبلونة والسكاك",
       href: ROUTES.materials.accessoryBrands,
       active: active === "brands",
     },

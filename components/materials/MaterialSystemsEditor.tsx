@@ -59,7 +59,7 @@ function systemSummary(
   }
   if (category === "accessories" && system.accessory) {
     const a = system.accessory;
-    return `مفصلات ${a.hingesPerSash}/${a.hingesPerDoor} · سبلونة ${espagnoletteCatalogSummary(a.espagnoletteCatalog)} · تراك ${a.tracksPerFrame}`;
+    return `مفصلات ${a.hingesPerSash}/${a.hingesPerDoor} · سبلونة ${espagnoletteCatalogSummary(a.espagnoletteCatalog)}`;
   }
   if (category === "glass" && system.glass) {
     const price = getGlassBottlePrice(system);
@@ -71,7 +71,7 @@ function systemSummary(
   }
   if (category === "iron" && system.iron) {
     const n = system.iron.pieces.filter((p) => p.enabled).length;
-    return `${n} نوع مفعّل · ${ironDeductionSummary(system.iron.deductions)}`;
+    return `${n} عود · ${ironDeductionSummary(system.iron.deductions)} · تراك ${system.iron.tracksPerFrame}`;
   }
   return "اضغط تفاصيل للضبط";
 }
@@ -243,7 +243,8 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       {isIron ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-          من «تفاصيل» حدّد أنواع الحديد للحلق والضلفة والسوقاس — مفصلي وجرار.
+          من «تفاصيل»: تخصيم الحديد بالمم · العيدان الموحّدة · تراك الجرار ·
+          شريحة المفصلة.
         </p>
       ) : null}
 
