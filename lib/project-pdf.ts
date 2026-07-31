@@ -1,6 +1,11 @@
 import { domToCanvas } from "modern-screenshot";
 import { jsPDF } from "jspdf";
 
+/** مقاس صفحة A4 بالبكسل عند ~96dpi — مطابق لعرض التصدير */
+export const REPORT_PAGE_WIDTH_PX = 794;
+export const REPORT_PAGE_HEIGHT_PX = 1123;
+export const REPORT_ITEMS_PER_PAGE = 4;
+
 /** اسم ملف PDF آمن من اسم المشروع */
 export function projectPdfFileName(projectName?: string): string {
   const base = (projectName?.trim() || "مشروع-upvc")
@@ -10,13 +15,17 @@ export function projectPdfFileName(projectName?: string): string {
   return `تقرير-${base}.pdf`;
 }
 
-/** يحوّل عنصر التقرير إلى PDF متعدد الصفحات (A4) */
+/**
+ * يحوّل صفحات التقرير (كل واحدة A4) إلى PDF —
+ * كل `.report-page` = صفحة مستقلة عشان مفيش تقطيع/تداخل نص.
+ */
 export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
-  const canvas = await domToCanvas(element, {
-    scale: 2,
-    backgroundColor: "#ffffff",
-    quality: 1,
-  });
+  const pages = Array.from(
+    element.querySelectorAll<HTMLElement>(".report-page")
+  );
+  if (pages.length === 0) {
+    throw new Error("لا توجد صفحات تقرير للتصدير");
+  }
 
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -27,25 +36,20 @@ export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
 
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 8;
-  const contentWidth = pageWidth - margin * 2;
-  const contentHeight = pageHeight - margin * 2;
 
-  const imgWidth = contentWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-  const imgData = canvas.toDataURL("image/jpeg", 0.92);
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i]!;
+    const canvas = await domToCanvas(page, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      quality: 1,
+      width: REPORT_PAGE_WIDTH_PX,
+      height: REPORT_PAGE_HEIGHT_PX,
+    });
 
-  let heightLeft = imgHeight;
-  let offsetY = margin;
-
-  pdf.addImage(imgData, "JPEG", margin, offsetY, imgWidth, imgHeight);
-  heightLeft -= contentHeight;
-
-  while (heightLeft > 1) {
-    offsetY = margin - (imgHeight - heightLeft);
-    pdf.addPage();
-    pdf.addImage(imgData, "JPEG", margin, offsetY, imgWidth, imgHeight);
-    heightLeft -= contentHeight;
+    const imgData = canvas.toDataURL("image/jpeg", 0.93);
+    if (i > 0) pdf.addPage();
+    pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
   }
 
   return pdf.output("blob");
@@ -93,7 +97,6 @@ export function openPdfFile(file: File): SharePdfResult {
   const opened = window.open(url, "_blank", "noopener,noreferrer");
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   if (!opened) {
-    // بعض المتصفحات تمنع النوافذ المنبثقة — نفتح في نفس التاب
     window.location.assign(url);
   }
   return "opened";
@@ -108,4 +111,14 @@ export async function buildProjectPdfFile(
     type: "application/pdf",
     lastModified: Date.now(),
   });
+}
+
+/** يقسّم البنود: ٤ في الصفحة — صفّين × عمودين */
+export function chunkReportItems<T>(items: T[], size = REPORT_ITEMS_PER_PAGE): T[][] {
+  if (items.length === 0) return [[]];
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    pages.push(items.slice(i, i + size));
+  }
+  return pages;
 }
