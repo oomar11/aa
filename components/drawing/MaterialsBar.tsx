@@ -769,14 +769,29 @@ function buildIronRows(
   if (!breakdown || breakdown.totalM < 0.0005) return [];
   const rows: MaterialRow[] = [];
 
+  const priceHint = (line?: IronBreakdown["lines"][number]) => {
+    if (!line) return undefined;
+    if (
+      line.barPrice != null &&
+      line.barPrice > 0 &&
+      line.barLengthM != null &&
+      line.barLengthM > 0 &&
+      line.pricePerM != null
+    ) {
+      return `${line.barPrice} ج.م / عود ${line.barLengthM}م · ${line.pricePerM} ج.م/م`;
+    }
+    if (line.pricePerM != null) return `${line.pricePerM} ج.م/م`;
+    return undefined;
+  };
+
   const pushMeters = (
     key: string,
     label: string,
     lengthM: number,
-    barsApprox?: number,
-    cost?: number | null
+    line?: IronBreakdown["lines"][number]
   ) => {
     if (lengthM < 0.0005) return;
+    const barsApprox = line?.barsApprox;
     rows.push({
       key,
       label,
@@ -784,7 +799,9 @@ function buildIronRows(
         barsApprox != null && barsApprox > 0
           ? `${formatMeters(lengthM)} · ≈${barsApprox} عود`
           : formatMeters(lengthM),
-      cost: cost != null && cost > 0 ? cost : null,
+      cost:
+        line?.totalCost != null && line.totalCost > 0 ? line.totalCost : null,
+      unitHint: priceHint(line),
     });
   };
 
@@ -792,29 +809,11 @@ function buildIronRows(
     breakdown.lines.find((l) => l.role === role);
 
   const frame = lineOf("frame");
-  pushMeters(
-    "iron-frame",
-    "حديد حلق",
-    breakdown.frameM,
-    frame?.barsApprox,
-    frame?.totalCost
-  );
+  pushMeters("iron-frame", "حديد حلق", breakdown.frameM, frame);
   const sash = lineOf("sash");
-  pushMeters(
-    "iron-sash",
-    "حديد ضلفة",
-    breakdown.sashM,
-    sash?.barsApprox,
-    sash?.totalCost
-  );
+  pushMeters("iron-sash", "حديد ضلفة", breakdown.sashM, sash);
   const mullion = lineOf("mullion");
-  pushMeters(
-    "iron-mullion",
-    "حديد سوقاس",
-    breakdown.mullionM,
-    mullion?.barsApprox,
-    mullion?.totalCost
-  );
+  pushMeters("iron-mullion", "حديد سوقاس", breakdown.mullionM, mullion);
 
   if (breakdown.trackM > 0.0005 || breakdown.trackQty > 0) {
     const track = lineOf("track");
@@ -826,8 +825,7 @@ function buildIronRows(
         track?.totalCost != null && track.totalCost > 0
           ? track.totalCost
           : null,
-      unitHint:
-        track?.pricePerM != null ? `${track.pricePerM} ج.م/م` : undefined,
+      unitHint: priceHint(track),
     });
   }
 
@@ -843,6 +841,7 @@ function buildIronRows(
         strip?.totalCost != null && strip.totalCost > 0
           ? strip.totalCost
           : null,
+      unitHint: priceHint(strip),
     });
   }
 

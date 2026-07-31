@@ -16,9 +16,13 @@ import {
   ironDeductionSummary,
   ironDeductionsFromOffsets,
   ironOffsetMmFromFormula,
+  ironPieceBarPrice,
+  ironPiecePricePerM,
+  ironPiecePriceSummary,
   ironRoleHint,
   IRON_PIECE_ROLES,
   loadMaterialCatalog,
+  profileBarPricePerM,
   saveMaterialCatalog,
   SINGLE_IRON_SYSTEM_ID,
   upsertSystem,
@@ -249,8 +253,7 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
         <p className="mt-0.5 text-xs text-muted">
-          سيستم واحد لكل الشغل — مفصلي وجرار وقطاعات كلها بتتسلح منه · تراك ·
-          شريحة مفصلة
+          سيستم واحد لكل الشغل · تسعير بالعود · تراك · شريحة مفصلة
         </p>
       </div>
 
@@ -303,8 +306,8 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
       {tab === "pieces" ? (
         <section className="space-y-2">
           <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-            عيدان موحّدة للشغل كله — مفيش تقسيم مفصلي/جرار. فعّل اللي تحتاجه
-            وعدّل مقطع العود وطوله.
+            تسعير بالعود زي القطاعات: سعر العود ÷ طول العود = سعر المتر، ومنها
+            تكلفة التسليح في التصميم.
           </p>
           <ul className="overflow-hidden rounded-2xl border border-border bg-card">
             {IRON_PIECE_ROLES.map((role, i) => {
@@ -318,7 +321,9 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
                 enabled: true,
               };
               const isTrack = role.id === "track";
-              const isStrip = role.id === "hinge-strip";
+              const barPrice = ironPieceBarPrice(piece);
+              const perM = ironPiecePricePerM(piece);
+              const priceHint = ironPiecePriceSummary(piece);
               return (
                 <li
                   key={role.id}
@@ -341,13 +346,16 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
                       <p className="mt-0.5 text-[11px] text-muted">
                         {ironRoleHint(role.id)}
                       </p>
+                      {priceHint ? (
+                        <p className="mt-1 text-[11px] font-medium text-primary">
+                          {priceHint}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 
                   {piece.enabled ? (
-                    <div
-                      className={`grid gap-2 ${isTrack ? "grid-cols-2" : "grid-cols-3"}`}
-                    >
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {!isTrack ? (
                         <>
                           <label className="block text-[10px] text-muted">
@@ -382,28 +390,56 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
                           fallback={DEFAULT_BAR_LENGTH_M}
                           blankZero={false}
                           value={piece.barLengthM}
-                          onChange={(v) =>
-                            patchPiece(role.id, { barLengthM: v })
-                          }
+                          onChange={(v) => {
+                            const barLengthM = v > 0 ? v : DEFAULT_BAR_LENGTH_M;
+                            const nextBar = ironPieceBarPrice({
+                              ...piece,
+                              barLengthM,
+                            });
+                            patchPiece(role.id, {
+                              barLengthM,
+                              barPrice: nextBar > 0 ? nextBar : undefined,
+                              pricePerM:
+                                nextBar > 0
+                                  ? profileBarPricePerM(nextBar, barLengthM)
+                                  : undefined,
+                            });
+                          }}
                           className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
                         />
                       </label>
-                      {isTrack || isStrip ? (
-                        <label className="block text-[10px] text-muted">
-                          سعر المتر (ج.م) — اختياري
-                          <NumericInput
-                            min={0}
-                            step={0.01}
-                            value={piece.pricePerM ?? 0}
-                            onChange={(v) =>
-                              patchPiece(role.id, {
-                                pricePerM: v > 0 ? v : undefined,
-                              })
-                            }
-                            className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-                          />
-                        </label>
-                      ) : null}
+                      <label className="block text-[10px] text-muted">
+                        سعر العود (ج.م)
+                        <NumericInput
+                          min={0}
+                          step={1}
+                          value={barPrice}
+                          onChange={(v) => {
+                            const next = v > 0 ? v : undefined;
+                            const len =
+                              piece.barLengthM > 0
+                                ? piece.barLengthM
+                                : DEFAULT_BAR_LENGTH_M;
+                            patchPiece(role.id, {
+                              barPrice: next,
+                              pricePerM:
+                                next != null
+                                  ? profileBarPricePerM(next, len)
+                                  : undefined,
+                            });
+                          }}
+                          className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                        />
+                      </label>
+                      <label className="block text-[10px] text-muted">
+                        سعر المتر (محسوب)
+                        <input
+                          readOnly
+                          value={perM > 0 ? String(perM) : "—"}
+                          className="mt-0.5 w-full rounded-lg border border-border bg-background/60 px-2 py-1.5 text-xs text-muted outline-none"
+                          aria-label="سعر المتر المحسوب"
+                        />
+                      </label>
                     </div>
                   ) : null}
                 </li>

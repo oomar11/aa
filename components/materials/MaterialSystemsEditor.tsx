@@ -70,7 +70,10 @@ function systemSummary(
   }
   if (category === "iron" && system.iron) {
     const n = system.iron.pieces.filter((p) => p.enabled).length;
-    return `${n} عود · ${ironDeductionSummary(system.iron.deductions)} · تراك ${system.iron.tracksPerFrame}`;
+    const priced = system.iron.pieces.filter(
+      (p) => p.enabled && ((p.barPrice ?? 0) > 0 || (p.pricePerM ?? 0) > 0)
+    ).length;
+    return `${n} عود · ${priced} بسعر · ${ironDeductionSummary(system.iron.deductions)} · تراك ${system.iron.tracksPerFrame}`;
   }
   return "اضغط تفاصيل للضبط";
 }

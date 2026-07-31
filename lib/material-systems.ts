@@ -482,7 +482,14 @@ export type IronPiece = {
   barLengthM: number;
   /** يُحسب في التصميم */
   enabled: boolean;
-  /** سعر المتر (اختياري — للتراك غالباً) */
+  /**
+   * سعر العود (ج.م/عود) — الأساس للتكلفة.
+   * سعر المتر = barPrice ÷ barLengthM
+   */
+  barPrice?: number;
+  /**
+   * @deprecated استخدم barPrice؛ يُشتق أو يُرحَّل للتوافق
+   */
   pricePerM?: number;
   notes?: string;
 };
@@ -635,7 +642,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "iron",
     label: "الحديد",
-    description: "سيستم تسليح واحد لكل الشغل",
+    description: "سيستم تسليح واحد · تسعير بالعود",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
   },
@@ -724,7 +731,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "iron",
     label: "الحديد",
-    description: "سيستم تسليح واحد · تراك · شريحة مفصلة",
+    description: "سيستم واحد · تسعير بالعود · تراك · شريحة مفصلة",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
     href: "/materials/iron",
@@ -1121,6 +1128,51 @@ export function ironPieceForRole(
   role: IronPieceRole
 ): IronPiece | undefined {
   return details.pieces.find((p) => p.role === role && p.enabled);
+}
+
+/**
+ * سعر المتر الطولي لعود الحديد.
+ * الأولوية: barPrice ÷ barLengthM، وإلا pricePerM القديم.
+ */
+export function ironPiecePricePerM(piece: IronPiece): number {
+  const barLen =
+    Number.isFinite(piece.barLengthM) && piece.barLengthM > 0
+      ? piece.barLengthM
+      : 0;
+  const barPrice = Number(piece.barPrice);
+  if (Number.isFinite(barPrice) && barPrice > 0 && barLen > 0) {
+    return profileBarPricePerM(barPrice, barLen);
+  }
+  const legacy = Number(piece.pricePerM);
+  if (Number.isFinite(legacy) && legacy > 0) return legacy;
+  return 0;
+}
+
+/** سعر العود المعروض — من barPrice أو مستنتج من pricePerM القديم */
+export function ironPieceBarPrice(piece: IronPiece): number {
+  const barPrice = Number(piece.barPrice);
+  if (Number.isFinite(barPrice) && barPrice > 0) return barPrice;
+  const perM = Number(piece.pricePerM);
+  const barLen =
+    Number.isFinite(piece.barLengthM) && piece.barLengthM > 0
+      ? piece.barLengthM
+      : 0;
+  if (Number.isFinite(perM) && perM > 0 && barLen > 0) {
+    return Math.round(perM * barLen * 100) / 100;
+  }
+  return 0;
+}
+
+/** ملخص تسعير عود حديد للواجهة */
+export function ironPiecePriceSummary(piece: IronPiece): string | null {
+  const barPrice = ironPieceBarPrice(piece);
+  const barLen =
+    Number.isFinite(piece.barLengthM) && piece.barLengthM > 0
+      ? piece.barLengthM
+      : 0;
+  const perM = ironPiecePricePerM(piece);
+  if (!(barPrice > 0) || !(barLen > 0) || !(perM > 0)) return null;
+  return `${barPrice} ج.م/عود · ${barLen} م ← ${perM} ج.م/م`;
 }
 
 /** خصم بسيط بالمم من معادلة حديد (=FW-100 · =SW-100 · =L-100 · =SH-100) */
@@ -2268,7 +2320,33 @@ function normalizeIronPiece(raw: unknown): IronPiece | null {
   const sectionWidthMm = Number(p.sectionWidthMm);
   const sectionHeightMm = Number(p.sectionHeightMm);
   const barLengthM = Number(p.barLengthM);
-  const pricePerM = Number(p.pricePerM);
+  const barPriceRaw = Number(p.barPrice);
+  const pricePerMRaw = Number(p.pricePerM);
+  const barLength =
+    Number.isFinite(barLengthM) && barLengthM > 0
+      ? barLengthM
+      : DEFAULT_BAR_LENGTH_M;
+
+  let barPrice: number | undefined =
+    Number.isFinite(barPriceRaw) && barPriceRaw >= 0 ? barPriceRaw : undefined;
+  let pricePerM: number | undefined =
+    Number.isFinite(pricePerMRaw) && pricePerMRaw >= 0
+      ? pricePerMRaw
+      : undefined;
+
+  // ترحيل: لو في سعر متر قديم ومفيش سعر عود → استنتج سعر العود
+  if (
+    (barPrice == null || barPrice <= 0) &&
+    pricePerM != null &&
+    pricePerM > 0
+  ) {
+    barPrice = Math.round(pricePerM * barLength * 100) / 100;
+  }
+  // لو في سعر عود → حدّث سعر المتر المشتق للتوافق
+  if (barPrice != null && barPrice > 0) {
+    pricePerM = profileBarPricePerM(barPrice, barLength);
+  }
+
   return {
     id: p.id.trim(),
     name: p.name.trim(),
@@ -2281,13 +2359,10 @@ function normalizeIronPiece(raw: unknown): IronPiece | null {
       Number.isFinite(sectionHeightMm) && sectionHeightMm >= 0
         ? sectionHeightMm
         : 20,
-    barLengthM:
-      Number.isFinite(barLengthM) && barLengthM > 0
-        ? barLengthM
-        : DEFAULT_BAR_LENGTH_M,
+    barLengthM: barLength,
     enabled: p.enabled !== false,
-    pricePerM:
-      Number.isFinite(pricePerM) && pricePerM >= 0 ? pricePerM : undefined,
+    barPrice: barPrice != null && barPrice > 0 ? barPrice : undefined,
+    pricePerM: pricePerM != null && pricePerM > 0 ? pricePerM : undefined,
     notes: typeof p.notes === "string" ? p.notes : undefined,
   };
 }

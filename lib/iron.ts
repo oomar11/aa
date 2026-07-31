@@ -23,6 +23,7 @@ import {
   getCutDeductions,
   getIronSystem,
   ironPieceForRole,
+  ironPiecePricePerM,
   ironRoleLabel,
   loadMaterialCatalog,
   type IronDeductions,
@@ -55,6 +56,11 @@ export type IronLine = {
   sectionWidthMm?: number;
   sectionHeightMm?: number;
   pieceName?: string;
+  /** سعر العود (ج.م) */
+  barPrice?: number;
+  /** طول العود بالمتر */
+  barLengthM?: number;
+  /** سعر المتر المشتق */
   pricePerM?: number;
   totalCost?: number;
 };
@@ -314,11 +320,15 @@ function addLine(
   const lengthM = roundM(mmToM(lengthMm));
   totals[role] = roundM((totals[role] ?? 0) + lengthM);
   const existing = lines.find((l) => l.role === role);
-  const pricePerM = piece.pricePerM;
+  const pricePerM = ironPiecePricePerM(piece);
+  const barPrice =
+    piece.barPrice != null && piece.barPrice > 0
+      ? piece.barPrice
+      : pricePerM > 0 && piece.barLengthM > 0
+        ? Math.round(pricePerM * piece.barLengthM * 100) / 100
+        : undefined;
   const addedCost =
-    pricePerM != null && pricePerM > 0
-      ? roundM(lengthM * pricePerM)
-      : undefined;
+    pricePerM > 0 ? roundM(lengthM * pricePerM) : undefined;
 
   if (existing) {
     existing.lengthM = roundM(existing.lengthM + lengthM);
@@ -339,7 +349,9 @@ function addLine(
     sectionWidthMm: piece.sectionWidthMm || undefined,
     sectionHeightMm: piece.sectionHeightMm || undefined,
     pieceName: piece.name,
-    pricePerM: pricePerM != null && pricePerM > 0 ? pricePerM : undefined,
+    barPrice,
+    barLengthM: piece.barLengthM > 0 ? piece.barLengthM : undefined,
+    pricePerM: pricePerM > 0 ? pricePerM : undefined,
     totalCost: addedCost,
   });
 }
