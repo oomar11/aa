@@ -86,19 +86,10 @@ export function isSlidingSashOpening(opening: PaneOpening): boolean {
   );
 }
 
-/** يحدد تصنيف السلك الافتراضي من نوع الفتح */
-export function openingWantsAutoMesh(opening: PaneOpening): boolean {
-  return (
-    opening === "tilt" ||
-    opening === "tilt-inverted" ||
-    opening === "tilt-turn" ||
-    opening === "tilt-turn-left" ||
-    opening === "sliding-left" ||
-    opening === "sliding-right" ||
-    opening === "drawer-left" ||
-    opening === "drawer-right"
-  );
-}
+/**
+ * كان بيفعّل السلك تلقائياً للقلاب/الجرار — اتقفل.
+ * السلك بيتفعّل يدوي بس؛ النوع بيتحدد تلقائي لما المستخدم يفعّله.
+ */
 
 /** يحدد تصنيف السلك الافتراضي من نوع الفتح */
 export function inferMeshKind(
@@ -145,7 +136,10 @@ function openingMeshDefaultTag(
   return "fixed";
 }
 
-/** يفعّل السلك تلقائياً للقلاب والجرار ما لم يوقفه المستخدم يدوياً */
+/**
+ * متفعّلش السلك لوحده.
+ * لو السلك مفعّل بالفعل: حدّث التصنيف/النوع حسب الفتحة (ما لم يختاره المستخدم يدوياً).
+ */
 export function applyOpeningMeshDefaults(
   config: PaneConfig,
   catalog?: MaterialCatalog
@@ -153,7 +147,7 @@ export function applyOpeningMeshDefaults(
   if (isExhaustPane(config.opening)) {
     return exhaustPaneConfig(config);
   }
-  if (!openingWantsAutoMesh(config.opening) || config.meshOffManual) {
+  if (!config.mesh) {
     return config;
   }
 
@@ -206,7 +200,7 @@ export type PaneConfig = {
   meshKind?: MeshKind;
   /** المستخدم غيّر التصنيف يدوياً — متعملش auto من نوع الفتح */
   meshKindManual?: boolean;
-  /** المستخدم أوقف السلك يدوياً — متفعّلوش تلقائي للقلاب/الجرار */
+  /** المستخدم أوقف السلك يدوياً (قديم — السلك مبقاش بيتفعّل أوتوماتيك) */
   meshOffManual?: boolean;
   /** باب بدل شباك عادي */
   isDoor?: boolean;

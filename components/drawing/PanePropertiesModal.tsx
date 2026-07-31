@@ -233,13 +233,17 @@ export function PanePropertiesModal({
       if (key === "mesh") {
         if (value) {
           next.meshOffManual = false;
+          // نوع/تصنيف تلقائي من الفتحة — المستخدم يقدر يغيّرهم من قائمة السلك
           const kind = inferMeshKind(d.opening);
           next.meshKind = kind;
           next.meshKindManual = false;
+          const current = meshOpts.find((m) => m.id === d.meshTypeId);
           const match =
-            meshOpts.find((m) => m.kind === kind) ??
-            meshOpts.find((m) => m.kind === meshCategoryOpts[0]?.id) ??
-            meshOpts[0];
+            current?.kind === kind
+              ? current
+              : meshOpts.find((m) => m.kind === kind) ??
+                meshOpts.find((m) => m.kind === meshCategoryOpts[0]?.id) ??
+                meshOpts[0];
           if (match) next.meshTypeId = match.id;
         } else {
           next.meshOffManual = true;
@@ -374,7 +378,7 @@ export function PanePropertiesModal({
                       meshKindManual={draft.meshKindManual}
                       categoryOpts={meshCategoryOpts}
                       meshOpts={meshOpts}
-                      hint="سلك الجرار (ضلفة سلك) بيستبدل الزجاج. باقي الأنواع سلك فوق الزجاج — مش على البنل. القلاب والجرار بيفعّلوا السلك تلقائياً."
+                      hint="فعّل السلك يدوي. النوع بيتحدد تلقائي من نوع الفتح وتقدر تغيّره. سلك الجرار (ضلفة سلك) بيستبدل الزجاج — باقي الأنواع سلك فوق الزجاج، مش على البنل."
                       onChange={(next) =>
                         setDraft((d) => ({ ...d, ...next }))
                       }
