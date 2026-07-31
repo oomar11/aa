@@ -113,7 +113,12 @@ function roundM(m: number) {
 }
 
 function isOpeningSash(opening: PaneOpening): boolean {
-  return opening !== "fixed" && opening !== "exhaust";
+  return (
+    opening !== "fixed" &&
+    opening !== "exhaust" &&
+    opening !== "panel-h" &&
+    opening !== "panel-v"
+  );
 }
 
 function isHingedOpening(opening: PaneOpening): boolean {

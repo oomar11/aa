@@ -468,7 +468,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
             </button>
           </div>
           <p className="border-b border-border px-3 py-2 text-[10px] leading-relaxed text-muted">
-            باكتة سنجل/دبل حسب نوع الزجاج — البنل باكتة دبل · ضلفة شباك مفصلي
+            باكتة سنجل/دبل حسب نوع الزجاج — البنل بند مستقل · ضلفة شباك مفصلي
             منفصلة عن ضلفة باب مفصلي
           </p>
 
@@ -511,12 +511,13 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
                   ]}
                 />
                 <RoleOptionGroup
-                  label="باكتة"
+                  label="باكتة وبنل"
                   roles={[
                     "bead-single-hinged",
                     "bead-double-hinged",
                     "bead-single-sliding",
                     "bead-double-sliding",
+                    "panel",
                   ]}
                 />
                 <RoleOptionGroup
