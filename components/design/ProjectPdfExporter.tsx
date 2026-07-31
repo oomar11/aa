@@ -10,6 +10,7 @@ import {
 import { createPortal, flushSync } from "react-dom";
 import { ProjectReport } from "@/components/design/ProjectReport";
 import {
+  REPORT_PAGE_WIDTH_PX,
   buildProjectPdfFile,
   canSharePdfFile,
   openPdfFile,
@@ -65,14 +66,18 @@ export const ProjectPdfExporter = forwardRef<ProjectPdfExporterHandle, Props>(
         if (!sheet) {
           throw new Error("تعذر تجهيز صفحة التقرير");
         }
+        const pageCount = sheet.querySelectorAll(".report-page").length;
+        if (pageCount === 0) {
+          throw new Error("تعذر تجهيز صفحات التقرير");
+        }
         const pdf = await buildProjectPdfFile(sheet, projectName);
         setFile(pdf);
         setPhase("ready");
+        // نسيب صفحات التقرير مركّبة لحد الإغلاق (فتح/مشاركة/إلغاء)
       } catch (err) {
         console.error(err);
         setError("تعذر تجهيز ملف PDF. حاول مرة أخرى.");
         setPhase("error");
-      } finally {
         setExportMounted(false);
       }
     }, [phase, projectName]);
@@ -115,7 +120,8 @@ export const ProjectPdfExporter = forwardRef<ProjectPdfExporterHandle, Props>(
               <div
                 ref={hostRef}
                 aria-hidden
-                className="pointer-events-none fixed top-0 left-[-12000px] z-[-1] w-[794px] bg-white text-[#152033]"
+                className="pointer-events-none fixed top-0 left-[-12000px] z-[-1] overflow-visible bg-white text-[#152033]"
+                style={{ width: REPORT_PAGE_WIDTH_PX }}
               >
                 <ProjectReport
                   customerId={customerId}
@@ -247,7 +253,8 @@ function waitForPaint() {
   return new Promise<void>((resolve) => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        window.setTimeout(resolve, 160);
+        // انتظر رسم SVG للبنود قبل التصوير
+        window.setTimeout(resolve, 280);
       });
     });
   });

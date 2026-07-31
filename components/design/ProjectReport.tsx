@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { WindowPreview } from "@/components/design/WindowPreview";
-import { BackChevron } from "@/components/layout/BackChevron";
-import { NavBack } from "@/components/layout/NavBack";
 import { useUnit } from "@/components/settings/UnitProvider";
 import { loadCompany } from "@/lib/company";
 import {
@@ -12,15 +10,28 @@ import {
   loadLocalCustomers,
   type Customer,
 } from "@/lib/customers";
-import { itemAreaSqm, itemTotalPrice } from "@/lib/design-items";
+import {
+  itemAreaSqm,
+  itemTotalPrice,
+  type DesignItem,
+} from "@/lib/design-items";
 import { suggestItemName } from "@/lib/item-naming";
 import { loadMaterialCatalog } from "@/lib/material-systems";
-import { buildProjectPdfFile, sharePdfFile } from "@/lib/project-pdf";
+import {
+  REPORT_PAGE_HEIGHT_PX,
+  REPORT_PAGE_WIDTH_PX,
+  chunkReportItems,
+} from "@/lib/project-pdf";
 import { reportMaterialRows } from "@/lib/project-report";
-import { getItemsForProject, getProjectById } from "@/lib/projects";
+import {
+  getItemsForProject,
+  getProjectById,
+  type Project,
+} from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
-import { formatSizePair } from "@/lib/units";
+import { formatSizePair, type LengthUnit } from "@/lib/units";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import type { MaterialCatalog } from "@/lib/material-systems";
 
 type Props = {
   customerId: string;
@@ -55,8 +66,6 @@ export function ProjectReport({
   exportOnly = false,
 }: Props) {
   const { unit } = useUnit();
-  const sheetRef = useRef<HTMLElement | null>(null);
-  const [sharingPdf, setSharingPdf] = useState(false);
   const [{ company, customer, project, items }] = useState(() =>
     readReportData(customerId, projectId)
   );
@@ -80,33 +89,16 @@ export function ProjectReport({
     []
   );
 
-  function handlePrint() {
-    window.print();
-  }
-
-  async function handleSharePdf() {
-    if (exportOnly || sharingPdf || !sheetRef.current) return;
-    setSharingPdf(true);
-    try {
-      const file = await buildProjectPdfFile(sheetRef.current, project?.name);
-      // ملف فقط — بدون text عشان التطبيقات متبعتش نص بدل PDF
-      await sharePdfFile(
-        file,
-        `تقرير مشروع${project ? ` — ${project.name}` : ""}`
-      );
-    } catch (err) {
-      console.error(err);
-      window.alert("تعذر تجهيز ملف PDF. حاول مرة أخرى.");
-    } finally {
-      setSharingPdf(false);
-    }
-  }
+  const itemPages = useMemo(() => chunkReportItems(items), [items]);
 
   if (!project) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="font-semibold text-foreground">المشروع غير موجود</p>
-        <Link href={ROUTES.design.projects(customerId)} className="text-sm text-primary">
+        <Link
+          href={ROUTES.design.projects(customerId)}
+          className="text-sm text-primary"
+        >
           مشاريع العميل
         </Link>
       </div>
@@ -114,277 +106,231 @@ export function ProjectReport({
   }
 
   return (
-    <div className="project-report mx-auto w-full max-w-[210mm] bg-white text-[#152033]">
-      {!exportOnly ? (
-        <div className="report-actions sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-[#e4e8ee] bg-white/95 px-3 py-2.5 backdrop-blur print:hidden">
-          <NavBack
-            href={ROUTES.design.editor(customerId, projectId)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e8f1fc] text-[#2b7de9] transition-colors hover:bg-[#d7e8fb]"
-            aria-label="رجوع لبنود المشروع"
-          >
-            <BackChevron className="h-5 w-5 text-[#2b7de9]" />
-          </NavBack>
+    <div
+      className="project-report bg-white text-[#152033]"
+      style={{ width: REPORT_PAGE_WIDTH_PX }}
+      data-export={exportOnly ? "1" : "0"}
+    >
+      <div className="report-sheet">
+        {itemPages.map((pageItems, pageIndex) => {
+          const isFirst = pageIndex === 0;
+          const isLast = pageIndex === itemPages.length - 1;
+          const baseIndex = pageIndex * 4;
 
-          <p className="min-w-0 flex-1 truncate text-center text-sm font-bold">
-            تقرير المشروع
-          </p>
-
-          <div className="flex shrink-0 items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => void handleSharePdf()}
-              disabled={sharingPdf}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[#e8f1fc] px-3 text-xs font-semibold text-[#2b7de9] transition-colors hover:bg-[#d7e8fb] disabled:opacity-60"
+          return (
+            <section
+              key={`page-${pageIndex}`}
+              className="report-page box-border flex flex-col overflow-hidden bg-white"
+              style={{
+                width: REPORT_PAGE_WIDTH_PX,
+                height: REPORT_PAGE_HEIGHT_PX,
+                padding: "28px 32px",
+              }}
             >
-              <ShareIcon />
-              {sharingPdf ? "جاري PDF…" : "مشاركة PDF"}
-            </button>
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[#2b7de9] px-3 text-xs font-semibold text-white shadow-[0_4px_12px_rgba(43,125,233,0.28)] transition-colors hover:bg-[#2169c8]"
-            >
-              <PrintIcon />
-              طباعة
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <article
-        ref={sheetRef}
-        className="report-sheet px-4 py-5 sm:px-6 sm:py-7"
-      >
-        <header className="border-b-2 border-[#2b7de9] pb-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 text-right">
-              <h1 className="text-xl font-bold leading-tight text-[#152033] sm:text-2xl">
-                {company?.name || "شركتي للـ uPVC"}
-              </h1>
-              <div className="mt-1.5 space-y-0.5 text-[12px] text-[#5a6578]">
-                {company?.phone ? (
-                  <p dir="ltr" className="text-right">
-                    {company.phone}
-                  </p>
-                ) : null}
-                {company?.address ? <p>{company.address}</p> : null}
-                {company?.email ? (
-                  <p dir="ltr" className="text-right">
-                    {company.email}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <div className="shrink-0 rounded-xl bg-[#e8f1fc] p-2.5 text-[#2b7de9]">
-              <CompanyMark />
-            </div>
-          </div>
-
-          {(company?.taxNumber || company?.commercialRegister) && (
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#6b7585]">
-              {company.taxNumber ? (
-                <span>
-                  الرقم الضريبي:{" "}
-                  <span dir="ltr">{company.taxNumber}</span>
-                </span>
-              ) : null}
-              {company.commercialRegister ? (
-                <span>
-                  السجل التجاري:{" "}
-                  <span dir="ltr">{company.commercialRegister}</span>
-                </span>
-              ) : null}
-            </div>
-          )}
-        </header>
-
-        <section className="mt-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold tracking-wide text-[#2b7de9]">
-                تقرير مشروع / عرض أسعار
-              </p>
-              <h2 className="mt-0.5 text-lg font-bold text-[#152033]">
-                {project.name}
-              </h2>
-            </div>
-            <p className="text-[11px] text-[#6b7585]">تاريخ التقرير: {printedAt}</p>
-          </div>
-
-          <div className="mt-4 grid gap-3 rounded-xl border border-[#e4e8ee] bg-[#f7f9fc] p-3 sm:grid-cols-2">
-            <div>
-              <p className="text-[11px] text-[#6b7585]">العميل</p>
-              <p className="mt-0.5 text-sm font-bold">{customer?.name ?? "—"}</p>
-              {customer?.phone ? (
-                <p className="mt-0.5 text-xs text-[#5a6578]" dir="ltr">
-                  {customer.phone}
-                </p>
-              ) : null}
-              {customer?.address ? (
-                <p className="mt-0.5 text-xs text-[#5a6578]">{customer.address}</p>
-              ) : null}
-            </div>
-            <div>
-              <p className="text-[11px] text-[#6b7585]">بيانات المشروع</p>
-              {project.location ? (
-                <p className="mt-0.5 text-sm font-semibold">{project.location}</p>
-              ) : (
-                <p className="mt-0.5 text-sm font-semibold">{project.name}</p>
-              )}
-              <p className="mt-0.5 text-xs text-[#5a6578]">
-                تاريخ الإنشاء: {formatDate(project.createdAt)}
-              </p>
-              <p className="mt-0.5 text-xs text-[#5a6578]">
-                عدد البنود: {items.length}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-6">
-          <h3 className="mb-3 text-sm font-bold text-[#152033]">
-            البنود والرسومات
-          </h3>
-
-          {items.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[#d5dbe5] px-4 py-8 text-center text-sm text-[#6b7585]">
-              مفيش بنود في المشروع بعد
-            </div>
-          ) : (
-            <ul className="flex flex-col gap-4">
-              {items.map((item, index) => {
-                const name = item.name?.trim() || suggestItemName(item);
-                const area = itemAreaSqm(item);
-                const price = itemTotalPrice(item);
-                const materials = reportMaterialRows(item, project, catalog);
-
-                return (
-                  <li
-                    key={item.id}
-                    className="report-item break-inside-avoid rounded-xl border border-[#e4e8ee] bg-white p-3 sm:p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3 border-b border-[#eef1f5] pb-2">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold text-[#2b7de9]">
-                          بند {index + 1}
-                        </p>
-                        <h4 className="truncate text-base font-bold text-[#152033]">
-                          {name}
-                        </h4>
-                      </div>
-                      <p className="shrink-0 text-sm font-bold text-[#2b7de9]">
-                        {formatCurrency(Math.round(price))} ج.م
-                      </p>
-                    </div>
-
-                    <div className="mt-3 grid gap-3 sm:grid-cols-[160px_1fr]">
-                      <div className="flex items-center justify-center rounded-lg border border-[#e8edf3] bg-[#f4f7fb] p-3">
-                        <WindowPreview
-                          style={item.style}
-                          templateId={item.templateId}
-                          layout={item.layout}
-                          panes={item.panes}
-                          frameColor={item.frameColor}
-                          widthMm={item.widthMm}
-                          heightMm={item.heightMm}
-                          forceLight
-                          className="h-auto w-full max-h-[160px]"
-                        />
-                      </div>
-
-                      <div className="min-w-0 space-y-2 text-sm">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Detail
-                            label="المقاس"
-                            value={formatSizePair(
-                              item.widthMm,
-                              item.heightMm,
-                              unit
-                            )}
-                            ltr
-                          />
-                          <Detail label="العدد" value={String(item.qty)} />
-                          <Detail
-                            label="المساحة"
-                            value={`${area.toFixed(2)} م²`}
-                          />
-                          <Detail
-                            label="سعر المتر"
-                            value={`${formatCurrency(Math.round(item.pricePerSqm))} ج.م`}
-                          />
-                        </div>
-
-                        {materials.length > 0 ? (
-                          <dl className="grid gap-1.5 rounded-lg bg-[#f7f9fc] p-2.5 text-[12px]">
-                            {materials.map((row) => (
-                              <div
-                                key={row.label}
-                                className="flex items-start justify-between gap-3"
-                              >
-                                <dt className="shrink-0 text-[#6b7585]">
-                                  {row.label}
-                                </dt>
-                                <dd className="text-left font-medium text-[#152033]">
-                                  {row.value}
-                                </dd>
-                              </div>
-                            ))}
-                          </dl>
-                        ) : null}
-
-                        {item.notes?.trim() ? (
-                          <p className="rounded-lg border border-dashed border-[#d9e0ea] px-2.5 py-2 text-[12px] text-[#5a6578]">
-                            <span className="font-semibold text-[#152033]">
-                              ملاحظات:{" "}
-                            </span>
-                            {item.notes.trim()}
+              {isFirst ? (
+                <header className="shrink-0 border-b-2 border-[#2b7de9] pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 text-right">
+                      <h1 className="text-[22px] font-bold leading-tight text-[#152033]">
+                        {company?.name || "شركتي للـ uPVC"}
+                      </h1>
+                      <div className="mt-1 space-y-0.5 text-[11px] leading-snug text-[#5a6578]">
+                        {company?.phone ? (
+                          <p dir="ltr" className="text-right">
+                            {company.phone}
                           </p>
                         ) : null}
+                        {company?.address ? <p>{company.address}</p> : null}
                       </div>
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+                    <div className="text-left text-[11px] leading-snug text-[#6b7585]">
+                      <p className="font-semibold text-[#2b7de9]">
+                        تقرير مشروع / عرض أسعار
+                      </p>
+                      <p className="mt-0.5 font-bold text-[#152033]">
+                        {project.name}
+                      </p>
+                      <p className="mt-0.5">تاريخ التقرير: {printedAt}</p>
+                    </div>
+                  </div>
 
-        <section className="report-totals mt-6 break-inside-avoid rounded-xl border border-[#2b7de9]/25 bg-[#f3f8ff] p-4">
-          <h3 className="text-sm font-bold text-[#152033]">ملخص الإجمالي</h3>
-          <div className="mt-3 space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[#5a6578]">إجمالي العدد</span>
-              <span className="font-semibold">{totals.qty}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[#5a6578]">إجمالي المساحة</span>
-              <span className="font-semibold">{totals.area.toFixed(2)} م²</span>
-            </div>
-            <div className="flex items-center justify-between border-t border-[#2b7de9]/25 pt-2">
-              <span className="font-bold">الإجمالي</span>
-              <span className="text-lg font-bold text-[#2b7de9]">
-                {formatCurrency(Math.round(totals.price))} ج.م
-              </span>
-            </div>
-          </div>
-        </section>
+                  <div className="mt-3 grid grid-cols-2 gap-3 rounded-lg border border-[#e4e8ee] bg-[#f7f9fc] px-3 py-2 text-[11px]">
+                    <div className="min-w-0">
+                      <p className="text-[#6b7585]">العميل</p>
+                      <p className="mt-0.5 truncate font-bold text-[#152033]">
+                        {customer?.name ?? "—"}
+                      </p>
+                      {customer?.phone ? (
+                        <p className="mt-0.5 text-[#5a6578]" dir="ltr">
+                          {customer.phone}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[#6b7585]">المشروع</p>
+                      <p className="mt-0.5 truncate font-bold text-[#152033]">
+                        {project.location || project.name}
+                      </p>
+                      <p className="mt-0.5 text-[#5a6578]">
+                        {formatDate(project.createdAt)} · {items.length} بند
+                      </p>
+                    </div>
+                  </div>
+                </header>
+              ) : (
+                <header className="flex shrink-0 items-center justify-between border-b border-[#e4e8ee] pb-2 text-[11px]">
+                  <p className="font-bold text-[#152033]">
+                    {company?.name || "شركتي للـ uPVC"}
+                  </p>
+                  <p className="text-[#6b7585]">
+                    {project.name} · صفحة {pageIndex + 1}
+                  </p>
+                </header>
+              )}
 
-        {company?.note?.trim() ? (
-          <p className="mt-4 text-[11px] leading-relaxed text-[#6b7585]">
-            {company.note.trim()}
-          </p>
-        ) : (
-          <p className="mt-4 text-[11px] leading-relaxed text-[#6b7585]">
-            الأسعار قابلة للتعديل حسب المقاسات النهائية والخامات المعتمدة عند
-            التعاقد. للاستفسار تواصل معنا على بيانات الشركة أعلاه.
-          </p>
-        )}
-      </article>
+              <div className="mt-3 min-h-0 flex-1">
+                {pageItems.length === 0 ? (
+                  <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#d5dbe5] text-sm text-[#6b7585]">
+                    مفيش بنود في المشروع بعد
+                  </div>
+                ) : (
+                  <ul className="grid h-full grid-cols-2 grid-rows-2 gap-3">
+                    {pageItems.map((item, i) => (
+                      <li key={item.id} className="min-h-0">
+                        <ReportItemCard
+                          item={item}
+                          index={baseIndex + i}
+                          unit={unit}
+                          project={project as Project}
+                          catalog={catalog}
+                        />
+                      </li>
+                    ))}
+                    {/* خلايا فاضية تحافظ على الشبكة لو الصفحة ناقصة */}
+                    {Array.from({ length: Math.max(0, 4 - pageItems.length) }).map(
+                      (_, i) => (
+                        <li key={`empty-${i}`} className="min-h-0" aria-hidden />
+                      )
+                    )}
+                  </ul>
+                )}
+              </div>
+
+              {isLast ? (
+                <footer className="mt-3 shrink-0 rounded-lg border border-[#2b7de9]/30 bg-[#f3f8ff] px-3 py-2.5">
+                  <div className="grid grid-cols-3 gap-2 text-[12px]">
+                    <div>
+                      <p className="text-[#6b7585]">إجمالي العدد</p>
+                      <p className="mt-0.5 font-bold">{totals.qty}</p>
+                    </div>
+                    <div>
+                      <p className="text-[#6b7585]">إجمالي المساحة</p>
+                      <p className="mt-0.5 font-bold">
+                        {totals.area.toFixed(2)} م²
+                      </p>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[#6b7585]">الإجمالي</p>
+                      <p className="mt-0.5 text-[16px] font-bold text-[#2b7de9]">
+                        {formatCurrency(Math.round(totals.price))} ج.م
+                      </p>
+                    </div>
+                  </div>
+                </footer>
+              ) : (
+                <footer className="mt-2 shrink-0 text-center text-[10px] text-[#8a93a3]">
+                  صفحة {pageIndex + 1} من {itemPages.length}
+                </footer>
+              )}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function Detail({
+function ReportItemCard({
+  item,
+  index,
+  unit,
+  project,
+  catalog,
+}: {
+  item: DesignItem;
+  index: number;
+  unit: LengthUnit;
+  project: Project;
+  catalog: MaterialCatalog;
+}) {
+  const name = item.name?.trim() || suggestItemName(item);
+  const area = itemAreaSqm(item);
+  const price = itemTotalPrice(item);
+  const materials = reportMaterialRows(item, project, catalog).slice(0, 4);
+
+  return (
+    <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[#d9e0ea] bg-white p-2.5">
+      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[#eef1f5] pb-1.5">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold text-[#2b7de9]">
+            بند {index + 1}
+          </p>
+          <h4 className="truncate text-[13px] font-bold leading-tight text-[#152033]">
+            {name}
+          </h4>
+        </div>
+        <p className="shrink-0 text-[12px] font-bold text-[#2b7de9]">
+          {formatCurrency(Math.round(price))} ج.م
+        </p>
+      </div>
+
+      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden">
+        <div className="flex min-h-[96px] flex-[1.35] items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-1.5">
+          <WindowPreview
+            style={item.style}
+            templateId={item.templateId}
+            layout={item.layout}
+            panes={item.panes}
+            frameColor={item.frameColor}
+            widthMm={item.widthMm}
+            heightMm={item.heightMm}
+            forceLight
+            className="h-full w-auto max-h-full max-w-full"
+          />
+        </div>
+
+        <div className="grid shrink-0 grid-cols-2 gap-1 text-[10px]">
+          <Meta
+            label="المقاس"
+            value={formatSizePair(item.widthMm, item.heightMm, unit)}
+            ltr
+          />
+          <Meta label="العدد" value={String(item.qty)} />
+          <Meta label="المساحة" value={`${area.toFixed(2)} م²`} />
+          <Meta
+            label="سعر المتر"
+            value={`${formatCurrency(Math.round(item.pricePerSqm))} ج.م`}
+          />
+        </div>
+
+        {materials.length > 0 ? (
+          <dl className="min-h-0 shrink-0 space-y-0.5 overflow-hidden rounded-md bg-[#f7f9fc] px-2 py-1 text-[10px] leading-snug">
+            {materials.map((row) => (
+              <div key={row.label} className="flex justify-between gap-2">
+                <dt className="shrink-0 text-[#6b7585]">{row.label}</dt>
+                <dd className="truncate text-left font-medium text-[#152033]">
+                  {row.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function Meta({
   label,
   value,
   ltr = false,
@@ -394,75 +340,14 @@ function Detail({
   ltr?: boolean;
 }) {
   return (
-    <div className="rounded-lg bg-[#f7f9fc] px-2.5 py-2">
-      <p className="text-[10px] text-[#6b7585]">{label}</p>
+    <div className="rounded-md bg-[#f7f9fc] px-1.5 py-1">
+      <p className="text-[9px] text-[#6b7585]">{label}</p>
       <p
-        className="mt-0.5 text-xs font-semibold text-[#152033]"
+        className="mt-0.5 truncate font-semibold text-[#152033]"
         dir={ltr ? "ltr" : undefined}
       >
         {value}
       </p>
     </div>
-  );
-}
-
-function CompanyMark() {
-  return (
-    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden>
-      <rect
-        x="4"
-        y="5"
-        width="24"
-        height="22"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M8 11h16M8 16h16M8 21h10"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function PrintIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M6 9V3h12v6" />
-      <path d="M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" />
-      <rect x="6" y="13" width="12" height="8" rx="1" />
-    </svg>
-  );
-}
-
-function ShareIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="18" cy="5" r="2.5" />
-      <circle cx="6" cy="12" r="2.5" />
-      <circle cx="18" cy="19" r="2.5" />
-      <path d="M8.4 13.2l7.2 4.1M15.6 6.7l-7.2 4.1" />
-    </svg>
   );
 }
