@@ -1,7 +1,7 @@
 import {
   FRAME_COLORS,
+  normalizeFrameColor,
   type DesignItem,
-  type FrameColorId,
 } from "@/lib/design-items";
 import {
   findGlassBottle,
@@ -32,9 +32,10 @@ export function reportMaterialRows(
   const mats = effectiveItemMaterials(item, project, cat);
   const rows: ReportMaterialRow[] = [];
 
-  const frameId = (item.frameColor ?? "white") as FrameColorId;
-  const frameLabel = FRAME_COLORS[frameId]?.label ?? frameId;
-  rows.push({ label: "اللون", value: frameLabel });
+  rows.push({
+    label: "اللون",
+    value: FRAME_COLORS[normalizeFrameColor(item.frameColor)].label,
+  });
 
   const profile = findSystem("profiles", mats.systemId, cat);
   if (profile?.name) {

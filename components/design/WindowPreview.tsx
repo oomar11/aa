@@ -5,6 +5,7 @@ import { useTheme } from "@/components/settings/ThemeProvider";
 import {
   FRAME_COLORS,
   PANEL_STRIPE_MM,
+  normalizeFrameColor,
   normalizePaneConfig,
   type DesignItem,
   type FrameColorId,
@@ -145,7 +146,7 @@ export function WindowPreview({
   collectEmptyRects(tree, frame, emptyRects);
   collectMullionRects(tree, frame, Math.max(2.4, Math.min(frame.w, frame.h) * 0.035), mullions);
 
-  const frameMeta = FRAME_COLORS[frameColor] ?? FRAME_COLORS.white;
+  const frameMeta = FRAME_COLORS[normalizeFrameColor(frameColor)];
   const frameFill = frameMeta.hex;
   const isWood = Boolean(frameMeta.wood);
   const glass = isDark ? "#3a6180" : "#9ec8e8";

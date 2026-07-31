@@ -7,9 +7,9 @@ import { useUnit } from "@/components/settings/UnitProvider";
 import {
   FRAME_COLORS,
   PANEL_STRIPE_MM,
+  normalizeFrameColor,
   normalizePaneConfig,
   type DesignItem,
-  type FrameColorId,
   type PaneConfig,
   type PaneOpening,
 } from "@/lib/design-items";
@@ -102,7 +102,7 @@ export function DrawingCanvas({
   const layout: LayoutNode = ensurePaneIds(
     item.layout ?? { type: "pane", id: "root" }
   );
-  const colorId = (item.frameColor ?? "white") as FrameColorId;
+  const colorId = normalizeFrameColor(item.frameColor);
   const frameMeta = FRAME_COLORS[colorId];
   const frameFill = frameMeta.hex;
   const isWood = Boolean(frameMeta.wood);

@@ -320,21 +320,34 @@ export function resolvePaneGlass(
 
 export type FrameColorId =
   | "white"
-  | "wood"
+  | "beige"
   | "gray"
-  | "anthracite"
-  | "cream";
+  | "wood"
+  | "black";
 
 export const FRAME_COLORS: Record<
   FrameColorId,
   { label: string; hex: string; wood?: boolean }
 > = {
   white: { label: "أبيض", hex: "#f4f6f8" },
-  wood: { label: "خشبي", hex: "#c4a06a", wood: true },
+  beige: { label: "بيج", hex: "#d2c2a4" },
   gray: { label: "رمادي", hex: "#9aa3ad" },
-  anthracite: { label: "أنثراسيت", hex: "#3d4450" },
-  cream: { label: "كريمي", hex: "#efe6d5" },
+  wood: { label: "خشبي", hex: "#c4a06a", wood: true },
+  black: { label: "أسود", hex: "#1f2329" },
 };
+
+/** ترتيب عرض ألوان الإطار في الواجهة */
+export const FRAME_COLOR_IDS = Object.keys(FRAME_COLORS) as FrameColorId[];
+
+/** ترحيل ألوان قديمة محفوظة (أنثراسيت/كريمي) للقائمة الحالية */
+export function normalizeFrameColor(
+  value: string | null | undefined
+): FrameColorId {
+  if (value === "anthracite") return "black";
+  if (value === "cream") return "beige";
+  if (value && value in FRAME_COLORS) return value as FrameColorId;
+  return "white";
+}
 
 export type DesignItem = {
   id: string;

@@ -31,6 +31,7 @@ import {
 } from "@/lib/accessories";
 import {
   createItemFromTemplate,
+  normalizeFrameColor,
   normalizePaneConfig,
   type DesignItem,
   type FrameColorId,
@@ -109,7 +110,7 @@ function snapshot(item: DesignItem): HistorySnap {
     ),
     widthMm: item.widthMm,
     heightMm: item.heightMm,
-    frameColor: item.frameColor ?? "white",
+    frameColor: normalizeFrameColor(item.frameColor),
     panes: structuredClone(item.panes ?? {}),
     qty: item.qty,
     notes: item.notes ?? "",
@@ -192,7 +193,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
     const normalized: DesignItem = withSuggestedName({
       ...found,
       layout,
-      frameColor: found.frameColor ?? "white",
+      frameColor: normalizeFrameColor(found.frameColor),
       panes: syncPanesMap(layout, found.panes),
       nameIsCustom: Boolean(found.nameIsCustom),
     });

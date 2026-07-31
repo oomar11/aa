@@ -22,9 +22,9 @@
 
 import {
   FRAME_COLORS,
+  normalizeFrameColor,
   normalizePaneConfig,
   type DesignItem,
-  type FrameColorId,
   type PaneConfig,
   type PaneOpening,
 } from "@/lib/design-items";
@@ -480,12 +480,12 @@ export function calcItemAccessories(
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
 
-  const frameColorId = (item.frameColor ?? "white") as FrameColorId;
+  const frameColorId = normalizeFrameColor(item.frameColor);
   const doorHandleColorLabel =
     doorSignalHandleQty > 0 ||
     doorEscutcheonQty > 0 ||
     doorCylinderQty > 0
-      ? FRAME_COLORS[frameColorId]?.label ?? frameColorId
+      ? FRAME_COLORS[frameColorId].label
       : null;
 
   const hingedLockPieces = lockPieceLines(

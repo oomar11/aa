@@ -3,7 +3,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { NumericInput } from "@/components/ui/NumericInput";
 import {
+  FRAME_COLOR_IDS,
   FRAME_COLORS,
+  normalizeFrameColor,
   type DesignItem,
   type FrameColorId,
 } from "@/lib/design-items";
@@ -89,7 +91,7 @@ function toDraft(
     glassPane2Id: resolveItemGlassPane2Id(item, projectDefaults),
     glassGeorgian: resolveItemGlassGeorgian(item, projectDefaults),
     ironId: getIronSystemId(catalog),
-    frameColor: (item.frameColor as FrameColorId) || "white",
+    frameColor: normalizeFrameColor(item.frameColor),
   };
 }
 
@@ -405,7 +407,7 @@ export function ItemSettingsDrawer({
 
           <Section title="لون الإطار">
             <div className="flex flex-wrap gap-2">
-              {(Object.keys(FRAME_COLORS) as FrameColorId[]).map((id) => {
+              {FRAME_COLOR_IDS.map((id) => {
                 const c = FRAME_COLORS[id];
                 const active = draft.frameColor === id;
                 return (

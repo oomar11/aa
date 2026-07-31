@@ -11,8 +11,8 @@ import {
 } from "@/lib/customers";
 import {
   FRAME_COLORS,
+  normalizeFrameColor,
   type DesignItem,
-  type FrameColorId,
 } from "@/lib/design-items";
 import {
   calcIronBreakdown,
@@ -120,8 +120,7 @@ function roundAmount(n: number, unit: PurchaseUnit): number {
 
 /** لون إطار/ضلفة البند — للحجات اللي بيتطلب لونها */
 function itemFrameColorLabel(item: DesignItem): string {
-  const id = (item.frameColor ?? "white") as FrameColorId;
-  return FRAME_COLORS[id]?.label ?? id;
+  return FRAME_COLORS[normalizeFrameColor(item.frameColor)].label;
 }
 
 function joinNotes(...parts: Array<string | null | undefined>): string | undefined {
