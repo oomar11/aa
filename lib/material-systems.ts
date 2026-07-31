@@ -135,7 +135,7 @@ export const PROFILE_PRICE_CATEGORIES: {
   { id: "bead-single-sliding", label: "باكتة سنجل جرار" },
   { id: "bead-double-hinged", label: "باكتة دبل مفصلي" },
   { id: "bead-double-sliding", label: "باكتة دبل جرار" },
-  { id: "panel", label: "بنل" },
+  { id: "panel", label: "بنل عرض ١٥ سم" },
   { id: "mesh-sliding-profile", label: "ضلفة سلك جرار" },
   { id: "four-leaf-meeting", label: "تقابل ٤ ضلفة" },
   { id: "mesh-meeting", label: "تقابل سلك" },
@@ -1658,7 +1658,7 @@ export function defaultProfileBrands(): ProfileBrand[] {
         "bead-single-sliding": makeProfileBarRate(90, 6),
         "bead-double-hinged": makeProfileBarRate(132, 6),
         "bead-double-sliding": makeProfileBarRate(132, 6),
-        panel: makeProfileBarRate(132, 6),
+        panel: makeProfileBarRate(132, 6, "بنل عرض ١٥ سم"),
         "mesh-sliding-profile": makeProfileBarRate(288, 6),
       },
     },
@@ -1726,7 +1726,11 @@ export function getProfileSystemRate(
   system: MaterialSystem | undefined | null,
   category: ProfilePriceCategory
 ): ProfileBarRate | undefined {
-  const rate = system?.profile?.rates?.[category];
+  const rates = system?.profile?.rates;
+  const rate =
+    category === "panel"
+      ? ensurePanelProfileRate(rates ?? {}).panel
+      : rates?.[category];
   if (!rate || rate.barPrice <= 0 || rate.barLengthM <= 0) return undefined;
   return rate;
 }
@@ -2779,24 +2783,51 @@ function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
   };
 }
 
-/** يضمن وجود سعر بنل — من الباكتة دبل في نفس النظام لو ناقص */
+const PANEL_PRODUCT_NAME = "بنل عرض ١٥ سم";
+
+/** سعر بنل افتراضي (عيدان عرض ١٥ سم) — من قائمة سيتي بريمير */
+export function defaultPanelBarRate(): ProfileBarRate {
+  const official = cityPremierProfileBarRates().panel;
+  if (official && official.barPrice > 0 && official.barLengthM > 0) {
+    return { ...official, productName: PANEL_PRODUCT_NAME };
+  }
+  return makeProfileBarRate(165, 6, PANEL_PRODUCT_NAME);
+}
+
+/**
+ * يضمن وجود سعر بنل مستقل في قائمة أسعار القطاعات.
+ * لو ناقص والنظام فيه أسعار أخرى → يضيف الافتراضي (أو من الباكتة دبل كمرجع).
+ */
 function ensurePanelProfileRate(
   rates: Partial<Record<ProfilePriceCategory, ProfileBarRate>>
 ): Partial<Record<ProfilePriceCategory, ProfileBarRate>> {
-  if (rates.panel && rates.panel.barPrice > 0 && rates.panel.barLengthM > 0) {
-    return rates;
+  const existing = rates.panel;
+  if (existing && existing.barPrice > 0 && existing.barLengthM > 0) {
+    const name = existing.productName?.trim() ?? "";
+    if (name && !/باكتة/.test(name)) return rates;
+    return {
+      ...rates,
+      panel: { ...existing, productName: PANEL_PRODUCT_NAME },
+    };
   }
-  const fallback =
+
+  // مفيش أسعار خالص → سيب البنل فاضي في الواجهة (صفر) بدون ما نعلّم النظام «مسعّر»
+  if (!profileRatesHasPricing(rates)) return rates;
+
+  const fromBead =
     rates["bead-double-hinged"] ?? rates["bead-double-sliding"];
-  if (!fallback || fallback.barPrice <= 0 || fallback.barLengthM <= 0) {
-    return rates;
-  }
+  const seed =
+    fromBead && fromBead.barPrice > 0 && fromBead.barLengthM > 0
+      ? makeProfileBarRate(
+          fromBead.barPrice,
+          fromBead.barLengthM,
+          PANEL_PRODUCT_NAME
+        )
+      : defaultPanelBarRate();
+
   return {
     ...rates,
-    panel: {
-      ...fallback,
-      productName: "بنل عرض ١٥ سم",
-    },
+    panel: seed,
   };
 }
 

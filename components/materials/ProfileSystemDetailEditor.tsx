@@ -19,7 +19,6 @@ import {
   mergeStandardProfilePieces,
   newPieceId,
   PROFILE_PIECE_ROLES,
-  PROFILE_PRICE_CATEGORIES,
   profileBarPricePerM,
   profilePriceCategoryLabel,
   profileRoleDefaultName,
@@ -47,6 +46,44 @@ const PROFILE_DETAIL_TABS: { id: ProfileDetailTab; label: string }[] = [
   { id: "meta", label: "بيانات" },
   { id: "prices", label: "الأسعار" },
   { id: "pieces", label: "العيدان" },
+];
+
+/** تجميع أسعار القطاعات عشان البنل يبان كبند مستقل */
+const PROFILE_PRICE_GROUPS: {
+  label: string;
+  ids: ProfilePriceCategory[];
+}[] = [
+  {
+    label: "حلق وضلف",
+    ids: [
+      "frame-hinged",
+      "frame-sliding",
+      "sash-hinged",
+      "sash-door",
+      "sash-sliding",
+    ],
+  },
+  {
+    label: "تقسيم وإكسسوار قطاع",
+    ids: ["mullion", "coupling", "knife", "bouclier"],
+  },
+  {
+    label: "باكتة",
+    ids: [
+      "bead-single-hinged",
+      "bead-single-sliding",
+      "bead-double-hinged",
+      "bead-double-sliding",
+    ],
+  },
+  {
+    label: "بنل",
+    ids: ["panel"],
+  },
+  {
+    label: "سلك وتقابل",
+    ids: ["mesh-sliding-profile", "four-leaf-meeting", "mesh-meeting"],
+  },
 ];
 
 function rateSummary(rate: ProfileBarRate | undefined): string | null {
@@ -372,60 +409,80 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           <div>
             <h3 className="text-xs font-bold text-foreground">أسعار العود</h3>
             <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-              سعر العود ÷ الطول = سعر المتر
+              سعر العود ÷ الطول = سعر المتر — البنل بند مستقل (عيدان عرض ١٥ سم)
             </p>
           </div>
-          <div className="space-y-2">
-            {PROFILE_PRICE_CATEGORIES.map((cat) => {
-              const rate = rates[cat.id] ?? makeProfileBarRate(0, 6);
-              const summary = rateSummary(rate.barPrice > 0 ? rate : undefined);
-              return (
-                <div
-                  key={cat.id}
-                  className="rounded-xl border border-border/70 bg-background/60 p-2"
-                >
-                  <p className="text-[11px] font-semibold text-foreground">
-                    {profilePriceCategoryLabel(cat.id)}
-                  </p>
-                  {rate.productName ? (
-                    <p className="mt-0.5 text-[10px] text-muted">
-                      {rate.productName}
-                    </p>
-                  ) : null}
-                  <div className="mt-1.5 grid grid-cols-2 gap-2">
-                    <label className="block text-[10px] text-muted">
-                      سعر العود (ج.م)
-                      <NumericInput
-                        min={0}
-                        step={1}
-                        value={rate.barPrice}
-                        onChange={(v) => setRateValue(cat.id, "barPrice", v)}
-                        placeholder="0"
-                        className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-                      />
-                    </label>
-                    <label className="block text-[10px] text-muted">
-                      طول العود (م)
-                      <NumericInput
-                        min={0.1}
-                        step={0.1}
-                        fallback={6}
-                        blankZero={false}
-                        value={rate.barLengthM}
-                        onChange={(v) => setRateValue(cat.id, "barLengthM", v)}
-                        placeholder="6"
-                        className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-                      />
-                    </label>
-                  </div>
-                  {summary ? (
-                    <p className="mt-1 text-[10px] font-medium text-primary">
-                      {summary}
-                    </p>
-                  ) : null}
-                </div>
-              );
-            })}
+          <div className="space-y-4">
+            {PROFILE_PRICE_GROUPS.map((group) => (
+              <div key={group.label} className="space-y-2">
+                <p className="text-[10px] font-bold tracking-wide text-primary">
+                  {group.label}
+                </p>
+                {group.ids.map((catId) => {
+                  const rate = rates[catId] ?? makeProfileBarRate(0, 6);
+                  const summary = rateSummary(
+                    rate.barPrice > 0 ? rate : undefined
+                  );
+                  const isPanel = catId === "panel";
+                  return (
+                    <div
+                      key={catId}
+                      className={`rounded-xl border p-2 ${
+                        isPanel
+                          ? "border-primary/40 bg-primary-soft/40"
+                          : "border-border/70 bg-background/60"
+                      }`}
+                    >
+                      <p className="text-[11px] font-semibold text-foreground">
+                        {profilePriceCategoryLabel(catId)}
+                      </p>
+                      {isPanel ? (
+                        <p className="mt-0.5 text-[10px] text-muted">
+                          عيدان بنل عرض ١٥ سم — سعر مستقل عن الباكتة
+                        </p>
+                      ) : rate.productName ? (
+                        <p className="mt-0.5 text-[10px] text-muted">
+                          {rate.productName}
+                        </p>
+                      ) : null}
+                      <div className="mt-1.5 grid grid-cols-2 gap-2">
+                        <label className="block text-[10px] text-muted">
+                          سعر العود (ج.م)
+                          <NumericInput
+                            min={0}
+                            step={1}
+                            value={rate.barPrice}
+                            onChange={(v) => setRateValue(catId, "barPrice", v)}
+                            placeholder="0"
+                            className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                          />
+                        </label>
+                        <label className="block text-[10px] text-muted">
+                          طول العود (م)
+                          <NumericInput
+                            min={0.1}
+                            step={0.1}
+                            fallback={6}
+                            blankZero={false}
+                            value={rate.barLengthM}
+                            onChange={(v) =>
+                              setRateValue(catId, "barLengthM", v)
+                            }
+                            placeholder="6"
+                            className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                          />
+                        </label>
+                      </div>
+                      {summary ? (
+                        <p className="mt-1 text-[10px] font-medium text-primary">
+                          {summary}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
           <button
             type="submit"
