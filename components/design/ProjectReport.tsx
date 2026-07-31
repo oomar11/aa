@@ -133,49 +133,182 @@ export function ProjectReport({
             >
               {isFirst ? (
                 <header className="shrink-0 border-b-2 border-[#2b7de9] pb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 text-right">
-                      <h1 className="text-[22px] font-bold leading-tight text-[#152033]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1 text-right">
+                      <h1
+                        className="truncate text-[22px] font-bold text-[#152033]"
+                        style={{ lineHeight: "28px", margin: 0 }}
+                      >
                         {company?.name || "شركتي للـ uPVC"}
                       </h1>
-                      <div className="mt-1 space-y-0.5 text-[11px] leading-snug text-[#5a6578]">
+                      <div
+                        style={{
+                          marginTop: 6,
+                          fontSize: 11,
+                          color: "#5a6578",
+                        }}
+                      >
                         {company?.phone ? (
-                          <p dir="ltr" className="text-right">
+                          <p
+                            dir="ltr"
+                            className="text-right"
+                            style={{
+                              margin: 0,
+                              lineHeight: "16px",
+                              height: 16,
+                            }}
+                          >
                             {company.phone}
                           </p>
                         ) : null}
-                        {company?.address ? <p>{company.address}</p> : null}
+                        {company?.address ? (
+                          <p
+                            className="truncate"
+                            style={{
+                              margin: 0,
+                              marginTop: company?.phone ? 4 : 0,
+                              lineHeight: "16px",
+                              height: 16,
+                            }}
+                          >
+                            {company.address}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
-                    <div className="text-left text-[11px] leading-snug text-[#6b7585]">
-                      <p className="font-semibold text-[#2b7de9]">
-                        تقرير مشروع / عرض أسعار
-                      </p>
-                      <p className="mt-0.5 font-bold text-[#152033]">
-                        {project.name}
-                      </p>
-                      <p className="mt-0.5">تاريخ التقرير: {printedAt}</p>
-                    </div>
+                    <table
+                      className="shrink-0"
+                      style={{
+                        width: 240,
+                        borderCollapse: "separate",
+                        borderSpacing: 0,
+                        textAlign: "left",
+                      }}
+                    >
+                      <tbody>
+                        <tr>
+                          <td
+                            style={{
+                              padding: "0 0 10px",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "#2b7de9",
+                              lineHeight: "20px",
+                              whiteSpace: "nowrap",
+                              verticalAlign: "top",
+                            }}
+                          >
+                            عرض أسعار
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            style={{
+                              padding: "0 0 10px",
+                              fontSize: 14,
+                              fontWeight: 700,
+                              color: "#152033",
+                              lineHeight: "22px",
+                              verticalAlign: "top",
+                              maxWidth: 240,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {project.name}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            style={{
+                              padding: 0,
+                              fontSize: 11,
+                              color: "#6b7585",
+                              lineHeight: "18px",
+                              whiteSpace: "nowrap",
+                              verticalAlign: "top",
+                            }}
+                          >
+                            تاريخ التقرير: {printedAt}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-3 rounded-lg border border-[#e4e8ee] bg-[#f7f9fc] px-3 py-2 text-[11px]">
+                  <div
+                    className="mt-3 grid grid-cols-2 gap-3 rounded-lg border border-[#e4e8ee] bg-[#f7f9fc] px-3 py-2.5 text-[11px]"
+                    style={{ gap: 12 }}
+                  >
                     <div className="min-w-0">
-                      <p className="text-[#6b7585]">العميل</p>
-                      <p className="mt-0.5 truncate font-bold text-[#152033]">
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#6b7585",
+                          lineHeight: "15px",
+                          height: 15,
+                        }}
+                      >
+                        العميل
+                      </p>
+                      <p
+                        className="truncate font-bold text-[#152033]"
+                        style={{
+                          margin: 0,
+                          marginTop: 4,
+                          lineHeight: "17px",
+                          height: 17,
+                        }}
+                      >
                         {customer?.name ?? "—"}
                       </p>
                       {customer?.phone ? (
-                        <p className="mt-0.5 text-[#5a6578]" dir="ltr">
+                        <p
+                          className="text-[#5a6578]"
+                          dir="ltr"
+                          style={{
+                            margin: 0,
+                            marginTop: 4,
+                            lineHeight: "15px",
+                            height: 15,
+                          }}
+                        >
                           {customer.phone}
                         </p>
                       ) : null}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[#6b7585]">المشروع</p>
-                      <p className="mt-0.5 truncate font-bold text-[#152033]">
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#6b7585",
+                          lineHeight: "15px",
+                          height: 15,
+                        }}
+                      >
+                        المشروع
+                      </p>
+                      <p
+                        className="truncate font-bold text-[#152033]"
+                        style={{
+                          margin: 0,
+                          marginTop: 4,
+                          lineHeight: "17px",
+                          height: 17,
+                        }}
+                      >
                         {project.location || project.name}
                       </p>
-                      <p className="mt-0.5 text-[#5a6578]">
+                      <p
+                        className="truncate text-[#5a6578]"
+                        style={{
+                          margin: 0,
+                          marginTop: 4,
+                          lineHeight: "15px",
+                          height: 15,
+                        }}
+                      >
                         {formatDate(project.createdAt)} · {items.length} بند
                       </p>
                     </div>
@@ -183,10 +316,16 @@ export function ProjectReport({
                 </header>
               ) : (
                 <header className="flex shrink-0 items-center justify-between border-b border-[#e4e8ee] pb-2 text-[11px]">
-                  <p className="font-bold text-[#152033]">
+                  <p
+                    className="font-bold text-[#152033]"
+                    style={{ margin: 0, lineHeight: "16px" }}
+                  >
                     {company?.name || "شركتي للـ uPVC"}
                   </p>
-                  <p className="text-[#6b7585]">
+                  <p
+                    className="truncate text-[#6b7585]"
+                    style={{ margin: 0, lineHeight: "16px", maxWidth: "55%" }}
+                  >
                     {project.name} · صفحة {pageIndex + 1}
                   </p>
                 </header>
