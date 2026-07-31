@@ -3485,7 +3485,7 @@ function collapseIronToSingleSystem(systems: MaterialSystem[]): MaterialSystem[]
       name: "حديد التسليح",
       notes:
         preferred.notes?.trim() ||
-        "سيستم واحد لكل الشغل — حلق · ضلفة · سوقاس · تراك · شريحة مفصلة",
+        "سيستم واحد لكل الشغل — حلق مفصلي/جرار · ضلفة شباك/باب/جرار · تراك · شريحة مفصلة",
       isDefault: true,
       iron: details,
     },
