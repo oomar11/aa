@@ -18,6 +18,14 @@ import {
   ProjectPdfExporter,
   type ProjectPdfExporterHandle,
 } from "@/components/design/ProjectPdfExporter";
+import {
+  PurchaseOrderPdfExporter,
+  type PurchaseOrderPdfExporterHandle,
+} from "@/components/design/PurchaseOrderPdfExporter";
+import {
+  ProjectReportsMenu,
+  type ProjectReportAction,
+} from "@/components/design/ProjectReportsMenu";
 import { TemplatePickerModal } from "@/components/design/TemplatePickerModal";
 import { WindowPreview } from "@/components/design/WindowPreview";
 import {
@@ -107,6 +115,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   const [items, setItems] = useState<DesignItem[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const pdfExporterRef = useRef<ProjectPdfExporterHandle>(null);
+  const purchaseOrderRef = useRef<PurchaseOrderPdfExporterHandle>(null);
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragPoint, setDragPoint] = useState({ x: 0, y: 0 });
@@ -187,6 +196,17 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       return;
     }
     void pdfExporterRef.current.openShare();
+  }
+
+  function handleReportAction(action: ProjectReportAction) {
+    if (!customerId || !projectId) return;
+    if (action === "purchase-order") {
+      if (!purchaseOrderRef.current) {
+        window.alert("تعذر فتح طلبية المشتريات. حدّث الصفحة وحاول تاني.");
+        return;
+      }
+      void purchaseOrderRef.current.openShare();
+    }
   }
 
   const clearLongPress = useCallback(() => {
@@ -730,6 +750,10 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
           >
             <SettingsIcon />
           </Link>
+          <ProjectReportsMenu
+            disabled={!customerId || !projectId}
+            onSelect={handleReportAction}
+          />
           <button
             type="button"
             onClick={handleShare}
@@ -744,12 +768,20 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
       </header>
 
       {customerId && projectId ? (
-        <ProjectPdfExporter
-          ref={pdfExporterRef}
-          customerId={customerId}
-          projectId={projectId}
-          projectName={project?.name}
-        />
+        <>
+          <ProjectPdfExporter
+            ref={pdfExporterRef}
+            customerId={customerId}
+            projectId={projectId}
+            projectName={project?.name}
+          />
+          <PurchaseOrderPdfExporter
+            ref={purchaseOrderRef}
+            customerId={customerId}
+            projectId={projectId}
+            projectName={project?.name}
+          />
+        </>
       ) : null}
 
       <ul

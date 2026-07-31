@@ -133,6 +133,26 @@ export async function buildProjectPdfFile(
   });
 }
 
+/** اسم ملف طلبية مشتريات */
+export function purchaseOrderPdfFileName(projectName?: string): string {
+  const base = (projectName?.trim() || "مشروع-upvc")
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "-")
+    .slice(0, 80);
+  return `طلبية-مشتريات-${base}.pdf`;
+}
+
+export async function buildNamedPdfFile(
+  sheet: HTMLElement,
+  fileName: string
+): Promise<File> {
+  const blob = await elementToPdfBlob(sheet);
+  return new File([blob], fileName, {
+    type: "application/pdf",
+    lastModified: Date.now(),
+  });
+}
+
 /** يقسّم البنود: ٤ في الصفحة — صفّين × عمودين */
 export function chunkReportItems<T>(items: T[], size = REPORT_ITEMS_PER_PAGE): T[][] {
   if (items.length === 0) return [[]];
