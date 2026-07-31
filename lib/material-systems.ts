@@ -668,13 +668,30 @@ export function notifyMaterialCatalogUpdated() {
 /** طول العود الافتراضي بالمتر */
 export const DEFAULT_BAR_LENGTH_M = 5.8;
 
-/** عدد الأعواد المطلوبة من الطول بالمتر (تقريب لأعلى) */
+/** عدد الأعواد المطلوبة من الطول بالمتر (تقريب لأعلى — للشراء الكامل) */
 export function barsNeeded(
   lengthM: number,
   barLengthM: number = DEFAULT_BAR_LENGTH_M
 ): number {
   if (!(lengthM > 0) || !(barLengthM > 0)) return 0;
   return Math.ceil(lengthM / barLengthM);
+}
+
+/** تقدير الأعواد بالكسور (مثلاً 0.5 أو 3.5) — من غير تقريب لأعلى */
+export function barsEstimate(
+  lengthM: number,
+  barLengthM: number = DEFAULT_BAR_LENGTH_M
+): number {
+  if (!(lengthM > 0) || !(barLengthM > 0)) return 0;
+  return Math.round((lengthM / barLengthM) * 100) / 100;
+}
+
+/** تنسيق تقدير الأعواد للعرض: 0.5 · 3.5 · 2 */
+export function formatBarsEstimate(bars: number): string {
+  if (!(bars > 0.01)) return "—";
+  const rounded = Math.round(bars * 10) / 10;
+  if (Number.isInteger(rounded)) return String(rounded);
+  return rounded.toFixed(1);
 }
 
 export const MATERIAL_CATEGORIES: {

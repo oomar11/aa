@@ -21,8 +21,9 @@ import {
 } from "@/lib/iron";
 import {
   DEFAULT_BAR_LENGTH_M,
-  barsNeeded,
+  barsEstimate,
   findSystem,
+  formatBarsEstimate,
   getIronSystem,
   loadMaterialCatalog,
   type MaterialCatalog,
@@ -55,7 +56,7 @@ export type PurchaseSectionId =
   | "accessories"
   | "iron";
 
-export type PurchaseUnit = "م" | "م²" | "قطعة" | "طقم" | "عود";
+export type PurchaseUnit = "م" | "م²" | "قطعة" | "طقم";
 
 export type PurchaseLine = {
   key: string;
@@ -64,6 +65,8 @@ export type PurchaseLine = {
   /** كمية رقمية للتجميع */
   amount: number;
   unit: PurchaseUnit;
+  /** طول العود بالمتر — للقطاعات/الحديد عشان تقدير الأعواد */
+  barLengthM?: number;
   note?: string;
 };
 
@@ -116,9 +119,7 @@ function mergeCustomers(): Customer[] {
 }
 
 function roundAmount(n: number, unit: PurchaseUnit): number {
-  if (unit === "قطعة" || unit === "طقم" || unit === "عود") {
-    return Math.round(n * 100) / 100;
-  }
+  if (unit === "قطعة" || unit === "طقم") return Math.round(n * 100) / 100;
   return Math.round(n * 1000) / 1000;
 }
 
@@ -143,7 +144,7 @@ function addLine(
   if (partial.amount < 0.0005) return;
   const key =
     partial.key ??
-    `${partial.section}|${partial.label}|${partial.unit}|${partial.note ?? ""}`;
+    `${partial.section}|${partial.label}|${partial.unit}|${partial.barLengthM ?? ""}|${partial.note ?? ""}`;
   const prev = map.get(key);
   if (prev) {
     prev.amount = roundAmount(prev.amount + partial.amount, partial.unit);
@@ -155,12 +156,20 @@ function addLine(
     label: partial.label,
     amount: roundAmount(partial.amount, partial.unit),
     unit: partial.unit,
+    barLengthM: partial.barLengthM,
     note: partial.note,
   });
 }
 
 function formatPurchaseQty(line: PurchaseLine): string {
-  if (line.unit === "م") return formatMeters(line.amount);
+  if (line.unit === "م") {
+    const meters = formatMeters(line.amount);
+    if (line.barLengthM && line.barLengthM > 0) {
+      const bars = barsEstimate(line.amount, line.barLengthM);
+      return `${meters} · ≈${formatBarsEstimate(bars)} عود`;
+    }
+    return meters;
+  }
   if (line.unit === "م²") {
     if (line.amount < 0.0005) return "—";
     return `${line.amount.toFixed(2)} م²`;
@@ -168,10 +177,6 @@ function formatPurchaseQty(line: PurchaseLine): string {
   if (line.unit === "طقم") {
     const n = Math.round(line.amount);
     return n < 1 ? "—" : `${n} طقم`;
-  }
-  if (line.unit === "عود") {
-    const n = Math.round(line.amount);
-    return n < 1 ? "—" : `${n} عود`;
   }
   return formatCount(line.amount);
 }
@@ -203,12 +208,12 @@ function addProfileLines(
       } else {
         const barLen =
           line.barLengthM > 0 ? line.barLengthM : DEFAULT_BAR_LENGTH_M;
-        const bars = barsNeeded(line.lengthM * q, barLen);
         addLine(map, {
           section: "profiles",
           label: line.label,
-          amount: bars,
-          unit: "عود",
+          amount: line.lengthM * q,
+          unit: "م",
+          barLengthM: barLen,
           note: joinNotes(
             systemNote,
             line.productName,
@@ -221,7 +226,7 @@ function addProfileLines(
     return;
   }
 
-  // بدون تسعير: تحويل الأطوال لأعواد بطول العود الافتراضي
+  // بدون تسعير: بالمتر + تقدير أعواد
   const fallback: { label: string; meters: number }[] = [
     { label: "حلق مفصلي", meters: materials.frameHingedM },
     { label: "حلق جرار", meters: materials.frameSlidingM },
@@ -242,13 +247,12 @@ function addProfileLines(
     { label: "تقابل سلك", meters: materials.meshMeetingM },
   ];
   for (const row of fallback) {
-    const bars = barsNeeded(row.meters, DEFAULT_BAR_LENGTH_M);
-    if (bars < 1) continue;
     addLine(map, {
       section: "profiles",
       label: row.label,
-      amount: bars,
-      unit: "عود",
+      amount: row.meters,
+      unit: "م",
+      barLengthM: DEFAULT_BAR_LENGTH_M,
       note: joinNotes(systemNote, `طول العود ${DEFAULT_BAR_LENGTH_M}م`, tint),
     });
   }
@@ -508,16 +512,12 @@ function addIronLines(map: Map<string, PurchaseLine>, iron: IronBreakdown | null
       line.lengthM > 0.0005 ? `طول العود ${barLen}م` : undefined
     );
     if (line.lengthM > 0.0005) {
-      const bars =
-        line.barsApprox != null && line.barsApprox > 0
-          ? Math.ceil(line.barsApprox)
-          : barsNeeded(line.lengthM, barLen);
-      if (bars < 1) continue;
       addLine(map, {
         section: "iron",
         label: line.label,
-        amount: bars,
-        unit: "عود",
+        amount: line.lengthM,
+        unit: "م",
+        barLengthM: barLen,
         note,
       });
     } else if (line.qty != null && line.qty > 0) {

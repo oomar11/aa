@@ -303,7 +303,7 @@ function PurchasePage({
                           borderBottom: "1px solid #e4e8ee",
                           color: "#6b7585",
                           fontWeight: 600,
-                          width: "18%",
+                          width: "28%",
                         }}
                       >
                         الكمية
