@@ -470,9 +470,7 @@ export function calcItemAccessories(
   let recessedHandleQty = 0;
 
   if (slidingBoxes.length > 0) {
-    const frameW = aabbWidth(slidingBoxes) || widthMm;
-    trackQty = details.tracksPerFrame;
-    trackLengthM = roundM(mmToM(trackQty * frameW));
+    // التراك بقى مع الحديد — مش هنا
     const depthMap = slidingSashDepthMap(boxes, panes);
 
     for (const box of slidingBoxes) {

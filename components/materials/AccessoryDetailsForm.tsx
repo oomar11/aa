@@ -323,7 +323,7 @@ export function AccessoryDetailsForm({
       {show("rules") ? (
         <Section
           title="قواعد الحساب"
-          hint="أرقام بسيطة: كام مفصلة · كام تراك · كام عجل"
+          hint="أرقام بسيطة: كام مفصلة · كام عجل"
           compact={compact}
         >
           <p className="text-[11px] font-bold text-foreground">مفصلي</p>
@@ -350,14 +350,10 @@ export function AccessoryDetailsForm({
             />
           </div>
 
-          <p className="pt-1 text-[11px] font-bold text-foreground">جرار</p>
+          <p className="pt-1 text-[11px] font-bold text-foreground">
+            جرار — التراك مع الحديد
+          </p>
           <div className="grid grid-cols-2 gap-2">
-            <NumberField
-              label="تراك على الحلق"
-              value={details.tracksPerFrame}
-              onChange={(v) => patchDetails({ tracksPerFrame: v })}
-              hint="بعرض الحلق"
-            />
             <NumberField
               label="عجل / ضلفة جرار"
               value={details.rollersPerSlidingSash}

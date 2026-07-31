@@ -141,17 +141,25 @@ export function MaterialsBar({
   const accessoryTotal = accessoryRows.some((r) => r.cost != null)
     ? accessoryRows.reduce((s, r) => s + (r.cost ?? 0), 0)
     : null;
+  const ironTotal =
+    ironBreakdown && ironBreakdown.totalCost > 0
+      ? ironBreakdown.totalCost
+      : ironRows.some((r) => r.cost != null)
+        ? ironRows.reduce((s, r) => s + (r.cost ?? 0), 0)
+        : null;
 
   const grandTotal =
     (profileTotal ?? 0) +
     (glassTotal ?? 0) +
     (meshTotal ?? 0) +
-    (accessoryTotal ?? 0);
+    (accessoryTotal ?? 0) +
+    (ironTotal ?? 0);
   const hasAnyCost =
     profileTotal != null ||
     glassTotal != null ||
     meshTotal != null ||
-    accessoryTotal != null;
+    accessoryTotal != null ||
+    ironTotal != null;
   const discountPct = discountPercent(discountId);
   const discountedTotal =
     hasAnyCost && discountPct > 0
@@ -252,7 +260,7 @@ export function MaterialsBar({
       ) : null}
 
       {ironRows.length > 0 ? (
-        <Section title="الحديد" total={null}>
+        <Section title="الحديد" total={ironTotal}>
           <RowsList rows={ironRows} />
         </Section>
       ) : null}
@@ -704,28 +712,6 @@ function buildAccessoryRows(
     "protruding-handle"
   );
 
-  if (breakdown.trackQty > 0) {
-    const brand = brandByCategoryId(brands, labels, "track");
-    const unit = accessoryBrandResolvedPrice(brand);
-    // التراك يتسعر بالمتر الطولي
-    const cost =
-      unit != null
-        ? Math.round(breakdown.trackLengthM * unit * 100) / 100
-        : null;
-    rows.push({
-      key: "track",
-      label: "تراك",
-      qty: `${formatCount(breakdown.trackQty)} · ${formatMeters(breakdown.trackLengthM)}`,
-      unitHint:
-        unit != null
-          ? `${unit} ج.م/م${brand ? ` · ${brand.name}` : ""}`
-          : brand
-            ? brand.name
-            : undefined,
-      cost,
-    });
-  }
-
   pushPiece("roller", "عجل جرار", breakdown.rollerQty, "roller");
   pushMeters("brush", "فرش", breakdown.brushLengthM, "brush");
 
@@ -782,33 +768,84 @@ function buildIronRows(
 ): MaterialRow[] {
   if (!breakdown || breakdown.totalM < 0.0005) return [];
   const rows: MaterialRow[] = [];
-  const frameM = breakdown.frameHingedM + breakdown.frameSlidingM;
-  const sashM =
-    breakdown.sashHingedM + breakdown.sashSlidingM + breakdown.sashDoorM;
-  if (frameM > 0.0005) {
+
+  const pushMeters = (
+    key: string,
+    label: string,
+    lengthM: number,
+    barsApprox?: number,
+    cost?: number | null
+  ) => {
+    if (lengthM < 0.0005) return;
     rows.push({
-      key: "iron-frame",
-      label: "حديد حلق",
-      qty: formatMeters(frameM),
-      cost: null,
+      key,
+      label,
+      qty:
+        barsApprox != null && barsApprox > 0
+          ? `${formatMeters(lengthM)} · ≈${barsApprox} عود`
+          : formatMeters(lengthM),
+      cost: cost != null && cost > 0 ? cost : null,
+    });
+  };
+
+  const lineOf = (role: string) =>
+    breakdown.lines.find((l) => l.role === role);
+
+  const frame = lineOf("frame");
+  pushMeters(
+    "iron-frame",
+    "حديد حلق",
+    breakdown.frameM,
+    frame?.barsApprox,
+    frame?.totalCost
+  );
+  const sash = lineOf("sash");
+  pushMeters(
+    "iron-sash",
+    "حديد ضلفة",
+    breakdown.sashM,
+    sash?.barsApprox,
+    sash?.totalCost
+  );
+  const mullion = lineOf("mullion");
+  pushMeters(
+    "iron-mullion",
+    "حديد سوقاس",
+    breakdown.mullionM,
+    mullion?.barsApprox,
+    mullion?.totalCost
+  );
+
+  if (breakdown.trackM > 0.0005 || breakdown.trackQty > 0) {
+    const track = lineOf("track");
+    rows.push({
+      key: "iron-track",
+      label: "تراك جرار",
+      qty: `${formatCount(breakdown.trackQty)} · ${formatMeters(breakdown.trackM)}`,
+      cost:
+        track?.totalCost != null && track.totalCost > 0
+          ? track.totalCost
+          : null,
+      unitHint:
+        track?.pricePerM != null ? `${track.pricePerM} ج.م/م` : undefined,
     });
   }
-  if (sashM > 0.0005) {
+
+  if (breakdown.hingeStripM > 0.0005 || breakdown.hingeStripQty > 0) {
+    const strip = lineOf("hinge-strip");
     rows.push({
-      key: "iron-sash",
-      label: "حديد ضلفة",
-      qty: formatMeters(sashM),
-      cost: null,
+      key: "iron-hinge-strip",
+      label: "شريحة مفصلة",
+      qty: `${formatCount(breakdown.hingeStripQty)} · ${formatMeters(breakdown.hingeStripM)}${
+        strip?.barsApprox ? ` · ≈${strip.barsApprox} عود` : ""
+      }`,
+      cost:
+        strip?.totalCost != null && strip.totalCost > 0
+          ? strip.totalCost
+          : null,
     });
   }
-  if (breakdown.mullionM > 0.0005) {
-    rows.push({
-      key: "iron-mullion",
-      label: "حديد سوقاس",
-      qty: formatMeters(breakdown.mullionM),
-      cost: null,
-    });
-  }
+
   if (rows.length === 0) {
     rows.push({
       key: "iron-total",
