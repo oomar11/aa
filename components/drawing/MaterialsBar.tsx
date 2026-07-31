@@ -808,12 +808,42 @@ function buildIronRows(
   const lineOf = (role: string) =>
     breakdown.lines.find((l) => l.role === role);
 
-  const frame = lineOf("frame");
-  pushMeters("iron-frame", "حديد حلق", breakdown.frameM, frame);
-  const sash = lineOf("sash");
-  pushMeters("iron-sash", "حديد ضلفة", breakdown.sashM, sash);
-  const mullion = lineOf("mullion");
-  pushMeters("iron-mullion", "حديد سوقاس", breakdown.mullionM, mullion);
+  pushMeters(
+    "iron-frame-hinged",
+    "حديد حلق مفصلي",
+    breakdown.frameHingedM,
+    lineOf("frame-hinged")
+  );
+  pushMeters(
+    "iron-frame-sliding",
+    "حديد حلق جرار",
+    breakdown.frameSlidingM,
+    lineOf("frame-sliding")
+  );
+  pushMeters(
+    "iron-sash-hinged",
+    "حديد ضلفة مفصلي شباك",
+    breakdown.sashHingedM,
+    lineOf("sash-hinged")
+  );
+  pushMeters(
+    "iron-sash-door",
+    "حديد ضلفة باب",
+    breakdown.sashDoorM,
+    lineOf("sash-door")
+  );
+  pushMeters(
+    "iron-sash-sliding",
+    "حديد ضلفة جرار",
+    breakdown.sashSlidingM,
+    lineOf("sash-sliding")
+  );
+  pushMeters(
+    "iron-mullion",
+    "حديد سوقاس",
+    breakdown.mullionM,
+    lineOf("mullion")
+  );
 
   if (breakdown.trackM > 0.0005 || breakdown.trackQty > 0) {
     const track = lineOf("track");

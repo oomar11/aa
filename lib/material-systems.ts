@@ -424,10 +424,13 @@ export type AccessorySystemDetails = {
   recessedHandlesPerRecessedSash: number;
 };
 
-/** دور عود الحديد — موحّد بدون مفصلي/جرار */
+/** دور عود الحديد — حلق/ضلفة حسب مفصلي أو جرار (وباب للشباك المفصلي) */
 export type IronPieceRole =
-  | "frame"
-  | "sash"
+  | "frame-hinged"
+  | "frame-sliding"
+  | "sash-hinged"
+  | "sash-door"
+  | "sash-sliding"
   | "mullion"
   | "track"
   | "hinge-strip";
@@ -437,8 +440,31 @@ export const IRON_PIECE_ROLES: {
   label: string;
   hint: string;
 }[] = [
-  { id: "frame", label: "حديد حلق", hint: "تسليح محيط الحلق" },
-  { id: "sash", label: "حديد ضلفة", hint: "تسليح محيط الضلفة" },
+  {
+    id: "frame-hinged",
+    label: "حديد حلق مفصلي",
+    hint: "تسليح محيط الحلق المفصلي",
+  },
+  {
+    id: "frame-sliding",
+    label: "حديد حلق جرار",
+    hint: "تسليح محيط الحلق الجرار",
+  },
+  {
+    id: "sash-hinged",
+    label: "حديد ضلفة مفصلي شباك",
+    hint: "تسليح ضلفة الشباك المفصلي/القلاب",
+  },
+  {
+    id: "sash-door",
+    label: "حديد ضلفة باب",
+    hint: "تسليح ضلفة الباب المفصلي",
+  },
+  {
+    id: "sash-sliding",
+    label: "حديد ضلفة جرار",
+    hint: "تسليح ضلفة الجرار",
+  },
   { id: "mullion", label: "حديد سوقاس", hint: "تسليح قوائم التقسيم" },
   { id: "track", label: "تراك جرار", hint: "تراكات على حلق الجرار" },
   {
@@ -448,17 +474,26 @@ export const IRON_PIECE_ROLES: {
   },
 ];
 
+/** أدوار الحديد المعروفة حاليًا */
+const IRON_ROLE_IDS = new Set<string>(IRON_PIECE_ROLES.map((r) => r.id));
+
+/**
+ * ترحيل أدوار قديمة:
+ * - frame / sash الموحّدين يتوزّعوا على الأنواع التفصيلية في migrateIronPieces
+ * - الأسماء القديمة المفصلي/الجرار تفضل كما هي
+ */
 const LEGACY_IRON_ROLE_MAP: Record<string, IronPieceRole> = {
-  "frame-hinged": "frame",
-  "frame-sliding": "frame",
-  "sash-hinged": "sash",
-  "sash-sliding": "sash",
-  "sash-door": "sash",
+  "frame-hinged": "frame-hinged",
+  "frame-sliding": "frame-sliding",
+  "sash-hinged": "sash-hinged",
+  "sash-sliding": "sash-sliding",
+  "sash-door": "sash-door",
   mullion: "mullion",
   track: "track",
   "hinge-strip": "hinge-strip",
-  frame: "frame",
-  sash: "sash",
+  // الموحّد القديم → نوزّعه في migrate (هنا نرجّع نوع أساسي مؤقت)
+  frame: "frame-hinged",
+  sash: "sash-hinged",
 };
 
 export function ironRoleLabel(role: IronPieceRole): string {
@@ -1064,19 +1099,46 @@ export function defaultIronDeductions(): IronDeductions {
 export function defaultIronPieces(): IronPiece[] {
   return [
     {
-      id: "iron-frame",
-      name: "حديد حلق",
-      role: "frame",
+      id: "iron-frame-hinged",
+      name: "حديد حلق مفصلي",
+      role: "frame-hinged",
       sectionWidthMm: 40,
       sectionHeightMm: 20,
       barLengthM: DEFAULT_BAR_LENGTH_M,
       enabled: true,
     },
     {
-      id: "iron-sash",
-      name: "حديد ضلفة",
-      role: "sash",
+      id: "iron-frame-sliding",
+      name: "حديد حلق جرار",
+      role: "frame-sliding",
+      sectionWidthMm: 40,
+      sectionHeightMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+    {
+      id: "iron-sash-hinged",
+      name: "حديد ضلفة مفصلي شباك",
+      role: "sash-hinged",
       sectionWidthMm: 35,
+      sectionHeightMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+    {
+      id: "iron-sash-door",
+      name: "حديد ضلفة باب",
+      role: "sash-door",
+      sectionWidthMm: 40,
+      sectionHeightMm: 20,
+      barLengthM: DEFAULT_BAR_LENGTH_M,
+      enabled: true,
+    },
+    {
+      id: "iron-sash-sliding",
+      name: "حديد ضلفة جرار",
+      role: "sash-sliding",
+      sectionWidthMm: 30,
       sectionHeightMm: 20,
       barLengthM: DEFAULT_BAR_LENGTH_M,
       enabled: true,
@@ -2235,7 +2297,7 @@ export function getDefaultCatalog(): MaterialCatalog {
         id: "iron-std",
         name: "حديد التسليح",
         notes:
-          "سيستم واحد لكل الشغل — حلق · ضلفة · سوقاس · تراك · شريحة مفصلة",
+          "سيستم واحد لكل الشغل — حلق مفصلي/جرار · ضلفة شباك/باب/جرار · تراك · شريحة مفصلة",
         isDefault: true,
         iron: defaultIronDetails(),
       },
@@ -2306,10 +2368,114 @@ function normalizePiece(raw: unknown): ProfilePiece | null {
 
 function normalizeIronRole(raw: unknown): IronPieceRole {
   if (typeof raw === "string") {
+    if (IRON_ROLE_IDS.has(raw)) return raw as IronPieceRole;
     const mapped = LEGACY_IRON_ROLE_MAP[raw];
     if (mapped) return mapped;
   }
-  return "frame";
+  return "frame-hinged";
+}
+
+function cloneIronPieceForRole(
+  source: IronPiece,
+  role: IronPieceRole,
+  def: IronPiece
+): IronPiece {
+  return {
+    ...def,
+    ...source,
+    role,
+    id: def.id,
+    name: def.name,
+  };
+}
+
+/**
+ * يوسّع العيدان الموحّدة القديمة (frame/sash) إلى مفصلي/جرار/باب،
+ * ويحافظ على التفاصيل والأسعار الموجودة.
+ */
+function migrateIronPieces(pieces: IronPiece[]): IronPiece[] {
+  const defaults = defaultIronPieces();
+  const byRole = new Map<IronPieceRole, IronPiece>();
+
+  // قطع خام قبل التطبيع الكامل للدور — نحتاج الـ role الأصلي من التخزين
+  const rawFrame: IronPiece[] = [];
+  const rawSash: IronPiece[] = [];
+
+  for (const piece of pieces) {
+    const rawRole = String(piece.role);
+    if (rawRole === "frame") {
+      rawFrame.push(piece);
+      continue;
+    }
+    if (rawRole === "sash") {
+      rawSash.push(piece);
+      continue;
+    }
+    const role = normalizeIronRole(piece.role);
+    const existing = byRole.get(role);
+    if (!existing) {
+      byRole.set(role, { ...piece, role });
+      continue;
+    }
+    if (!existing.enabled && piece.enabled) {
+      byRole.set(role, { ...piece, role });
+    } else if (existing.enabled === piece.enabled) {
+      const existingArea = existing.sectionWidthMm * existing.sectionHeightMm;
+      const nextArea = piece.sectionWidthMm * piece.sectionHeightMm;
+      if (nextArea > existingArea) byRole.set(role, { ...piece, role });
+      // لو نفس المقاس وواحد فيه سعر — فضّل المُسعَّر
+      else if (
+        nextArea === existingArea &&
+        (piece.barPrice ?? piece.pricePerM ?? 0) >
+          (existing.barPrice ?? existing.pricePerM ?? 0)
+      ) {
+        byRole.set(role, { ...piece, role });
+      }
+    }
+  }
+
+  const pickTemplate = (list: IronPiece[]): IronPiece | undefined => {
+    if (list.length === 0) return undefined;
+    return list.reduce((best, p) => {
+      const bestPrice = best.barPrice ?? best.pricePerM ?? 0;
+      const nextPrice = p.barPrice ?? p.pricePerM ?? 0;
+      if (nextPrice > bestPrice) return p;
+      if (!best.enabled && p.enabled) return p;
+      return best;
+    });
+  };
+
+  const frameTemplate = pickTemplate(rawFrame);
+  if (frameTemplate) {
+    for (const role of ["frame-hinged", "frame-sliding"] as const) {
+      if (!byRole.has(role)) {
+        const def = defaults.find((d) => d.role === role)!;
+        byRole.set(role, cloneIronPieceForRole(frameTemplate, role, def));
+      }
+    }
+  }
+
+  const sashTemplate = pickTemplate(rawSash);
+  if (sashTemplate) {
+    for (const role of ["sash-hinged", "sash-door", "sash-sliding"] as const) {
+      if (!byRole.has(role)) {
+        const def = defaults.find((d) => d.role === role)!;
+        byRole.set(role, cloneIronPieceForRole(sashTemplate, role, def));
+      }
+    }
+  }
+
+  return defaults.map((def) => {
+    const found = byRole.get(def.role);
+    if (!found) return def;
+    return {
+      ...def,
+      ...found,
+      role: def.role,
+      id: found.id?.startsWith("iron-") ? def.id : found.id || def.id,
+      name: def.name,
+    };
+  });
 }
 
 function normalizeIronPiece(raw: unknown): IronPiece | null {
@@ -2347,10 +2513,17 @@ function normalizeIronPiece(raw: unknown): IronPiece | null {
     pricePerM = profileBarPricePerM(barPrice, barLength);
   }
 
+  // احتفظ بـ frame/sash الموحّدين مؤقتًا عشان migrateIronPieces يوزّعهم
+  const rawRole = typeof p.role === "string" ? p.role.trim() : "";
+  const role: IronPieceRole | "frame" | "sash" =
+    rawRole === "frame" || rawRole === "sash"
+      ? rawRole
+      : normalizeIronRole(rawRole || "frame-hinged");
+
   return {
     id: p.id.trim(),
     name: p.name.trim(),
-    role: normalizeIronRole(p.role),
+    role: role as IronPieceRole,
     sectionWidthMm:
       Number.isFinite(sectionWidthMm) && sectionWidthMm >= 0
         ? sectionWidthMm
@@ -2430,43 +2603,6 @@ function normalizeIronDeductions(raw: unknown): IronDeductions {
   return { frame: frameNorm, sash, mullion, hingeStrip };
 }
 
-/** يدمج العيدان القديمة (مفصلي/جرار) في أدوار موحّدة ويضيف التراك وشريحة المفصلة */
-function migrateUnifiedIronPieces(pieces: IronPiece[]): IronPiece[] {
-  const defaults = defaultIronPieces();
-  const byRole = new Map<IronPieceRole, IronPiece>();
-
-  for (const piece of pieces) {
-    const role = normalizeIronRole(piece.role);
-    const existing = byRole.get(role);
-    if (!existing) {
-      byRole.set(role, { ...piece, role });
-      continue;
-    }
-    // فضّل المفعّل، ولو الاتنين مفعّلين خُد الأكبر مقطعاً
-    if (!existing.enabled && piece.enabled) {
-      byRole.set(role, { ...piece, role });
-    } else if (existing.enabled === piece.enabled) {
-      const existingArea = existing.sectionWidthMm * existing.sectionHeightMm;
-      const nextArea = piece.sectionWidthMm * piece.sectionHeightMm;
-      if (nextArea > existingArea) byRole.set(role, { ...piece, role });
-    }
-  }
-
-  return defaults.map((def) => {
-    const found = byRole.get(def.role);
-    if (!found) return def;
-    return {
-      ...def,
-      ...found,
-      role: def.role,
-      name: found.name?.includes("مفصلي") || found.name?.includes("جرار")
-        ? def.name
-        : found.name || def.name,
-      id: found.id || def.id,
-    };
-  });
-}
-
 function normalizeIronDetails(raw: unknown): IronSystemDetails {
   const fallback = defaultIronDetails();
   if (!raw || typeof raw !== "object") return fallback;
@@ -2483,9 +2619,7 @@ function normalizeIronDetails(raw: unknown): IronSystemDetails {
   }
   const tracksRaw = Number(d.tracksPerFrame);
   return {
-    pieces: migrateUnifiedIronPieces(
-      pieces.length > 0 ? pieces : fallback.pieces
-    ),
+    pieces: migrateIronPieces(pieces.length > 0 ? pieces : fallback.pieces),
     deductions: normalizeIronDeductions(d.deductions),
     tracksPerFrame:
       Number.isFinite(tracksRaw) && tracksRaw > 0
@@ -3330,7 +3464,7 @@ function collapseIronToSingleSystem(systems: MaterialSystem[]): MaterialSystem[]
         id: SINGLE_IRON_SYSTEM_ID,
         name: "حديد التسليح",
         notes:
-          "سيستم واحد لكل الشغل — حلق · ضلفة · سوقاس · تراك · شريحة مفصلة",
+          "سيستم واحد لكل الشغل — حلق مفصلي/جرار · ضلفة شباك/باب/جرار · تراك · شريحة مفصلة",
         isDefault: true,
         iron: defaultIronDetails(),
       },

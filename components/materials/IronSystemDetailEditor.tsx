@@ -253,7 +253,7 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
         <p className="mt-0.5 text-xs text-muted">
-          سيستم واحد لكل الشغل · تسعير بالعود · تراك · شريحة مفصلة
+          حلق مفصلي/جرار · ضلفة شباك/باب/جرار · تسعير بالعود
         </p>
       </div>
 
@@ -306,8 +306,8 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
       {tab === "pieces" ? (
         <section className="space-y-2">
           <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-            تسعير بالعود زي القطاعات: سعر العود ÷ طول العود = سعر المتر، ومنها
-            تكلفة التسليح في التصميم.
+            عيدان حسب النوع: حلق مفصلي/جرار · ضلفة مفصلي شباك · ضلفة باب ·
+            ضلفة جرار. التسعير بالعود = سعر العود ÷ الطول.
           </p>
           <ul className="overflow-hidden rounded-2xl border border-border bg-card">
             {IRON_PIECE_ROLES.map((role, i) => {
