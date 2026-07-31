@@ -48,7 +48,7 @@ import {
   getProjectById,
   type Project,
 } from "@/lib/projects";
-import { chunkReportItems } from "@/lib/project-pdf";
+import { chunkItemsByBudget } from "@/lib/project-pdf";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export type CostSectionId =
@@ -135,8 +135,11 @@ const SECTION_TITLE: Record<CostSectionId, string> = {
   iron: "الحديد",
 };
 
+export const COST_ITEMS_FIRST_PAGE = 6;
 export const COST_ITEMS_PER_PAGE = 12;
-export const COST_LINES_PER_PAGE = 18;
+export const COST_LINES_FIRST_PAGE = 10;
+export const COST_LINES_PER_PAGE = 15;
+export const COST_SECTION_COST = 2;
 
 function mergeCustomers(): Customer[] {
   if (typeof window === "undefined") return customers;
@@ -629,7 +632,15 @@ export function buildProjectEstimatedCost(
     beforeDiscount,
     afterDiscount,
     hasAnyCost,
-    summaryPages: chunkReportItems(itemSummaries, COST_ITEMS_PER_PAGE),
-    linePages: chunkReportItems(flatLines, COST_LINES_PER_PAGE),
+    summaryPages: chunkItemsByBudget(itemSummaries, {
+      firstPageBudget: COST_ITEMS_FIRST_PAGE,
+      nextPageBudget: COST_ITEMS_PER_PAGE,
+    }),
+    linePages: chunkItemsByBudget(flatLines, {
+      firstPageBudget: COST_LINES_FIRST_PAGE,
+      nextPageBudget: COST_LINES_PER_PAGE,
+      sectionCost: COST_SECTION_COST,
+      getSection: (line) => line.section,
+    }),
   };
 }

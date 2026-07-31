@@ -46,7 +46,7 @@ import {
   getProjectById,
   type Project,
 } from "@/lib/projects";
-import { chunkReportItems } from "@/lib/project-pdf";
+import { chunkItemsByBudget } from "@/lib/project-pdf";
 import { formatDate } from "@/lib/utils";
 
 export type PurchaseSectionId =
@@ -108,8 +108,13 @@ const SECTION_TITLE: Record<PurchaseSectionId, string> = {
   iron: "الحديد",
 };
 
-/** عدد أسطر الجدول تقريبًا في صفحة A4 (مع الهيدر والأقسام) */
-export const PURCHASE_LINES_PER_PAGE = 20;
+/**
+ * ميزانية أسطر الصفحة الأولى أصغر بسبب هيدر العميل/المشروع.
+ * عناوين الأقسام بتاخد وحدات إضافية في التقسيم.
+ */
+export const PURCHASE_LINES_FIRST_PAGE = 9;
+export const PURCHASE_LINES_PER_PAGE = 15;
+export const PURCHASE_SECTION_COST = 2;
 
 function mergeCustomers(): Customer[] {
   if (typeof window === "undefined") return customers;
@@ -621,7 +626,12 @@ export function buildProjectPurchaseOrder(
     itemCount: items.length,
     totalQty: items.reduce((s, i) => s + (i.qty || 1), 0),
     sections,
-    linePages: chunkReportItems(flat, PURCHASE_LINES_PER_PAGE),
+    linePages: chunkItemsByBudget(flat, {
+      firstPageBudget: PURCHASE_LINES_FIRST_PAGE,
+      nextPageBudget: PURCHASE_LINES_PER_PAGE,
+      sectionCost: PURCHASE_SECTION_COST,
+      getSection: (line) => line.section,
+    }),
   };
 }
 

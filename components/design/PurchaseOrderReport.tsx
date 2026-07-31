@@ -354,7 +354,12 @@ function PurchasePage({
                             borderBottom: "1px solid #eef1f5",
                             color: "#6b7585",
                             lineHeight: "16px",
+                            maxWidth: 180,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
                           }}
+                          title={line.note || undefined}
                         >
                           {line.note || "—"}
                         </td>

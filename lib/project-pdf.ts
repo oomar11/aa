@@ -171,3 +171,50 @@ export function chunkReportItems<T>(items: T[], size = REPORT_ITEMS_PER_PAGE): T
   }
   return pages;
 }
+
+/**
+ * تقسيم أسطر الجداول على صفحات A4 مع ميزانية أصغر للصفحة الأولى
+ * (هيدر كبير) واحتساب تكلفة عناوين الأقسام — عشان المحتوى متتقصّش.
+ */
+export function chunkItemsByBudget<T>(
+  items: T[],
+  options: {
+    firstPageBudget: number;
+    nextPageBudget: number;
+    /** وحدات إضافية لكل عنوان قسم جديد */
+    sectionCost?: number;
+    getSection?: (item: T) => string;
+  }
+): T[][] {
+  if (items.length === 0) return [[]];
+
+  const sectionCost = Math.max(0, options.sectionCost ?? 0);
+  const getSection = options.getSection;
+  const pages: T[][] = [];
+  let current: T[] = [];
+  let used = 0;
+  let budget = Math.max(1, options.firstPageBudget);
+  let lastSection: string | null = null;
+
+  for (const item of items) {
+    const section = getSection ? getSection(item) : "";
+    const newSection = Boolean(getSection) && section !== lastSection;
+    let cost = 1 + (newSection ? sectionCost : 0);
+
+    if (current.length > 0 && used + cost > budget) {
+      pages.push(current);
+      current = [];
+      used = 0;
+      lastSection = null;
+      budget = Math.max(1, options.nextPageBudget);
+      cost = 1 + (getSection ? sectionCost : 0);
+    }
+
+    current.push(item);
+    used += cost;
+    if (getSection) lastSection = section;
+  }
+
+  if (current.length > 0) pages.push(current);
+  return pages;
+}

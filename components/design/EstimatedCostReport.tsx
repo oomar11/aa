@@ -640,7 +640,17 @@ function LinesPage({
                         >
                           {costMoneyLabel(line.cost)}
                         </td>
-                        <td style={{ ...tdStyle(), color: "#6b7585" }}>
+                        <td
+                          style={{
+                            ...tdStyle(),
+                            color: "#6b7585",
+                            maxWidth: 160,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                          title={line.note || undefined}
+                        >
                           {line.note || "—"}
                         </td>
                       </tr>
