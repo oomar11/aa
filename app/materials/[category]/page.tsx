@@ -1,10 +1,7 @@
 import { notFound } from "next/navigation";
 import { MaterialCategoryShell } from "@/components/materials/MaterialCategoryShell";
 import { MaterialSystemsEditor } from "@/components/materials/MaterialSystemsEditor";
-import {
-  materialsGlassBreadcrumb,
-  materialsIronBreadcrumb,
-} from "@/lib/materials-navigation";
+import { materialsGlassBreadcrumb } from "@/lib/materials-navigation";
 import {
   MATERIAL_CATEGORIES,
   type MaterialCategory,
@@ -12,43 +9,23 @@ import {
 
 const VALID = new Set(MATERIAL_CATEGORIES.map((c) => c.id));
 
-const CATEGORY_META: Record<
-  Exclude<MaterialCategory, "profiles" | "accessories">,
-  { title: string; description: string }
-> = {
-  glass: {
-    title: "الزجاج",
-    description:
-      "كتالوج الزجاجات بالسعر للمتر — التدبيل والجورجيا أسعار عامة تحت.",
-  },
-  iron: {
-    title: "الحديد",
-    description: "أنظمة تسليح الحلق والضلفة والسوقاس — مفصلي وجرار.",
-  },
-};
-
 type Props = {
   params: Promise<{ category: string }>;
 };
 
+/** صفحات الفئات العامة — الزجاج فقط (الحديد والقطاعات والاكسسوار لهم صفحات مستقلة) */
 export default async function MaterialCategoryPage({ params }: Props) {
   const { category } = await params;
+  if (category !== "glass") notFound();
   if (!VALID.has(category as MaterialCategory)) notFound();
-  if (category === "accessories" || category === "profiles") notFound();
-
-  const meta = CATEGORY_META[category as keyof typeof CATEGORY_META];
-  const breadcrumb =
-    category === "glass"
-      ? materialsGlassBreadcrumb()
-      : materialsIronBreadcrumb();
 
   return (
     <MaterialCategoryShell
-      title={meta.title}
-      description={meta.description}
-      breadcrumb={breadcrumb}
+      title="الزجاج"
+      description="كتالوج الزجاجات بالسعر للمتر — التدبيل والجورجيا أسعار عامة تحت."
+      breadcrumb={materialsGlassBreadcrumb()}
     >
-      <MaterialSystemsEditor category={category as MaterialCategory} />
+      <MaterialSystemsEditor category="glass" />
     </MaterialCategoryShell>
   );
 }

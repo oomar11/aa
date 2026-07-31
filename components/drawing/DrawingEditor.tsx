@@ -45,7 +45,8 @@ import {
   type IronBreakdown,
 } from "@/lib/iron";
 import {
-  findSystem,
+  getIronSystem,
+  getIronSystemId,
   loadMaterialCatalog,
   MATERIAL_CATALOG_UPDATED,
 } from "@/lib/material-systems";
@@ -279,10 +280,9 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   }, [calcItem, catalogTick]);
 
   const ironBreakdown = useMemo((): IronBreakdown | null => {
-    if (!calcItem || !calcItem.ironId || calcItem.ironId === "none") return null;
+    if (!calcItem) return null;
     const catalog = loadMaterialCatalog();
-    const ironSystem = findSystem("iron", calcItem.ironId, catalog);
-    const raw = calcIronBreakdown(calcItem, ironSystem);
+    const raw = calcIronBreakdown(calcItem, getIronSystem(catalog));
     if (!raw) return null;
     return scaleIronBreakdown(raw, calcItem.qty);
   }, [calcItem, catalogTick]);
@@ -363,7 +363,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
         patch.glassFromProject ? undefined : patch.glassPane2Id,
       glassGeorgian:
         patch.glassFromProject ? undefined : patch.glassGeorgian,
-      ironId: patch.ironId,
+      ironId: getIronSystemId(),
       frameColor: patch.frameColor,
     });
     setSettingsOpen(false);

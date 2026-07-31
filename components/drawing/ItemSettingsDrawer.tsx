@@ -10,11 +10,15 @@ import {
 import {
   DISCOUNT_OPTIONS,
   loadAccessoryOptions,
-  loadIronOptions,
   loadSystemOptions,
   type DiscountId,
 } from "@/lib/item-catalogs";
-import { getDefaultGlassBottleId, getDefaultSystemId, glassBottleOptions, loadMaterialCatalog, findSystem, resolveGlassBottleId } from "@/lib/material-systems";
+import {
+  findSystem,
+  getIronSystemId,
+  glassBottleOptions,
+  loadMaterialCatalog,
+} from "@/lib/material-systems";
 import {
   projectAccessoryDisplayName,
   resolveItemGlassPane1Id,
@@ -55,11 +59,6 @@ type Props = {
   onConfirm: (patch: ItemSettingsPatch) => void;
 };
 
-function resolveIronId(item: DesignItem): string {
-  if (item.ironId && item.ironId !== "none") return item.ironId;
-  return getDefaultSystemId("iron");
-}
-
 function toDraft(
   item: DesignItem,
   projectDefaults?: ProjectMaterialDefaults | null
@@ -89,7 +88,7 @@ function toDraft(
     glassPane1Id: resolveItemGlassPane1Id(item, projectDefaults, catalog),
     glassPane2Id: resolveItemGlassPane2Id(item, projectDefaults),
     glassGeorgian: resolveItemGlassGeorgian(item, projectDefaults),
-    ironId: resolveIronId(item),
+    ironId: getIronSystemId(catalog),
     frameColor: (item.frameColor as FrameColorId) || "white",
   };
 }
@@ -111,7 +110,6 @@ export function ItemSettingsDrawer({
   );
   const [systemOpts, setSystemOpts] = useState<CatalogOpts>([]);
   const [accessoryOpts, setAccessoryOpts] = useState<CatalogOpts>([]);
-  const [ironOpts, setIronOpts] = useState<CatalogOpts>([]);
   const [bottleOpts, setBottleOpts] = useState<
     { id: string; label: string; pricePerSqm: number }[]
   >([]);
@@ -127,7 +125,6 @@ export function ItemSettingsDrawer({
     );
     setSystemOpts(loadSystemOptions());
     setAccessoryOpts(loadAccessoryOptions());
-    setIronOpts(loadIronOptions());
     setBottleOpts(glassBottleOptions());
   }, [open, item, projectDefaults]);
 
@@ -169,6 +166,7 @@ export function ItemSettingsDrawer({
       nameIsCustom: trimmed ? draft.nameIsCustom : false,
       specialPrice:
         parsed != null && Number.isFinite(parsed) && parsed > 0 ? parsed : null,
+      ironId: getIronSystemId(),
     });
   }
 
@@ -399,16 +397,11 @@ export function ItemSettingsDrawer({
           </Section>
 
           <Section title="الحديد">
-            <p className="mb-2 text-[11px] text-muted">
-              نظام التسليح — من الخامات ← حديد ← تفاصيل: عيّن نوع الحديد لكل
-              حلق/ضلفة/سوقاس (مفصلي أو جرار) والتخصيم ١٠ سم
+            <p className="text-[11px] leading-relaxed text-muted">
+              سيستم تسليح واحد لكل الشغل — مفصلي وجرار وقطاعات كلها بتتسلح
+              منه. الضبط من الخامات ← حديد (العيدان والتخصيم والتراك وشريحة
+              المفصلة).
             </p>
-            <RadioList
-              name="iron"
-              options={ironOpts}
-              value={draft.ironId}
-              onChange={(id) => setDraft((d) => ({ ...d, ironId: id }))}
-            />
           </Section>
 
           <Section title="لون الإطار">

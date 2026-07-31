@@ -6,6 +6,7 @@ import {
 import {
   findGlassBottle,
   findSystem,
+  getIronSystem,
   loadMaterialCatalog,
   type MaterialCatalog,
 } from "@/lib/material-systems";
@@ -61,9 +62,9 @@ export function reportMaterialRows(
     rows.push({ label: "الزجاج", value: glassLabel });
   }
 
-  if (mats.ironId && mats.ironId !== "none") {
-    const iron = findSystem("iron", mats.ironId, cat);
-    if (iron?.name) {
+  {
+    const iron = getIronSystem(cat);
+    if (iron.name) {
       rows.push({ label: "الحديد", value: iron.name });
     }
   }

@@ -1,6 +1,5 @@
 "use client";
 
-import { ScreenBack } from "@/components/layout/ScreenBack";
 import { MaterialSectionTabs } from "@/components/materials/MaterialSectionTabs";
 import { NumericInput } from "@/components/ui/NumericInput";
 import {
@@ -13,7 +12,7 @@ import {
   DEFAULT_BAR_LENGTH_M,
   defaultIronDetails,
   defaultIronDeductions,
-  findSystem,
+  getIronSystem,
   ironDeductionSummary,
   ironDeductionsFromOffsets,
   ironOffsetMmFromFormula,
@@ -21,6 +20,7 @@ import {
   IRON_PIECE_ROLES,
   loadMaterialCatalog,
   saveMaterialCatalog,
+  SINGLE_IRON_SYSTEM_ID,
   upsertSystem,
   type IronDeductions,
   type IronPiece,
@@ -32,7 +32,8 @@ import {
 import { ensureEqualsPrefix, evaluateFormula } from "@/lib/excel-formula";
 
 type Props = {
-  systemId: string;
+  /** يُتجاهل — الحديد سيستم واحد */
+  systemId?: string;
 };
 
 type IronTab = "meta" | "pieces" | "cuts";
@@ -109,7 +110,7 @@ function evalPreviewMm(
   return Math.max(0, Math.round(result.value));
 }
 
-export function IronSystemDetailEditor({ systemId }: Props) {
+export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
   const [catalog, setCatalog] = useState<MaterialCatalog | null>(null);
   const [system, setSystem] = useState<MaterialSystem | null>(null);
   const [systemName, setSystemName] = useState("");
@@ -124,7 +125,6 @@ export function IronSystemDetailEditor({ systemId }: Props) {
   const [previewW, setPreviewW] = useState(1200);
   const [previewH, setPreviewH] = useState(1400);
   const [flash, setFlash] = useState<string | null>(null);
-  const [missing, setMissing] = useState(false);
   const [tab, setTab] = useState<IronTab>("cuts");
 
   const showFlash = useCallback((msg: string) => {
@@ -136,11 +136,7 @@ export function IronSystemDetailEditor({ systemId }: Props) {
     queueMicrotask(() => {
       const cat = loadMaterialCatalog();
       setCatalog(cat);
-      const found = findSystem("iron", systemId, cat);
-      if (!found) {
-        setMissing(true);
-        return;
-      }
+      const found = getIronSystem(cat);
       const details = found.iron ?? defaultIronDetails();
       setSystem(found);
       setSystemName(found.name);
@@ -150,7 +146,7 @@ export function IronSystemDetailEditor({ systemId }: Props) {
       setTracksPerFrame(details.tracksPerFrame ?? 2);
       setOffsets(offsetsFromDeductions(details.deductions));
     });
-  }, [systemId]);
+  }, []);
 
   function persistIron(
     nextPieces: IronPiece[],
@@ -167,6 +163,7 @@ export function IronSystemDetailEditor({ systemId }: Props) {
     };
     const nextSystem: MaterialSystem = {
       ...system,
+      id: SINGLE_IRON_SYSTEM_ID,
       name: name.trim() || system.name,
       notes: notes.trim() || undefined,
       iron,
@@ -175,15 +172,13 @@ export function IronSystemDetailEditor({ systemId }: Props) {
       upsertSystem(catalog, "iron", nextSystem)
     );
     setCatalog(saved);
-    const refreshed = findSystem("iron", systemId, saved);
-    if (refreshed) {
-      setSystem(refreshed);
-      const details = refreshed.iron ?? defaultIronDetails();
-      setPieces(details.pieces);
-      setDeductions(details.deductions);
-      setTracksPerFrame(details.tracksPerFrame ?? 2);
-      setOffsets(offsetsFromDeductions(details.deductions));
-    }
+    const refreshed = getIronSystem(saved);
+    setSystem(refreshed);
+    const details = refreshed.iron ?? defaultIronDetails();
+    setPieces(details.pieces);
+    setDeductions(details.deductions);
+    setTracksPerFrame(details.tracksPerFrame ?? 2);
+    setOffsets(offsetsFromDeductions(details.deductions));
   }
 
   function saveMeta(e: FormEvent) {
@@ -204,17 +199,6 @@ export function IronSystemDetailEditor({ systemId }: Props) {
     const next = upsertPiece(pieces, role, patch);
     setPieces(next);
     persistIron(next, deductions);
-  }
-
-  if (missing) {
-    return (
-      <div className="space-y-3">
-        <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">
-          النظام مش موجود
-        </p>
-        <ScreenBack href="/materials/iron">رجوع للحديد</ScreenBack>
-      </div>
-    );
   }
 
   if (!system) {
@@ -265,7 +249,8 @@ export function IronSystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
         <p className="mt-0.5 text-xs text-muted">
-          حديد موحّد · تراك جرار · شريحة مفصلة
+          سيستم واحد لكل الشغل — مفصلي وجرار وقطاعات كلها بتتسلح منه · تراك ·
+          شريحة مفصلة
         </p>
       </div>
 

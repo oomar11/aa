@@ -635,7 +635,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "iron",
     label: "الحديد",
-    description: "تسليح موحّد · تراك · شريحة مفصلة",
+    description: "سيستم تسليح واحد لكل الشغل",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
   },
@@ -724,7 +724,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "iron",
     label: "الحديد",
-    description: "تسليح موحّد · تراك جرار · شريحة مفصلة",
+    description: "سيستم تسليح واحد · تراك · شريحة مفصلة",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
     href: "/materials/iron",
@@ -2181,27 +2181,11 @@ export function getDefaultCatalog(): MaterialCatalog {
     iron: [
       {
         id: "iron-std",
-        name: "حديد تسليح قياسي",
-        notes: "حديد موحّد للحلق والضلفة والسوقاس · تراك جرار · شريحة مفصلة",
+        name: "حديد التسليح",
+        notes:
+          "سيستم واحد لكل الشغل — حلق · ضلفة · سوقاس · تراك · شريحة مفصلة",
         isDefault: true,
         iron: defaultIronDetails(),
-      },
-      {
-        id: "iron-heavy",
-        name: "حديد تسليح ثقيل",
-        notes: "نفس الأدوار بمقطع أكبر",
-        iron: {
-          ...defaultIronDetails(),
-          pieces: defaultIronPieces().map((p) =>
-            p.role === "track"
-              ? p
-              : {
-                  ...p,
-                  sectionWidthMm: p.sectionWidthMm + 5,
-                  sectionHeightMm: p.sectionHeightMm + 5,
-                }
-          ),
-        },
       },
     ],
     glassRates: defaultGlassRates(),
@@ -3100,6 +3084,10 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
         merged = foldProfileBrandRatesIntoSystems(merged, profileBrands);
       }
 
+      if (cat.id === "iron") {
+        merged = collapseIronToSingleSystem(merged);
+      }
+
       next[cat.id] = merged;
     }
   }
@@ -3226,6 +3214,7 @@ export function getSystemsForCategory(
   catalog?: MaterialCatalog
 ): MaterialSystem[] {
   const source = catalog ?? loadMaterialCatalog();
+  if (category === "iron") return collapseIronToSingleSystem(source.iron ?? []);
   return source[category] ?? [];
 }
 
@@ -3233,6 +3222,7 @@ export function getDefaultSystemId(
   category: MaterialCategory,
   catalog?: MaterialCatalog
 ): string {
+  if (category === "iron") return getIronSystemId(catalog);
   const systems = getSystemsForCategory(category, catalog);
   const marked = systems.find((s) => s.isDefault);
   return marked?.id ?? systems[0]?.id ?? "none";
@@ -3243,8 +3233,69 @@ export function findSystem(
   id: string | undefined | null,
   catalog?: MaterialCatalog
 ): MaterialSystem | undefined {
+  if (category === "iron") {
+    // الحديد سيستم واحد — أي id (حتى القديم) يرجع النظام الوحيد
+    if (!id || id === "none") return getIronSystem(catalog);
+    return getIronSystem(catalog);
+  }
   if (!id || id === "none") return undefined;
   return getSystemsForCategory(category, catalog).find((s) => s.id === id);
+}
+
+export const SINGLE_IRON_SYSTEM_ID = "iron-std";
+
+/**
+ * الحديد سيستم واحد بس لكل الشغل — مفيش قياسي/ثقيل/اقتصادي.
+ * يحتفظ بأفضل تفاصيل موجودة ويوحّد المعرّف والاسم.
+ */
+function collapseIronToSingleSystem(systems: MaterialSystem[]): MaterialSystem[] {
+  if (systems.length === 0) {
+    return [
+      {
+        id: SINGLE_IRON_SYSTEM_ID,
+        name: "حديد التسليح",
+        notes:
+          "سيستم واحد لكل الشغل — حلق · ضلفة · سوقاس · تراك · شريحة مفصلة",
+        isDefault: true,
+        iron: defaultIronDetails(),
+      },
+    ];
+  }
+
+  const preferred =
+    systems.find((s) => s.id === SINGLE_IRON_SYSTEM_ID) ??
+    systems.find((s) => s.isDefault) ??
+    systems[0]!;
+
+  const details = preferred.iron ?? defaultIronDetails();
+
+  return [
+    {
+      ...preferred,
+      id: SINGLE_IRON_SYSTEM_ID,
+      name: "حديد التسليح",
+      notes:
+        preferred.notes?.trim() ||
+        "سيستم واحد لكل الشغل — حلق · ضلفة · سوقاس · تراك · شريحة مفصلة",
+      isDefault: true,
+      iron: details,
+    },
+  ];
+}
+
+/** النظام الوحيد للحديد — كل البنود بتتسلح منه */
+export function getIronSystem(
+  catalog?: MaterialCatalog
+): MaterialSystem {
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  const list = collapseIronToSingleSystem(cat.iron ?? []);
+  return list[0]!;
+}
+
+export function getIronSystemId(catalog?: MaterialCatalog): string {
+  return getIronSystem(catalog).id;
 }
 
 export function getProfileDetails(
@@ -3336,8 +3387,26 @@ export function upsertSystem(
   if (category === "accessories" && !toSave.accessory) {
     toSave = { ...toSave, accessory: defaultAccessoryDetails() };
   }
-  if (category === "iron" && !toSave.iron) {
-    toSave = { ...toSave, iron: defaultIronDetails() };
+  if (category === "iron") {
+    // سيستم واحد فقط — أي حفظ يحدّث نفس النظام ولا يضيف تاني
+    toSave = {
+      ...getIronSystem(catalog),
+      ...toSave,
+      id: SINGLE_IRON_SYSTEM_ID,
+      name: toSave.name.trim() || "حديد التسليح",
+      isDefault: true,
+      iron: toSave.iron ?? getIronSystem(catalog).iron ?? defaultIronDetails(),
+    };
+    return {
+      ...catalog,
+      iron: [
+        {
+          ...toSave,
+          id: SINGLE_IRON_SYSTEM_ID,
+          isDefault: true,
+        },
+      ],
+    };
   }
 
   const list = [...(catalog[category] ?? [])];
@@ -3365,10 +3434,7 @@ export function upsertSystem(
         category === "accessories"
           ? toSave.accessory ?? prev.accessory ?? defaultAccessoryDetails()
           : undefined,
-      iron:
-        category === "iron"
-          ? toSave.iron ?? prev.iron ?? defaultIronDetails()
-          : undefined,
+      iron: undefined,
     };
     nextList = list.map((s, i) => (i === idx ? merged : s));
   } else {
@@ -3389,14 +3455,9 @@ export function deleteSystem(
   category: MaterialCategory,
   id: string
 ): MaterialCatalog {
+  // الحديد سيستم واحد — ممنوع حذفه
+  if (category === "iron") return catalog;
   const nextList = (catalog[category] ?? []).filter((s) => s.id !== id);
-  if (
-    category === "iron" &&
-    nextList.length > 0 &&
-    !nextList.some((s) => s.isDefault)
-  ) {
-    nextList[0] = { ...nextList[0]!, isDefault: true };
-  }
   return { ...catalog, [category]: nextList };
 }
 
@@ -3428,6 +3489,10 @@ export function catalogOptionsFor(
   catalog?: MaterialCatalog
 ): { id: string; label: string }[] {
   const cat = catalog ?? (typeof window !== "undefined" ? loadMaterialCatalog() : getDefaultCatalog());
+  if (category === "iron") {
+    const iron = getIronSystem(cat);
+    return [{ id: iron.id, label: iron.name }];
+  }
   const systems = getSystemsForCategory(category, cat);
   return [
     { id: "none", label: "تجاهل" },

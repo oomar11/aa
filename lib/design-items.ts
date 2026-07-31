@@ -10,6 +10,7 @@ import {
   findMeshType,
   getDefaultGlassBottleId,
   getDefaultSystemId,
+  getIronSystemId,
   getMeshCategories,
   loadMaterialCatalog,
   resolveGlassBottleId,
@@ -445,8 +446,8 @@ export function createItemFromTemplate(
       projectDefaults.glassPane1Id ?? getDefaultGlassBottleId(catalog),
     glassPane2Id: projectDefaults.glassPane2Id,
     glassGeorgian: projectDefaults.glassGeorgian,
-    /** الحديد ثابت غالباً — يُملأ بالافتراضي عند فتح الإعدادات إن لزم */
-    ironId: "iron-std",
+    /** الحديد سيستم واحد — كل البنود بتتسلح منه */
+    ironId: getIronSystemId(catalog),
   };
   return { ...draft, name: suggestItemName(draft) };
 }

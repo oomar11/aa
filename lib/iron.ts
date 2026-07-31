@@ -21,6 +21,7 @@ import {
   calcCutSizes,
   defaultIronDetails,
   getCutDeductions,
+  getIronSystem,
   ironPieceForRole,
   ironRoleLabel,
   loadMaterialCatalog,
@@ -365,21 +366,16 @@ function emptyBreakdown(): IronBreakdown {
 
 /**
  * يحسب أطوال حديد التسليح للبند الواحد (بدون ضرب الكمية).
+ * الحديد سيستم واحد لكل الشغل — مش اختيار من قائمة أنظمة.
  */
 export function calcIronBreakdown(
   item: DesignItem,
-  ironSystem?: MaterialSystem | null,
+  ironSystemParam?: MaterialSystem | null,
   _profileSystem?: MaterialSystem | null
 ): IronBreakdown | null {
-  const ironId = item.ironId;
-  if (!ironId || ironId === "none") return null;
-
   const catalog =
     typeof window !== "undefined" ? loadMaterialCatalog() : undefined;
-  const system =
-    ironSystem ?? catalog?.iron.find((s) => s.id === ironId) ?? null;
-  if (!system) return null;
-
+  const system = ironSystemParam ?? getIronSystem(catalog);
   const details = system.iron ?? defaultIronDetails();
   const widthMm = Math.max(0, item.widthMm || 0);
   const heightMm = Math.max(0, item.heightMm || 0);
