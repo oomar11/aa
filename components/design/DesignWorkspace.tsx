@@ -19,6 +19,10 @@ import {
   type ProjectPdfExporterHandle,
 } from "@/components/design/ProjectPdfExporter";
 import {
+  EstimatedCostPdfExporter,
+  type EstimatedCostPdfExporterHandle,
+} from "@/components/design/EstimatedCostPdfExporter";
+import {
   PurchaseOrderPdfExporter,
   type PurchaseOrderPdfExporterHandle,
 } from "@/components/design/PurchaseOrderPdfExporter";
@@ -116,6 +120,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const pdfExporterRef = useRef<ProjectPdfExporterHandle>(null);
   const purchaseOrderRef = useRef<PurchaseOrderPdfExporterHandle>(null);
+  const estimatedCostRef = useRef<EstimatedCostPdfExporterHandle>(null);
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragPoint, setDragPoint] = useState({ x: 0, y: 0 });
@@ -206,6 +211,14 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         return;
       }
       void purchaseOrderRef.current.openShare();
+      return;
+    }
+    if (action === "estimated-cost") {
+      if (!estimatedCostRef.current) {
+        window.alert("تعذر فتح التكلفة التقديرية. حدّث الصفحة وحاول تاني.");
+        return;
+      }
+      void estimatedCostRef.current.openShare();
     }
   }
 
@@ -777,6 +790,12 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
           />
           <PurchaseOrderPdfExporter
             ref={purchaseOrderRef}
+            customerId={customerId}
+            projectId={projectId}
+            projectName={project?.name}
+          />
+          <EstimatedCostPdfExporter
+            ref={estimatedCostRef}
             customerId={customerId}
             projectId={projectId}
             projectName={project?.name}

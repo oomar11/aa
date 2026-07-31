@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
-export type ProjectReportAction = "purchase-order";
+export type ProjectReportAction = "purchase-order" | "estimated-cost";
 
 type Props = {
   disabled?: boolean;
@@ -10,7 +10,7 @@ type Props = {
 };
 
 /**
- * قائمة ⋮ لتقارير المشروع (طلبية مشتريات وغيرها لاحقًا).
+ * قائمة ⋮ لتقارير المشروع (طلبية مشتريات · تكلفة تقديرية).
  * زر المشاركة منفصل ويظل كما هو.
  */
 export function ProjectReportsMenu({ disabled, onSelect }: Props) {
@@ -71,6 +71,18 @@ export function ProjectReportsMenu({ disabled, onSelect }: Props) {
             }}
           >
             <span>طلبية مشتريات</span>
+            <span className="text-[10px] font-medium text-muted">PDF</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-right text-sm font-semibold transition-colors hover:bg-primary-soft"
+            onClick={() => {
+              setOpen(false);
+              onSelect("estimated-cost");
+            }}
+          >
+            <span>تكلفة المشروع التقديرية</span>
             <span className="text-[10px] font-medium text-muted">PDF</span>
           </button>
         </div>
