@@ -349,12 +349,35 @@ function buildProfileRows(
   materials: MaterialsBreakdown
 ): MaterialRow[] {
   if (breakdown?.hasPricing && breakdown.lines.length > 0) {
-    return breakdown.lines.map((line) => profileLineToRow(line));
+    return breakdown.lines.map((line) => {
+      const row = profileLineToRow(line);
+      if (line.category === "panel" && materials.panelStripCount > 0) {
+        return {
+          ...row,
+          label: "بنل",
+          sub: [
+            "عيدان عرض ١٥ سم",
+            `${materials.panelStripCount} عود`,
+            line.productName && line.productName !== "بنل عرض ١٥ سم"
+              ? line.productName
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        };
+      }
+      return row;
+    });
   }
 
   // بدون أسعار — أعرض الكميات فقط للأصناف الموجودة
-  const candidates: { key: string; label: string; qty: string; ok: boolean }[] =
-    [
+  const candidates: {
+    key: string;
+    label: string;
+    qty: string;
+    ok: boolean;
+    sub?: string;
+  }[] = [
       {
         key: "frame-h",
         label: "حلق مفصلي",
@@ -444,6 +467,10 @@ function buildProfileRows(
         label: "بنل",
         qty: formatMeters(materials.panelM),
         ok: materials.panelM > 0.0005,
+        sub:
+          materials.panelStripCount > 0
+            ? `عيدان عرض ١٥ سم · ${materials.panelStripCount} عود`
+            : "عيدان عرض ١٥ سم",
       },
       {
         key: "mesh-profile",
@@ -472,6 +499,7 @@ function buildProfileRows(
       label: c.label,
       qty: c.qty,
       cost: null,
+      sub: c.sub,
     }));
 }
 

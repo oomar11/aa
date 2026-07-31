@@ -11,6 +11,10 @@ import {
   type SlidingSashDepth,
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
+import {
+  panelBarLengthMm,
+  type PanelBarOrientation,
+} from "@/lib/panel-stripes";
 import type { LayoutNode } from "@/lib/window-layout";
 import {
   calcPaneGlassCostPerSqm,
@@ -78,8 +82,10 @@ export type MaterialsBreakdown = {
   beadDoubleHingedM: number;
   /** باكتة دبل جرار — متر طولي */
   beadDoubleSlidingM: number;
-  /** بنل — متر طولي (باكتة بنل) */
+  /** بنل — متر طولي (عيدان عرض ١٥ سم متجمّعة) */
   panelM: number;
+  /** عدد عيدان البنل */
+  panelStripCount: number;
   /** إجمالي الباكتة */
   beadM: number;
   /** مساحة الزجاج الفعلية م² (بدون بنل) */
@@ -163,6 +169,7 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     beadDoubleHingedM: 0,
     beadDoubleSlidingM: 0,
     panelM: 0,
+    panelStripCount: 0,
     beadM: 0,
     glassAreaSqm: 0,
     meshAreaSqm: 0,
@@ -221,6 +228,7 @@ type BeadTotalsMm = {
   doubleHingedMm: number;
   doubleSlidingMm: number;
   panelMm: number;
+  panelStripCount: number;
 };
 
 function addBeadMm(
@@ -239,12 +247,28 @@ function addBeadMm(
   }
 }
 
-function addPanelMm(totals: BeadTotalsMm, mm: number) {
-  if (mm <= 0) return;
-  totals.panelMm += mm;
+function panelOrientationFor(
+  opening: PaneOpening,
+  fallback: PanelBarOrientation = "horizontal"
+): PanelBarOrientation {
+  if (opening === "panel-v") return "vertical";
+  if (opening === "panel-h") return "horizontal";
+  return fallback;
 }
 
-/** باكتة وبنل حسب نوع الزجاج (سنجل/دبل) ونوع الضلفة */
+function addPanelBars(
+  totals: BeadTotalsMm,
+  widthMm: number,
+  heightMm: number,
+  orientation: PanelBarOrientation
+) {
+  const cut = panelBarLengthMm(widthMm, heightMm, orientation);
+  if (cut.totalMm <= 0) return;
+  totals.panelMm += cut.totalMm;
+  totals.panelStripCount += cut.stripCount;
+}
+
+/** باكتة حسب نوع الزجاج — البنل: عيدان ١٥ سم متجمّعة */
 function beadTotalsMm(
   boxes: PaneBox[],
   panes: Record<string, PaneConfig> | undefined,
@@ -261,6 +285,7 @@ function beadTotalsMm(
     doubleHingedMm: 0,
     doubleSlidingMm: 0,
     panelMm: 0,
+    panelStripCount: 0,
   };
 
   for (const box of boxes) {
@@ -282,7 +307,13 @@ function beadTotalsMm(
       box.opening === "panel-h" || box.opening === "panel-v";
 
     if (isLouver) {
-      addPanelMm(totals, panePerimeterMm(beadW, beadH));
+      // فتحة بنل: عيدان على مقاس الفتحة (العرض × الارتفاع)
+      addPanelBars(
+        totals,
+        box.w,
+        box.h,
+        panelOrientationFor(box.opening)
+      );
       continue;
     }
 
@@ -294,7 +325,7 @@ function beadTotalsMm(
       hasPanels && cells.every((_, i) => panelSet.has(i));
 
     if (solidFullPanel || allCellsPanel) {
-      addPanelMm(totals, panePerimeterMm(beadW, beadH));
+      addPanelBars(totals, beadW, beadH, "horizontal");
       continue;
     }
 
@@ -302,7 +333,7 @@ function beadTotalsMm(
       cells.forEach((cell, i) => {
         const peri = cellPerimeterMm(cell);
         if (panelSet.has(i)) {
-          addPanelMm(totals, peri);
+          addPanelBars(totals, cell.w, cell.h, "horizontal");
         } else {
           addBeadMm(totals, isSliding, isDoubleGlass, peri);
         }
@@ -1179,6 +1210,7 @@ export function calcItemMaterials(
   const beadDoubleHingedM = roundM(mmToM(beadMm.doubleHingedMm));
   const beadDoubleSlidingM = roundM(mmToM(beadMm.doubleSlidingMm));
   const panelM = roundM(mmToM(beadMm.panelMm));
+  const panelStripCount = beadMm.panelStripCount;
   const beadM = roundM(
     beadSingleHingedM +
       beadSingleSlidingM +
@@ -1207,6 +1239,7 @@ export function calcItemMaterials(
     beadDoubleHingedM,
     beadDoubleSlidingM,
     panelM,
+    panelStripCount,
     beadM,
     glassAreaSqm,
     meshAreaSqm,
@@ -1252,6 +1285,7 @@ export function scaleMaterials(
     beadDoubleHingedM: roundM(m.beadDoubleHingedM * q),
     beadDoubleSlidingM: roundM(m.beadDoubleSlidingM * q),
     panelM: roundM(m.panelM * q),
+    panelStripCount: m.panelStripCount * q,
     beadM: roundM(m.beadM * q),
     glassAreaSqm: roundM(m.glassAreaSqm * q),
     meshAreaSqm: roundM(m.meshAreaSqm * q),

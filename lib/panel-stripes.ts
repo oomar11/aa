@@ -1,5 +1,65 @@
 import { PANEL_STRIPE_MM } from "@/lib/design-items";
 
+/** اتجاه تجميع عيدان البنل (عرض العود ١٥ سم) */
+export type PanelBarOrientation = "horizontal" | "vertical";
+
+export type PanelBarCut = {
+  /** عدد العيدان */
+  stripCount: number;
+  /** طول العود الواحد (مم) */
+  stripLengthMm: number;
+  /** إجمالي الطول المطلوب (مم) */
+  totalMm: number;
+  /** عرض العود (مم) — ١٥ سم */
+  stripeMm: number;
+  orientation: PanelBarOrientation;
+};
+
+/**
+ * حساب أمتار عيدان البنل: عود عرض ١٥ سم بيتقطع ويتجمّع.
+ * — أفقي: العود بطول العرض، العدد = ارتفاع ÷ ١٥ سم (لأعلى)
+ * — رأسي: العود بطول الارتفاع، العدد = عرض ÷ ١٥ سم (لأعلى)
+ */
+export function panelBarLengthMm(
+  widthMm: number,
+  heightMm: number,
+  orientation: PanelBarOrientation,
+  stripeMm: number = PANEL_STRIPE_MM
+): PanelBarCut {
+  const w = Math.max(0, widthMm);
+  const h = Math.max(0, heightMm);
+  const stripe = Math.max(1, stripeMm);
+  if (w <= 0 || h <= 0) {
+    return {
+      stripCount: 0,
+      stripLengthMm: 0,
+      totalMm: 0,
+      stripeMm: stripe,
+      orientation,
+    };
+  }
+
+  if (orientation === "horizontal") {
+    const stripCount = Math.ceil(h / stripe);
+    return {
+      stripCount,
+      stripLengthMm: w,
+      totalMm: stripCount * w,
+      stripeMm: stripe,
+      orientation,
+    };
+  }
+
+  const stripCount = Math.ceil(w / stripe);
+  return {
+    stripCount,
+    stripLengthMm: h,
+    totalMm: stripCount * h,
+    stripeMm: stripe,
+    orientation,
+  };
+}
+
 /** مواضع خطوط البنل الساندوتش (نفس منطق panel-h / panel-v) */
 export function panelStripeLayout(
   span: number,

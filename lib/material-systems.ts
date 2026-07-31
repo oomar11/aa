@@ -63,7 +63,7 @@ export const PROFILE_PIECE_ROLES: {
   { id: "bead-double-hinged", label: "باكتة دبل مفصلي", group: "bead" },
   { id: "bead-single-sliding", label: "باكتة سنجل جرار", group: "bead" },
   { id: "bead-double-sliding", label: "باكتة دبل جرار", group: "bead" },
-  { id: "panel", label: "بنل", group: "panel" },
+  { id: "panel", label: "بنل (١٥ سم)", group: "panel" },
   { id: "other", label: "أخرى", group: "other" },
 ];
 
@@ -898,7 +898,7 @@ export function standardHingedProfilePieces(): ProfilePiece[] {
       id: "piece-panel",
       name: "بنل",
       role: "panel",
-      sectionWidthMm: 20,
+      sectionWidthMm: 150,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
     {
@@ -967,7 +967,7 @@ export function standardSlidingProfilePieces(): ProfilePiece[] {
       id: "piece-panel-s",
       name: "بنل",
       role: "panel",
-      sectionWidthMm: 9,
+      sectionWidthMm: 150,
       barLengthM: DEFAULT_BAR_LENGTH_M,
     },
   ];
@@ -1454,7 +1454,7 @@ export function cityPremierProfileBarRates(): Partial<
     mullion: r(875, 6.5, "قائم ثابت سوقاس"),
     "bead-single-hinged": r(208, 6, "باكتة 35مم"),
     "bead-double-hinged": r(165, 6, "باكتة 20مم"),
-    panel: r(165, 6, "باكتة بنل"),
+    panel: r(165, 6, "بنل عرض ١٥ سم"),
     coupling: r(240, 6, "كوبلن تجميع مفصلي/جرار"),
     // جرار
     "frame-sliding": r(1000, 6.5, "حلق جرار 3 سكة ببار 6سم"),
@@ -2351,8 +2351,14 @@ function migrateProfilePiece(piece: ProfilePiece): ProfilePiece {
   if (legacyBead && role === "bead-single-hinged") {
     name = profileRoleDefaultName("bead-single-hinged");
   }
-  if (role === "panel" && /مفصلي|جرار/i.test(name)) {
-    name = "بنل";
+  if (role === "panel") {
+    if (/مفصلي|جرار/i.test(name)) name = "بنل";
+    return {
+      ...piece,
+      role,
+      name,
+      sectionWidthMm: 150,
+    };
   }
   return { ...piece, role, name };
 }
