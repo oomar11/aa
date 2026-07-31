@@ -482,7 +482,9 @@ export function calcItemAccessories(
 
   const frameColorId = (item.frameColor ?? "white") as FrameColorId;
   const doorHandleColorLabel =
-    doorSignalHandleQty > 0
+    doorSignalHandleQty > 0 ||
+    doorEscutcheonQty > 0 ||
+    doorCylinderQty > 0
       ? FRAME_COLORS[frameColorId]?.label ?? frameColorId
       : null;
 

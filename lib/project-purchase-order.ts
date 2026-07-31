@@ -9,7 +9,11 @@ import {
   loadLocalCustomers,
   type Customer,
 } from "@/lib/customers";
-import type { DesignItem } from "@/lib/design-items";
+import {
+  FRAME_COLORS,
+  type DesignItem,
+  type FrameColorId,
+} from "@/lib/design-items";
 import {
   calcIronBreakdown,
   scaleIronBreakdown,
@@ -114,6 +118,21 @@ function roundAmount(n: number, unit: PurchaseUnit): number {
   return Math.round(n * 1000) / 1000;
 }
 
+/** لون إطار/ضلفة البند — للحجات اللي بيتطلب لونها */
+function itemFrameColorLabel(item: DesignItem): string {
+  const id = (item.frameColor ?? "white") as FrameColorId;
+  return FRAME_COLORS[id]?.label ?? id;
+}
+
+function joinNotes(...parts: Array<string | null | undefined>): string | undefined {
+  const text = parts.filter(Boolean).join(" · ");
+  return text || undefined;
+}
+
+function colorNote(colorLabel: string | null | undefined): string | undefined {
+  return colorLabel ? `لون: ${colorLabel}` : undefined;
+}
+
 function addLine(
   map: Map<string, PurchaseLine>,
   partial: Omit<PurchaseLine, "key"> & { key?: string }
@@ -159,9 +178,11 @@ function addProfileLines(
   cost: ProfileCostBreakdown | null,
   materials: MaterialsBreakdown,
   qty: number,
-  systemNote?: string
+  systemNote?: string,
+  frameColor?: string
 ) {
   const q = Math.max(1, qty || 1);
+  const tint = colorNote(frameColor);
   if (cost?.lines.length) {
     for (const line of cost.lines) {
       if (line.billing === "kit") {
@@ -170,7 +191,7 @@ function addProfileLines(
           label: line.label,
           amount: (line.qty ?? 0) * q,
           unit: "طقم",
-          note: [systemNote, line.productName].filter(Boolean).join(" · ") || undefined,
+          note: joinNotes(systemNote, line.productName, tint),
         });
       } else {
         addLine(map, {
@@ -178,10 +199,12 @@ function addProfileLines(
           label: line.label,
           amount: line.lengthM * q,
           unit: "م",
-          note:
-            [systemNote, line.productName, `عود ${line.barLengthM}م`]
-              .filter(Boolean)
-              .join(" · ") || undefined,
+          note: joinNotes(
+            systemNote,
+            line.productName,
+            `عود ${line.barLengthM}م`,
+            tint
+          ),
         });
       }
     }
@@ -214,7 +237,7 @@ function addProfileLines(
       label: row.label,
       amount: row.meters,
       unit: "م",
-      note: systemNote,
+      note: joinNotes(systemNote, tint),
     });
   }
   if (materials.bouclierCapQty > 0) {
@@ -223,7 +246,7 @@ function addProfileLines(
       label: "طبة بوكلير",
       amount: materials.bouclierCapQty,
       unit: "طقم",
-      note: systemNote,
+      note: joinNotes(systemNote, tint),
     });
   }
 }
@@ -320,11 +343,15 @@ function addMeshLines(
 
 function addAccessoryLines(
   map: Map<string, PurchaseLine>,
-  acc: AccessoriesBreakdown | null
+  acc: AccessoriesBreakdown | null,
+  frameColor?: string
 ) {
   if (!acc?.hasAccessories) return;
   const brandNote = (cat: keyof AccessoriesBreakdown["brandLabels"]) =>
     acc.brandLabels[cat] || acc.systemName || undefined;
+  /** لون المقابض ووش التسكيك = لون الإطار/الباب */
+  const handleTint =
+    colorNote(acc.doorHandleColorLabel) ?? colorNote(frameColor);
 
   addLine(map, {
     section: "accessories",
@@ -346,21 +373,14 @@ function addAccessoryLines(
     label: "مقبض إشارة",
     amount: acc.doorSignalHandleQty,
     unit: "قطعة",
-    note: [
-      brandNote("door-signal-handle"),
-      acc.doorHandleColorLabel
-        ? `لون الباب: ${acc.doorHandleColorLabel}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join(" · ") || undefined,
+    note: joinNotes(brandNote("door-signal-handle"), handleTint),
   });
   addLine(map, {
     section: "accessories",
     label: "وش تسكيك",
     amount: acc.doorEscutcheonQty,
     unit: "قطعة",
-    note: brandNote("door-escutcheon"),
+    note: joinNotes(brandNote("door-escutcheon"), handleTint),
   });
 
   for (const line of acc.hingedEspagnolettes) {
@@ -411,7 +431,7 @@ function addAccessoryLines(
     label: "مقبض بارز",
     amount: acc.protrudingHandleQty,
     unit: "قطعة",
-    note: brandNote("protruding-handle"),
+    note: joinNotes(brandNote("protruding-handle"), colorNote(frameColor)),
   });
   addLine(map, {
     section: "accessories",
@@ -459,7 +479,7 @@ function addAccessoryLines(
     label: "مقبض غاطس",
     amount: acc.recessedHandleQty,
     unit: "قطعة",
-    note: brandNote("recessed-handle"),
+    note: joinNotes(brandNote("recessed-handle"), colorNote(frameColor)),
   });
 }
 
@@ -504,15 +524,24 @@ function contributeItem(
     ? findSystem("profiles", systemId, catalog)
     : null;
   const systemNote = system?.name;
+  const frameColor = itemFrameColorLabel(item);
 
   const profileCost = calcProfileCostBreakdown(item, unitMats, catalog);
-  addProfileLines(map, profileCost, mats, qty, systemNote ?? undefined);
+  addProfileLines(
+    map,
+    profileCost,
+    mats,
+    qty,
+    systemNote ?? undefined,
+    frameColor
+  );
 
   addGlassLines(map, calcGlassBreakdown(item, catalog), mats, qty);
   addMeshLines(map, calcMeshBreakdown(item, catalog), mats, qty);
   addAccessoryLines(
     map,
-    scaleAccessories(calcItemAccessories(item, catalog, project), qty)
+    scaleAccessories(calcItemAccessories(item, catalog, project), qty),
+    frameColor
   );
 
   const ironRaw = calcIronBreakdown(item, getIronSystem(catalog));
