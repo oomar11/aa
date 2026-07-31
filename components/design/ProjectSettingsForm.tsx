@@ -16,8 +16,12 @@ import {
   getProjectById,
   upsertProjectOverride,
   type Project,
+  type ProjectWorkflow,
 } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
+import { WORKFLOW_LABELS, scheduleProjectWithDeposit } from "@/lib/workshop";
+import { NumericInput } from "@/components/ui/NumericInput";
+import { todayIsoDate } from "@/lib/accounting";
 
 type Props = {
   customerId: string;
@@ -29,8 +33,9 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
   const [project, setProject] = useState<Project | null>(null);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [status, setStatus] = useState<Project["status"]>("open");
+  const [workflow, setWorkflow] = useState<ProjectWorkflow>("quote");
   const [materials, setMaterials] = useState<ProjectMaterialDefaults>({});
+  const [depositAmount, setDepositAmount] = useState(0);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -40,7 +45,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
     setProject(found);
     setName(found.name);
     setAddress(found.location ?? "");
-    setStatus(found.status);
+    setWorkflow(found.workflow);
     const catalog = loadMaterialCatalog();
     const defaults = defaultProjectMaterialDefaults(catalog);
     setMaterials({
@@ -84,7 +89,8 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
       ...project,
       name: trimmedName,
       location: trimmedAddress,
-      status,
+      status: workflow === "done" ? "done" : "open",
+      workflow,
       ...materials,
     };
 
@@ -164,38 +170,80 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
       </label>
 
       <fieldset className="flex flex-col gap-2 text-right">
-        <legend className="text-sm font-medium text-foreground">الحالة</legend>
+        <legend className="text-sm font-medium text-foreground">
+          حالة المشروع
+        </legend>
         <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              "quote",
+              "queued",
+              "workshop",
+              "done",
+            ] as const satisfies readonly ProjectWorkflow[]
+          ).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                setWorkflow(key);
+                setSaved(false);
+              }}
+              className={`h-11 rounded-2xl border text-sm font-semibold transition-colors ${
+                workflow === key
+                  ? "border-primary bg-primary text-white"
+                  : "border-border bg-card text-foreground"
+              }`}
+            >
+              {WORKFLOW_LABELS[key]}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] leading-relaxed text-muted">
+          المقايسة متترفعش للورشة غير بعد استلام العربون — أو غيّر الحالة يدوي
+          من هنا.
+        </p>
+      </fieldset>
+
+      {workflow === "quote" ? (
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <h2 className="mb-2 text-sm font-bold text-foreground">
+            استلام عربون وجدولة
+          </h2>
+          <label className="flex flex-col gap-1.5 text-right">
+            <span className="text-xs font-medium">المبلغ (ج.م)</span>
+            <NumericInput
+              value={depositAmount}
+              onChange={setDepositAmount}
+              min={0}
+              blankZero
+              className={`${fieldClass} text-left`}
+              dir="ltr"
+            />
+          </label>
           <button
             type="button"
             onClick={() => {
-              setStatus("open");
-              setSaved(false);
+              if (depositAmount <= 0) {
+                setError("ادخل مبلغ العربون");
+                return;
+              }
+              scheduleProjectWithDeposit({
+                projectId,
+                amount: depositAmount,
+                date: todayIsoDate(),
+              });
+              setWorkflow("queued");
+              setDepositAmount(0);
+              setError("");
+              setSaved(true);
             }}
-            className={`h-11 rounded-2xl border text-sm font-semibold transition-colors ${
-              status === "open"
-                ? "border-primary bg-primary text-white"
-                : "border-border bg-card text-foreground"
-            }`}
+            className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white"
           >
-            مفتوح
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setStatus("done");
-              setSaved(false);
-            }}
-            className={`h-11 rounded-2xl border text-sm font-semibold transition-colors ${
-              status === "done"
-                ? "border-primary bg-primary text-white"
-                : "border-border bg-card text-foreground"
-            }`}
-          >
-            مكتمل
+            استلام عربون وإضافة للطابور
           </button>
         </div>
-      </fieldset>
+      ) : null}
 
       <div className="rounded-2xl border border-border bg-card p-4">
         <h2 className="mb-3 text-sm font-bold text-foreground">

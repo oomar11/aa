@@ -3,6 +3,7 @@
  *
  * التدفق الرئيسي:
  *   الرئيسية → آخر المشاريع + طلب جديد
+ *   الورشة → شغل الورشة الحالي + طابور العربون
  *   الطلبات → العملاء/المشاريع + طلب جديد → عميل → مشروع → بنود → رسم
  *   الحسابات → فواتير · تحصيل · مصروفات (+ بيانات الشركة)
  *   الخامات → (قطاعات | اكسسوار | زجاج | سلك | حديد)
@@ -10,6 +11,7 @@
 
 export const ROUTES = {
   home: "/",
+  workshop: "/workshop",
   profile: "/profile",
   settings: "/settings",
   settingsDesign: "/settings/design",
@@ -68,6 +70,13 @@ export const APP_SECTIONS = [
     description: "آخر المشاريع وطلب جديد",
     href: ROUTES.home,
     color: "#2B7DE9",
+  },
+  {
+    id: "workshop",
+    label: "الورشة",
+    description: "الشغل الحالي وطابور العربون",
+    href: ROUTES.workshop,
+    color: "#C45C26",
   },
   {
     id: "orders",

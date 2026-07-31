@@ -19,6 +19,7 @@ import {
 } from "@/lib/projects";
 import { formatCurrency, smartSearchMatch } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
+import { WORKFLOW_LABELS } from "@/lib/workshop";
 
 type Tab = "customers" | "projects";
 
@@ -108,8 +109,8 @@ function SearchIcon() {
   );
 }
 
-function statusLabel(status: Project["status"]): string {
-  return status === "open" ? "مفتوح" : "مكتمل";
+function statusLabel(project: Project): string {
+  return WORKFLOW_LABELS[project.workflow];
 }
 
 function mergeCustomers(): Customer[] {
@@ -212,7 +213,7 @@ export function OrdersBrowser() {
         smartSearchMatch(deferredQuery, [
           project.name,
           project.location,
-          statusLabel(project.status),
+          statusLabel(project),
         ])
       );
     });
@@ -235,7 +236,7 @@ export function OrdersBrowser() {
           smartSearchMatch(deferredQuery, [
             project.name,
             project.location,
-            statusLabel(project.status),
+            statusLabel(project),
           ])
         )
       ) {
@@ -252,7 +253,7 @@ export function OrdersBrowser() {
         return smartSearchMatch(deferredQuery, [
           project.name,
           project.location,
-          statusLabel(project.status),
+          statusLabel(project),
           customer?.name,
           customer?.phone,
         ]);
@@ -446,7 +447,7 @@ export function OrdersBrowser() {
                                           ) : null}
                                         </p>
                                         <p className="mt-0.5 text-xs text-muted">
-                                          {statusLabel(project.status)}
+                                          {statusLabel(project)}
                                           {projectSale > 0
                                             ? ` · بيع: ${formatCurrency(projectSale)} ج.م`
                                             : ""}
@@ -534,12 +535,14 @@ export function OrdersBrowser() {
                       </div>
                       <span
                         className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                          project.status === "open"
-                            ? "bg-primary-soft text-primary"
-                            : "bg-background text-muted"
+                          project.workflow === "workshop"
+                            ? "bg-primary text-white"
+                            : project.workflow === "queued"
+                              ? "bg-primary-soft text-primary"
+                              : "bg-background text-muted"
                         }`}
                       >
-                        {statusLabel(project.status)}
+                        {statusLabel(project)}
                       </span>
                     </div>
                     {projectSale > 0 ? (

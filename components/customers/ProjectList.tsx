@@ -16,6 +16,7 @@ import {
 } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { WORKFLOW_LABELS } from "@/lib/workshop";
 
 type Props = {
   customerId: string;
@@ -89,7 +90,7 @@ export function ProjectList({ customerId }: Props) {
   }
 
   const openCount = useMemo(
-    () => projectList.filter((p) => p.status === "open").length,
+    () => projectList.filter((p) => p.workflow !== "done").length,
     [projectList]
   );
 
@@ -171,12 +172,14 @@ export function ProjectList({ customerId }: Props) {
                     </div>
                     <span
                       className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                        project.status === "open"
-                          ? "bg-primary-soft text-primary"
-                          : "bg-background text-muted"
+                        project.workflow === "workshop"
+                          ? "bg-primary text-white"
+                          : project.workflow === "queued"
+                            ? "bg-primary-soft text-primary"
+                            : "bg-background text-muted"
                       }`}
                     >
-                      {project.status === "open" ? "مفتوح" : "مكتمل"}
+                      {WORKFLOW_LABELS[project.workflow]}
                     </span>
                   </div>
 

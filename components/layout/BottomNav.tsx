@@ -8,7 +8,7 @@ function HomeIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-6 w-6"
+      className="h-5 w-5"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -21,11 +21,31 @@ function HomeIcon({ active }: { active: boolean }) {
   );
 }
 
+function WorkshopIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 20h16" />
+      <path d="M6 20V10l6-4 6 4v10" />
+      <path d="M10 20v-4h4v4" />
+      <path d="M9 12h.01M15 12h.01" />
+    </svg>
+  );
+}
+
 function OrdersIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-6 w-6"
+      className="h-5 w-5"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -43,7 +63,7 @@ function AccountingIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-6 w-6"
+      className="h-5 w-5"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -61,7 +81,7 @@ function MaterialsIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-6 w-6"
+      className="h-5 w-5"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -83,6 +103,12 @@ const items = [
     label: "الرئيسية",
     Icon: HomeIcon,
     match: (p: string) => p === "/",
+  },
+  {
+    href: ROUTES.workshop,
+    label: "الورشة",
+    Icon: WorkshopIcon,
+    match: (p: string) => p.startsWith("/workshop"),
   },
   {
     href: ROUTES.orders,
@@ -111,21 +137,21 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-20">
       <div className="mx-auto w-full max-w-md border-t border-border bg-card/95 backdrop-blur-sm">
-        <div className="flex h-14 items-center justify-around px-2">
+        <div className="flex h-14 items-center justify-around px-1">
           {items.map(({ href, label, Icon, match }) => {
             const active = match(pathname);
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex min-w-14 flex-col items-center gap-0.5 transition-colors duration-300 ${
+                className={`flex min-w-12 flex-col items-center gap-0.5 transition-colors duration-300 ${
                   active ? "text-primary" : "text-muted"
                 }`}
                 aria-label={label}
                 aria-current={active ? "page" : undefined}
               >
                 <Icon active={active} />
-                <span className="text-[10px] font-medium">{label}</span>
+                <span className="text-[9px] font-medium">{label}</span>
               </Link>
             );
           })}

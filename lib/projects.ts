@@ -5,15 +5,48 @@ import {
 import type { ProjectMaterialDefaults } from "@/lib/project-materials";
 import { STORAGE_KEYS } from "@/lib/storage/keys";
 
+/**
+ * دورة حياة المشروع:
+ * - quote: مقايسة مرفوعة — لسه مشتغلناش فيها
+ * - queued: استلمنا عربون واتجدولت في طابور الورشة
+ * - workshop: شغّالين عليها في الورشة دلوقتي
+ * - done: خلصت
+ */
+export type ProjectWorkflow = "quote" | "queued" | "workshop" | "done";
+
 export type Project = {
   id: string;
   customerId: string;
   name: string;
   location?: string;
   createdAt: string;
+  /** توافق قديم: open ≈ مش مكتمل، done ≈ مكتمل */
   status: "open" | "done";
+  /** مصدر الحقيقة لمسار الورشة — يُستنتج من status لو مش موجود */
+  workflow: ProjectWorkflow;
+  /** تاريخ استلام العربون (بداية الجدولة) */
+  depositAt?: string;
+  /** إجمالي العربون المسجّل على المشروع */
+  depositAmount?: number;
+  /** ترتيب الطابور (أقل = أقرب للشغل) */
+  queueOrder?: number;
   itemsCount: number;
 } & ProjectMaterialDefaults;
+
+/** تطبيع مشروع قديم/ناقص لحقول الورشة */
+export function normalizeProject(project: Project): Project {
+  const legacy = project as Project & { workflow?: ProjectWorkflow };
+  let workflow = legacy.workflow;
+  if (!workflow) {
+    if (project.status === "done") workflow = "done";
+    else if (project.depositAt || (project.depositAmount ?? 0) > 0)
+      workflow = "queued";
+    else workflow = "quote";
+  }
+  const status: Project["status"] =
+    workflow === "done" ? "done" : "open";
+  return { ...project, workflow, status };
+}
 
 /** @deprecated استخدم STORAGE_KEYS.projects */
 export const PROJECTS_STORAGE_KEY = STORAGE_KEYS.projects;
@@ -28,6 +61,10 @@ export const projects: Project[] = [
     location: "المعادي",
     createdAt: "2026-07-18",
     status: "open",
+    workflow: "workshop",
+    depositAt: "2026-07-20",
+    depositAmount: 7500,
+    queueOrder: 1,
     itemsCount: 4,
   },
   {
@@ -37,6 +74,9 @@ export const projects: Project[] = [
     location: "المعادي",
     createdAt: "2026-05-10",
     status: "done",
+    workflow: "done",
+    depositAt: "2026-05-12",
+    depositAmount: 5000,
     itemsCount: 6,
   },
   {
@@ -46,6 +86,7 @@ export const projects: Project[] = [
     location: "المعادي",
     createdAt: "2026-03-02",
     status: "done",
+    workflow: "done",
     itemsCount: 2,
   },
   {
@@ -55,6 +96,7 @@ export const projects: Project[] = [
     location: "مدينة نصر",
     createdAt: "2026-06-02",
     status: "open",
+    workflow: "quote",
     itemsCount: 3,
   },
   {
@@ -64,6 +106,7 @@ export const projects: Project[] = [
     location: "مدينة نصر",
     createdAt: "2026-01-20",
     status: "done",
+    workflow: "done",
     itemsCount: 5,
   },
   {
@@ -73,6 +116,10 @@ export const projects: Project[] = [
     location: "الشيخ زايد",
     createdAt: "2026-07-22",
     status: "open",
+    workflow: "queued",
+    depositAt: "2026-07-25",
+    depositAmount: 10000,
+    queueOrder: 2,
     itemsCount: 8,
   },
   {
@@ -81,6 +128,7 @@ export const projects: Project[] = [
     name: "غرفة المعيشة",
     createdAt: "2026-04-11",
     status: "done",
+    workflow: "done",
     itemsCount: 2,
   },
   {
@@ -89,6 +137,7 @@ export const projects: Project[] = [
     name: "حمام الضيوف",
     createdAt: "2026-02-08",
     status: "done",
+    workflow: "done",
     itemsCount: 1,
   },
   {
@@ -98,6 +147,10 @@ export const projects: Project[] = [
     location: "6 أكتوبر",
     createdAt: "2026-05-14",
     status: "open",
+    workflow: "queued",
+    depositAt: "2026-05-20",
+    depositAmount: 22000,
+    queueOrder: 3,
     itemsCount: 12,
   },
   {
@@ -107,6 +160,7 @@ export const projects: Project[] = [
     location: "مصر الجديدة",
     createdAt: "2026-07-01",
     status: "open",
+    workflow: "quote",
     itemsCount: 4,
   },
   {
@@ -116,6 +170,7 @@ export const projects: Project[] = [
     location: "الجيزة",
     createdAt: "2026-04-28",
     status: "open",
+    workflow: "quote",
     itemsCount: 7,
   },
 ];
@@ -136,7 +191,9 @@ export function loadLocalProjects(): Project[] {
     const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as Project[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed)
+      ? parsed.map((p) => normalizeProject(p))
+      : [];
   } catch {
     return [];
   }
@@ -176,9 +233,9 @@ export function listAllProjects(): Project[] {
   const deleted = new Set(loadDeletedProjectIds());
   const local = loadLocalProjects().filter((p) => !deleted.has(p.id));
   const localIds = new Set(local.map((p) => p.id));
-  const seeded = projects.filter(
-    (p) => !localIds.has(p.id) && !deleted.has(p.id)
-  );
+  const seeded = projects
+    .filter((p) => !localIds.has(p.id) && !deleted.has(p.id))
+    .map((p) => normalizeProject(p));
   return [...local, ...seeded];
 }
 
@@ -193,10 +250,10 @@ export function getProjectsForCustomer(customerId: string): Project[] {
 
 export function getProjectById(projectId: string): Project | undefined {
   if (isProjectDeleted(projectId)) return undefined;
-  return (
+  const found =
     loadLocalProjects().find((p) => p.id === projectId) ??
-    projects.find((p) => p.id === projectId)
-  );
+    projects.find((p) => p.id === projectId);
+  return found ? normalizeProject(found) : undefined;
 }
 
 const ITEMS_STORAGE_KEY = STORAGE_KEYS.projectItems;
@@ -241,11 +298,13 @@ export function upsertProjectOverride(project: Project) {
   if (deleted.length !== previousDeleted.length) {
     saveDeletedProjectIds(deleted);
   }
-  const local = loadLocalProjects().filter((p) => p.id !== project.id);
+  const normalized = normalizeProject(project);
+  const local = loadLocalProjects().filter((p) => p.id !== normalized.id);
   localStorage.setItem(
     PROJECTS_STORAGE_KEY,
-    JSON.stringify([project, ...local])
+    JSON.stringify([normalized, ...local])
   );
+  notifyProjectsUpdated();
 }
 
 /** حذف نهائي للمشروع وبنوده من التخزين المحلي */

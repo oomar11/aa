@@ -2,6 +2,8 @@ import { STORAGE_KEYS } from "@/lib/storage/keys";
 
 export type PaymentMethod = "cash" | "transfer" | "cheque" | "other";
 
+export type PaymentKind = "payment" | "deposit";
+
 export type InvoiceLine = {
   id: string;
   description: string;
@@ -27,6 +29,10 @@ export type Payment = {
   id: string;
   customerId: string;
   invoiceId?: string;
+  /** ربط مباشر بمشروع (مهم لعربون المقايسة) */
+  projectId?: string;
+  /** عربون = يدخل المشروع طابور الورشة؛ payment = تحصيل عادي */
+  kind?: PaymentKind;
   amount: number;
   date: string;
   method: PaymentMethod;
@@ -128,11 +134,36 @@ const seedPayments: Payment[] = [
     id: "pay-1",
     customerId: "1",
     invoiceId: "inv-1",
+    projectId: "p1",
+    kind: "deposit",
     amount: 7500,
     date: "2026-07-20",
     method: "transfer",
-    note: "دفعة أولى",
+    note: "عربون",
     createdAt: "2026-07-20T12:00:00.000Z",
+  },
+  {
+    id: "pay-2",
+    customerId: "3",
+    projectId: "p6",
+    kind: "deposit",
+    amount: 10000,
+    date: "2026-07-25",
+    method: "cash",
+    note: "عربون",
+    createdAt: "2026-07-25T12:00:00.000Z",
+  },
+  {
+    id: "pay-3",
+    customerId: "4",
+    invoiceId: "inv-3",
+    projectId: "p9",
+    kind: "deposit",
+    amount: 22000,
+    date: "2026-05-20",
+    method: "transfer",
+    note: "عربون / دفعة أولى",
+    createdAt: "2026-05-20T12:00:00.000Z",
   },
 ];
 

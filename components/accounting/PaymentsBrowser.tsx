@@ -120,6 +120,7 @@ export function PaymentsBrowser() {
                       {customer?.name ?? "عميل"} · {formatDate(payment.date)}
                     </p>
                     <p className="mt-1 text-xs text-muted">
+                      {payment.kind === "deposit" ? "عربون · " : ""}
                       {PAYMENT_METHOD_LABELS[payment.method]}
                       {invoice ? ` · ${invoice.number}` : ""}
                       {payment.note ? ` · ${payment.note}` : ""}

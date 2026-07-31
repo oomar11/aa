@@ -50,6 +50,7 @@ export function NewProjectForm({ customerId }: Props) {
       location: trimmedAddress,
       createdAt: new Date().toISOString().slice(0, 10),
       status: "open",
+      workflow: "quote",
       itemsCount: 0,
       ...materials,
     };

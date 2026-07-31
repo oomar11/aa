@@ -8,12 +8,16 @@ import {
   type Customer,
 } from "@/lib/customers";
 import { loadCompany } from "@/lib/company";
-import { listAllProjects, type Project } from "@/lib/projects";
+import {
+  listAllProjects,
+  PROJECTS_UPDATED_EVENT,
+} from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
-
-function statusLabel(status: Project["status"]): string {
-  return status === "open" ? "مفتوح" : "مكتمل";
-}
+import {
+  getNextUpProject,
+  listWorkshopProjects,
+  WORKFLOW_LABELS,
+} from "@/lib/workshop";
 
 function mergeCustomers(): Customer[] {
   if (typeof window === "undefined") return customers;
@@ -25,26 +29,28 @@ function mergeCustomers(): Customer[] {
   ];
 }
 
-function mergeProjects(): Project[] {
-  return listAllProjects();
-}
-
 export function HomeDashboard() {
   const [companyName, setCompanyName] = useState(() =>
     typeof window === "undefined"
       ? "UPVC Design"
       : loadCompany().name || "UPVC Design"
   );
+  const [tick, setTick] = useState(0);
   const [allCustomers] = useState(mergeCustomers);
-  const [allProjects] = useState(mergeProjects);
 
   useEffect(() => {
     function refreshCompany() {
       setCompanyName(loadCompany().name || "UPVC Design");
     }
+    function refreshProjects() {
+      setTick((n) => n + 1);
+    }
     window.addEventListener("upvc-company-updated", refreshCompany);
-    return () =>
+    window.addEventListener(PROJECTS_UPDATED_EVENT, refreshProjects);
+    return () => {
       window.removeEventListener("upvc-company-updated", refreshCompany);
+      window.removeEventListener(PROJECTS_UPDATED_EVENT, refreshProjects);
+    };
   }, []);
 
   const customerById = useMemo(() => {
@@ -52,6 +58,8 @@ export function HomeDashboard() {
     for (const customer of allCustomers) map.set(customer.id, customer);
     return map;
   }, [allCustomers]);
+
+  const allProjects = useMemo(() => listAllProjects(), [tick]);
 
   const recentProjects = useMemo(() => {
     return [...allProjects]
@@ -62,22 +70,50 @@ export function HomeDashboard() {
       .slice(0, 5);
   }, [allProjects]);
 
+  const workshopCount = useMemo(() => listWorkshopProjects().length, [tick]);
+  const nextUp = useMemo(() => getNextUpProject(), [tick]);
+
   return (
     <div className="flex flex-col gap-5 px-4 pt-2">
       <section className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-[0_8px_24px_rgba(43,125,233,0.28)]">
         <p className="text-xs font-medium opacity-85">مرحباً بك في</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{companyName}</h1>
         <p className="mt-2 text-sm leading-relaxed opacity-90">
-          من هنا تبدأ طلب جديد، أو تفتح آخر المشاريع. الطلبات والحسابات والخامات
-          من الشريط تحت.
+          المقايسة من الطلبات — والورشة للشغل اللي عليه عربون. آخر المشاريع تحت.
         </p>
-        <Link
-          href={ROUTES.design.hub}
-          className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-white text-sm font-bold text-primary transition-all duration-300 hover:brightness-105 active:scale-[0.98]"
-        >
-          طلب جديد
-        </Link>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Link
+            href={ROUTES.design.hub}
+            className="flex h-12 items-center justify-center rounded-xl bg-white text-sm font-bold text-primary transition-all duration-300 hover:brightness-105 active:scale-[0.98]"
+          >
+            طلب جديد
+          </Link>
+          <Link
+            href={ROUTES.workshop}
+            className="flex h-12 items-center justify-center rounded-xl border border-white/40 bg-white/15 text-sm font-bold text-white transition-all duration-300 hover:bg-white/25 active:scale-[0.98]"
+          >
+            الورشة
+          </Link>
+        </div>
       </section>
+
+      <Link
+        href={ROUTES.workshop}
+        className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 active:scale-[0.99]"
+      >
+        <div className="min-w-0 text-right">
+          <p className="text-sm font-bold text-foreground">شغل الورشة</p>
+          <p className="mt-0.5 text-xs text-muted">
+            {workshopCount > 0
+              ? `${workshopCount} تحت التنفيذ`
+              : "مفيش شغل حالياً"}
+            {nextUp ? ` · التالي: ${nextUp.name}` : ""}
+          </p>
+        </div>
+        <span className="text-muted" aria-hidden>
+          ‹
+        </span>
+      </Link>
 
       <Link
         href={ROUTES.accounting.hub}
@@ -131,12 +167,16 @@ export function HomeDashboard() {
                       </div>
                       <span
                         className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          project.status === "open"
-                            ? "bg-primary-soft text-primary"
-                            : "bg-background text-muted"
+                          project.workflow === "workshop"
+                            ? "bg-primary text-white"
+                            : project.workflow === "queued"
+                              ? "bg-primary-soft text-primary"
+                              : project.workflow === "done"
+                                ? "bg-background text-muted"
+                                : "bg-background text-muted"
                         }`}
                       >
-                        {statusLabel(project.status)}
+                        {WORKFLOW_LABELS[project.workflow]}
                       </span>
                     </div>
                   </Link>
