@@ -30,8 +30,6 @@ export const ROUTES = {
       `/design/draw?customer=${customerId}&project=${projectId}&item=${itemId}`,
     projectSettings: (customerId: string, projectId: string) =>
       `/design/project-settings?customer=${customerId}&project=${projectId}`,
-    report: (customerId: string, projectId: string) =>
-      `/design/report?customer=${customerId}&project=${projectId}`,
   },
 
   accounting: {

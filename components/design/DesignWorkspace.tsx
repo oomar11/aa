@@ -106,7 +106,6 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   const [project, setProject] = useState<Project | undefined>();
   const [items, setItems] = useState<DesignItem[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [sharingPdf, setSharingPdf] = useState(false);
   const pdfExporterRef = useRef<ProjectPdfExporterHandle>(null);
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -181,17 +180,13 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     router.push(drawHref(item.id));
   }
 
-  async function handleShare() {
-    if (!customerId || !projectId || sharingPdf) return;
-    setSharingPdf(true);
-    try {
-      await pdfExporterRef.current?.sharePdf();
-    } catch (err) {
-      console.error(err);
-      window.alert("تعذر تجهيز ملف PDF. حاول مرة أخرى.");
-    } finally {
-      setSharingPdf(false);
+  function handleShare() {
+    if (!customerId || !projectId) return;
+    if (!pdfExporterRef.current) {
+      window.alert("تعذر بدء مشاركة PDF. حدّث الصفحة وحاول تاني.");
+      return;
     }
+    void pdfExporterRef.current.openShare();
   }
 
   const clearLongPress = useCallback(() => {
@@ -737,11 +732,11 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
           </Link>
           <button
             type="button"
-            onClick={() => void handleShare()}
-            disabled={sharingPdf || !customerId || !projectId}
+            onClick={handleShare}
+            disabled={!customerId || !projectId}
             className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:opacity-60"
-            aria-label={sharingPdf ? "جاري تجهيز PDF" : "مشاركة PDF"}
-            title={sharingPdf ? "جاري تجهيز PDF…" : "مشاركة PDF"}
+            aria-label="مشاركة PDF"
+            title="مشاركة PDF"
           >
             <ShareIcon />
           </button>
