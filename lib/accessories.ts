@@ -1,11 +1,16 @@
 /**
  * حساب اكسسوار المفصلي والجرار من إعدادات نظام الاكسسوار + رسم البند.
  *
- * مفصلي:
- * - مفصلات لكل ضلفة (٢ شباك / ٣ باب — من الإعدادات)
+ * مفصلي (شباك):
+ * - مفصلات لكل ضلفة (٢ — من الإعدادات)
  * - سبلونة مفصلي حسب ارتفاع ناحية المقبض
  * - سكاك مفصلي لكل سبلونة (كميات قابلة للتعديل)
  * - ضلفتين + بوكلير: سبلونة واحدة، سكاك بوكلير، ترباس + سكاك ترباس، مقبض بارز
+ *
+ * باب مفصلي:
+ * - مفصلات باب (٣ — من الإعدادات)
+ * - كالون + مقبض إشارة + وش تسكيك (من غير سبلونة/سكاك مفصلي)
+ * - لون المقبض = لون الإطار/الباب
  *
  * جرار:
  * - تراك ×٢ بعرض الحلق
@@ -16,8 +21,10 @@
  */
 
 import {
+  FRAME_COLORS,
   normalizePaneConfig,
   type DesignItem,
+  type FrameColorId,
   type PaneConfig,
   type PaneOpening,
 } from "@/lib/design-items";
@@ -72,6 +79,14 @@ export type AccessoriesBreakdown = {
   boltQty: number;
   bouclierBoltLockPieces: LockPieceLine[];
   protrudingHandleQty: number;
+  /** كالون — ضلفة باب مفصلي */
+  doorCylinderQty: number;
+  /** مقبض إشارة — ضلفة باب مفصلي */
+  doorSignalHandleQty: number;
+  /** وش تسكيك — ضلفة باب مفصلي */
+  doorEscutcheonQty: number;
+  /** لون مقبض الباب (= لون الإطار) */
+  doorHandleColorLabel: string | null;
 
   // ── جرار ───────────────────────────────────────────
   /** عدد قطع التراك (عادة ٢) */
@@ -144,6 +159,10 @@ function emptyBreakdown(systemName: string | null): AccessoriesBreakdown {
     boltQty: 0,
     bouclierBoltLockPieces: [],
     protrudingHandleQty: 0,
+    doorCylinderQty: 0,
+    doorSignalHandleQty: 0,
+    doorEscutcheonQty: 0,
+    doorHandleColorLabel: null,
     trackQty: 0,
     trackLengthM: 0,
     rollerQty: 0,
@@ -239,6 +258,9 @@ function hingedLocksetGroups(boxes: PaneBox[]): {
   bouclierPairs: { left: PaneBox; right: PaneBox; bouclier: PaneBox }[];
 } {
   const hinged = boxes.filter((b) => isHingedOpening(b.opening));
+  // الأبواب مفصليّة بس مش بتدخل في مجموعات البوكلير/السبلونة
+  const hingedWindows = hinged.filter((b) => !b.isDoor);
+  const hingedDoors = hinged.filter((b) => b.isDoor);
   const boucliers = boxes.filter((b) => b.bouclier && b.opening === "fixed");
   const used = new Set<string>();
   const bouclierPairs: {
@@ -249,7 +271,7 @@ function hingedLocksetGroups(boxes: PaneBox[]): {
 
   for (const mid of boucliers) {
     // يمين ويسار على نفس الصف تقريباً
-    const left = hinged
+    const left = hingedWindows
       .filter(
         (b) =>
           !used.has(b.id) &&
@@ -258,7 +280,7 @@ function hingedLocksetGroups(boxes: PaneBox[]): {
           Math.abs(b.x + b.w - mid.x) < 3
       )
       .sort((a, b) => b.x - a.x)[0];
-    const right = hinged
+    const right = hingedWindows
       .filter(
         (b) =>
           !used.has(b.id) &&
@@ -277,7 +299,8 @@ function hingedLocksetGroups(boxes: PaneBox[]): {
     bouclierPairs.push({ left, right, bouclier: mid });
   }
 
-  const solo = hinged.filter((b) => !used.has(b.id));
+  const soloWindows = hingedWindows.filter((b) => !used.has(b.id));
+  const solo = [...soloWindows, ...hingedDoors];
   return { solo, bouclierPairs };
 }
 
@@ -408,14 +431,22 @@ export function calcItemAccessories(
   let bouclierLocksetCount = 0;
   let boltQty = 0;
   let protrudingHandleQty = 0;
+  let doorCylinderQty = 0;
+  let doorSignalHandleQty = 0;
+  let doorEscutcheonQty = 0;
 
   const { solo, bouclierPairs } = hingedLocksetGroups(boxes);
   const espGap = details.espagnoletteSashDeductionMm;
 
   for (const box of solo) {
-    hingeQty += box.isDoor
-      ? details.hingesPerDoor
-      : details.hingesPerSash;
+    if (box.isDoor) {
+      hingeQty += details.hingesPerDoor;
+      doorCylinderQty += details.cylindersPerDoor;
+      doorSignalHandleQty += details.signalHandlesPerDoor;
+      doorEscutcheonQty += details.escutcheonsPerDoor;
+      continue;
+    }
+    hingeQty += details.hingesPerSash;
     const size = pickEspagnoletteSize(
       handleSideHeightMm(box),
       details.espagnoletteCatalog,
@@ -428,11 +459,9 @@ export function calcItemAccessories(
   }
 
   for (const pair of bouclierPairs) {
-    // مفصلات لكل ضلفة مفصلي في الزوج
+    // مفصلات لكل ضلفة شباك مفصلي في الزوج (الأبواب مش هنا)
     for (const leaf of [pair.left, pair.right]) {
-      hingeQty += leaf.isDoor
-        ? details.hingesPerDoor
-        : details.hingesPerSash;
+      hingeQty += details.hingesPerSash;
     }
     // سبلونة واحدة للزوج — المقاس من أطول ضلفة
     const sashH = Math.max(
@@ -450,6 +479,12 @@ export function calcItemAccessories(
     boltQty += details.boltsPerBouclier;
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
+
+  const frameColorId = (item.frameColor ?? "white") as FrameColorId;
+  const doorHandleColorLabel =
+    doorSignalHandleQty > 0
+      ? FRAME_COLORS[frameColorId]?.label ?? frameColorId
+      : null;
 
   const hingedLockPieces = lockPieceLines(
     details.hingedLockPieces,
@@ -520,6 +555,9 @@ export function calcItemAccessories(
     boltQty > 0 ||
     bouclierBoltLockPieces.length > 0 ||
     protrudingHandleQty > 0 ||
+    doorCylinderQty > 0 ||
+    doorSignalHandleQty > 0 ||
+    doorEscutcheonQty > 0 ||
     trackQty > 0 ||
     rollerQty > 0 ||
     brushLengthM > 0.0005 ||
@@ -537,6 +575,10 @@ export function calcItemAccessories(
     boltQty,
     bouclierBoltLockPieces,
     protrudingHandleQty,
+    doorCylinderQty,
+    doorSignalHandleQty,
+    doorEscutcheonQty,
+    doorHandleColorLabel,
     trackQty,
     trackLengthM,
     rollerQty,
@@ -568,6 +610,10 @@ export function scaleAccessories(
     boltQty: a.boltQty * q,
     bouclierBoltLockPieces: scaleLines(a.bouclierBoltLockPieces),
     protrudingHandleQty: a.protrudingHandleQty * q,
+    doorCylinderQty: a.doorCylinderQty * q,
+    doorSignalHandleQty: a.doorSignalHandleQty * q,
+    doorEscutcheonQty: a.doorEscutcheonQty * q,
+    doorHandleColorLabel: a.doorHandleColorLabel,
     trackQty: a.trackQty * q,
     trackLengthM: roundM(a.trackLengthM * q),
     rollerQty: a.rollerQty * q,

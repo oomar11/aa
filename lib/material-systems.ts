@@ -339,6 +339,9 @@ export type AccessoryBrandCategory =
   | "hinged-espagnolette"
   | "hinged-lock"
   | "protruding-handle"
+  | "door-cylinder"
+  | "door-signal-handle"
+  | "door-escutcheon"
   | "bouclier-lock"
   | "bouclier-bolt"
   | "bouclier-bolt-lock"
@@ -349,15 +352,20 @@ export type AccessoryBrandCategory =
   | "sliding-lock"
   | "recessed-handle";
 
+export type AccessoryBrandGroup = "hinged" | "door" | "bouclier" | "sliding";
+
 export const ACCESSORY_BRAND_CATEGORIES: {
   id: AccessoryBrandCategory;
   label: string;
-  group: "hinged" | "bouclier" | "sliding";
+  group: AccessoryBrandGroup;
 }[] = [
   { id: "hinge", label: "مفصلات", group: "hinged" },
   { id: "hinged-espagnolette", label: "سبلونة مفصلي", group: "hinged" },
   { id: "hinged-lock", label: "سكاك مفصلي", group: "hinged" },
   { id: "protruding-handle", label: "مقبض بارز", group: "hinged" },
+  { id: "door-cylinder", label: "كالون", group: "door" },
+  { id: "door-signal-handle", label: "مقبض إشارة", group: "door" },
+  { id: "door-escutcheon", label: "وش تسكيك", group: "door" },
   { id: "bouclier-lock", label: "سكاك بوكلير", group: "bouclier" },
   { id: "bouclier-bolt", label: "ترباس بوكلير", group: "bouclier" },
   { id: "bouclier-bolt-lock", label: "سكاك ترباس", group: "bouclier" },
@@ -416,6 +424,12 @@ export type AccessorySystemDetails = {
   bouclierBoltLockPieces: AccessoryLockPiece[];
   /** مقبض بارز لكل سبلونة */
   protrudingHandlesPerLockset: number;
+  /** كالون لكل ضلفة باب مفصلي */
+  cylindersPerDoor: number;
+  /** مقبض إشارة لكل ضلفة باب مفصلي */
+  signalHandlesPerDoor: number;
+  /** وش تسكيك لكل ضلفة باب مفصلي */
+  escutcheonsPerDoor: number;
 
   // ── جرار ───────────────────────────────────────────
   /** عدد قطع التراك على الحلق (٢ بعرض الحلق) */
@@ -1096,6 +1110,9 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     boltsPerBouclier: 2,
     bouclierBoltLockPieces: defaultBouclierBoltLockPieces(),
     protrudingHandlesPerLockset: 1,
+    cylindersPerDoor: 1,
+    signalHandlesPerDoor: 1,
+    escutcheonsPerDoor: 1,
     tracksPerFrame: 2,
     rollersPerSlidingSash: 2,
     brushSashPerimeterMultiplier: 2,
@@ -3180,6 +3197,18 @@ export function normalizeAccessoryDetails(
     protrudingHandlesPerLockset: normalizePositiveInt(
       o.protrudingHandlesPerLockset,
       fallback.protrudingHandlesPerLockset
+    ),
+    cylindersPerDoor: normalizePositiveInt(
+      o.cylindersPerDoor,
+      fallback.cylindersPerDoor
+    ),
+    signalHandlesPerDoor: normalizePositiveInt(
+      o.signalHandlesPerDoor,
+      fallback.signalHandlesPerDoor
+    ),
+    escutcheonsPerDoor: normalizePositiveInt(
+      o.escutcheonsPerDoor,
+      fallback.escutcheonsPerDoor
     ),
     tracksPerFrame: normalizePositiveInt(o.tracksPerFrame, fallback.tracksPerFrame),
     rollersPerSlidingSash: normalizePositiveInt(

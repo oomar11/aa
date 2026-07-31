@@ -111,6 +111,30 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "KayaPen — أبيض/بيج"
     ),
     brand(
+      "brand-vorne-door-cylinder",
+      "كالون باب",
+      "door-cylinder",
+      undefined,
+      undefined,
+      "كالون ضلفة الباب المفصلي — حدّث السعر"
+    ),
+    brand(
+      "brand-vorne-door-signal-handle",
+      "مقبض إشارة",
+      "door-signal-handle",
+      undefined,
+      undefined,
+      "لون المقبض = لون الباب"
+    ),
+    brand(
+      "brand-vorne-door-escutcheon",
+      "وش تسكيك",
+      "door-escutcheon",
+      undefined,
+      undefined,
+      "وش تسكيك ضلفة الباب المفصلي — حدّث السعر"
+    ),
+    brand(
       "brand-vorne-bouclier-lock",
       "سكاك مفصلي بوكلن",
       "bouclier-lock",

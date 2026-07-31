@@ -252,16 +252,18 @@ export function AccessoryDetailsForm({
           hint="عدّل السعر مباشرة — بيتطبّق على حساب تكلفة البند"
           compact={compact}
         >
-          {(["hinged", "bouclier", "sliding"] as const).map((group) => {
+          {(["hinged", "door", "bouclier", "sliding"] as const).map((group) => {
             const cats = ACCESSORY_BRAND_CATEGORIES.filter(
               (c) => c.group === group
             );
             const groupLabel =
               group === "hinged"
-                ? "مفصلي"
-                : group === "bouclier"
-                  ? "بوكلير"
-                  : "جرار";
+                ? "مفصلي (شباك)"
+                : group === "door"
+                  ? "باب مفصلي"
+                  : group === "bouclier"
+                    ? "بوكلير"
+                    : "جرار";
             return (
               <div key={group} className="space-y-2">
                 <p className="text-[11px] font-bold text-foreground">
@@ -349,6 +351,30 @@ export function AccessoryDetailsForm({
               onChange={(v) => patchDetails({ protrudingHandlesPerLockset: v })}
             />
           </div>
+
+          <p className="pt-1 text-[11px] font-bold text-foreground">
+            باب مفصلي — من غير سبلونة/سكاك
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <NumberField
+              label="كالون / باب"
+              value={details.cylindersPerDoor}
+              onChange={(v) => patchDetails({ cylindersPerDoor: v })}
+            />
+            <NumberField
+              label="مقبض إشارة / باب"
+              value={details.signalHandlesPerDoor}
+              onChange={(v) => patchDetails({ signalHandlesPerDoor: v })}
+            />
+            <NumberField
+              label="وش تسكيك / باب"
+              value={details.escutcheonsPerDoor}
+              onChange={(v) => patchDetails({ escutcheonsPerDoor: v })}
+            />
+          </div>
+          <p className="text-[10px] text-muted">
+            لون مقبض الإشارة يتبع لون إطار/باب البند
+          </p>
 
           <p className="pt-1 text-[11px] font-bold text-foreground">
             جرار — التراك مع الحديد

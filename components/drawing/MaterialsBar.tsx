@@ -671,6 +671,29 @@ function buildAccessoryRows(
 
   pushPiece("hinge", "مفصلات", breakdown.hingeQty, "hinge");
 
+  pushPiece("door-cylinder", "كالون", breakdown.doorCylinderQty, "door-cylinder");
+  if (breakdown.doorSignalHandleQty > 0.5) {
+    pushPiece(
+      "door-signal-handle",
+      "مقبض إشارة",
+      breakdown.doorSignalHandleQty,
+      "door-signal-handle"
+    );
+    const color = breakdown.doorHandleColorLabel;
+    const last = rows[rows.length - 1];
+    if (last && color) {
+      last.sub = last.sub
+        ? `${last.sub} · لون الباب: ${color}`
+        : `لون الباب: ${color}`;
+    }
+  }
+  pushPiece(
+    "door-escutcheon",
+    "وش تسكيك",
+    breakdown.doorEscutcheonQty,
+    "door-escutcheon"
+  );
+
   const hingedEspQty = breakdown.hingedEspagnolettes.reduce(
     (s, l) => s + l.qty,
     0

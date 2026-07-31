@@ -334,6 +334,35 @@ function addAccessoryLines(
     note: brandNote("hinge"),
   });
 
+  addLine(map, {
+    section: "accessories",
+    label: "كالون",
+    amount: acc.doorCylinderQty,
+    unit: "قطعة",
+    note: brandNote("door-cylinder"),
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "مقبض إشارة",
+    amount: acc.doorSignalHandleQty,
+    unit: "قطعة",
+    note: [
+      brandNote("door-signal-handle"),
+      acc.doorHandleColorLabel
+        ? `لون الباب: ${acc.doorHandleColorLabel}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || undefined,
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "وش تسكيك",
+    amount: acc.doorEscutcheonQty,
+    unit: "قطعة",
+    note: brandNote("door-escutcheon"),
+  });
+
   for (const line of acc.hingedEspagnolettes) {
     addLine(map, {
       section: "accessories",
