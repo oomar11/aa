@@ -27,10 +27,11 @@ export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
     throw new Error("لا توجد صفحات تقرير للتصدير");
   }
 
+  // مقاس A4 صريح بالمليمتر — متعتمدش على اسم format عشان بعض البيئات ترجع Letter
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: "a4",
+    format: [210, 297],
     compress: true,
   });
 

@@ -272,79 +272,121 @@ function ReportItemCard({
   const price = itemTotalPrice(item);
   const materials = reportMaterialRows(item, project, catalog).slice(0, 3);
 
+  const materialRows = Math.max(materials.length, 1);
+  const materialsBlockH = 16 + materialRows * 28;
+
   return (
-    <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[#d9e0ea] bg-white p-2.5">
-      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[#eef1f5] pb-1.5">
+    <article
+      className="h-full min-h-0 overflow-hidden rounded-lg border border-[#d9e0ea] bg-white"
+      style={{
+        display: "grid",
+        // الرسم يصغر؛ المقاسات والخامات ثابتين عشان متتقصّش/تتراكب
+        gridTemplateRows:
+          materials.length > 0
+            ? `auto minmax(72px, 1fr) auto ${materialsBlockH}px`
+            : "auto minmax(72px, 1fr) auto",
+        gap: 8,
+        padding: 10,
+        fontFamily:
+          'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif',
+      }}
+    >
+      <div className="flex items-start justify-between gap-2 border-b border-[#eef1f5] pb-1.5">
         <div className="min-w-0">
           <p
             className="text-[10px] font-semibold text-[#2b7de9]"
-            style={{ lineHeight: "14px" }}
+            style={{ lineHeight: "14px", margin: 0 }}
           >
             بند {index + 1}
           </p>
           <h4
             className="truncate text-[13px] font-bold text-[#152033]"
-            style={{ lineHeight: "18px" }}
+            style={{ lineHeight: "18px", margin: 0 }}
           >
             {name}
           </h4>
         </div>
         <p
           className="shrink-0 text-[12px] font-bold text-[#2b7de9]"
-          style={{ lineHeight: "18px" }}
+          style={{ lineHeight: "18px", margin: 0 }}
+          dir="ltr"
         >
-          {formatCurrency(Math.round(price))} ج.م
+          {formatCurrency(Math.round(price))}
+          <span style={{ marginInlineStart: 4 }}>ج.م</span>
         </p>
       </div>
 
-      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-        <div className="flex min-h-[110px] flex-1 items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-2">
-          <WindowPreview
-            style={item.style}
-            templateId={item.templateId}
-            layout={item.layout}
-            panes={item.panes}
-            frameColor={item.frameColor}
-            widthMm={item.widthMm}
-            heightMm={item.heightMm}
-            forceLight
-            showDimensions
-            unit={unit}
-            className="h-full w-auto max-h-full max-w-full"
-          />
-        </div>
-
-        <div className="grid shrink-0 grid-cols-2 gap-1.5 text-[10px]">
-          <Meta
-            label="المقاس"
-            value={formatSizePair(item.widthMm, item.heightMm, unit)}
-            ltr
-          />
-          <Meta label="العدد" value={String(item.qty)} />
-          <Meta label="المساحة" value={`${area.toFixed(2)} م²`} />
-          <Meta
-            label="سعر المتر"
-            value={`${formatCurrency(Math.round(item.pricePerSqm))} ج.م`}
-          />
-        </div>
-
-        {materials.length > 0 ? (
-          <dl className="grid shrink-0 gap-1 rounded-md bg-[#f7f9fc] px-2 py-1.5 text-[10px]">
-            {materials.map((row) => (
-              <div
-                key={row.label}
-                className="flex items-baseline justify-between gap-2"
-                style={{ lineHeight: "15px", minHeight: "15px" }}
-              >
-                <dt className="shrink-0 text-[#6b7585]">{row.label}</dt>
-                <dd className="truncate text-left font-semibold text-[#152033]">
-                  {row.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
+      <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-1.5">
+        <WindowPreview
+          style={item.style}
+          templateId={item.templateId}
+          layout={item.layout}
+          panes={item.panes}
+          frameColor={item.frameColor}
+          widthMm={item.widthMm}
+          heightMm={item.heightMm}
+          forceLight
+          showDimensions
+          unit={unit}
+          className="h-full w-auto max-h-full max-w-full"
+        />
       </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 6,
+        }}
+      >
+        <Meta
+          label="المقاس"
+          value={formatSizePair(item.widthMm, item.heightMm, unit)}
+          ltr
+        />
+        <Meta label="العدد" value={String(item.qty)} />
+        <Meta label="المساحة" value={`${area.toFixed(2)} م²`} ltr />
+        <Meta
+          label="سعر المتر"
+          value={`${formatCurrency(Math.round(item.pricePerSqm))} ج.م`}
+          ltr
+        />
+      </div>
+
+      {materials.length > 0 ? (
+        <div
+          style={{
+            background: "#f7f9fc",
+            borderRadius: 6,
+            padding: "6px 8px",
+            overflow: "hidden",
+            height: materialsBlockH,
+            boxSizing: "border-box",
+          }}
+        >
+          {materials.map((row) => (
+            <div
+              key={row.label}
+              style={{
+                display: "block",
+                fontSize: 11,
+                lineHeight: "28px",
+                height: 28,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                margin: 0,
+                padding: 0,
+              }}
+            >
+              <span style={{ color: "#6b7585" }}>{row.label}: </span>
+              <span style={{ color: "#152033", fontWeight: 700 }}>
+                {row.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -359,17 +401,43 @@ function Meta({
   ltr?: boolean;
 }) {
   return (
-    <div className="rounded-md bg-[#f7f9fc] px-1.5 py-1.5">
-      <p className="text-[9px] text-[#6b7585]" style={{ lineHeight: "13px" }}>
+    <div
+      style={{
+        background: "#f7f9fc",
+        borderRadius: 6,
+        padding: "6px 7px",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          color: "#6b7585",
+          fontSize: 9,
+          lineHeight: "14px",
+          height: 14,
+          margin: 0,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+        }}
+      >
         {label}
-      </p>
-      <p
-        className="mt-1 truncate font-semibold text-[#152033]"
-        style={{ lineHeight: "15px" }}
+      </div>
+      <div
+        style={{
+          marginTop: 5,
+          color: "#152033",
+          fontSize: 11,
+          fontWeight: 700,
+          lineHeight: "16px",
+          height: 16,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
         dir={ltr ? "ltr" : undefined}
       >
         {value}
-      </p>
+      </div>
     </div>
   );
 }

@@ -34,11 +34,11 @@ export function reportMaterialRows(
 
   const frameId = (item.frameColor ?? "white") as FrameColorId;
   const frameLabel = FRAME_COLORS[frameId]?.label ?? frameId;
-  rows.push({ label: "لون الإطار", value: frameLabel });
+  rows.push({ label: "اللون", value: frameLabel });
 
   const profile = findSystem("profiles", mats.systemId, cat);
   if (profile?.name) {
-    rows.push({ label: "نظام القطاعات", value: profile.name });
+    rows.push({ label: "القطاعات", value: profile.name });
   }
 
   let accessoryName: string | null = null;
