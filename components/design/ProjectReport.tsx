@@ -15,10 +15,7 @@ import {
 import { itemAreaSqm, itemTotalPrice } from "@/lib/design-items";
 import { suggestItemName } from "@/lib/item-naming";
 import { loadMaterialCatalog } from "@/lib/material-systems";
-import {
-  buildProjectPdfFile,
-  shareOrDownloadPdf,
-} from "@/lib/project-pdf";
+import { buildProjectPdfFile, sharePdfFile } from "@/lib/project-pdf";
 import { reportMaterialRows } from "@/lib/project-report";
 import { getItemsForProject, getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
@@ -92,10 +89,11 @@ export function ProjectReport({
     setSharingPdf(true);
     try {
       const file = await buildProjectPdfFile(sheetRef.current, project?.name);
-      await shareOrDownloadPdf(file, {
-        title: `تقرير مشروع${project ? ` — ${project.name}` : ""}`,
-        text: `تقرير مشروع UPVC${project ? ` — ${project.name}` : ""}`,
-      });
+      // ملف فقط — بدون text عشان التطبيقات متبعتش نص بدل PDF
+      await sharePdfFile(
+        file,
+        `تقرير مشروع${project ? ` — ${project.name}` : ""}`
+      );
     } catch (err) {
       console.error(err);
       window.alert("تعذر تجهيز ملف PDF. حاول مرة أخرى.");
