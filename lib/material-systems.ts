@@ -5,6 +5,11 @@ import {
   defaultVorneCategoryBrands,
   migrateVorneAccessoryBrands,
 } from "@/lib/accessory-price-list-2026";
+import {
+  IRON_PRICE_LIST_NOTES,
+  IRON_STOCK_BAR_LENGTH_M,
+  ironOfficialRateForRole,
+} from "@/lib/iron-price-list-2026";
 import type { MeshKind } from "@/lib/design-items";
 import {
   deductToFormula,
@@ -1097,79 +1102,51 @@ export function defaultIronDeductions(): IronDeductions {
 }
 
 export function defaultIronPieces(): IronPiece[] {
+  const piece = (
+    id: string,
+    name: string,
+    role: IronPieceRole,
+    sectionWidthMm: number,
+    sectionHeightMm: number
+  ): IronPiece => {
+    const rate = ironOfficialRateForRole(role);
+    const barLengthM = rate?.barLengthM ?? IRON_STOCK_BAR_LENGTH_M;
+    const barPrice = rate?.barPrice;
+    const pricePerM =
+      barPrice != null && barPrice > 0
+        ? profileBarPricePerM(barPrice, barLengthM)
+        : undefined;
+    return {
+      id,
+      name,
+      role,
+      sectionWidthMm,
+      sectionHeightMm,
+      barLengthM,
+      enabled: true,
+      barPrice: barPrice != null && barPrice > 0 ? barPrice : undefined,
+      pricePerM,
+      notes: rate
+        ? `${rate.code} · ${rate.label}`
+        : undefined,
+    };
+  };
+
   return [
-    {
-      id: "iron-frame-hinged",
-      name: "حديد حلق مفصلي",
-      role: "frame-hinged",
-      sectionWidthMm: 40,
-      sectionHeightMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-frame-sliding",
-      name: "حديد حلق جرار",
-      role: "frame-sliding",
-      sectionWidthMm: 40,
-      sectionHeightMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-sash-hinged",
-      name: "حديد ضلفة مفصلي شباك",
-      role: "sash-hinged",
-      sectionWidthMm: 35,
-      sectionHeightMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-sash-door",
-      name: "حديد ضلفة باب",
-      role: "sash-door",
-      sectionWidthMm: 40,
-      sectionHeightMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-sash-sliding",
-      name: "حديد ضلفة جرار",
-      role: "sash-sliding",
-      sectionWidthMm: 30,
-      sectionHeightMm: 20,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-mullion",
-      name: "حديد سوقاس",
-      role: "mullion",
-      sectionWidthMm: 30,
-      sectionHeightMm: 15,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-track",
-      name: "تراك جرار",
-      role: "track",
-      sectionWidthMm: 0,
-      sectionHeightMm: 0,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
-    {
-      id: "iron-hinge-strip",
-      name: "شريحة مفصلة",
-      role: "hinge-strip",
-      sectionWidthMm: 20,
-      sectionHeightMm: 3,
-      barLengthM: DEFAULT_BAR_LENGTH_M,
-      enabled: true,
-    },
+    piece("iron-frame-hinged", "حديد حلق مفصلي", "frame-hinged", 40, 20),
+    piece("iron-frame-sliding", "حديد حلق جرار", "frame-sliding", 40, 20),
+    piece(
+      "iron-sash-hinged",
+      "حديد ضلفة مفصلي شباك",
+      "sash-hinged",
+      35,
+      20
+    ),
+    piece("iron-sash-door", "حديد ضلفة باب", "sash-door", 40, 20),
+    piece("iron-sash-sliding", "حديد ضلفة جرار", "sash-sliding", 30, 20),
+    piece("iron-mullion", "حديد سوقاس", "mullion", 30, 15),
+    piece("iron-track", "تراك جرار (مجرى U)", "track", 0, 0),
+    piece("iron-hinge-strip", "شريحة مفصلة", "hinge-strip", 20, 3),
   ];
 }
 
@@ -2296,8 +2273,7 @@ export function getDefaultCatalog(): MaterialCatalog {
       {
         id: "iron-std",
         name: "حديد التسليح",
-        notes:
-          "سيستم واحد لكل الشغل — حلق مفصلي/جرار · ضلفة شباك/باب/جرار · تراك · شريحة مفصلة",
+        notes: IRON_PRICE_LIST_NOTES,
         isDefault: true,
         iron: defaultIronDetails(),
       },
@@ -2389,6 +2365,28 @@ function cloneIronPieceForRole(
   };
 }
 
+/** يملأ سعر القائمة الرسمية لو العود مفيش سعر عود محفوظ */
+function fillIronOfficialPrice(piece: IronPiece): IronPiece {
+  if ((piece.barPrice ?? 0) > 0) {
+    return {
+      ...piece,
+      pricePerM:
+        piece.pricePerM && piece.pricePerM > 0
+          ? piece.pricePerM
+          : profileBarPricePerM(piece.barPrice!, piece.barLengthM),
+    };
+  }
+  const rate = ironOfficialRateForRole(piece.role);
+  if (!rate) return piece;
+  return {
+    ...piece,
+    barLengthM: rate.barLengthM,
+    barPrice: rate.barPrice,
+    pricePerM: profileBarPricePerM(rate.barPrice, rate.barLengthM),
+    notes: piece.notes?.trim() || `${rate.code} · ${rate.label}`,
+  };
+}
+
 /**
  * يوسّع العيدان الموحّدة القديمة (frame/sash) إلى مفصلي/جرار/باب،
  * ويحافظ على التفاصيل والأسعار الموجودة.
@@ -2467,14 +2465,26 @@ function migrateIronPieces(pieces: IronPiece[]): IronPiece[] {
 
   return defaults.map((def) => {
     const found = byRole.get(def.role);
-    if (!found) return def;
-    return {
+    if (!found) return fillIronOfficialPrice(def);
+    return fillIronOfficialPrice({
       ...def,
       ...found,
       role: def.role,
       id: found.id?.startsWith("iron-") ? def.id : found.id || def.id,
       name: def.name,
-    };
+      // لو المحفوظ مفيهوش سعر — خليه من القائمة الافتراضية
+      barPrice:
+        (found.barPrice ?? 0) > 0 ? found.barPrice : def.barPrice,
+      pricePerM:
+        (found.barPrice ?? 0) > 0 || (found.pricePerM ?? 0) > 0
+          ? found.pricePerM ?? def.pricePerM
+          : def.pricePerM,
+      barLengthM:
+        (found.barPrice ?? 0) > 0
+          ? found.barLengthM
+          : def.barLengthM || found.barLengthM,
+      notes: found.notes?.trim() || def.notes,
+    });
   });
 }
 
@@ -2491,7 +2501,7 @@ function normalizeIronPiece(raw: unknown): IronPiece | null {
   const barLength =
     Number.isFinite(barLengthM) && barLengthM > 0
       ? barLengthM
-      : DEFAULT_BAR_LENGTH_M;
+      : IRON_STOCK_BAR_LENGTH_M;
 
   let barPrice: number | undefined =
     Number.isFinite(barPriceRaw) && barPriceRaw >= 0 ? barPriceRaw : undefined;
@@ -3463,8 +3473,7 @@ function collapseIronToSingleSystem(systems: MaterialSystem[]): MaterialSystem[]
       {
         id: SINGLE_IRON_SYSTEM_ID,
         name: "حديد التسليح",
-        notes:
-          "سيستم واحد لكل الشغل — حلق مفصلي/جرار · ضلفة شباك/باب/جرار · تراك · شريحة مفصلة",
+        notes: IRON_PRICE_LIST_NOTES,
         isDefault: true,
         iron: defaultIronDetails(),
       },
@@ -3483,9 +3492,7 @@ function collapseIronToSingleSystem(systems: MaterialSystem[]): MaterialSystem[]
       ...preferred,
       id: SINGLE_IRON_SYSTEM_ID,
       name: "حديد التسليح",
-      notes:
-        preferred.notes?.trim() ||
-        "سيستم واحد لكل الشغل — حلق مفصلي/جرار · ضلفة شباك/باب/جرار · تراك · شريحة مفصلة",
+      notes: preferred.notes?.trim() || IRON_PRICE_LIST_NOTES,
       isDefault: true,
       iron: details,
     },

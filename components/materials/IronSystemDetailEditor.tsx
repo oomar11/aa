@@ -306,8 +306,8 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
       {tab === "pieces" ? (
         <section className="space-y-2">
           <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-            عيدان حسب النوع: حلق مفصلي/جرار · ضلفة مفصلي شباك · ضلفة باب ·
-            ضلفة جرار. التسعير بالعود = سعر العود ÷ الطول.
+            أسعار قائمة يوليو 2026 (تسليم أرض المصنع). عدّل سعر العود أو الطول
+            لو احتجت — سعر المتر بيتحسب تلقائي.
           </p>
           <ul className="overflow-hidden rounded-2xl border border-border bg-card">
             {IRON_PIECE_ROLES.map((role, i) => {
