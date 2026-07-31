@@ -355,15 +355,7 @@ function buildProfileRows(
         return {
           ...row,
           label: "بنل",
-          sub: [
-            "عيدان عرض ١٥ سم",
-            `${materials.panelStripCount} عود`,
-            line.productName && line.productName !== "بنل عرض ١٥ سم"
-              ? line.productName
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" · "),
+          sub: `عيدان عرض ١٥ سم · ${materials.panelStripCount} عود`,
         };
       }
       return row;

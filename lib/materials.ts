@@ -307,13 +307,14 @@ function beadTotalsMm(
       box.opening === "panel-h" || box.opening === "panel-v";
 
     if (isLouver) {
-      // فتحة بنل: عيدان على مقاس الفتحة (العرض × الارتفاع)
+      // فتحة بنل: عيدان ١٥ سم + باكتة دبل لتثبيت البنل
       addPanelBars(
         totals,
         box.w,
         box.h,
         panelOrientationFor(box.opening)
       );
+      addBeadMm(totals, isSliding, true, panePerimeterMm(beadW, beadH));
       continue;
     }
 
@@ -325,7 +326,9 @@ function beadTotalsMm(
       hasPanels && cells.every((_, i) => panelSet.has(i));
 
     if (solidFullPanel || allCellsPanel) {
+      // بنل ساندوتش كامل: عيدان + باكتة دبل
       addPanelBars(totals, beadW, beadH, "horizontal");
+      addBeadMm(totals, isSliding, true, panePerimeterMm(beadW, beadH));
       continue;
     }
 
@@ -333,7 +336,9 @@ function beadTotalsMm(
       cells.forEach((cell, i) => {
         const peri = cellPerimeterMm(cell);
         if (panelSet.has(i)) {
+          // جزء بنل: عيدان + باكتة دبل
           addPanelBars(totals, cell.w, cell.h, "horizontal");
+          addBeadMm(totals, isSliding, true, peri);
         } else {
           addBeadMm(totals, isSliding, isDoubleGlass, peri);
         }

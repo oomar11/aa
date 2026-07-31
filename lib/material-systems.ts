@@ -1548,7 +1548,7 @@ export function normalizeProfileBrandRates(
     if (legacyPanel) {
       out.panel = {
         ...legacyPanel,
-        productName: legacyPanel.productName ?? "باكتة بنل",
+        productName: "بنل عرض ١٥ سم",
       };
     }
   }
@@ -2795,7 +2795,7 @@ function ensurePanelProfileRate(
     ...rates,
     panel: {
       ...fallback,
-      productName: fallback.productName ?? "باكتة بنل",
+      productName: "بنل عرض ١٥ سم",
     },
   };
 }
