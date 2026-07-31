@@ -440,6 +440,18 @@ function buildProfileRows(
         ok: materials.beadDoubleSlidingM > 0.0005,
       },
       {
+        key: "panel-h",
+        label: "بنل مفصلي",
+        qty: formatMeters(materials.panelHingedM),
+        ok: materials.panelHingedM > 0.0005,
+      },
+      {
+        key: "panel-s",
+        label: "بنل جرار",
+        qty: formatMeters(materials.panelSlidingM),
+        ok: materials.panelSlidingM > 0.0005,
+      },
+      {
         key: "mesh-profile",
         label: "ضلفة سلك جرار",
         qty: formatMeters(materials.meshSlidingProfileM),
