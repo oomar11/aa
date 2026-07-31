@@ -131,8 +131,9 @@ export function MeshCategoriesEditor() {
         <div>
           <h3 className="text-xs font-bold text-foreground">تصنيفات السلك</h3>
           <p className="mt-0.5 text-[11px] text-muted">
-            التصنيف اللي فيه «قطاع ضلفة» بيتحسب ضلفة سلك جرار + مساحة السلك +
-            عجل (٢/ضلفة) + مقبض لطش (١/ضلفة).
+            التصنيف اللي فيه «قطاع ضلفة» بيتحسب ضلفة سلك جرار إضافية فوق
+            الضلفة العادية والزجاج + مساحة السلك + عجل (٢/ضلفة) + مقبض لطش
+            (١/ضلفة).
           </p>
         </div>
         <button
@@ -171,7 +172,7 @@ export function MeshCategoriesEditor() {
                   </p>
                   <p className="text-[10px] text-muted">
                     {c.calcProfile
-                      ? "ضلفة + سلك + عجل + مقبض"
+                      ? "ضلفة سلك إضافية + عجل + مقبض"
                       : "مساحة سلك فقط"}
                     {c.defaultFor
                       ? ` · تلقائي: ${
@@ -232,7 +233,7 @@ export function MeshCategoriesEditor() {
               }
               className="h-4 w-4 accent-[var(--primary)]"
             />
-            يتحسب ضلفة سلك جرار + عجل ومقبض (زي الجرار)
+            يتحسب ضلفة سلك إضافية فوق الضلفة العادية + عجل ومقبض
           </label>
           <label className="block text-[11px] text-muted">
             الاختيار التلقائي من نوع الفتح

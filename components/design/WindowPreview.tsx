@@ -12,7 +12,6 @@ import {
   type PaneOpening,
   type WindowStyle,
 } from "@/lib/design-items";
-import { meshReplacesPaneGlass } from "@/lib/materials";
 import {
   collectMullionRects,
   collectPaneRects,
@@ -262,7 +261,6 @@ export function WindowPreview({
         const isLouver =
           cfg.opening === "panel-h" || cfg.opening === "panel-v";
         const isExhaust = cfg.opening === "exhaust";
-        const screenSash = meshReplacesPaneGlass(cfg, cfg.opening);
 
         return (
           <g key={p.id}>
@@ -271,15 +269,7 @@ export function WindowPreview({
               y={gy}
               width={gw}
               height={gh}
-              fill={
-                isLouver || isExhaust
-                  ? frameFill
-                  : screenSash
-                    ? isDark
-                      ? "#3d4f5f"
-                      : "#dce6ee"
-                    : glass
-              }
+              fill={isLouver || isExhaust ? frameFill : glass}
               stroke={frameStroke}
               strokeWidth={0.6}
             />

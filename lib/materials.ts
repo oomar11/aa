@@ -954,19 +954,13 @@ function paneFillAreaMm2(
   return mm2;
 }
 
-/** ضلفة سلك جرار (قطاع) — السلك يستبدل الزجاج. باقي الأنواع سلك فوق الزجاج */
+/** السلك دائمًا فوق الضلفة العادية — مش بيستبدل الزجاج ولا قطاع الضلفة */
 export function meshReplacesPaneGlass(
-  cfg: PaneConfig,
-  opening: PaneOpening,
-  catalog?: MaterialCatalog
+  _cfg: PaneConfig,
+  _opening: PaneOpening,
+  _catalog?: MaterialCatalog
 ): boolean {
-  const norm = normalizePaneConfig(cfg);
-  if (!norm.mesh) return false;
-  const cat =
-    catalog ??
-    (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
-  const kind = resolvePaneMeshKind(norm, opening, cat);
-  return meshCategoryCalcProfile(kind, cat);
+  return false;
 }
 
 /** مساحة الزجاج الفعلية داخل الضلفة (مم²) — بدون بنل · بعد تخصيم الباكتة/الزجاج */

@@ -378,7 +378,7 @@ export function PanePropertiesModal({
                       meshKindManual={draft.meshKindManual}
                       categoryOpts={meshCategoryOpts}
                       meshOpts={meshOpts}
-                      hint="فعّل السلك يدوي. النوع بيتحدد تلقائي من نوع الفتح وتقدر تغيّره. سلك الجرار (ضلفة سلك) بيستبدل الزجاج — باقي الأنواع سلك فوق الزجاج، مش على البنل."
+                      hint="فعّل السلك يدوي. النوع بيتحدد تلقائي من نوع الفتح وتقدر تغيّره. السلك بيتحسب مع الضلفة العادية والزجاج — مش بدلهم، ومش على البنل."
                       onChange={(next) =>
                         setDraft((d) => ({ ...d, ...next }))
                       }
