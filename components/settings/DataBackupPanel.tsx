@@ -1,9 +1,18 @@
 "use client";
 
 import { useRef, useState } from "react";
+import {
+  CLEAN_START_VERSION,
+  clearBusinessData,
+  DATA_VERSION_KEY,
+} from "@/lib/clean-start";
 import { STORAGE_KEYS } from "@/lib/storage/keys";
 
-const BACKUP_KEYS = Object.values(STORAGE_KEYS);
+const BACKUP_KEYS = [
+  ...Object.values(STORAGE_KEYS),
+  "upvc-deleted-customers",
+  DATA_VERSION_KEY,
+];
 
 type BackupPayload = {
   version: 1;
@@ -24,10 +33,6 @@ export function DataBackupPanel() {
     for (const key of BACKUP_KEYS) {
       data[key] = localStorage.getItem(key);
     }
-    // مفاتيح إضافية (عملاء محذوفون)
-    data["upvc-deleted-customers"] = localStorage.getItem(
-      "upvc-deleted-customers"
-    );
 
     const payload: BackupPayload = {
       version: 1,
@@ -110,21 +115,19 @@ export function DataBackupPanel() {
           onClick={() => {
             if (
               !window.confirm(
-                "هل تريد مسح كل البيانات المحلية على هذا الجهاز والبدء من جديد؟ صدّر نسخة أولاً إن لزم."
+                "هل تريد مسح العملاء والمشاريع والحسابات والبدء من جديد؟ إعدادات الشركة والخامات تبقى."
               )
             ) {
               return;
             }
-            for (const key of BACKUP_KEYS) {
-              localStorage.removeItem(key);
-            }
-            localStorage.removeItem("upvc-deleted-customers");
+            clearBusinessData();
+            localStorage.setItem(DATA_VERSION_KEY, CLEAN_START_VERSION);
             setMessage("تم المسح — جاري إعادة التحميل…");
             window.setTimeout(() => window.location.reload(), 500);
           }}
           className="flex h-11 w-full items-center justify-center rounded-xl border border-[#E85A8A]/35 text-sm font-semibold text-[#E85A8A]"
         >
-          مسح البيانات المحلية
+          مسح البيانات والبدء نظيفاً
         </button>
         <input
           ref={fileRef}
