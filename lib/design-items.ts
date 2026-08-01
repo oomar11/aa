@@ -19,6 +19,7 @@ import {
 import type { ProjectMaterialDefaults } from "@/lib/project-materials";
 import { applyDiscountAmount } from "@/lib/item-catalogs";
 import { suggestItemName } from "@/lib/item-naming";
+import type { Project } from "@/lib/projects";
 
 export type WindowStyle =
   | "casement-1"
@@ -396,16 +397,74 @@ export function itemUnitAreaSqm(item: DesignItem): number {
   return (item.widthMm * item.heightMm) / 1_000_000;
 }
 
-export function itemTotalPrice(item: DesignItem): number {
+export function itemTotalPrice(
+  item: DesignItem,
+  project?: Project | ProjectMaterialDefaults | null
+): number {
   const qty = Math.max(1, item.qty || 1);
   const hasSpecial =
     item.specialPrice != null &&
     Number.isFinite(item.specialPrice) &&
     item.specialPrice > 0;
-  const base = hasSpecial
-    ? (item.specialPrice as number) * qty
-    : itemUnitAreaSqm(item) * item.pricePerSqm * qty;
+  if (hasSpecial) {
+    return applyDiscountAmount(
+      (item.specialPrice as number) * qty,
+      item.discountId
+    );
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      // تحميل كسول لتفادي الاعتماد الدائري بين التسعير وحساب الخامات
+      const { loadPricingSettings, hybridUnitSalePrice } =
+        require("@/lib/pricing") as typeof import("@/lib/pricing");
+      const { calcItemMaterialsCost } =
+        require("@/lib/project-estimated-cost") as typeof import("@/lib/project-estimated-cost");
+      const settings = loadPricingSettings();
+      if (settings.enabled) {
+        const cost = calcItemMaterialsCost(item, project as Project | null);
+        if (cost.hasCost && cost.beforeDiscount > 0) {
+          const materialsUnit = cost.beforeDiscount / cost.qty;
+          const unitSale = hybridUnitSalePrice(
+            materialsUnit,
+            itemUnitAreaSqm(item),
+            settings
+          );
+          return applyDiscountAmount(unitSale * qty, item.discountId);
+        }
+      }
+    } catch {
+      // الرجوع للتسعير اليدوي
+    }
+  }
+
+  const base = itemUnitAreaSqm(item) * item.pricePerSqm * qty;
   return applyDiscountAmount(base, item.discountId);
+}
+
+/** سعر البيع المقترح للقطعة (بدون خصم) من التسعير الهجين */
+export function itemSuggestedUnitSale(
+  item: DesignItem,
+  project?: Project | null
+): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const { loadPricingSettings, hybridUnitSalePrice } =
+      require("@/lib/pricing") as typeof import("@/lib/pricing");
+    const { calcItemMaterialsCost } =
+      require("@/lib/project-estimated-cost") as typeof import("@/lib/project-estimated-cost");
+    const settings = loadPricingSettings();
+    if (!settings.enabled) return null;
+    const cost = calcItemMaterialsCost({ ...item, qty: 1 }, project);
+    if (!cost.hasCost || cost.beforeDiscount <= 0) return null;
+    return hybridUnitSalePrice(
+      cost.beforeDiscount,
+      itemUnitAreaSqm(item),
+      settings
+    );
+  } catch {
+    return null;
+  }
 }
 
 export function defaultPanesForLayout(

@@ -30,6 +30,11 @@ import {
   discountPercent,
   type DiscountId,
 } from "@/lib/item-catalogs";
+import {
+  hybridSaleBreakdown,
+  loadPricingSettings,
+  PRICING_UPDATED_EVENT,
+} from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
 
 type Props = {
@@ -64,6 +69,8 @@ export function MaterialsBar({
   profileCostBreakdown,
   ironBreakdown,
   partLabel = "شباك",
+  widthMm,
+  heightMm,
   systemId,
   discountId,
 }: Props) {
@@ -167,6 +174,27 @@ export function MaterialsBar({
       : grandTotal;
   const discountText = discountLabel(discountId);
 
+  const [pricingTick, setPricingTick] = useState(0);
+  useEffect(() => {
+    function refresh() {
+      setPricingTick((n) => n + 1);
+    }
+    window.addEventListener(PRICING_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(PRICING_UPDATED_EVENT, refresh);
+  }, []);
+
+  const saleHint = useMemo(() => {
+    void pricingTick;
+    if (!hasAnyCost || grandTotal <= 0) return null;
+    const settings = loadPricingSettings();
+    if (!settings.enabled) return null;
+    const unitArea =
+      widthMm && heightMm && widthMm > 0 && heightMm > 0
+        ? (widthMm * heightMm) / 1_000_000
+        : 1;
+    return hybridSaleBreakdown(grandTotal, unitArea, settings);
+  }, [grandTotal, hasAnyCost, widthMm, heightMm, pricingTick]);
+
   return (
     <section
       className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
@@ -214,6 +242,42 @@ export function MaterialsBar({
               </p>
             </div>
           )}
+          {saleHint ? (
+            <div className="mt-2 space-y-1 border-t border-primary/15 pt-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] text-muted">
+                  هامش {saleHint.marginPercent}%
+                </p>
+                <p className="text-[11px] tabular-nums text-muted">
+                  +{formatCurrency(Math.round(saleHint.marginAmount))} ج.م
+                </p>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] text-muted">
+                  مصنعية{" "}
+                  {saleHint.laborArea.toFixed(
+                    saleHint.laborArea === 1 ? 0 : 2
+                  )}{" "}
+                  م²
+                  {(widthMm ?? 0) * (heightMm ?? 0) > 0 &&
+                  (widthMm! * heightMm!) / 1_000_000 < 1
+                    ? " (حد أدنى متر)"
+                    : ""}
+                </p>
+                <p className="text-[11px] tabular-nums text-muted">
+                  +{formatCurrency(Math.round(saleHint.laborAmount))} ج.م
+                </p>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-bold text-[#C45C26]">
+                  سعر البيع المقترح
+                </p>
+                <p className="text-base font-bold tabular-nums text-[#C45C26]">
+                  {formatCurrency(Math.round(saleHint.unitSale))} ج.م
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

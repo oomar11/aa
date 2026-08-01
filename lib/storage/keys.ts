@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   materialSystems: "upvc-material-systems",
   templateOrder: "upvc-template-order",
   company: "upvc-company",
+  pricing: "upvc-pricing",
   invoices: "upvc-invoices",
   payments: "upvc-payments",
   expenses: "upvc-expenses",

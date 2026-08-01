@@ -80,6 +80,20 @@ export default function SettingsPage() {
           </span>
         </Link>
         <Link
+          href={ROUTES.settingsPricing}
+          className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5 transition-colors hover:bg-primary-soft/50"
+        >
+          <div className="min-w-0 text-right">
+            <p className="text-sm font-medium text-foreground">تسعير البيع</p>
+            <p className="mt-0.5 text-xs text-muted">
+              هامش الربح · المصنعية · حد أدنى متر
+            </p>
+          </div>
+          <span className="shrink-0 text-muted" aria-hidden>
+            ‹
+          </span>
+        </Link>
+        <Link
           href={ROUTES.settingsDesign}
           className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-primary-soft/50"
         >

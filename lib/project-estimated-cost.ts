@@ -509,6 +509,60 @@ function contributeItem(
   };
 }
 
+/**
+ * تكلفة خامات البند (قبل/بعد خصم البند) من أسعار الكتالوج.
+ * تُستخدم لتسعير البيع الهجين.
+ */
+export function calcItemMaterialsCost(
+  item: DesignItem,
+  project?: Project | null
+): Pick<
+  ItemEstimatedCost,
+  | "profiles"
+  | "glass"
+  | "mesh"
+  | "accessories"
+  | "iron"
+  | "beforeDiscount"
+  | "afterDiscount"
+  | "hasCost"
+  | "qty"
+> {
+  if (typeof window === "undefined") {
+    return {
+      profiles: 0,
+      glass: 0,
+      mesh: 0,
+      accessories: 0,
+      iron: 0,
+      beforeDiscount: 0,
+      afterDiscount: 0,
+      hasCost: false,
+      qty: Math.max(1, item.qty || 1),
+    };
+  }
+  const catalog = loadMaterialCatalog();
+  const brands = catalog.accessoryBrands ?? [];
+  const summary = contributeItem(
+    new Map(),
+    item,
+    project ?? undefined,
+    catalog,
+    brands
+  );
+  return {
+    profiles: summary.profiles,
+    glass: summary.glass,
+    mesh: summary.mesh,
+    accessories: summary.accessories,
+    iron: summary.iron,
+    beforeDiscount: summary.beforeDiscount,
+    afterDiscount: summary.afterDiscount,
+    hasCost: summary.hasCost,
+    qty: summary.qty,
+  };
+}
+
 export function costQtyLabel(line: EstimatedCostLine): string {
   if (line.unit === "م") {
     const meters = formatMeters(line.amount);

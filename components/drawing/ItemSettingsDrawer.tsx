@@ -311,9 +311,13 @@ export function ItemSettingsDrawer({
               inputMode="decimal"
               value={specialText}
               onChange={(e) => setSpecialText(e.target.value)}
-              placeholder="اتركه فارغاً للحساب العادي"
+              placeholder="اتركه فارغاً للتسعير التلقائي"
               className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary focus:bg-card"
             />
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+              فارغ = تكلفة الخامات + هامش + مصنعية (من الإعدادات). أي قيمة هنا
+              تلغي التسعير التلقائي لهذا البند.
+            </p>
           </Section>
 
           <Section title="مخطط مالي">

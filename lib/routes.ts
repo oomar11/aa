@@ -17,6 +17,7 @@ export const ROUTES = {
   settings: "/settings",
   settingsDesign: "/settings/design",
   settingsCompany: "/settings/company",
+  settingsPricing: "/settings/pricing",
   orders: "/orders",
 
   design: {
