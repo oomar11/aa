@@ -1,29 +1,18 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import {
   PAYMENT_METHOD_LABELS,
   todayIsoDate,
   upsertPayment,
   type PaymentMethod,
 } from "@/lib/accounting";
-import {
-  customers,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
-import { listAllProjects, type Project } from "@/lib/projects";
+import { getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { queueProjectAfterPayment } from "@/lib/workshop";
 import { NumericInput } from "@/components/ui/NumericInput";
-
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const local = loadLocalCustomers();
-  const localIds = new Set(local.map((c) => c.id));
-  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
-}
+import { PaymentProjectPicker } from "@/components/accounting/PaymentProjectPicker";
 
 /**
  * استلام دفعة: المشروع + المبلغ فقط.
@@ -34,40 +23,20 @@ export function PaymentForm() {
   const searchParams = useSearchParams();
   const presetProjectId = searchParams.get("project") ?? "";
 
-  const [allCustomers] = useState(mergeCustomers);
   const [projectId, setProjectId] = useState(presetProjectId);
   const [amount, setAmount] = useState(0);
   const [date, setDate] = useState(todayIsoDate);
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
-
-  const customerById = useMemo(() => {
-    const map = new Map<string, Customer>();
-    for (const customer of allCustomers) map.set(customer.id, customer);
-    return map;
-  }, [allCustomers]);
-
-  const openProjects = useMemo(() => {
-    return listAllProjects()
-      .filter((p) => p.workflow !== "done")
-      .sort((a, b) => {
-        const ca = customerById.get(a.customerId)?.name ?? "";
-        const cb = customerById.get(b.customerId)?.name ?? "";
-        if (ca !== cb) return ca.localeCompare(cb, "ar");
-        return a.name.localeCompare(b.name, "ar");
-      });
-  }, [customerById]);
-
-  const selectedProject: Project | undefined = useMemo(
-    () => openProjects.find((p) => p.id === projectId),
-    [openProjects, projectId]
-  );
+  const [projectError, setProjectError] = useState(false);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!selectedProject) {
+    const selectedProject = getProjectById(projectId);
+    if (!selectedProject || selectedProject.workflow === "done") {
       setError("اختر المشروع");
+      setProjectError(true);
       return;
     }
     if (amount <= 0) {
@@ -96,33 +65,19 @@ export function PaymentForm() {
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
       <p className="rounded-2xl border border-primary/20 bg-primary-soft/40 px-3.5 py-3 text-xs leading-relaxed text-foreground">
-        سجّل المبلغ وحدّد المشروع. إذا وُجدت دفعات على المشروع يدخل قائمة انتظار
-        الورشة تلقائياً — وإلا يبقى مقايسة فقط في الطلبات.
+        ابحث عن المشروع بالعميل أو الاسم، ثم سجّل المبلغ. أي دفعة على المشروع
+        تدخله قائمة انتظار الورشة.
       </p>
 
-      <label className="flex flex-col gap-1.5 text-right">
-        <span className="text-sm font-medium">
-          المشروع <span className="text-[#E85A8A]">*</span>
-        </span>
-        <select
-          value={projectId}
-          onChange={(e) => {
-            setProjectId(e.target.value);
-            setError("");
-          }}
-          className={fieldClass}
-        >
-          <option value="">اختر مشروعاً…</option>
-          {openProjects.map((project) => {
-            const customer = customerById.get(project.customerId);
-            return (
-              <option key={project.id} value={project.id}>
-                {customer?.name ?? "عميل"} — {project.name}
-              </option>
-            );
-          })}
-        </select>
-      </label>
+      <PaymentProjectPicker
+        value={projectId}
+        onChange={(id) => {
+          setProjectId(id);
+          setProjectError(false);
+          setError("");
+        }}
+        error={projectError}
+      />
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">

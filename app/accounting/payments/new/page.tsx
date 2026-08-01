@@ -11,7 +11,7 @@ export default function NewPaymentPage() {
         backHref={ROUTES.accounting.payments}
         backLabel="الدفعات"
         title="استلام دفعة"
-        description="اختر المشروع وسجّل المبلغ — يدخل قائمة انتظار الورشة تلقائياً"
+        description="ابحث عن المشروع وسجّل المبلغ — يدخل قائمة انتظار الورشة تلقائياً"
       />
       <div className="mt-4">
         <Suspense
