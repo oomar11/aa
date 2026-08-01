@@ -21,25 +21,70 @@ import { formatCurrency, smartSearchMatch } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
 import {
   compareProjectsByWorkflowThenDate,
+  DELIVERY_LABELS,
+  DELIVERY_VISUAL,
+  HOLD_VISUAL,
+  isProjectOnHold,
+  projectDeliveryStatus,
   WORKFLOW_LABELS,
   WORKFLOW_VISUAL,
 } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 
 type Tab = "customers" | "projects";
-type WorkflowFilter = "all" | ProjectWorkflow;
+type WorkflowFilter =
+  | "all"
+  | ProjectWorkflow
+  | "held"
+  | "awaiting"
+  | "delivered";
 
 function statusLabel(project: Project): string {
+  if (isProjectOnHold(project)) {
+    return `متوقف${project.holdReason ? ` ${project.holdReason}` : ""}`;
+  }
+  if (project.workflow === "done") {
+    const delivery = projectDeliveryStatus(project);
+    if (delivery) return DELIVERY_LABELS[delivery];
+  }
   return WORKFLOW_LABELS[project.workflow];
+}
+
+function matchesWorkflowFilter(
+  project: Project,
+  filter: WorkflowFilter
+): boolean {
+  if (filter === "all") return true;
+  if (filter === "held") return isProjectOnHold(project);
+  if (filter === "awaiting") {
+    return projectDeliveryStatus(project) === "awaiting";
+  }
+  if (filter === "delivered") {
+    return projectDeliveryStatus(project) === "delivered";
+  }
+  if (filter === "workshop" || filter === "queued") {
+    return project.workflow === filter && !isProjectOnHold(project);
+  }
+  return project.workflow === filter;
 }
 
 const FILTER_OPTIONS: { id: WorkflowFilter; label: string }[] = [
   { id: "all", label: "الكل" },
   { id: "workshop", label: WORKFLOW_LABELS.workshop },
   { id: "queued", label: WORKFLOW_LABELS.queued },
+  { id: "held", label: "متوقف" },
   { id: "quote", label: WORKFLOW_LABELS.quote },
-  { id: "done", label: WORKFLOW_LABELS.done },
+  { id: "awaiting", label: DELIVERY_LABELS.awaiting },
+  { id: "delivered", label: DELIVERY_LABELS.delivered },
 ];
+
+function filterChipVisual(id: WorkflowFilter) {
+  if (id === "all") return null;
+  if (id === "held") return HOLD_VISUAL;
+  if (id === "awaiting") return DELIVERY_VISUAL.awaiting;
+  if (id === "delivered") return DELIVERY_VISUAL.delivered;
+  return WORKFLOW_VISUAL[id];
+}
 
 function mergeProjects(): Project[] {
   if (typeof window === "undefined") return listAllProjects();
@@ -203,14 +248,35 @@ export function OrdersBrowser() {
   }, [allProjects]);
 
   const workflowCounts = useMemo(() => {
-    const counts: Record<ProjectWorkflow, number> = {
+    const counts: Record<Exclude<WorkflowFilter, "all">, number> = {
       quote: 0,
       queued: 0,
       workshop: 0,
       done: 0,
+      held: 0,
+      awaiting: 0,
+      delivered: 0,
     };
     for (const project of allProjects) {
-      counts[project.workflow] += 1;
+      if (isProjectOnHold(project)) counts.held += 1;
+      const delivery = projectDeliveryStatus(project);
+      if (delivery === "awaiting") counts.awaiting += 1;
+      if (delivery === "delivered") counts.delivered += 1;
+      if (
+        project.workflow === "workshop" &&
+        !isProjectOnHold(project)
+      ) {
+        counts.workshop += 1;
+      } else if (
+        project.workflow === "queued" &&
+        !isProjectOnHold(project)
+      ) {
+        counts.queued += 1;
+      } else if (project.workflow === "quote") {
+        counts.quote += 1;
+      } else if (project.workflow === "done") {
+        counts.done += 1;
+      }
     }
     return counts;
   }, [allProjects]);
@@ -219,7 +285,8 @@ export function OrdersBrowser() {
     return allCustomers.filter((customer) => {
       const linked = projectsByCustomer.get(customer.id) ?? [];
       if (workflowFilter !== "all") {
-        if (!linked.some((p) => p.workflow === workflowFilter)) return false;
+        if (!linked.some((p) => matchesWorkflowFilter(p, workflowFilter)))
+          return false;
       }
       const customerMatch = smartSearchMatch(deferredQuery, [
         customer.name,
@@ -268,9 +335,7 @@ export function OrdersBrowser() {
   const filteredProjects = useMemo(() => {
     return allProjects
       .filter((project) => {
-        if (workflowFilter !== "all" && project.workflow !== workflowFilter) {
-          return false;
-        }
+        if (!matchesWorkflowFilter(project, workflowFilter)) return false;
         const customer = customerById.get(project.customerId);
         return smartSearchMatch(deferredQuery, [
           project.name,
@@ -389,7 +454,10 @@ export function OrdersBrowser() {
                         {project.location ? ` · ${project.location}` : ""}
                       </p>
                     </div>
-                    <WorkflowBadge workflow={project.workflow} />
+                    <WorkflowBadge
+                      workflow={project.workflow}
+                      project={project}
+                    />
                   </Link>
                 </li>
               );
@@ -424,8 +492,7 @@ export function OrdersBrowser() {
       >
         {FILTER_OPTIONS.map((opt) => {
           const active = workflowFilter === opt.id;
-          const visual =
-            opt.id === "all" ? null : WORKFLOW_VISUAL[opt.id];
+          const visual = filterChipVisual(opt.id);
           return (
             <button
               key={opt.id}
@@ -519,7 +586,9 @@ export function OrdersBrowser() {
               const linked =
                 workflowFilter === "all"
                   ? linkedRaw
-                  : linkedRaw.filter((p) => p.workflow === workflowFilter);
+                  : linkedRaw.filter((p) =>
+                      matchesWorkflowFilter(p, workflowFilter)
+                    );
               const open = isExpanded(customer.id);
               const sale = customerSaleTotal(customer.id);
               const balance = balances[customer.id] ?? customer.balance;
@@ -609,6 +678,7 @@ export function OrdersBrowser() {
                                         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                                           <WorkflowBadge
                                             workflow={project.workflow}
+                                            project={project}
                                           />
                                           {projectSale > 0 ? (
                                             <span>
@@ -712,7 +782,10 @@ export function OrdersBrowser() {
                           {project.location ? ` · ${project.location}` : ""}
                         </p>
                       </div>
-                      <WorkflowBadge workflow={project.workflow} />
+                      <WorkflowBadge
+                        workflow={project.workflow}
+                        project={project}
+                      />
                     </div>
                     {projectSale > 0 ? (
                       <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">

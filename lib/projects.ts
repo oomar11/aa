@@ -16,9 +16,23 @@ import {
  * - quote: مقايسة — لا توجد دفعات بعد
  * - queued: سُجّلت دفعة وأُضيف إلى قائمة انتظار الورشة
  * - workshop: قيد التنفيذ في الورشة
- * - done: مكتمل
+ * - done: مكتمل تصنيعاً (التسليم منفصل)
  */
 export type ProjectWorkflow = "quote" | "queued" | "workshop" | "done";
+
+/** بعد اكتمال التصنيع: لسه متسلمش / اتسلم */
+export type ProjectDeliveryStatus = "awaiting" | "delivered";
+
+/** أسباب توقف الشغل (انتظار أو تنفيذ) */
+export const HOLD_REASON_OPTIONS = [
+  "خامات",
+  "عميل",
+  "موقع",
+  "فلوس",
+  "أخرى",
+] as const;
+
+export type HoldReason = (typeof HOLD_REASON_OPTIONS)[number] | string;
 
 export type Project = {
   id: string;
@@ -36,12 +50,24 @@ export type Project = {
   depositAmount?: number;
   /** ترتيب قائمة الانتظار (الأقل = الأقرب للتنفيذ) */
   queueOrder?: number;
+  /**
+   * توقف الشغل — موجود = المشروع واقف.
+   * يبقى ضمن queued/workshop بدون تغيير مسار الفلوس.
+   */
+  holdReason?: string;
+  holdAt?: string;
+  /** تسليم بعد اكتمال التصنيع */
+  deliveryStatus?: ProjectDeliveryStatus;
+  deliveredAt?: string;
   itemsCount: number;
 } & ProjectMaterialDefaults;
 
 /** تطبيع مشروع قديم/ناقص لحقول الورشة */
 export function normalizeProject(project: Project): Project {
-  const legacy = project as Project & { workflow?: ProjectWorkflow };
+  const legacy = project as Project & {
+    workflow?: ProjectWorkflow;
+    deliveryStatus?: ProjectDeliveryStatus;
+  };
   let workflow = legacy.workflow;
   if (!workflow) {
     if (project.status === "done") workflow = "done";
@@ -51,7 +77,30 @@ export function normalizeProject(project: Project): Project {
   }
   const status: Project["status"] =
     workflow === "done" ? "done" : "open";
-  return { ...project, workflow, status };
+
+  let deliveryStatus = legacy.deliveryStatus;
+  let deliveredAt = project.deliveredAt;
+  if (workflow === "done") {
+    if (deliveryStatus !== "awaiting" && deliveryStatus !== "delivered") {
+      deliveryStatus = deliveredAt ? "delivered" : "awaiting";
+    }
+  } else {
+    deliveryStatus = undefined;
+    deliveredAt = undefined;
+  }
+
+  const holdReason = project.holdReason?.trim() || undefined;
+  const holdAt = holdReason ? project.holdAt : undefined;
+
+  return {
+    ...project,
+    workflow,
+    status,
+    holdReason,
+    holdAt,
+    deliveryStatus,
+    deliveredAt,
+  };
 }
 
 /** @deprecated استخدم STORAGE_KEYS.projects */

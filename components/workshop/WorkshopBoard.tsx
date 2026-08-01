@@ -14,16 +14,25 @@ import {
   type Customer,
 } from "@/lib/customers";
 import {
+  HOLD_REASON_OPTIONS,
   PROJECTS_UPDATED_EVENT,
   type Project,
+  type ProjectWorkflow,
 } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency } from "@/lib/utils";
 import {
   completeWorkshopProject,
+  DELIVERY_VISUAL,
+  HOLD_VISUAL,
+  holdProject,
+  listAwaitingDeliveryProjects,
+  listHeldProjects,
   listQueuedProjects,
   listWorkshopProjects,
+  markProjectDelivered,
   moveInQueue,
+  resumeProject,
   returnToQueue,
   startWorkshopProject,
   WORKFLOW_VISUAL,
@@ -40,10 +49,20 @@ function customerName(
   return customerById.get(customerId)?.name ?? "عميل";
 }
 
+function askHoldReason(): string | null {
+  const presets = HOLD_REASON_OPTIONS.join(" · ");
+  const value = window.prompt(
+    `سبب التوقف؟\n(${presets})`,
+    HOLD_REASON_OPTIONS[0]
+  );
+  if (value === null) return null;
+  const trimmed = value.trim();
+  return trimmed || HOLD_REASON_OPTIONS[0];
+}
+
 /**
  * صفحة العمل اليومي:
- * - قيد التنفيذ في الورشة (أخضر)
- * - قائمة الانتظار بعد الدفع (برتقالي)
+ * - قيد التنفيذ · قائمة الانتظار · متوقف · جاهز للتسليم
  */
 export function WorkshopBoard() {
   const [tick, setTick] = useState(0);
@@ -71,8 +90,10 @@ export function WorkshopBoard() {
   }, [tick]);
 
   void tick;
-  const inWorkshop = listWorkshopProjects();
-  const queued = listQueuedProjects();
+  const inWorkshop = listWorkshopProjects({ includeHeld: false });
+  const queued = listQueuedProjects({ includeHeld: false });
+  const held = listHeldProjects();
+  const awaiting = listAwaitingDeliveryProjects();
 
   const queueIds = useMemo(() => queued.map((p) => p.id).join("|"), [queued]);
 
@@ -146,69 +167,60 @@ export function WorkshopBoard() {
     setTick((n) => n + 1);
   }
 
+  function handleHold(projectId: string) {
+    const reason = askHoldReason();
+    if (reason === null) return;
+    holdProject(projectId, reason);
+    setTick((n) => n + 1);
+  }
+
   const workshopV = WORKFLOW_VISUAL.workshop;
   const queuedV = WORKFLOW_VISUAL.queued;
+  const holdV = HOLD_VISUAL;
+  const awaitV = DELIVERY_VISUAL.awaiting;
 
   return (
     <div className="flex flex-col gap-5">
       <div
-        className="grid grid-cols-2 gap-2"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
         role="group"
         aria-label="ملخص الورشة"
       >
-        <div
-          className={`rounded-2xl border ${workshopV.border} ${workshopV.soft} px-3.5 py-3`}
-        >
-          <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full ${workshopV.dot}`} />
-            <p className={`text-[11px] font-bold ${workshopV.text}`}>
-              قيد التنفيذ
-            </p>
-          </div>
-          <p className={`mt-1 text-2xl font-bold tabular-nums ${workshopV.text}`}>
-            {inWorkshop.length}
-          </p>
-        </div>
-        <div
-          className={`rounded-2xl border ${queuedV.border} ${queuedV.soft} px-3.5 py-3`}
-        >
-          <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full ${queuedV.dot}`} />
-            <p className={`text-[11px] font-bold ${queuedV.text}`}>
-              في الانتظار
-            </p>
-          </div>
-          <p className={`mt-1 text-2xl font-bold tabular-nums ${queuedV.text}`}>
-            {queued.length}
-          </p>
-        </div>
+        <SummaryTile
+          label="قيد التنفيذ"
+          value={inWorkshop.length}
+          visual={workshopV}
+        />
+        <SummaryTile
+          label="في الانتظار"
+          value={queued.length}
+          visual={queuedV}
+        />
+        <SummaryTile label="متوقف" value={held.length} visual={holdV} />
+        <SummaryTile
+          label="جاهز للتسليم"
+          value={awaiting.length}
+          visual={awaitV}
+        />
       </div>
 
       <section className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between gap-2 px-1">
-          <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full ${workshopV.dot}`} />
-            <h2 className={`text-base font-bold ${workshopV.text}`}>
-              قيد التنفيذ
-            </h2>
-          </div>
-          <span className={`text-xs font-semibold tabular-nums ${workshopV.text}`}>
-            {inWorkshop.length}
-          </span>
-        </div>
+        <SectionHead
+          title="قيد التنفيذ"
+          count={inWorkshop.length}
+          visual={workshopV}
+        />
         {inWorkshop.length === 0 ? (
-          <div
-            className={`rounded-2xl border border-dashed ${workshopV.border} ${workshopV.soft} px-4 py-8 text-center text-sm text-muted`}
-          >
+          <EmptyBox visual={workshopV}>
             لا يوجد مشروع قيد التنفيذ حالياً — ابدأ من قائمة الانتظار أدناه
-          </div>
+          </EmptyBox>
         ) : (
           <ul className="flex flex-col gap-2.5">
             {inWorkshop.map((project) => (
               <ProjectRow
                 key={project.id}
                 project={project}
-                workflow="workshop"
+                tone="workshop"
                 customerLabel={customerName(customerById, project.customerId)}
                 actions={
                   <>
@@ -217,12 +229,13 @@ export function WorkshopBoard() {
                       onClick={() => {
                         if (
                           !window.confirm(
-                            "هل تريد إكمال تنفيذ هذا المشروع؟"
+                            "هل تريد إكمال تنفيذ هذا المشروع؟ سيصبح جاهزاً للتسليم."
                           )
                         ) {
                           return;
                         }
                         completeWorkshopProject(project.id);
+                        setTick((n) => n + 1);
                       }}
                       className="rounded-xl bg-wf-workshop px-3 py-1.5 text-[11px] font-bold text-white"
                     >
@@ -230,10 +243,20 @@ export function WorkshopBoard() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => returnToQueue(project.id)}
+                      onClick={() => handleHold(project.id)}
+                      className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold text-rose-800"
+                    >
+                      إيقاف
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        returnToQueue(project.id);
+                        setTick((n) => n + 1);
+                      }}
                       className="rounded-xl border border-border bg-card px-3 py-1.5 text-[11px] font-semibold"
                     >
-                      إعادة إلى قائمة الانتظار
+                      إعادة للانتظار
                     </button>
                   </>
                 }
@@ -244,21 +267,13 @@ export function WorkshopBoard() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between gap-2 px-1">
-          <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full ${queuedV.dot}`} />
-            <h2 className={`text-base font-bold ${queuedV.text}`}>
-              قائمة الانتظار
-            </h2>
-          </div>
-          <span className={`text-xs font-semibold tabular-nums ${queuedV.text}`}>
-            {queued.length}
-          </span>
-        </div>
+        <SectionHead
+          title="قائمة الانتظار"
+          count={queued.length}
+          visual={queuedV}
+        />
         {queued.length === 0 ? (
-          <div
-            className={`rounded-2xl border border-dashed ${queuedV.border} ${queuedV.soft} px-4 py-8 text-center text-sm leading-relaxed text-muted`}
-          >
+          <EmptyBox visual={queuedV}>
             قائمة الانتظار فارغة.
             <br />
             سجّل دفعة من{" "}
@@ -269,14 +284,14 @@ export function WorkshopBoard() {
               الحسابات
             </Link>{" "}
             وحدد المشروع ليدخل هنا.
-          </div>
+          </EmptyBox>
         ) : (
           <ul className="flex flex-col gap-2.5">
             {queued.map((project, index) => (
               <ProjectRow
                 key={project.id}
                 project={project}
-                workflow="queued"
+                tone="queued"
                 badge={index === 0 ? "التالي للتنفيذ" : `#${index + 1}`}
                 highlight={index === 0}
                 moving={movingId === project.id}
@@ -289,10 +304,20 @@ export function WorkshopBoard() {
                   <>
                     <button
                       type="button"
-                      onClick={() => startWorkshopProject(project.id)}
+                      onClick={() => {
+                        startWorkshopProject(project.id);
+                        setTick((n) => n + 1);
+                      }}
                       className="rounded-xl bg-wf-queued px-3 py-1.5 text-[11px] font-bold text-white transition-transform active:scale-95"
                     >
                       بدء التنفيذ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleHold(project.id)}
+                      className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold text-rose-800"
+                    >
+                      إيقاف
                     </button>
                     <button
                       type="button"
@@ -321,31 +346,199 @@ export function WorkshopBoard() {
           </ul>
         )}
       </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHead title="متوقف" count={held.length} visual={holdV} />
+        {held.length === 0 ? (
+          <EmptyBox visual={holdV}>مفيش شغل واقف دلوقتي.</EmptyBox>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {held.map((project) => (
+              <ProjectRow
+                key={project.id}
+                project={project}
+                tone="hold"
+                customerLabel={customerName(customerById, project.customerId)}
+                holdReason={project.holdReason}
+                actions={
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resumeProject(project.id);
+                        setTick((n) => n + 1);
+                      }}
+                      className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-950"
+                    >
+                      {project.workflow === "workshop"
+                        ? "كمّل التنفيذ"
+                        : "رجّع للانتظار"}
+                    </button>
+                    {project.workflow !== "workshop" ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          startWorkshopProject(project.id);
+                          setTick((n) => n + 1);
+                        }}
+                        className="rounded-xl bg-wf-workshop px-3 py-1.5 text-[11px] font-bold text-white"
+                      >
+                        ابدأ دلوقتي
+                      </button>
+                    ) : null}
+                  </>
+                }
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHead
+          title="جاهز للتسليم"
+          count={awaiting.length}
+          visual={awaitV}
+        />
+        {awaiting.length === 0 ? (
+          <EmptyBox visual={awaitV}>
+            مفيش شغل مستني التسليم — لما تكمّل التنفيذ يظهر هنا.
+          </EmptyBox>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {awaiting.map((project) => (
+              <ProjectRow
+                key={project.id}
+                project={project}
+                tone="awaiting"
+                customerLabel={customerName(customerById, project.customerId)}
+                actions={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markProjectDelivered(project.id);
+                      setTick((n) => n + 1);
+                    }}
+                    className="rounded-xl bg-wf-done px-3 py-1.5 text-[11px] font-bold text-white"
+                  >
+                    تم التسليم
+                  </button>
+                }
+              />
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
 
+type TileVisual = {
+  border: string;
+  soft: string;
+  text: string;
+  dot: string;
+};
+
+function SummaryTile({
+  label,
+  value,
+  visual,
+}: {
+  label: string;
+  value: number;
+  visual: TileVisual;
+}) {
+  return (
+    <div className={`rounded-2xl border ${visual.border} ${visual.soft} px-3.5 py-3`}>
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${visual.dot}`} />
+        <p className={`text-[11px] font-bold ${visual.text}`}>{label}</p>
+      </div>
+      <p className={`mt-1 text-2xl font-bold tabular-nums ${visual.text}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function SectionHead({
+  title,
+  count,
+  visual,
+}: {
+  title: string;
+  count: number;
+  visual: { text: string; dot: string };
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 px-1">
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${visual.dot}`} />
+        <h2 className={`text-base font-bold ${visual.text}`}>{title}</h2>
+      </div>
+      <span className={`text-xs font-semibold tabular-nums ${visual.text}`}>
+        {count}
+      </span>
+    </div>
+  );
+}
+
+function EmptyBox({
+  visual,
+  children,
+}: {
+  visual: { border: string; soft: string };
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border border-dashed ${visual.border} ${visual.soft} px-4 py-8 text-center text-sm leading-relaxed text-muted`}
+    >
+      {children}
+    </div>
+  );
+}
+
+type RowTone = "workshop" | "queued" | "hold" | "awaiting";
+
 function ProjectRow({
   project,
   customerLabel,
-  workflow,
+  tone,
   badge,
   highlight,
   moving,
   listRef,
+  holdReason,
   actions,
 }: {
   project: Project;
   customerLabel: string;
-  workflow: "workshop" | "queued";
+  tone: RowTone;
   badge?: string;
   highlight?: boolean;
   moving?: boolean;
   listRef?: (el: HTMLLIElement | null) => void;
+  holdReason?: string;
   actions: ReactNode;
 }) {
   const editorHref = ROUTES.design.editor(project.customerId, project.id);
-  const visual = WORKFLOW_VISUAL[workflow];
+  const visual =
+    tone === "hold"
+      ? HOLD_VISUAL
+      : tone === "awaiting"
+        ? DELIVERY_VISUAL.awaiting
+        : WORKFLOW_VISUAL[tone as ProjectWorkflow];
+
+  const workflowForBadge: ProjectWorkflow =
+    tone === "hold"
+      ? project.workflow === "workshop"
+        ? "workshop"
+        : "queued"
+      : tone === "awaiting"
+        ? "done"
+        : tone;
 
   return (
     <li
@@ -368,12 +561,24 @@ function ProjectRow({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              {badge ? (
-                <WorkflowBadge workflow={workflow} solid={highlight}>
+              {tone === "hold" ? (
+                <span
+                  className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide ${HOLD_VISUAL.badgeSolid}`}
+                >
+                  متوقف
+                </span>
+              ) : tone === "awaiting" ? (
+                <span
+                  className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide ${DELIVERY_VISUAL.awaiting.badgeSolid}`}
+                >
+                  جاهز للتسليم
+                </span>
+              ) : badge ? (
+                <WorkflowBadge workflow={workflowForBadge} solid={highlight}>
                   {badge}
                 </WorkflowBadge>
               ) : (
-                <WorkflowBadge workflow={workflow} solid />
+                <WorkflowBadge workflow={workflowForBadge} solid />
               )}
               <p className="truncate text-sm font-bold text-foreground">
                 {project.name}
@@ -383,6 +588,11 @@ function ProjectRow({
               {customerLabel}
               {project.location ? ` · ${project.location}` : ""}
             </p>
+            {holdReason ? (
+              <p className={`mt-1 text-[11px] font-semibold ${HOLD_VISUAL.text}`}>
+                واقف على: {holdReason}
+              </p>
+            ) : null}
             {project.depositAmount ? (
               <p className={`mt-1 text-[11px] font-medium ${visual.text}`}>
                 مدفوع {formatCurrency(project.depositAmount)}

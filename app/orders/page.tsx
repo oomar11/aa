@@ -14,11 +14,11 @@ export default function OrdersPage() {
             {" · "}
             <span className="font-semibold text-wf-queued">انتظار</span>
             {" · "}
-            <span className="font-semibold text-wf-quote">مقايسة</span>
+            <span className="font-semibold text-rose-700">متوقف</span>
             {" · "}
-            <span className="font-semibold text-wf-done">مكتمل</span>
+            <span className="font-semibold text-wf-done">تسليم</span>
             {" — "}
-            بعد الدفعة يدخل المشروع الورشة.
+            فلتر حسب الحالة وشوف اللي اتسلم واللي واقف.
           </p>
         </div>
         <Link

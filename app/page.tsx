@@ -10,11 +10,13 @@ export default function HomePage() {
       <div className="min-w-0">
         <h1 className="text-xl font-bold text-foreground">الورشة</h1>
         <p className="mt-0.5 text-xs leading-relaxed text-muted">
-          <span className="font-semibold text-wf-workshop">أخضر = قيد التنفيذ</span>
+          <span className="font-semibold text-wf-workshop">أخضر = تنفيذ</span>
           {" · "}
           <span className="font-semibold text-wf-queued">برتقالي = انتظار</span>
-          {" — "}
-          الطلب الجديد من باب الطلبات.
+          {" · "}
+          <span className="font-semibold text-rose-700">أحمر = متوقف</span>
+          {" · "}
+          <span className="font-semibold text-wf-done">أزرق = جاهز للتسليم</span>
         </p>
       </div>
       <WorkshopBoard />

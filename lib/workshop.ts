@@ -3,6 +3,7 @@ import {
   listAllProjects,
   PROJECTS_UPDATED_EVENT,
   type Project,
+  type ProjectDeliveryStatus,
   type ProjectWorkflow,
   upsertProjectOverride,
 } from "@/lib/projects";
@@ -19,6 +20,56 @@ export const WORKFLOW_LABELS: Record<ProjectWorkflow, string> = {
   workshop: "قيد التنفيذ",
   done: "مكتمل",
 };
+
+export const DELIVERY_LABELS: Record<ProjectDeliveryStatus, string> = {
+  awaiting: "جاهز للتسليم",
+  delivered: "تم التسليم",
+};
+
+export const DELIVERY_VISUAL: Record<
+  ProjectDeliveryStatus,
+  { badge: string; badgeSolid: string; text: string; soft: string; border: string; rail: string; dot: string }
+> = {
+  awaiting: {
+    badge: "bg-wf-done-soft text-wf-done",
+    badgeSolid: "bg-wf-done text-white",
+    text: "text-wf-done",
+    soft: "bg-wf-done-soft",
+    border: "border-wf-done/35",
+    rail: "border-s-wf-done",
+    dot: "bg-wf-done",
+  },
+  delivered: {
+    badge: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+    badgeSolid: "bg-emerald-600 text-white",
+    text: "text-emerald-700 dark:text-emerald-300",
+    soft: "bg-emerald-50 dark:bg-emerald-950/40",
+    border: "border-emerald-500/30",
+    rail: "border-s-emerald-600",
+    dot: "bg-emerald-600",
+  },
+};
+
+export const HOLD_VISUAL = {
+  badge: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+  badgeSolid: "bg-rose-600 text-white",
+  text: "text-rose-700 dark:text-rose-300",
+  soft: "bg-rose-50 dark:bg-rose-950/40",
+  border: "border-rose-500/35",
+  rail: "border-s-rose-600",
+  dot: "bg-rose-600",
+} as const;
+
+export function isProjectOnHold(project: Project): boolean {
+  return Boolean(project.holdReason?.trim());
+}
+
+export function projectDeliveryStatus(
+  project: Project
+): ProjectDeliveryStatus | undefined {
+  if (project.workflow !== "done") return undefined;
+  return project.deliveryStatus === "delivered" ? "delivered" : "awaiting";
+}
 
 /** ترتيب العرض حسب أولوية الشغل اليومي */
 export const WORKFLOW_PRIORITY: ProjectWorkflow[] = [
@@ -261,6 +312,8 @@ export function startWorkshopProject(projectId: string): Project | undefined {
     workflow: "workshop",
     depositAt: project.depositAt ?? todayIsoDate(),
     queueOrder: project.queueOrder ?? nextQueueOrder(),
+    holdReason: undefined,
+    holdAt: undefined,
   };
   upsertProjectOverride(updated);
   return updated;
@@ -291,6 +344,79 @@ export function completeWorkshopProject(projectId: string): Project | undefined 
     ...project,
     status: "done",
     workflow: "done",
+    holdReason: undefined,
+    holdAt: undefined,
+    deliveryStatus: "awaiting",
+    deliveredAt: undefined,
+  };
+  upsertProjectOverride(updated);
+  return updated;
+}
+
+/** إيقاف شغل قيد الانتظار/التنفيذ مع سبب */
+export function holdProject(
+  projectId: string,
+  reason: string
+): Project | undefined {
+  const project = getProjectById(projectId);
+  if (!project) return undefined;
+  if (project.workflow !== "queued" && project.workflow !== "workshop") {
+    return project;
+  }
+  const trimmed = reason.trim();
+  if (!trimmed) return project;
+
+  const updated: Project = {
+    ...project,
+    holdReason: trimmed,
+    holdAt: todayIsoDate(),
+  };
+  upsertProjectOverride(updated);
+  return updated;
+}
+
+/** إلغاء التوقف ومتابعة الشغل */
+export function resumeProject(projectId: string): Project | undefined {
+  const project = getProjectById(projectId);
+  if (!project) return undefined;
+
+  const updated: Project = {
+    ...project,
+    holdReason: undefined,
+    holdAt: undefined,
+  };
+  upsertProjectOverride(updated);
+  return updated;
+}
+
+/** تسجيل تسليم المشروع للعميل */
+export function markProjectDelivered(
+  projectId: string,
+  date: string = todayIsoDate()
+): Project | undefined {
+  const project = getProjectById(projectId);
+  if (!project || project.workflow !== "done") return project;
+
+  const updated: Project = {
+    ...project,
+    deliveryStatus: "delivered",
+    deliveredAt: date,
+  };
+  upsertProjectOverride(updated);
+  return updated;
+}
+
+/** إرجاع لمكتمل بانتظار التسليم */
+export function markProjectAwaitingDelivery(
+  projectId: string
+): Project | undefined {
+  const project = getProjectById(projectId);
+  if (!project || project.workflow !== "done") return project;
+
+  const updated: Project = {
+    ...project,
+    deliveryStatus: "awaiting",
+    deliveredAt: undefined,
   };
   upsertProjectOverride(updated);
   return updated;
@@ -305,21 +431,73 @@ function sortByQueue(a: Project, b: Project): number {
   return new Date(ad).getTime() - new Date(bd).getTime();
 }
 
-export function listWorkshopProjects(): Project[] {
+export function listWorkshopProjects(options?: {
+  includeHeld?: boolean;
+}): Project[] {
+  const includeHeld = options?.includeHeld ?? true;
   return listAllProjects()
     .filter((p) => p.workflow === "workshop")
+    .filter((p) => includeHeld || !isProjectOnHold(p))
     .sort(sortByQueue);
 }
 
-export function listQueuedProjects(): Project[] {
+export function listQueuedProjects(options?: {
+  includeHeld?: boolean;
+}): Project[] {
+  const includeHeld = options?.includeHeld ?? true;
   return listAllProjects()
     .filter((p) => p.workflow === "queued")
+    .filter((p) => includeHeld || !isProjectOnHold(p))
     .sort(sortByQueue);
 }
 
-/** المشروع التالي للتنفيذ: أول عنصر في قائمة الانتظار */
+/** مشاريع متوقفة (انتظار أو تنفيذ) */
+export function listHeldProjects(): Project[] {
+  return listAllProjects()
+    .filter(
+      (p) =>
+        (p.workflow === "queued" || p.workflow === "workshop") &&
+        isProjectOnHold(p)
+    )
+    .sort((a, b) => {
+      const ad = a.holdAt ?? a.depositAt ?? a.createdAt;
+      const bd = b.holdAt ?? b.depositAt ?? b.createdAt;
+      return new Date(bd).getTime() - new Date(ad).getTime();
+    });
+}
+
+/** مكتمل بانتظار التسليم */
+export function listAwaitingDeliveryProjects(): Project[] {
+  return listAllProjects()
+    .filter(
+      (p) =>
+        p.workflow === "done" && projectDeliveryStatus(p) === "awaiting"
+    )
+    .sort((a, b) => {
+      const ad = a.depositAt ?? a.createdAt;
+      const bd = b.depositAt ?? b.createdAt;
+      return new Date(bd).getTime() - new Date(ad).getTime();
+    });
+}
+
+/** تم التسليم حديثاً */
+export function listDeliveredProjects(limit = 20): Project[] {
+  return listAllProjects()
+    .filter(
+      (p) =>
+        p.workflow === "done" && projectDeliveryStatus(p) === "delivered"
+    )
+    .sort((a, b) => {
+      const ad = a.deliveredAt ?? a.createdAt;
+      const bd = b.deliveredAt ?? b.createdAt;
+      return new Date(bd).getTime() - new Date(ad).getTime();
+    })
+    .slice(0, limit);
+}
+
+/** المشروع التالي للتنفيذ: أول عنصر في قائمة الانتظار (غير متوقف) */
 export function getNextUpProject(): Project | undefined {
-  return listQueuedProjects()[0];
+  return listQueuedProjects({ includeHeld: false })[0];
 }
 
 /** تغيير ترتيب قائمة الانتظار */
@@ -327,7 +505,7 @@ export function moveInQueue(
   projectId: string,
   direction: "up" | "down"
 ): void {
-  const queued = listQueuedProjects();
+  const queued = listQueuedProjects({ includeHeld: false });
   const index = queued.findIndex((p) => p.id === projectId);
   if (index < 0) return;
 
