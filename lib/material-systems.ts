@@ -19,6 +19,11 @@ import {
   validateFormula,
 } from "@/lib/excel-formula";
 import { CATALOG_EVENTS, STORAGE_KEYS } from "@/lib/storage/keys";
+import {
+  sharedGetItem,
+  sharedRemoveItem,
+  sharedSetItem,
+} from "@/lib/storage/shared-client";
 
 export type MaterialCategory = "profiles" | "accessories" | "glass" | "iron";
 
@@ -3548,13 +3553,13 @@ function normalizeMeshTypes(raw: unknown, categories: MeshCategory[]): MeshType[
 export function loadMaterialCatalog(): MaterialCatalog {
   if (typeof window === "undefined") return getDefaultCatalog();
   try {
-    const raw = localStorage.getItem(MATERIALS_STORAGE_KEY);
+    const raw = sharedGetItem(MATERIALS_STORAGE_KEY);
     if (!raw) return getDefaultCatalog();
     const parsed: unknown = JSON.parse(raw);
     if (!isCatalog(parsed)) return getDefaultCatalog();
     const normalized = normalizeCatalog(parsed);
     if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
-      localStorage.setItem(MATERIALS_STORAGE_KEY, JSON.stringify(normalized));
+      sharedSetItem(MATERIALS_STORAGE_KEY, JSON.stringify(normalized));
     }
     return normalized;
   } catch {
@@ -3565,7 +3570,7 @@ export function loadMaterialCatalog(): MaterialCatalog {
 export function saveMaterialCatalog(catalog: MaterialCatalog): MaterialCatalog {
   const normalized = normalizeCatalog(catalog);
   if (typeof window !== "undefined") {
-    localStorage.setItem(MATERIALS_STORAGE_KEY, JSON.stringify(normalized));
+    sharedSetItem(MATERIALS_STORAGE_KEY, JSON.stringify(normalized));
     notifyMaterialCatalogUpdated();
     notifyMeshCatalogUpdated();
   }
@@ -3575,7 +3580,7 @@ export function saveMaterialCatalog(catalog: MaterialCatalog): MaterialCatalog {
 export function resetMaterialCatalog(): MaterialCatalog {
   const defaults = getDefaultCatalog();
   if (typeof window !== "undefined") {
-    localStorage.removeItem(MATERIALS_STORAGE_KEY);
+    sharedRemoveItem(MATERIALS_STORAGE_KEY);
   }
   return defaults;
 }
