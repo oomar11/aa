@@ -110,7 +110,7 @@ export function CustomerList() {
 
                   <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3">
                     <div>
-                      <p className="text-[11px] text-muted">باقي عليه</p>
+                      <p className="text-[11px] text-muted">متبقي فواتير</p>
                       <p
                         className={`mt-0.5 text-sm font-bold ${
                           owes ? "text-[#E85A8A]" : "text-emerald-600 dark:text-emerald-400"
