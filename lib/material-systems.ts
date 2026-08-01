@@ -725,7 +725,7 @@ export const MATERIAL_CATEGORIES: {
   {
     id: "iron",
     label: "الحديد",
-    description: "سيستم تسليح واحد · تسعير بالعود",
+    description: "عدّل أسعار العيدان والتراك",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
   },
@@ -814,7 +814,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "iron",
     label: "الحديد",
-    description: "سيستم واحد · تسعير بالعود · تراك · شريحة مفصلة",
+    description: "عدّل أسعار العيدان · التخصيم · التراك",
     accent: "#7A8799",
     shadow: "rgba(122,135,153,0.35)",
     href: "/materials/iron",

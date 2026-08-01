@@ -9,7 +9,6 @@ import {
   type FormEvent,
 } from "react";
 import {
-  DEFAULT_BAR_LENGTH_M,
   defaultIronDetails,
   defaultIronDeductions,
   getIronSystem,
@@ -33,6 +32,10 @@ import {
   type MaterialCatalog,
   type MaterialSystem,
 } from "@/lib/material-systems";
+import {
+  IRON_STOCK_BAR_LENGTH_M,
+  IRON_TRACK_BAR_LENGTH_M,
+} from "@/lib/iron-price-list-2026";
 import { ensureEqualsPrefix, evaluateFormula } from "@/lib/excel-formula";
 
 type Props = {
@@ -40,13 +43,17 @@ type Props = {
   systemId?: string;
 };
 
-type IronTab = "meta" | "pieces" | "cuts";
+type IronTab = "prices" | "cuts" | "meta";
 
 const TABS: { id: IronTab; label: string }[] = [
-  { id: "meta", label: "بيانات" },
-  { id: "pieces", label: "العيدان" },
+  { id: "prices", label: "الأسعار" },
   { id: "cuts", label: "التخصيم" },
+  { id: "meta", label: "بيانات" },
 ];
+
+function defaultBarLengthForRole(role: IronPieceRole): number {
+  return role === "track" ? IRON_TRACK_BAR_LENGTH_M : IRON_STOCK_BAR_LENGTH_M;
+}
 
 type DeductOffsets = {
   frameW: number;
@@ -129,7 +136,7 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
   const [previewW, setPreviewW] = useState(1200);
   const [previewH, setPreviewH] = useState(1400);
   const [flash, setFlash] = useState<string | null>(null);
-  const [tab, setTab] = useState<IronTab>("cuts");
+  const [tab, setTab] = useState<IronTab>("prices");
 
   const showFlash = useCallback((msg: string) => {
     setFlash(msg);
@@ -199,10 +206,15 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
     showFlash("تم حفظ التخصيم");
   }
 
-  function patchPiece(role: IronPieceRole, patch: Partial<IronPiece>) {
+  function patchPiece(
+    role: IronPieceRole,
+    patch: Partial<IronPiece>,
+    notify = false
+  ) {
     const next = upsertPiece(pieces, role, patch);
     setPieces(next);
     persistIron(next, deductions);
+    if (notify) showFlash("تم حفظ السعر");
   }
 
   if (!system) {
@@ -252,8 +264,8 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
     <div className="flex flex-col gap-3">
       <div className="px-1">
         <h2 className="text-lg font-bold text-foreground">{system.name}</h2>
-        <p className="mt-0.5 text-xs text-muted">
-          حلق مفصلي/جرار · ضلفة شباك/باب/جرار · تسعير بالعود
+        <p className="mt-0.5 text-xs leading-relaxed text-muted">
+          عدّل أسعار العيدان من تبويب الأسعار — تدخل تكلفة البند والبيع مباشرة.
         </p>
       </div>
 
@@ -303,24 +315,28 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
         </form>
       ) : null}
 
-      {tab === "pieces" ? (
+      {tab === "prices" ? (
         <section className="space-y-2">
-          <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted">
-            أسعار قائمة يوليو 2026 (تسليم أرض المصنع). عدّل سعر العود أو الطول
-            عند الحاجة — يُحسب سعر المتر تلقائياً.
+          <p className="rounded-xl border border-primary/25 bg-primary-soft/40 px-3 py-2.5 text-xs leading-relaxed text-foreground">
+            <span className="font-semibold text-primary">تعديل الأسعار هنا.</span>{" "}
+            اكتب سعر العود أو سعر المتر — أيهما أسهل. القائمة الافتراضية يوليو
+            ٢٠٢٦ قابلة للتعديل بالكامل.
           </p>
           <ul className="overflow-hidden rounded-2xl border border-border bg-card">
             {IRON_PIECE_ROLES.map((role, i) => {
+              const fallbackLen = defaultBarLengthForRole(role.id);
               const piece = pieceByRole(pieces, role.id) ?? {
                 id: `iron-${role.id}`,
                 name: role.label,
                 role: role.id,
                 sectionWidthMm: role.id === "track" ? 0 : 40,
                 sectionHeightMm: role.id === "track" ? 0 : 20,
-                barLengthM: DEFAULT_BAR_LENGTH_M,
+                barLengthM: fallbackLen,
                 enabled: true,
               };
               const isTrack = role.id === "track";
+              const barLen =
+                piece.barLengthM > 0 ? piece.barLengthM : fallbackLen;
               const barPrice = ironPieceBarPrice(piece);
               const perM = ironPiecePricePerM(piece);
               const priceHint = ironPiecePriceSummary(piece);
@@ -350,12 +366,94 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
                         <p className="mt-1 text-[11px] font-medium text-primary">
                           {priceHint}
                         </p>
-                      ) : null}
+                      ) : (
+                        <p className="mt-1 text-[11px] text-muted">
+                          لا يوجد سعر — اكتب سعر العود أو المتر
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {piece.enabled ? (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      <label className="block text-[10px] font-semibold text-foreground">
+                        سعر العود (ج.م)
+                        <NumericInput
+                          min={0}
+                          step={1}
+                          value={barPrice}
+                          onChange={(v) => {
+                            const next = v > 0 ? v : undefined;
+                            patchPiece(
+                              role.id,
+                              {
+                                barLengthM: barLen,
+                                barPrice: next,
+                                pricePerM:
+                                  next != null
+                                    ? profileBarPricePerM(next, barLen)
+                                    : undefined,
+                              },
+                              true
+                            );
+                          }}
+                          className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-bold outline-none focus:border-primary"
+                        />
+                      </label>
+                      <label className="block text-[10px] font-semibold text-foreground">
+                        سعر المتر (ج.م/م)
+                        <NumericInput
+                          min={0}
+                          step={0.1}
+                          value={perM}
+                          onChange={(v) => {
+                            const nextPerM = v > 0 ? v : undefined;
+                            patchPiece(
+                              role.id,
+                              {
+                                barLengthM: barLen,
+                                pricePerM: nextPerM,
+                                barPrice:
+                                  nextPerM != null
+                                    ? Math.round(nextPerM * barLen * 100) / 100
+                                    : undefined,
+                              },
+                              true
+                            );
+                          }}
+                          className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-bold outline-none focus:border-primary"
+                        />
+                      </label>
+                      <label className="block text-[10px] text-muted">
+                        طول العود (م)
+                        <NumericInput
+                          min={0.1}
+                          step={0.1}
+                          fallback={fallbackLen}
+                          blankZero={false}
+                          value={piece.barLengthM}
+                          onChange={(v) => {
+                            const barLengthM = v > 0 ? v : fallbackLen;
+                            const nextBar = ironPieceBarPrice({
+                              ...piece,
+                              barLengthM,
+                            });
+                            patchPiece(
+                              role.id,
+                              {
+                                barLengthM,
+                                barPrice: nextBar > 0 ? nextBar : undefined,
+                                pricePerM:
+                                  nextBar > 0
+                                    ? profileBarPricePerM(nextBar, barLengthM)
+                                    : undefined,
+                              },
+                              true
+                            );
+                          }}
+                          className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
+                        />
+                      </label>
                       {!isTrack ? (
                         <>
                           <label className="block text-[10px] text-muted">
@@ -382,64 +480,6 @@ export function IronSystemDetailEditor({ systemId: _systemId }: Props) {
                           </label>
                         </>
                       ) : null}
-                      <label className="block text-[10px] text-muted">
-                        طول العود (م)
-                        <NumericInput
-                          min={0.1}
-                          step={0.1}
-                          fallback={DEFAULT_BAR_LENGTH_M}
-                          blankZero={false}
-                          value={piece.barLengthM}
-                          onChange={(v) => {
-                            const barLengthM = v > 0 ? v : DEFAULT_BAR_LENGTH_M;
-                            const nextBar = ironPieceBarPrice({
-                              ...piece,
-                              barLengthM,
-                            });
-                            patchPiece(role.id, {
-                              barLengthM,
-                              barPrice: nextBar > 0 ? nextBar : undefined,
-                              pricePerM:
-                                nextBar > 0
-                                  ? profileBarPricePerM(nextBar, barLengthM)
-                                  : undefined,
-                            });
-                          }}
-                          className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-                        />
-                      </label>
-                      <label className="block text-[10px] text-muted">
-                        سعر العود (ج.م)
-                        <NumericInput
-                          min={0}
-                          step={1}
-                          value={barPrice}
-                          onChange={(v) => {
-                            const next = v > 0 ? v : undefined;
-                            const len =
-                              piece.barLengthM > 0
-                                ? piece.barLengthM
-                                : DEFAULT_BAR_LENGTH_M;
-                            patchPiece(role.id, {
-                              barPrice: next,
-                              pricePerM:
-                                next != null
-                                  ? profileBarPricePerM(next, len)
-                                  : undefined,
-                            });
-                          }}
-                          className="mt-0.5 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-                        />
-                      </label>
-                      <label className="block text-[10px] text-muted">
-                        سعر المتر (محسوب)
-                        <input
-                          readOnly
-                          value={perM > 0 ? String(perM) : "—"}
-                          className="mt-0.5 w-full rounded-lg border border-border bg-background/60 px-2 py-1.5 text-xs text-muted outline-none"
-                          aria-label="سعر المتر المحسوب"
-                        />
-                      </label>
                     </div>
                   ) : null}
                 </li>
