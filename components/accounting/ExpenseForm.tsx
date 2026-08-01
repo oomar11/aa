@@ -1,28 +1,51 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import {
   EXPENSE_CATEGORIES,
   todayIsoDate,
   upsertExpense,
 } from "@/lib/accounting";
+import { getProjectById } from "@/lib/projects";
+import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
+import { formatCurrency } from "@/lib/utils";
 import { NumericInput } from "@/components/ui/NumericInput";
+import { PaymentProjectPicker } from "@/components/accounting/PaymentProjectPicker";
 
+/**
+ * تسجيل مصروف: اختر المشروع + المبلغ والوصف.
+ * سهل وسريع — نفس أسلوب استلام الدفعة.
+ */
 export function ExpenseForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetProjectId = searchParams.get("project") ?? "";
+
+  const [projectId, setProjectId] = useState(presetProjectId);
   const [category, setCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState(0);
   const [date, setDate] = useState(todayIsoDate());
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [projectError, setProjectError] = useState(false);
+
+  const selectedProject = projectId ? getProjectById(projectId) : undefined;
+  const money = selectedProject
+    ? getProjectMoneySummary(selectedProject.id)
+    : null;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!selectedProject || selectedProject.workflow === "done") {
+      setError("اختر المشروع");
+      setProjectError(true);
+      return;
+    }
     if (!description.trim()) {
-      setError("اكتب وصف المصروف");
+      setError("أدخل وصف المصروف");
       return;
     }
     if (amount <= 0) {
@@ -36,10 +59,11 @@ export function ExpenseForm() {
       description: description.trim(),
       amount,
       date,
+      projectId: selectedProject.id,
       note: note.trim() || undefined,
       createdAt: new Date().toISOString(),
     });
-    router.replace(ROUTES.accounting.expenses);
+    router.replace(ROUTES.design.editor(selectedProject.customerId, selectedProject.id));
   }
 
   const fieldClass =
@@ -47,6 +71,43 @@ export function ExpenseForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+      <p className="rounded-2xl border border-[#E8956F]/30 bg-[#E8956F]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
+        سجّل مصروف المشروع: خامات، نقل، أجور… يظهر ضمن حساب المشروع مباشرة.
+      </p>
+
+      <PaymentProjectPicker
+        value={projectId}
+        onChange={(id) => {
+          setProjectId(id);
+          setProjectError(false);
+          setError("");
+        }}
+        error={projectError}
+      />
+
+      {money ? (
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3">
+          <div className="text-center">
+            <p className="text-[10px] text-muted">مصروفات سابقة</p>
+            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#E8956F]">
+              {formatCurrency(money.expenses)}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] text-muted">المحصّل</p>
+            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#2F9B7A]">
+              {formatCurrency(money.paid)}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] text-muted">المتبقي</p>
+            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#E85A8A]">
+              {formatCurrency(money.remaining)}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">التصنيف</span>
         <select
@@ -73,7 +134,7 @@ export function ExpenseForm() {
             setDescription(e.target.value);
             setError("");
           }}
-          placeholder="مثال: شراء زجاج / إيجار المخزن"
+          placeholder="مثال: شراء زجاج / نقل تركيب"
           className={fieldClass}
         />
       </label>
@@ -113,7 +174,7 @@ export function ExpenseForm() {
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          rows={3}
+          rows={2}
           className={`${fieldClass} resize-none`}
         />
       </label>

@@ -162,7 +162,7 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
           </div>
 
           {selectedMoney ? (
-            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3">
+            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 sm:grid-cols-4">
               <MoneyRow label="الحساب" value={selectedMoney.sale} />
               <MoneyRow
                 label="المدفوع"
@@ -173,6 +173,11 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
                 label="المتبقي"
                 value={selectedMoney.remaining}
                 tone={selectedMoney.remaining > 0 ? "warn" : "good"}
+              />
+              <MoneyRow
+                label="المصروفات"
+                value={selectedMoney.expenses}
+                tone="warn"
               />
             </div>
           ) : null}
@@ -297,6 +302,15 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
                       >
                         {formatCurrency(money.remaining)}
                       </span>
+                      {money.expenses > 0 ? (
+                        <>
+                          {" · "}
+                          مصروف{" "}
+                          <span className="font-semibold text-[#C45C26]">
+                            {formatCurrency(money.expenses)}
+                          </span>
+                        </>
+                      ) : null}
                     </p>
                   </button>
                 </li>

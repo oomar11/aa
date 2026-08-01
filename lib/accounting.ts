@@ -46,6 +46,8 @@ export type Expense = {
   description: string;
   amount: number;
   date: string;
+  /** ربط المصروف بمشروع (اختياري للمصروفات العامة) */
+  projectId?: string;
   note?: string;
   createdAt: string;
 };
@@ -180,6 +182,7 @@ const seedExpenses: Expense[] = [
     id: "exp-2",
     category: "نقل",
     description: "نقل تركيب فيلا المعادي",
+    projectId: "p1",
     amount: 600,
     date: "2026-07-19",
     createdAt: "2026-07-19T14:00:00.000Z",

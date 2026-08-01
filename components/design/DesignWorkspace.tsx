@@ -752,6 +752,16 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
+          {customerId && projectId ? (
+            <Link
+              href={ROUTES.accounting.expenseForProject(customerId, projectId)}
+              className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+              aria-label="مصروف المشروع"
+              title="مصروف المشروع"
+            >
+              <ExpenseIcon />
+            </Link>
+          ) : null}
           <Link
             href={
               customerId && projectId
@@ -1115,6 +1125,25 @@ function TrashIcon({ active }: { active: boolean }) {
       <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
       <path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" />
       <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
+function ExpenseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="6" width="18" height="13" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 14h3M14 14h2" />
     </svg>
   );
 }

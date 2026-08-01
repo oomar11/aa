@@ -215,6 +215,15 @@ export function ProjectList({ customerId }: Props) {
                       تسجيل دفعة
                     </Link>
                   ) : null}
+                  <Link
+                    href={ROUTES.accounting.expenseForProject(
+                      customerId,
+                      project.id
+                    )}
+                    className="min-w-[7rem] flex-1 rounded-xl border border-[#E8956F]/40 bg-[#E8956F]/10 px-3 py-2 text-center text-xs font-semibold text-[#C45C26]"
+                  >
+                    مصروف
+                  </Link>
                   <button
                     type="button"
                     onClick={() => handleDeleteProject(project)}
