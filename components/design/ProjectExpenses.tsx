@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   deleteExpense,
   todayIsoDate,
@@ -22,10 +22,11 @@ type Props = {
 
 /**
  * مصروفات المشروع من داخل المشروع فقط:
- * إجمالي → تسجيل سريع → سجل واضح.
+ * إجمالي → تسجيل/تعديل → سجل قابل للضغط للتعديل.
  */
 export function ProjectExpenses({ customerId, projectId }: Props) {
   const project = getProjectById(projectId);
+  const formRef = useRef<HTMLElement>(null);
 
   const [expenses, setExpenses] = useState<Expense[]>(() =>
     typeof window === "undefined" ? [] : listProjectExpenses(projectId)
@@ -34,6 +35,8 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
     typeof window === "undefined" ? 0 : projectExpenseTotal(projectId)
   );
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<string>("");
 
   const [category, setCategory] = useState<string>(PROJECT_CATEGORIES[0]);
   const [description, setDescription] = useState("");
@@ -43,6 +46,8 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
   const [showExtra, setShowExtra] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const isEditing = editingId !== null;
 
   useEffect(() => {
     function refresh() {
@@ -61,6 +66,8 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
   }, [justSavedId]);
 
   function resetForm() {
+    setEditingId(null);
+    setCreatedAt("");
     setDescription("");
     setAmount(0);
     setNote("");
@@ -68,6 +75,21 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
     setCategory(PROJECT_CATEGORIES[0]);
     setShowExtra(false);
     setError("");
+  }
+
+  function startEdit(expense: Expense) {
+    setEditingId(expense.id);
+    setCreatedAt(expense.createdAt);
+    setAmount(expense.amount);
+    setDescription(expense.description);
+    setCategory(expense.category);
+    setDate(expense.date);
+    setNote(expense.note ?? "");
+    setShowExtra(Boolean(expense.note) || expense.date !== todayIsoDate());
+    setError("");
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function handleSubmit(e: FormEvent) {
@@ -86,7 +108,7 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
     }
 
     setSaving(true);
-    const id = `exp-${Date.now()}`;
+    const id = editingId ?? `exp-${Date.now()}`;
     upsertExpense({
       id,
       category,
@@ -95,7 +117,7 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
       date,
       projectId,
       note: note.trim() || undefined,
-      createdAt: new Date().toISOString(),
+      createdAt: createdAt || new Date().toISOString(),
     });
     resetForm();
     setJustSavedId(id);
@@ -127,14 +149,27 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
         </p>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="px-0.5 text-sm font-bold text-foreground">
-          تسجيل مصروف جديد
-        </h2>
+      <section ref={formRef} className="flex flex-col gap-3 scroll-mt-4">
+        <div className="flex items-center justify-between gap-2 px-0.5">
+          <h2 className="text-sm font-bold text-foreground">
+            {isEditing ? "تعديل المصروف" : "تسجيل مصروف جديد"}
+          </h2>
+          {isEditing ? (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="text-xs font-semibold text-muted"
+            >
+              إلغاء التعديل
+            </button>
+          ) : null}
+        </div>
 
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4"
+          className={`flex flex-col gap-3.5 rounded-2xl border bg-card p-4 transition-colors ${
+            isEditing ? "border-[#E8956F]" : "border-border"
+          }`}
         >
           <label className="flex flex-col gap-1.5 text-right">
             <span className="text-xs font-medium text-muted">المبلغ (ج.م)</span>
@@ -146,7 +181,7 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
               }}
               min={0}
               blankZero
-              autoFocus
+              autoFocus={!isEditing}
               className={`${fieldClass} text-left text-xl font-bold tabular-nums`}
               dir="ltr"
               inputMode="decimal"
@@ -187,6 +222,13 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
                   </button>
                 );
               })}
+              {!PROJECT_CATEGORIES.includes(
+                category as (typeof PROJECT_CATEGORIES)[number]
+              ) ? (
+                <span className="rounded-xl bg-[#E8956F]/15 px-3 py-1.5 text-xs font-semibold text-[#C45C26]">
+                  {category}
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -227,20 +269,42 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
             <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
           ) : null}
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#C45C26] text-sm font-bold text-white transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
-          >
-            {saving ? "جاري الحفظ…" : "إضافة إلى السجل"}
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#C45C26] text-sm font-bold text-white transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+            >
+              {saving
+                ? "جاري الحفظ…"
+                : isEditing
+                  ? "حفظ التعديل"
+                  : "إضافة إلى السجل"}
+            </button>
+            {isEditing ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!editingId) return;
+                  if (!window.confirm("حذف هذا المصروف؟")) return;
+                  deleteExpense(editingId);
+                  resetForm();
+                }}
+                className="flex h-11 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/35 text-sm font-semibold text-[#E85A8A]"
+              >
+                حذف المصروف
+              </button>
+            ) : null}
+          </div>
         </form>
       </section>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-2 px-0.5">
           <h2 className="text-sm font-bold text-foreground">سجل المصروفات</h2>
-          <span className="text-xs text-muted">{expenses.length}</span>
+          <span className="text-xs text-muted">
+            {expenses.length > 0 ? "اضغط للتعديل" : "0"}
+          </span>
         </div>
 
         {expenses.length === 0 ? (
@@ -253,48 +317,49 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
           <ul className="flex flex-col gap-2">
             {expenses.map((expense) => {
               const highlight = expense.id === justSavedId;
+              const selected = expense.id === editingId;
               return (
-                <li
-                  key={expense.id}
-                  className={`rounded-2xl border bg-card p-3.5 transition-all duration-500 ${
-                    highlight
-                      ? "border-[#E8956F] shadow-[0_0_0_3px_rgba(232,149,111,0.25)]"
-                      : "border-border"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-foreground">
-                        {expense.description}
-                      </p>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span className="rounded-lg bg-[#E8956F]/15 px-2 py-0.5 text-[10px] font-semibold text-[#C45C26]">
-                          {expense.category}
-                        </span>
-                        <span className="text-[11px] text-muted">
-                          {formatDate(expense.date)}
-                        </span>
+                <li key={expense.id}>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(expense)}
+                    className={`w-full rounded-2xl border bg-card p-3.5 text-right transition-all duration-300 active:scale-[0.99] ${
+                      selected
+                        ? "border-[#E8956F] bg-[#E8956F]/10 shadow-[0_0_0_3px_rgba(232,149,111,0.2)]"
+                        : highlight
+                          ? "border-[#E8956F] shadow-[0_0_0_3px_rgba(232,149,111,0.25)]"
+                          : "border-border hover:border-[#E8956F]/50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-foreground">
+                          {expense.description}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-lg bg-[#E8956F]/15 px-2 py-0.5 text-[10px] font-semibold text-[#C45C26]">
+                            {expense.category}
+                          </span>
+                          <span className="text-[11px] text-muted">
+                            {formatDate(expense.date)}
+                          </span>
+                          {selected ? (
+                            <span className="text-[10px] font-semibold text-[#C45C26]">
+                              قيد التعديل
+                            </span>
+                          ) : null}
+                        </div>
+                        {expense.note ? (
+                          <p className="mt-1.5 text-xs text-muted">
+                            {expense.note}
+                          </p>
+                        ) : null}
                       </div>
-                      {expense.note ? (
-                        <p className="mt-1.5 text-xs text-muted">{expense.note}</p>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                      <p className="text-base font-bold tabular-nums text-[#C45C26]">
+                      <p className="shrink-0 text-base font-bold tabular-nums text-[#C45C26]">
                         {formatCurrency(expense.amount)}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!window.confirm("حذف هذا المصروف؟")) return;
-                          deleteExpense(expense.id);
-                        }}
-                        className="text-[11px] font-semibold text-[#E85A8A]"
-                      >
-                        حذف
-                      </button>
                     </div>
-                  </div>
+                  </button>
                 </li>
               );
             })}
