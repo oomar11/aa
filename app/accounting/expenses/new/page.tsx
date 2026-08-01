@@ -11,7 +11,7 @@ export default function NewExpensePage() {
         backHref={ROUTES.accounting.expenses}
         backLabel="المصروفات"
         title="مصروف مشروع"
-        description="اختر المشروع وسجّل المبلغ والوصف"
+        description="اختر المشروع وسجّل المبلغ والوصف — بدون حساب المشروع"
       />
       <div className="mt-4">
         <Suspense

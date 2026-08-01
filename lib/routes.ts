@@ -47,9 +47,9 @@ export const ROUTES = {
       `/accounting/payments/new?customer=${customerId}&project=${projectId}`,
     expenses: "/accounting/expenses",
     newExpense: "/accounting/expenses/new",
-    /** مصروف مربوط بمشروع محدد */
-    expenseForProject: (customerId: string, projectId: string) =>
-      `/accounting/expenses/new?customer=${customerId}&project=${projectId}`,
+    /** مصروفات مشروع محدد — سجل + تسجيل */
+    expenseForProject: (_customerId: string, projectId: string) =>
+      `/accounting/expenses?project=${projectId}`,
   },
 
   materials: {

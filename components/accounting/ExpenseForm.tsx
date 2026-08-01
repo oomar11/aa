@@ -1,27 +1,43 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   EXPENSE_CATEGORIES,
+  loadExpenses,
   todayIsoDate,
   upsertExpense,
 } from "@/lib/accounting";
 import { getProjectById } from "@/lib/projects";
-import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency } from "@/lib/utils";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { PaymentProjectPicker } from "@/components/accounting/PaymentProjectPicker";
 
+type Props = {
+  /** مشروع محدد مسبقاً — بدون اختيار مشروع */
+  fixedProjectId?: string;
+  /** بعد الحفظ يعود لسجل المصروفات بدل المحرر */
+  returnToLog?: boolean;
+  /** بدون زر حفظ كبير في الأسفل عند التضمين */
+  compact?: boolean;
+  /** إخفاء بطاقة إجمالي المصروف داخل النموذج */
+  hideTotal?: boolean;
+};
+
 /**
  * تسجيل مصروف: اختر المشروع + المبلغ والوصف.
- * سهل وسريع — نفس أسلوب استلام الدفعة.
+ * بدون حساب المشروع — إجمالي المصروف فقط.
  */
-export function ExpenseForm() {
+export function ExpenseForm({
+  fixedProjectId,
+  returnToLog = false,
+  compact = false,
+  hideTotal = false,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const presetProjectId = searchParams.get("project") ?? "";
+  const presetProjectId = fixedProjectId ?? searchParams.get("project") ?? "";
 
   const [projectId, setProjectId] = useState(presetProjectId);
   const [category, setCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
@@ -31,11 +47,30 @@ export function ExpenseForm() {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [projectError, setProjectError] = useState(false);
+  const [expenseTotal, setExpenseTotal] = useState(0);
 
-  const selectedProject = projectId ? getProjectById(projectId) : undefined;
-  const money = selectedProject
-    ? getProjectMoneySummary(selectedProject.id)
-    : null;
+  const lockedProject = presetProjectId ? getProjectById(presetProjectId) : undefined;
+  const selectedProject = lockedProject ?? (projectId ? getProjectById(projectId) : undefined);
+
+  const activeProjectId = lockedProject?.id ?? projectId;
+
+  useEffect(() => {
+    function refresh() {
+      if (!activeProjectId) {
+        setExpenseTotal(0);
+        return;
+      }
+      const sum = loadExpenses()
+        .filter((e) => e.projectId === activeProjectId)
+        .reduce((s, e) => s + e.amount, 0);
+      setExpenseTotal(sum);
+    }
+    refresh();
+    window.addEventListener("upvc-accounting-updated", refresh);
+    return () => window.removeEventListener("upvc-accounting-updated", refresh);
+  }, [activeProjectId]);
+
+  const showProjectPicker = !lockedProject;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -63,6 +98,13 @@ export function ExpenseForm() {
       note: note.trim() || undefined,
       createdAt: new Date().toISOString(),
     });
+
+    if (returnToLog || lockedProject) {
+      router.replace(
+        `${ROUTES.accounting.expenses}?project=${selectedProject.id}`
+      );
+      return;
+    }
     router.replace(ROUTES.design.editor(selectedProject.customerId, selectedProject.id));
   }
 
@@ -71,40 +113,38 @@ export function ExpenseForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
-      <p className="rounded-2xl border border-[#E8956F]/30 bg-[#E8956F]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
-        سجّل مصروف المشروع: خامات، نقل، أجور… يظهر ضمن حساب المشروع مباشرة.
-      </p>
+      {!compact ? (
+        <p className="rounded-2xl border border-[#E8956F]/30 bg-[#E8956F]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
+          سجّل مصروف المشروع: خامات، نقل، أجور… يُضاف إلى سجل المصروفات.
+        </p>
+      ) : null}
 
-      <PaymentProjectPicker
-        value={projectId}
-        onChange={(id) => {
-          setProjectId(id);
-          setProjectError(false);
-          setError("");
-        }}
-        error={projectError}
-      />
+      {showProjectPicker ? (
+        <PaymentProjectPicker
+          value={projectId}
+          onChange={(id) => {
+            setProjectId(id);
+            setProjectError(false);
+            setError("");
+          }}
+          error={projectError}
+          variant="expense"
+        />
+      ) : lockedProject ? (
+        <div className="rounded-2xl border border-primary/35 bg-card p-3.5">
+          <p className="text-sm font-bold text-foreground">{lockedProject.name}</p>
+          {lockedProject.location ? (
+            <p className="mt-0.5 text-xs text-muted">{lockedProject.location}</p>
+          ) : null}
+        </div>
+      ) : null}
 
-      {money ? (
-        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3">
-          <div className="text-center">
-            <p className="text-[10px] text-muted">مصروفات سابقة</p>
-            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#E8956F]">
-              {formatCurrency(money.expenses)}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] text-muted">المحصّل</p>
-            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#2F9B7A]">
-              {formatCurrency(money.paid)}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] text-muted">المتبقي</p>
-            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#E85A8A]">
-              {formatCurrency(money.remaining)}
-            </p>
-          </div>
+      {activeProjectId && !hideTotal ? (
+        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted">إجمالي المصروف</p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-[#E8956F]">
+            {formatCurrency(expenseTotal)} ج.م
+          </p>
         </div>
       ) : null}
 
@@ -185,7 +225,9 @@ export function ExpenseForm() {
 
       <button
         type="submit"
-        className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
+        className={`flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98] ${
+          compact ? "" : "mt-2"
+        }`}
       >
         حفظ المصروف
       </button>

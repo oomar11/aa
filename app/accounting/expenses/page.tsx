@@ -1,18 +1,20 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { ExpensesBrowser } from "@/components/accounting/ExpensesBrowser";
-import { ROUTES } from "@/lib/routes";
+import { ExpensesPageHeader } from "@/components/accounting/ExpensesPageHeader";
 
 export default function ExpensesPage() {
   return (
     <AppShell>
-      <PageHeader
-        backHref={ROUTES.accounting.hub}
-        backLabel="الحسابات"
-        title="المصروفات"
-        description="مصروفات المشاريع والشركة — خامات، نقل، أجور…"
-      />
+      <Suspense
+        fallback={
+          <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted">
+            جاري التحميل…
+          </div>
+        }
+      >
+        <ExpensesPageHeader />
+      </Suspense>
       <div className="mt-4">
         <Suspense
           fallback={

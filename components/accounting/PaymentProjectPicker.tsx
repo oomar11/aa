@@ -22,6 +22,8 @@ type Props = {
   value: string;
   onChange: (projectId: string) => void;
   error?: boolean;
+  /** payment = حساب المشروع؛ expense = اختيار المشروع فقط */
+  variant?: "payment" | "expense";
 };
 
 function MoneyRow({
@@ -53,7 +55,13 @@ function MoneyRow({
 /**
  * اختيار مشروع لاستلام دفعة: بحث بالاسم/الهاتف/الموقع ثم بطاقات واضحة.
  */
-export function PaymentProjectPicker({ value, onChange, error }: Props) {
+export function PaymentProjectPicker({
+  value,
+  onChange,
+  error,
+  variant = "payment",
+}: Props) {
+  const showMoney = variant === "payment";
   const [allCustomers] = useState(mergeCustomers);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(!value);
@@ -161,7 +169,7 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
             </button>
           </div>
 
-          {selectedMoney ? (
+          {showMoney && selectedMoney ? (
             <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 sm:grid-cols-4">
               <MoneyRow label="الحساب" value={selectedMoney.sale} />
               <MoneyRow
@@ -284,34 +292,43 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
                         {WORKFLOW_LABELS[project.workflow]}
                       </span>
                     </div>
-                    <p className="text-[11px] text-muted">
-                      حساب {formatCurrency(money.sale)} ج.م
-                      {" · "}
-                      مدفوع{" "}
-                      <span className="font-semibold text-[#2F9B7A]">
-                        {formatCurrency(money.paid)}
-                      </span>
-                      {" · "}
-                      متبقي{" "}
-                      <span
-                        className={`font-semibold ${
-                          money.remaining > 0
-                            ? "text-[#E85A8A]"
-                            : "text-[#2F9B7A]"
-                        }`}
-                      >
-                        {formatCurrency(money.remaining)}
-                      </span>
-                      {money.expenses > 0 ? (
-                        <>
-                          {" · "}
-                          مصروف{" "}
-                          <span className="font-semibold text-[#C45C26]">
-                            {formatCurrency(money.expenses)}
-                          </span>
-                        </>
-                      ) : null}
-                    </p>
+                    {showMoney ? (
+                      <p className="text-[11px] text-muted">
+                        حساب {formatCurrency(money.sale)} ج.م
+                        {" · "}
+                        مدفوع{" "}
+                        <span className="font-semibold text-[#2F9B7A]">
+                          {formatCurrency(money.paid)}
+                        </span>
+                        {" · "}
+                        متبقي{" "}
+                        <span
+                          className={`font-semibold ${
+                            money.remaining > 0
+                              ? "text-[#E85A8A]"
+                              : "text-[#2F9B7A]"
+                          }`}
+                        >
+                          {formatCurrency(money.remaining)}
+                        </span>
+                        {money.expenses > 0 ? (
+                          <>
+                            {" · "}
+                            مصروف{" "}
+                            <span className="font-semibold text-[#C45C26]">
+                              {formatCurrency(money.expenses)}
+                            </span>
+                          </>
+                        ) : null}
+                      </p>
+                    ) : money.expenses > 0 ? (
+                      <p className="text-[11px] text-muted">
+                        إجمالي المصروف{" "}
+                        <span className="font-semibold text-[#E8956F]">
+                          {formatCurrency(money.expenses)} ج.م
+                        </span>
+                      </p>
+                    ) : null}
                   </button>
                 </li>
               );
