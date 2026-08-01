@@ -350,7 +350,6 @@ export type AccessoryBrandCategory =
   | "bouclier-lock"
   | "bouclier-bolt"
   | "bouclier-bolt-lock"
-  | "track"
   | "roller"
   | "brush"
   | "sliding-espagnolette"
@@ -374,7 +373,6 @@ export const ACCESSORY_BRAND_CATEGORIES: {
   { id: "bouclier-lock", label: "سكاك بوكلير", group: "bouclier" },
   { id: "bouclier-bolt", label: "ترباس بوكلير", group: "bouclier" },
   { id: "bouclier-bolt-lock", label: "سكاك ترباس", group: "bouclier" },
-  { id: "track", label: "تراك جرار", group: "sliding" },
   { id: "roller", label: "عجل جرار", group: "sliding" },
   { id: "brush", label: "فرش جرار", group: "sliding" },
   { id: "sliding-espagnolette", label: "سبلونة جرار", group: "sliding" },

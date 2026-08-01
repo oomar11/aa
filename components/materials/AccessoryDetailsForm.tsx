@@ -315,9 +315,7 @@ export function AccessoryDetailsForm({
                         key={cat.id}
                         label={cat.label}
                         unitHint={
-                          cat.id === "track" || cat.id === "brush"
-                            ? "ج.م/م"
-                            : "ج.م"
+                          cat.id === "brush" ? "ج.م/م" : "ج.م"
                         }
                         value={brand?.unitPrice}
                         onChange={(raw) => {
@@ -611,7 +609,7 @@ export function AccessoryDetailsForm({
           </p>
 
           <p className="pt-1 text-[11px] font-bold text-foreground">
-            جرار — التراك مع الحديد
+            جرار
           </p>
           <div className="grid grid-cols-2 gap-2">
             <NumberField

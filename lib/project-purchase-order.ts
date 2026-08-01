@@ -457,15 +457,6 @@ function addAccessoryLines(
     unit: "م",
     note: brandNote("brush"),
   });
-  if (acc.trackQty > 0) {
-    addLine(map, {
-      section: "accessories",
-      label: "تراكات",
-      amount: acc.trackQty,
-      unit: "قطعة",
-      note: acc.trackLengthM > 0 ? `${acc.trackLengthM.toFixed(2)} م` : undefined,
-    });
-  }
   for (const line of acc.slidingEspagnolettes) {
     addLine(map, {
       section: "accessories",

@@ -13,11 +13,11 @@
  * - لون المقبض = لون الإطار/الباب
  *
  * جرار:
- * - تراك ×٢ بعرض الحلق
  * - عجلتين لكل ضلفة
  * - فرش: محيط الضلفة ×٢ + ارتفاع السكينة ×١
  * - سبلونة/سكاك جرار
  * - مقبض غاطس على الضلفة الغاطسة
+ * (التراك مع الحديد — مش هنا)
  */
 
 import {
@@ -89,10 +89,6 @@ export type AccessoriesBreakdown = {
   doorHandleColorLabel: string | null;
 
   // ── جرار ───────────────────────────────────────────
-  /** عدد قطع التراك (عادة ٢) */
-  trackQty: number;
-  /** إجمالي طول التراك بالمتر (العدد × عرض الحلق) */
-  trackLengthM: number;
   rollerQty: number;
   brushLengthM: number;
   slidingEspagnolettes: EspagnoletteLine[];
@@ -163,8 +159,6 @@ function emptyBreakdown(systemName: string | null): AccessoriesBreakdown {
     doorSignalHandleQty: 0,
     doorEscutcheonQty: 0,
     doorHandleColorLabel: null,
-    trackQty: 0,
-    trackLengthM: 0,
     rollerQty: 0,
     brushLengthM: 0,
     slidingEspagnolettes: [],
@@ -503,8 +497,6 @@ export function calcItemAccessories(
 
   // ── جرار ─────────────────────────────────────────────────
   const slidingBoxes = boxes.filter((b) => isSlidingOpening(b.opening));
-  let trackQty = 0;
-  let trackLengthM = 0;
   let rollerQty = 0;
   let brushMm = 0;
   const slidingEspMap = new Map<EspagnoletteSize, number>();
@@ -512,7 +504,6 @@ export function calcItemAccessories(
   let recessedHandleQty = 0;
 
   if (slidingBoxes.length > 0) {
-    // التراك بقى مع الحديد — مش هنا
     const depthMap = slidingSashDepthMap(boxes, panes);
 
     for (const box of slidingBoxes) {
@@ -560,7 +551,6 @@ export function calcItemAccessories(
     doorCylinderQty > 0 ||
     doorSignalHandleQty > 0 ||
     doorEscutcheonQty > 0 ||
-    trackQty > 0 ||
     rollerQty > 0 ||
     brushLengthM > 0.0005 ||
     slidingEspagnolettes.length > 0 ||
@@ -581,8 +571,6 @@ export function calcItemAccessories(
     doorSignalHandleQty,
     doorEscutcheonQty,
     doorHandleColorLabel,
-    trackQty,
-    trackLengthM,
     rollerQty,
     brushLengthM,
     slidingEspagnolettes,
@@ -616,8 +604,6 @@ export function scaleAccessories(
     doorSignalHandleQty: a.doorSignalHandleQty * q,
     doorEscutcheonQty: a.doorEscutcheonQty * q,
     doorHandleColorLabel: a.doorHandleColorLabel,
-    trackQty: a.trackQty * q,
-    trackLengthM: roundM(a.trackLengthM * q),
     rollerQty: a.rollerQty * q,
     brushLengthM: roundM(a.brushLengthM * q),
     slidingEspagnolettes: scaleLines(a.slidingEspagnolettes),

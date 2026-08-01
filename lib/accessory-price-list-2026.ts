@@ -159,14 +159,6 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "سكاك ترباس — فورنا"
     ),
     brand(
-      "brand-vorne-track",
-      "تراك جرار",
-      "track",
-      undefined,
-      undefined,
-      "السعر غير مدرج في قائمة 2026 — يُحدَّث يدوياً"
-    ),
-    brand(
       "brand-vorne-roller",
       "عجلة جرار سنجل نحاس",
       "roller",
@@ -257,6 +249,8 @@ export function migrateVorneAccessoryBrands(
   }
 
   for (const rest of byId.values()) {
+    // التراك انتقل للحديد — لا نبقي براندات تراك في الاكسسوار
+    if ((rest.category as string) === "track") continue;
     merged.push(rest);
   }
 
