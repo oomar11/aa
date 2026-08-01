@@ -4,7 +4,14 @@
  */
 
 import type { Customer } from "@/lib/customers";
-import type { DesignItem, FrameColorId, WindowStyle } from "@/lib/design-items";
+import {
+  defaultPaneConfig,
+  type DesignItem,
+  type FrameColorId,
+  type PaneConfig,
+  type PaneOpening,
+  type WindowStyle,
+} from "@/lib/design-items";
 import type { Company } from "@/lib/company";
 import type {
   Expense,
@@ -18,6 +25,13 @@ import {
   type SharedStorageKey,
 } from "@/lib/storage/keys";
 import { CLEAN_START_VERSION, DATA_VERSION_KEY } from "@/lib/clean-start";
+import {
+  ensurePaneIds,
+  listPaneIds,
+  pane,
+  rows,
+  type LayoutNode,
+} from "@/lib/window-layout";
 
 export type LegacyClient = {
   id: number | string;
@@ -151,18 +165,6 @@ function cmToMm(cm: unknown): number {
   return Math.round(n * 10);
 }
 
-function inferStyle(name: string): WindowStyle {
-  const n = name.toLowerCase();
-  if (n.includes("باب") || n.includes("door")) return "door";
-  if (n.includes("جرار") || n.includes("سحاب") || n.includes("sliding")) {
-    return "sliding-2";
-  }
-  if (n.includes("قلاب") || n.includes("tilt")) return "casement-1";
-  if (n.includes("ثابت") || n.includes("fixed")) return "fixed";
-  if (n.includes("مفصلي") || n.includes("ضلفت")) return "casement-2";
-  return "casement-1";
-}
-
 function inferFrameColor(color?: string): FrameColorId {
   const c = (color ?? "").trim().toLowerCase();
   if (!c) return "white";
@@ -179,6 +181,217 @@ function inferFrameColor(color?: string): FrameColorId {
     return "black";
   }
   return "white";
+}
+
+type OpeningFamily = "door" | "sliding" | "tilt" | "casement" | "fixed";
+
+type ApproxDrawing = {
+  style: WindowStyle;
+  templateId: string;
+  layout: LayoutNode;
+  panes: Record<string, PaneConfig>;
+};
+
+function normalizeItemName(name: string): string {
+  return name
+    .replace(/\u0640/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** عدد الضلف من الاسم إن وُجد */
+function extractLeafCount(name: string): number | null {
+  const n = normalizeItemName(name);
+  const digit = n.match(/(\d+)\s*ضلف/);
+  if (digit) {
+    const count = Number(digit[1]);
+    if (Number.isFinite(count) && count >= 1) return Math.min(6, count);
+  }
+  if (/ضلفتين|٢\s*ضلف|2\s*ضلفة/.test(n)) return 2;
+  if (/ثلاث(?:ة)?\s*ضلف|٣\s*ضلف|3\s*ضلفة/.test(n)) return 3;
+  if (/أربع(?:ة)?\s*ضلف|٤\s*ضلف|4\s*ضلفة/.test(n)) return 4;
+  if (/واحد(?:ة)?\s*ضلف|1\s*ضلفة|ضلفة\s*واحد/.test(n)) return 1;
+  return null;
+}
+
+function inferOpeningFamily(name: string): OpeningFamily {
+  const n = normalizeItemName(name);
+  if (/باب/.test(n)) {
+    if (/جرار|سحاب/.test(n)) return "sliding";
+    return "door";
+  }
+  if (/جرار|سحاب/.test(n)) return "sliding";
+  if (/قلاب/.test(n)) return "tilt";
+  if (/مفصلي|دوران/.test(n)) return "casement";
+  if (/ثابت/.test(n) && !/قلاب|مفصلي|جرار|باب/.test(n)) return "fixed";
+  if (/حمام/.test(n)) return "tilt";
+  if (/بلكونة|صاله|صالة|غرفه|غرفة|مطبخ/.test(n)) return "sliding";
+  return "casement";
+}
+
+function defaultLeafCount(family: OpeningFamily, name: string): number {
+  const explicit = extractLeafCount(name);
+  if (explicit != null) return explicit;
+  switch (family) {
+    case "sliding":
+      return 2;
+    case "casement":
+      return /مفصلي/.test(name) ? 2 : 1;
+    case "door":
+      return 1;
+    case "tilt":
+      return 1;
+    case "fixed":
+      return 1;
+  }
+}
+
+function styleForFamily(family: OpeningFamily, leafCount: number): WindowStyle {
+  if (family === "door") return "door";
+  if (family === "sliding") return leafCount >= 3 ? "sliding-3" : "sliding-2";
+  if (family === "fixed") return "fixed";
+  if (family === "tilt") return leafCount >= 2 ? "casement-2" : "casement-1";
+  return leafCount >= 2 ? "casement-2" : "casement-1";
+}
+
+function templateIdFor(leafCount: number, topFixed: boolean): string {
+  if (topFixed) {
+    if (leafCount <= 1) return "t01-single";
+    if (leafCount === 2) return "t10-t-top-2";
+    return "t08-t-top-3";
+  }
+  if (leafCount <= 1) return "t01-single";
+  if (leafCount === 2) return "t02-2v";
+  if (leafCount === 3) return "t03-3v";
+  return "t04-4v";
+}
+
+function buildStableCols(leafCount: number, idPrefix: string): LayoutNode {
+  const count = Math.max(1, Math.min(6, leafCount));
+  if (count === 1) return pane(`${idPrefix}-1`);
+  return {
+    type: "split",
+    dir: "v",
+    ratios: Array.from({ length: count }, () => 1),
+    children: Array.from({ length: count }, (_, i) =>
+      pane(`${idPrefix}-${i + 1}`)
+    ),
+  };
+}
+
+function buildApproxLayout(
+  leafCount: number,
+  idPrefix: string,
+  topFixed: boolean
+): LayoutNode {
+  const bottom = buildStableCols(leafCount, idPrefix);
+  if (!topFixed) return bottom;
+  return rows(
+    [0.28, pane(`${idPrefix}-top`)],
+    [0.72, bottom]
+  );
+}
+
+function hingeOpening(index: number, name: string): PaneOpening {
+  if (/فتح\s*شمال|يفتح\s*شمال|شمال/.test(name) && !/يمين/.test(name)) {
+    return "casement-left";
+  }
+  if (/فتح\s*يمين|يفتح\s*يمين|لليمين|برا\s*لليمين/.test(name)) {
+    return "casement-right";
+  }
+  return index % 2 === 0 ? "casement-right" : "casement-left";
+}
+
+function slidingOpening(index: number): PaneOpening {
+  return index % 2 === 0 ? "sliding-right" : "sliding-left";
+}
+
+/**
+ * رسم تقريبي من اسم البند القديم (مفيش بيانات رسم في الباكب).
+ * يكفي للمعاينة والتعديل لاحقاً.
+ */
+export function approxDrawingFromName(
+  rawName: string,
+  itemId: string
+): ApproxDrawing {
+  const name = normalizeItemName(rawName);
+  const family = inferOpeningFamily(name);
+  const topFixed = /ثابت\s*علو|ثابت\s*فوق|\+\s*ثابت|ثابت\s*بالطول/.test(name);
+  const hasExhaust = /شفاط/.test(name);
+  const isPanelDoor = /بنل|بانل|panel|ساندوتش/.test(name);
+  let leafCount = defaultLeafCount(family, name);
+  // شفاط مع ضلفة واحدة → ضلفة فتح + ضلفة شفاط تقريبياً
+  if (hasExhaust && leafCount <= 1 && family !== "door") {
+    leafCount = 2;
+  }
+  const idPrefix = `leg-${itemId}`.replace(/[^a-zA-Z0-9_-]/g, "");
+  const useTopFixed = topFixed && family !== "door";
+  const layout = ensurePaneIds(
+    buildApproxLayout(Math.max(1, leafCount), idPrefix, useTopFixed)
+  );
+  const ids = listPaneIds(layout);
+  const panes: Record<string, PaneConfig> = {};
+
+  ids.forEach((id, index) => {
+    const isTopTransom = useTopFixed && index === 0 && ids.length > 1;
+    const operableIds = useTopFixed ? ids.slice(1) : ids;
+    const operableIndex = operableIds.indexOf(id);
+    let opening: PaneOpening = "fixed";
+    let isDoor = false;
+
+    if (isTopTransom) {
+      opening = "fixed";
+    } else if (
+      hasExhaust &&
+      operableIndex === operableIds.length - 1 &&
+      family !== "door"
+    ) {
+      opening = "exhaust";
+    } else if (family === "door") {
+      isDoor = true;
+      opening = hingeOpening(Math.max(0, operableIndex), name);
+    } else if (family === "sliding") {
+      opening = slidingOpening(Math.max(0, operableIndex));
+      isDoor = /باب/.test(name);
+    } else if (family === "tilt") {
+      opening = "tilt";
+    } else if (family === "fixed") {
+      opening = "fixed";
+    } else {
+      opening = hingeOpening(Math.max(0, operableIndex), name);
+    }
+
+    panes[id] = defaultPaneConfig({
+      opening,
+      isDoor,
+      sandwichPanels: isDoor && isPanelDoor,
+      bouclier: false,
+    });
+  });
+
+  // ضلفتين مفصلي: مقابض متقابلة + بوكلير
+  if (family === "casement" && leafCount === 2 && !hasExhaust) {
+    const operable = useTopFixed ? ids.slice(1) : ids;
+    if (operable.length >= 2) {
+      panes[operable[0]!] = defaultPaneConfig({
+        ...panes[operable[0]!],
+        opening: "casement-right",
+        bouclier: true,
+      });
+      panes[operable[1]!] = defaultPaneConfig({
+        ...panes[operable[1]!],
+        opening: "casement-left",
+        bouclier: true,
+      });
+    }
+  }
+
+  return {
+    style: styleForFamily(family, leafCount),
+    templateId: templateIdFor(leafCount, useTopFixed),
+    layout,
+    panes,
+  };
 }
 
 function mapProjectWorkflow(
@@ -244,12 +457,16 @@ function convertItem(
 
   const name = (item.name ?? `بند ${index + 1}`).trim() || `بند ${index + 1}`;
   const id = item.id != null ? String(item.id) : `${projectId}-item-${index + 1}`;
+  const drawing = approxDrawingFromName(name, id);
 
   return {
     id,
     name,
     nameIsCustom: true,
-    style: inferStyle(name),
+    style: drawing.style,
+    templateId: drawing.templateId,
+    layout: drawing.layout,
+    panes: drawing.panes,
     frameColor: inferFrameColor(item.color),
     widthMm,
     heightMm,
