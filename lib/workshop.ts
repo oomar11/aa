@@ -21,6 +21,90 @@ export const WORKFLOW_LABELS: Record<ProjectWorkflow, string> = {
   done: "مكتمل",
 };
 
+/** ترتيب العرض حسب أولوية الشغل اليومي */
+export const WORKFLOW_PRIORITY: ProjectWorkflow[] = [
+  "workshop",
+  "queued",
+  "quote",
+  "done",
+];
+
+export type WorkflowVisual = {
+  label: string;
+  /** شارة الحالة */
+  badge: string;
+  /** شارة بارزة (التالي / قيد الشغل) */
+  badgeSolid: string;
+  /** شريط جانبي للبطاقة */
+  rail: string;
+  /** خلفية قسم / فلتر نشط */
+  soft: string;
+  /** نص وعنوان القسم */
+  text: string;
+  /** حدود خفيفة */
+  border: string;
+  /** نقطة الملخص */
+  dot: string;
+};
+
+/** ألوان موحّدة لكل حالة — نفس المعنى في الورشة والطلبات */
+export const WORKFLOW_VISUAL: Record<ProjectWorkflow, WorkflowVisual> = {
+  quote: {
+    label: WORKFLOW_LABELS.quote,
+    badge: "bg-wf-quote-soft text-wf-quote",
+    badgeSolid: "bg-wf-quote text-white",
+    rail: "border-s-wf-quote",
+    soft: "bg-wf-quote-soft",
+    text: "text-wf-quote",
+    border: "border-wf-quote/30",
+    dot: "bg-wf-quote",
+  },
+  queued: {
+    label: WORKFLOW_LABELS.queued,
+    badge: "bg-wf-queued-soft text-wf-queued",
+    badgeSolid: "bg-wf-queued text-white",
+    rail: "border-s-wf-queued",
+    soft: "bg-wf-queued-soft",
+    text: "text-wf-queued",
+    border: "border-wf-queued/35",
+    dot: "bg-wf-queued",
+  },
+  workshop: {
+    label: WORKFLOW_LABELS.workshop,
+    badge: "bg-wf-workshop-soft text-wf-workshop",
+    badgeSolid: "bg-wf-workshop text-white",
+    rail: "border-s-wf-workshop",
+    soft: "bg-wf-workshop-soft",
+    text: "text-wf-workshop",
+    border: "border-wf-workshop/35",
+    dot: "bg-wf-workshop",
+  },
+  done: {
+    label: WORKFLOW_LABELS.done,
+    badge: "bg-wf-done-soft text-wf-done",
+    badgeSolid: "bg-wf-done text-white",
+    rail: "border-s-wf-done",
+    soft: "bg-wf-done-soft",
+    text: "text-wf-done",
+    border: "border-wf-done/30",
+    dot: "bg-wf-done",
+  },
+};
+
+export function workflowPriorityRank(workflow: ProjectWorkflow): number {
+  const i = WORKFLOW_PRIORITY.indexOf(workflow);
+  return i < 0 ? WORKFLOW_PRIORITY.length : i;
+}
+
+export function compareProjectsByWorkflowThenDate(
+  a: { workflow: ProjectWorkflow; createdAt: string },
+  b: { workflow: ProjectWorkflow; createdAt: string }
+): number {
+  const byWf = workflowPriorityRank(a.workflow) - workflowPriorityRank(b.workflow);
+  if (byWf !== 0) return byWf;
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
 export function notifyWorkshopUpdated() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(PROJECTS_UPDATED_EVENT));

@@ -10,8 +10,15 @@ export default function OrdersPage() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-foreground">الطلبات</h1>
           <p className="mt-0.5 text-xs leading-relaxed text-muted">
-            العملاء والمقايسات وأحدث المشاريع. بعد تسجيل دفعة يدخل المشروع
-            الورشة.
+            <span className="font-semibold text-wf-workshop">تنفيذ</span>
+            {" · "}
+            <span className="font-semibold text-wf-queued">انتظار</span>
+            {" · "}
+            <span className="font-semibold text-wf-quote">مقايسة</span>
+            {" · "}
+            <span className="font-semibold text-wf-done">مكتمل</span>
+            {" — "}
+            بعد الدفعة يدخل المشروع الورشة.
           </p>
         </div>
         <Link

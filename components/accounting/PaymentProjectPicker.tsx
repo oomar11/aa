@@ -6,6 +6,7 @@ import { getProjectMoneySummary } from "@/lib/project-money";
 import { listAllProjects, type Project } from "@/lib/projects";
 import { formatCurrency, smartSearchMatch } from "@/lib/utils";
 import { WORKFLOW_LABELS } from "@/lib/workshop";
+import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 
 
 type Props = {
@@ -155,9 +156,9 @@ export function PaymentProjectPicker({
                 {selectedCustomer?.phone ? ` · ${selectedCustomer.phone}` : ""}
                 {selected.location ? ` · ${selected.location}` : ""}
               </p>
-              <span className="mt-2 inline-block rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-semibold text-primary">
-                {WORKFLOW_LABELS[selected.workflow]}
-              </span>
+              <div className="mt-2">
+                <WorkflowBadge workflow={selected.workflow} />
+              </div>
             </div>
             <button
               type="button"
@@ -285,15 +286,7 @@ export function PaymentProjectPicker({
                           </p>
                         ) : null}
                       </div>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          project.workflow === "quote"
-                            ? "bg-background text-muted"
-                            : "bg-primary-soft text-primary"
-                        }`}
-                      >
-                        {WORKFLOW_LABELS[project.workflow]}
-                      </span>
+                      <WorkflowBadge workflow={project.workflow} />
                     </div>
                     <p className="text-[11px] text-muted">
                       حساب {formatCurrency(money.sale)} ج.م

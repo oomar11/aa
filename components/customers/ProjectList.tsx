@@ -12,7 +12,8 @@ import {
 } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { WORKFLOW_LABELS } from "@/lib/workshop";
+import { WORKFLOW_VISUAL } from "@/lib/workshop";
+import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 
 type Props = {
   customerId: string;
@@ -144,9 +145,13 @@ export function ProjectList({ customerId }: Props) {
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
-          {projectList.map((project) => (
+          {projectList.map((project) => {
+            const visual = WORKFLOW_VISUAL[project.workflow];
+            return (
             <li key={project.id}>
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_10px_rgba(15,20,28,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30">
+              <div
+                className={`rounded-2xl border border-s-[3px] bg-card p-4 shadow-[0_2px_10px_rgba(15,20,28,0.04)] transition-all duration-300 hover:-translate-y-0.5 ${visual.rail} border-border`}
+              >
                 <Link
                   href={ROUTES.design.editor(customerId, project.id)}
                   className="block active:scale-[0.99]"
@@ -162,17 +167,7 @@ export function ProjectList({ customerId }: Props) {
                         </p>
                       ) : null}
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                        project.workflow === "workshop"
-                          ? "bg-primary text-white"
-                          : project.workflow === "queued"
-                            ? "bg-primary-soft text-primary"
-                            : "bg-background text-muted"
-                      }`}
-                    >
-                      {WORKFLOW_LABELS[project.workflow]}
-                    </span>
+                    <WorkflowBadge workflow={project.workflow} />
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 text-sm">
@@ -217,7 +212,8 @@ export function ProjectList({ customerId }: Props) {
                 </div>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>

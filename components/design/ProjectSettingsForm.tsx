@@ -18,7 +18,8 @@ import {
   type Project,
 } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
-import { WORKFLOW_LABELS } from "@/lib/workshop";
+import { WORKFLOW_VISUAL } from "@/lib/workshop";
+import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 import Link from "next/link";
 
 type Props = {
@@ -162,11 +163,13 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
         />
       </label>
 
-      <div className="rounded-2xl border border-border bg-card px-4 py-3 text-right">
+      <div
+        className={`rounded-2xl border border-s-[3px] bg-card px-4 py-3 text-right ${WORKFLOW_VISUAL[project.workflow].rail} ${WORKFLOW_VISUAL[project.workflow].border}`}
+      >
         <p className="text-xs text-muted">حالة المشروع</p>
-        <p className="mt-1 text-sm font-bold text-foreground">
-          {WORKFLOW_LABELS[project.workflow]}
-        </p>
+        <div className="mt-1.5">
+          <WorkflowBadge workflow={project.workflow} solid />
+        </div>
         <p className="mt-1 text-[11px] leading-relaxed text-muted">
           الحالة تتحدد تلقائياً: دفعة → قائمة الانتظار، ثم أزرار الورشة
           (بدء / إكمال). لا تُعدَّل من هنا.

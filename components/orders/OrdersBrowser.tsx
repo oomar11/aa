@@ -15,16 +15,31 @@ import {
   listAllProjects,
   PROJECTS_UPDATED_EVENT,
   type Project,
+  type ProjectWorkflow,
 } from "@/lib/projects";
 import { formatCurrency, smartSearchMatch } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
-import { WORKFLOW_LABELS } from "@/lib/workshop";
+import {
+  compareProjectsByWorkflowThenDate,
+  WORKFLOW_LABELS,
+  WORKFLOW_VISUAL,
+} from "@/lib/workshop";
+import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 
 type Tab = "customers" | "projects";
+type WorkflowFilter = "all" | ProjectWorkflow;
 
 function statusLabel(project: Project): string {
   return WORKFLOW_LABELS[project.workflow];
 }
+
+const FILTER_OPTIONS: { id: WorkflowFilter; label: string }[] = [
+  { id: "all", label: "الكل" },
+  { id: "workshop", label: WORKFLOW_LABELS.workshop },
+  { id: "queued", label: WORKFLOW_LABELS.queued },
+  { id: "quote", label: WORKFLOW_LABELS.quote },
+  { id: "done", label: WORKFLOW_LABELS.done },
+];
 
 function mergeProjects(): Project[] {
   if (typeof window === "undefined") return listAllProjects();
@@ -128,6 +143,7 @@ function SearchIcon() {
 export function OrdersBrowser() {
   const [tab, setTab] = useState<Tab>("customers");
   const [query, setQuery] = useState("");
+  const [workflowFilter, setWorkflowFilter] = useState<WorkflowFilter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsedOverride, setCollapsedOverride] = useState<Set<string>>(
     () => new Set()
@@ -181,17 +197,30 @@ export function OrdersBrowser() {
       map.set(project.customerId, list);
     }
     for (const [, list] of map) {
-      list.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      list.sort(compareProjectsByWorkflowThenDate);
     }
     return map;
+  }, [allProjects]);
+
+  const workflowCounts = useMemo(() => {
+    const counts: Record<ProjectWorkflow, number> = {
+      quote: 0,
+      queued: 0,
+      workshop: 0,
+      done: 0,
+    };
+    for (const project of allProjects) {
+      counts[project.workflow] += 1;
+    }
+    return counts;
   }, [allProjects]);
 
   const filteredCustomers = useMemo(() => {
     return allCustomers.filter((customer) => {
       const linked = projectsByCustomer.get(customer.id) ?? [];
+      if (workflowFilter !== "all") {
+        if (!linked.some((p) => p.workflow === workflowFilter)) return false;
+      }
       const customerMatch = smartSearchMatch(deferredQuery, [
         customer.name,
         customer.phone,
@@ -207,7 +236,7 @@ export function OrdersBrowser() {
         ])
       );
     });
-  }, [allCustomers, deferredQuery, projectsByCustomer]);
+  }, [allCustomers, deferredQuery, projectsByCustomer, workflowFilter]);
 
   const autoExpandIds = useMemo(() => {
     if (!deferredQuery.trim()) return new Set<string>();
@@ -239,6 +268,9 @@ export function OrdersBrowser() {
   const filteredProjects = useMemo(() => {
     return allProjects
       .filter((project) => {
+        if (workflowFilter !== "all" && project.workflow !== workflowFilter) {
+          return false;
+        }
         const customer = customerById.get(project.customerId);
         return smartSearchMatch(deferredQuery, [
           project.name,
@@ -248,24 +280,21 @@ export function OrdersBrowser() {
           customer?.phone,
         ]);
       })
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-  }, [allProjects, customerById, deferredQuery]);
+      .sort(compareProjectsByWorkflowThenDate);
+  }, [allProjects, customerById, deferredQuery, workflowFilter]);
 
   const recentProjects = useMemo(
     () =>
       [...allProjects]
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )
+        .sort(compareProjectsByWorkflowThenDate)
         .slice(0, 5),
     [allProjects]
   );
 
-  const showRecent = !deferredQuery.trim() && recentProjects.length > 0;
+  const showRecent =
+    !deferredQuery.trim() &&
+    workflowFilter === "all" &&
+    recentProjects.length > 0;
 
   function isExpanded(id: string) {
     if (collapsedOverride.has(id)) return false;
@@ -291,27 +320,65 @@ export function OrdersBrowser() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div
+        className="grid grid-cols-4 gap-1.5"
+        role="group"
+        aria-label="ملخص الحالات"
+      >
+        {(["workshop", "queued", "quote", "done"] as ProjectWorkflow[]).map(
+          (wf) => {
+            const v = WORKFLOW_VISUAL[wf];
+            return (
+              <button
+                key={wf}
+                type="button"
+                onClick={() =>
+                  setWorkflowFilter((prev) => (prev === wf ? "all" : wf))
+                }
+                className={`rounded-xl border px-2 py-2 text-center transition-all active:scale-[0.98] ${
+                  workflowFilter === wf
+                    ? `${v.border} ${v.soft}`
+                    : "border-border bg-card"
+                }`}
+                aria-pressed={workflowFilter === wf}
+              >
+                <span
+                  className={`mx-auto mb-1 block h-2 w-2 rounded-full ${v.dot}`}
+                />
+                <p className={`text-base font-bold tabular-nums ${v.text}`}>
+                  {workflowCounts[wf]}
+                </p>
+                <p className={`mt-0.5 truncate text-[9px] font-semibold ${v.text}`}>
+                  {WORKFLOW_LABELS[wf]}
+                </p>
+              </button>
+            );
+          }
+        )}
+      </div>
+
       {showRecent ? (
-        <section className="flex flex-col gap-2.5" aria-labelledby="orders-recent-heading">
+        <section className="flex flex-col gap-2.5" aria-labelledby="orders-priority-heading">
           <div className="px-0.5">
             <h2
-              id="orders-recent-heading"
+              id="orders-priority-heading"
               className="text-sm font-bold text-foreground"
             >
-              أحدث المشاريع
+              أولوية الشغل
             </h2>
             <p className="mt-0.5 text-[11px] text-muted">
-              للمتابعة السريعة — آخر ما أُنشئ
+              تنفيذ أولاً، ثم الانتظار، ثم المقايسات
             </p>
           </div>
           <ul className="flex flex-col gap-2">
             {recentProjects.map((project) => {
               const customer = customerById.get(project.customerId);
+              const visual = WORKFLOW_VISUAL[project.workflow];
               return (
                 <li key={project.id}>
                   <Link
                     href={ROUTES.design.editor(project.customerId, project.id)}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 transition-all hover:border-primary/30 active:scale-[0.99]"
+                    className={`flex items-center justify-between gap-3 rounded-2xl border border-s-[3px] bg-card px-3.5 py-3 transition-all active:scale-[0.99] ${visual.rail} border-border hover:brightness-[0.99]`}
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-foreground">
@@ -322,9 +389,7 @@ export function OrdersBrowser() {
                         {project.location ? ` · ${project.location}` : ""}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold text-muted">
-                      {statusLabel(project)}
-                    </span>
+                    <WorkflowBadge workflow={project.workflow} />
                   </Link>
                 </li>
               );
@@ -351,6 +416,47 @@ export function OrdersBrowser() {
           className="w-full rounded-2xl border border-border bg-card py-3 pr-11 pl-4 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
       </label>
+
+      <div
+        role="tablist"
+        aria-label="تصفية حسب الحالة"
+        className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {FILTER_OPTIONS.map((opt) => {
+          const active = workflowFilter === opt.id;
+          const visual =
+            opt.id === "all" ? null : WORKFLOW_VISUAL[opt.id];
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setWorkflowFilter(opt.id)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                active
+                  ? visual
+                    ? `${visual.badgeSolid} border-transparent`
+                    : "border-primary bg-primary text-white"
+                  : visual
+                    ? `${visual.badge} ${visual.border}`
+                    : "border-border bg-card text-muted"
+              }`}
+            >
+              {opt.label}
+              {opt.id !== "all" ? (
+                <span className="ms-1 tabular-nums opacity-80">
+                  {workflowCounts[opt.id]}
+                </span>
+              ) : (
+                <span className="ms-1 tabular-nums opacity-80">
+                  {allProjects.length}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
       <div
         role="tablist"
@@ -409,7 +515,11 @@ export function OrdersBrowser() {
         ) : (
           <ul className="flex flex-col gap-3">
             {filteredCustomers.map((customer) => {
-              const linked = projectsByCustomer.get(customer.id) ?? [];
+              const linkedRaw = projectsByCustomer.get(customer.id) ?? [];
+              const linked =
+                workflowFilter === "all"
+                  ? linkedRaw
+                  : linkedRaw.filter((p) => p.workflow === workflowFilter);
               const open = isExpanded(customer.id);
               const sale = customerSaleTotal(customer.id);
               const balance = balances[customer.id] ?? customer.balance;
@@ -466,8 +576,9 @@ export function OrdersBrowser() {
                           </p>
                         ) : (
                           <ul className="flex flex-col gap-1">
-                            {linked.map((project, index) => {
+                            {linked.map((project) => {
                               const projectSale = projectSaleTotal(project.id);
+                              const visual = WORKFLOW_VISUAL[project.workflow];
                               return (
                                 <li key={project.id}>
                                   <div className="flex items-center gap-1 rounded-xl pe-1 transition-colors hover:bg-card">
@@ -478,8 +589,12 @@ export function OrdersBrowser() {
                                       )}
                                       className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2.5 active:bg-card"
                                     >
-                                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
-                                        {index + 1}
+                                      <span
+                                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${visual.badge}`}
+                                      >
+                                        <span
+                                          className={`h-2.5 w-2.5 rounded-full ${visual.dot}`}
+                                        />
                                       </span>
                                       <div className="min-w-0 flex-1">
                                         <p className="truncate text-sm font-semibold text-foreground">
@@ -491,12 +606,17 @@ export function OrdersBrowser() {
                                             </span>
                                           ) : null}
                                         </p>
-                                        <p className="mt-0.5 text-xs text-muted">
-                                          {statusLabel(project)}
-                                          {projectSale > 0
-                                            ? ` · بيع: ${formatCurrency(projectSale)} ج.م`
-                                            : ""}
-                                        </p>
+                                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                                          <WorkflowBadge
+                                            workflow={project.workflow}
+                                          />
+                                          {projectSale > 0 ? (
+                                            <span>
+                                              بيع: {formatCurrency(projectSale)}{" "}
+                                              ج.م
+                                            </span>
+                                          ) : null}
+                                        </div>
                                       </div>
                                     </Link>
                                     <button
@@ -569,9 +689,12 @@ export function OrdersBrowser() {
           {filteredProjects.map((project) => {
             const customer = customerById.get(project.customerId);
             const projectSale = projectSaleTotal(project.id);
+            const visual = WORKFLOW_VISUAL[project.workflow];
             return (
               <li key={project.id}>
-                <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_10px_rgba(15,20,28,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30">
+                <div
+                  className={`rounded-2xl border border-s-[3px] bg-card p-4 shadow-[0_2px_10px_rgba(15,20,28,0.04)] transition-all duration-300 hover:-translate-y-0.5 ${visual.rail} border-border`}
+                >
                   <Link
                     href={ROUTES.design.editor(
                       project.customerId,
@@ -589,17 +712,7 @@ export function OrdersBrowser() {
                           {project.location ? ` · ${project.location}` : ""}
                         </p>
                       </div>
-                      <span
-                        className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                          project.workflow === "workshop"
-                            ? "bg-primary text-white"
-                            : project.workflow === "queued"
-                              ? "bg-primary-soft text-primary"
-                              : "bg-background text-muted"
-                        }`}
-                      >
-                        {statusLabel(project)}
-                      </span>
+                      <WorkflowBadge workflow={project.workflow} />
                     </div>
                     {projectSale > 0 ? (
                       <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">

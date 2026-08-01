@@ -10,8 +10,11 @@ export default function HomePage() {
       <div className="min-w-0">
         <h1 className="text-xl font-bold text-foreground">الورشة</h1>
         <p className="mt-0.5 text-xs leading-relaxed text-muted">
-          هنا الشغل اليوم: قيد التنفيذ وقائمة الانتظار. الطلب الجديد من باب
-          الطلبات.
+          <span className="font-semibold text-wf-workshop">أخضر = قيد التنفيذ</span>
+          {" · "}
+          <span className="font-semibold text-wf-queued">برتقالي = انتظار</span>
+          {" — "}
+          الطلب الجديد من باب الطلبات.
         </p>
       </div>
       <WorkshopBoard />

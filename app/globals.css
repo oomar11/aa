@@ -10,6 +10,15 @@
   --border: #e4e8ee;
   --muted: #8a93a3;
   --icon-bg: #eef4fc;
+  /* حالات المشروع — تمييز بصري سريع */
+  --wf-quote: #5b6b7c;
+  --wf-quote-soft: #eef1f4;
+  --wf-queued: #c47a12;
+  --wf-queued-soft: #fff4e5;
+  --wf-workshop: #1f7a5c;
+  --wf-workshop-soft: #e6f5ef;
+  --wf-done: #3d6fa8;
+  --wf-done-soft: #e8f0f8;
 }
 
 .dark {
@@ -22,6 +31,14 @@
   --border: #2a3548;
   --muted: #8b95a8;
   --icon-bg: #243247;
+  --wf-quote: #9aa8b8;
+  --wf-quote-soft: #243040;
+  --wf-queued: #e0a045;
+  --wf-queued-soft: #3a2e1a;
+  --wf-workshop: #4db892;
+  --wf-workshop-soft: #1a342c;
+  --wf-done: #7aa8d4;
+  --wf-done-soft: #1e2f42;
 }
 
 @theme inline {
@@ -34,6 +51,14 @@
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-icon-bg: var(--icon-bg);
+  --color-wf-quote: var(--wf-quote);
+  --color-wf-quote-soft: var(--wf-quote-soft);
+  --color-wf-queued: var(--wf-queued);
+  --color-wf-queued-soft: var(--wf-queued-soft);
+  --color-wf-workshop: var(--wf-workshop);
+  --color-wf-workshop-soft: var(--wf-workshop-soft);
+  --color-wf-done: var(--wf-done);
+  --color-wf-done-soft: var(--wf-done-soft);
   --font-sans: var(--font-cairo);
 }
 

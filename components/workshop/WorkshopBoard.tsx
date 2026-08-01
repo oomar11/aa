@@ -26,7 +26,9 @@ import {
   moveInQueue,
   returnToQueue,
   startWorkshopProject,
+  WORKFLOW_VISUAL,
 } from "@/lib/workshop";
+import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 
 const QUEUE_FLIP_MS = 320;
 const QUEUE_FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -40,8 +42,8 @@ function customerName(
 
 /**
  * صفحة العمل اليومي:
- * - قيد التنفيذ في الورشة
- * - قائمة الانتظار (بعد تسجيل دفعة)
+ * - قيد التنفيذ في الورشة (أخضر)
+ * - قائمة الانتظار بعد الدفع (برتقالي)
  */
 export function WorkshopBoard() {
   const [tick, setTick] = useState(0);
@@ -144,15 +146,60 @@ export function WorkshopBoard() {
     setTick((n) => n + 1);
   }
 
+  const workshopV = WORKFLOW_VISUAL.workshop;
+  const queuedV = WORKFLOW_VISUAL.queued;
+
   return (
     <div className="flex flex-col gap-5">
+      <div
+        className="grid grid-cols-2 gap-2"
+        role="group"
+        aria-label="ملخص الورشة"
+      >
+        <div
+          className={`rounded-2xl border ${workshopV.border} ${workshopV.soft} px-3.5 py-3`}
+        >
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full ${workshopV.dot}`} />
+            <p className={`text-[11px] font-bold ${workshopV.text}`}>
+              قيد التنفيذ
+            </p>
+          </div>
+          <p className={`mt-1 text-2xl font-bold tabular-nums ${workshopV.text}`}>
+            {inWorkshop.length}
+          </p>
+        </div>
+        <div
+          className={`rounded-2xl border ${queuedV.border} ${queuedV.soft} px-3.5 py-3`}
+        >
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full ${queuedV.dot}`} />
+            <p className={`text-[11px] font-bold ${queuedV.text}`}>
+              في الانتظار
+            </p>
+          </div>
+          <p className={`mt-1 text-2xl font-bold tabular-nums ${queuedV.text}`}>
+            {queued.length}
+          </p>
+        </div>
+      </div>
+
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-2 px-1">
-          <h2 className="text-base font-bold text-foreground">قيد التنفيذ</h2>
-          <span className="text-xs text-muted">{inWorkshop.length}</span>
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full ${workshopV.dot}`} />
+            <h2 className={`text-base font-bold ${workshopV.text}`}>
+              قيد التنفيذ
+            </h2>
+          </div>
+          <span className={`text-xs font-semibold tabular-nums ${workshopV.text}`}>
+            {inWorkshop.length}
+          </span>
         </div>
         {inWorkshop.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
+          <div
+            className={`rounded-2xl border border-dashed ${workshopV.border} ${workshopV.soft} px-4 py-8 text-center text-sm text-muted`}
+          >
             لا يوجد مشروع قيد التنفيذ حالياً — ابدأ من قائمة الانتظار أدناه
           </div>
         ) : (
@@ -161,6 +208,7 @@ export function WorkshopBoard() {
               <ProjectRow
                 key={project.id}
                 project={project}
+                workflow="workshop"
                 customerLabel={customerName(customerById, project.customerId)}
                 actions={
                   <>
@@ -176,7 +224,7 @@ export function WorkshopBoard() {
                         }
                         completeWorkshopProject(project.id);
                       }}
-                      className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white"
+                      className="rounded-xl bg-wf-workshop px-3 py-1.5 text-[11px] font-bold text-white"
                     >
                       إكمال التنفيذ
                     </button>
@@ -197,13 +245,20 @@ export function WorkshopBoard() {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-2 px-1">
-          <h2 className="text-base font-bold text-foreground">
-            قائمة الانتظار
-          </h2>
-          <span className="text-xs text-muted">{queued.length}</span>
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full ${queuedV.dot}`} />
+            <h2 className={`text-base font-bold ${queuedV.text}`}>
+              قائمة الانتظار
+            </h2>
+          </div>
+          <span className={`text-xs font-semibold tabular-nums ${queuedV.text}`}>
+            {queued.length}
+          </span>
         </div>
         {queued.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm leading-relaxed text-muted">
+          <div
+            className={`rounded-2xl border border-dashed ${queuedV.border} ${queuedV.soft} px-4 py-8 text-center text-sm leading-relaxed text-muted`}
+          >
             قائمة الانتظار فارغة.
             <br />
             سجّل دفعة من{" "}
@@ -221,6 +276,7 @@ export function WorkshopBoard() {
               <ProjectRow
                 key={project.id}
                 project={project}
+                workflow="queued"
                 badge={index === 0 ? "التالي للتنفيذ" : `#${index + 1}`}
                 highlight={index === 0}
                 moving={movingId === project.id}
@@ -234,7 +290,7 @@ export function WorkshopBoard() {
                     <button
                       type="button"
                       onClick={() => startWorkshopProject(project.id)}
-                      className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white transition-transform active:scale-95"
+                      className="rounded-xl bg-wf-queued px-3 py-1.5 text-[11px] font-bold text-white transition-transform active:scale-95"
                     >
                       بدء التنفيذ
                     </button>
@@ -272,6 +328,7 @@ export function WorkshopBoard() {
 function ProjectRow({
   project,
   customerLabel,
+  workflow,
   badge,
   highlight,
   moving,
@@ -280,6 +337,7 @@ function ProjectRow({
 }: {
   project: Project;
   customerLabel: string;
+  workflow: "workshop" | "queued";
   badge?: string;
   highlight?: boolean;
   moving?: boolean;
@@ -287,17 +345,18 @@ function ProjectRow({
   actions: ReactNode;
 }) {
   const editorHref = ROUTES.design.editor(project.customerId, project.id);
+  const visual = WORKFLOW_VISUAL[workflow];
 
   return (
     <li
       ref={listRef}
-      className={`rounded-2xl border bg-card p-3.5 will-change-transform ${
+      className={`rounded-2xl border border-s-[3px] bg-card p-3.5 will-change-transform ${visual.rail} ${
         highlight
-          ? "border-primary/35 shadow-[0_4px_16px_rgba(43,125,233,0.12)]"
+          ? `${visual.border} shadow-[0_4px_16px_rgba(196,122,18,0.14)]`
           : "border-border"
       } ${
         moving
-          ? "shadow-[0_8px_24px_rgba(43,125,233,0.18)] ring-1 ring-primary/25"
+          ? "shadow-[0_8px_24px_rgba(196,122,18,0.18)] ring-1 ring-wf-queued/25"
           : ""
       }`}
     >
@@ -310,16 +369,12 @@ function ProjectRow({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               {badge ? (
-                <span
-                  className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors duration-300 ${
-                    highlight
-                      ? "bg-primary text-white"
-                      : "bg-primary-soft text-primary"
-                  }`}
-                >
+                <WorkflowBadge workflow={workflow} solid={highlight}>
                   {badge}
-                </span>
-              ) : null}
+                </WorkflowBadge>
+              ) : (
+                <WorkflowBadge workflow={workflow} solid />
+              )}
               <p className="truncate text-sm font-bold text-foreground">
                 {project.name}
               </p>
@@ -329,7 +384,7 @@ function ProjectRow({
               {project.location ? ` · ${project.location}` : ""}
             </p>
             {project.depositAmount ? (
-              <p className="mt-1 text-[11px] font-medium text-primary">
+              <p className={`mt-1 text-[11px] font-medium ${visual.text}`}>
                 مدفوع {formatCurrency(project.depositAmount)}
               </p>
             ) : null}
