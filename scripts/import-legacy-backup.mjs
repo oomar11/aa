@@ -120,10 +120,10 @@ function convertLegacyBackup(backup) {
 
   const projectItems = {};
   const convertedProjects = [];
-  const invoices = [];
   const payments = [];
   let itemsCount = 0;
   let queueCursor = 1;
+  const projectSaleById = new Map();
   const projectByLegacyId = new Map();
 
   for (const project of projects) {
@@ -191,11 +191,12 @@ function convertLegacyBackup(backup) {
         ((item.widthMm * item.heightMm) / 1_000_000) * item.pricePerSqm * qty
       );
     }, 0);
-    const invoiceTotal = Math.max(
+    const saleTotal = Math.max(
       totalAmount > 0 ? totalAmount : 0,
       Math.round(saleFromItems * 100) / 100,
       paidAmount
     );
+    projectSaleById.set(projectId, saleTotal);
 
     let depositAt;
     if (paidAmount > 0) {
@@ -232,34 +233,6 @@ function convertLegacyBackup(backup) {
         customer.lastDealAt = project.createdAt;
       }
     }
-
-    if (invoiceTotal > 0) {
-      const invoiceId = asId("inv", project.id);
-      let invoiceStatus = "issued";
-      if (paidAmount <= 0) invoiceStatus = "issued";
-      else if (paidAmount + 0.01 >= invoiceTotal) invoiceStatus = "paid";
-      else invoiceStatus = "partial";
-      invoices.push({
-        id: invoiceId,
-        number: `INV-${String(project.id).padStart(4, "0")}`,
-        customerId: customer.id,
-        projectId,
-        date:
-          (project.startDate ?? project.createdAt ?? "").slice(0, 10) ||
-          new Date().toISOString().slice(0, 10),
-        lines: [
-          {
-            id: `${invoiceId}-line-1`,
-            description: converted.name,
-            amount: invoiceTotal,
-          },
-        ],
-        total: invoiceTotal,
-        note: "مستورد من البرنامج القديم",
-        status: invoiceStatus,
-        createdAt: project.createdAt ?? new Date().toISOString(),
-      });
-    }
   }
 
   for (const contract of contracts) {
@@ -268,13 +241,11 @@ function convertLegacyBackup(backup) {
     if (!MONEY_CONTRACT_TYPES.has(contract.type)) continue;
     const project = projectByLegacyId.get(String(contract.projectId));
     if (!project) continue;
-    const invoice = invoices.find((i) => i.projectId === project.id);
     const kindLabel =
       contract.type === "agreement" ? "اتفاق / مقدمة" : "إيصال استلام";
     payments.push({
       id: asId("pay", contract.id),
       customerId: project.customerId,
-      invoiceId: invoice?.id,
       projectId: project.id,
       kind: contract.type === "agreement" ? "deposit" : "payment",
       amount,
@@ -297,11 +268,9 @@ function convertLegacyBackup(backup) {
       .reduce((sum, p) => sum + p.amount, 0);
     const remainder = Math.round((paidAmount - already) * 100) / 100;
     if (remainder > 0.01) {
-      const invoice = invoices.find((i) => i.projectId === converted.id);
       payments.push({
         id: asId("pay-adj", project.id),
         customerId: converted.customerId,
-        invoiceId: invoice?.id,
         projectId: converted.id,
         kind: "payment",
         amount: remainder,
@@ -317,9 +286,11 @@ function convertLegacyBackup(backup) {
   }
 
   for (const customer of customers) {
-    const owed = invoices
-      .filter((i) => i.customerId === customer.id && i.status !== "cancelled")
-      .reduce((sum, i) => sum + i.total, 0);
+    const owned = convertedProjects.filter((p) => p.customerId === customer.id);
+    const owed = owned.reduce(
+      (sum, p) => sum + (projectSaleById.get(p.id) ?? 0),
+      0
+    );
     const paid = payments
       .filter((p) => p.customerId === customer.id)
       .reduce((sum, p) => sum + p.amount, 0);
@@ -382,7 +353,7 @@ function convertLegacyBackup(backup) {
     "upvc-material-systems": null,
     "upvc-company": JSON.stringify(company),
     "upvc-pricing": null,
-    "upvc-invoices": JSON.stringify(invoices),
+    "upvc-invoices": JSON.stringify([]),
     "upvc-payments": JSON.stringify(payments),
     "upvc-expenses": JSON.stringify(expenses),
   };
@@ -393,7 +364,6 @@ function convertLegacyBackup(backup) {
       customers: customers.length,
       projects: convertedProjects.length,
       items: itemsCount,
-      invoices: invoices.length,
       payments: payments.length,
       expenses: expenses.length,
       skippedKeys,

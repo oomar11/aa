@@ -4,7 +4,7 @@
  * التدفق الرئيسي (4 أبواب — كل باب لغرض واحد):
  *   الورشة → قيد التنفيذ + قائمة الانتظار
  *   الطلبات → العملاء والمقايسات + أحدث المشاريع + طلب جديد
- *   الحسابات → دفعات · فواتير · سجل مصروفات
+ *   الحسابات → دفعات · مصروفات
  *   الخامات → قطاعات · اكسسوار · زجاج · سلك · حديد
  */
 
@@ -43,9 +43,6 @@ export const ROUTES = {
 
   accounting: {
     hub: "/accounting",
-    invoices: "/accounting/invoices",
-    newInvoice: "/accounting/invoices/new",
-    invoice: (id: string) => `/accounting/invoices/${id}`,
     payments: "/accounting/payments",
     newPayment: "/accounting/payments/new",
     /** تحصيل دفعة لمشروع محدد */
@@ -91,7 +88,7 @@ export const APP_SECTIONS = [
   {
     id: "accounting",
     label: "الحسابات",
-    description: "دفعات · فواتير · مصروفات",
+    description: "دفعات · مصروفات",
     href: ROUTES.accounting.hub,
     color: "#2F9B7A",
   },

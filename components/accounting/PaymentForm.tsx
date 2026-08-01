@@ -4,14 +4,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import {
   PAYMENT_METHOD_LABELS,
-  invoicePaidAmount,
-  loadInvoices,
   todayIsoDate,
   upsertPayment,
-  type Invoice,
   type PaymentMethod,
 } from "@/lib/accounting";
 import { getProjectById } from "@/lib/projects";
+import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency } from "@/lib/utils";
 import { queueProjectAfterPayment } from "@/lib/workshop";
@@ -19,17 +17,14 @@ import { NumericInput } from "@/components/ui/NumericInput";
 import { PaymentProjectPicker } from "@/components/accounting/PaymentProjectPicker";
 
 /**
- * استلام دفعة: مشروع و/أو فاتورة + المبلغ.
+ * استلام دفعة على مشروع: مدفوع / باقي.
  * أي مبلغ على مشروع مقايسة يدخله قائمة الانتظار.
- * المشاريع المكتملة تُحصَّل دون إعادة للطابور.
  */
 export function PaymentForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const presetProjectId = searchParams.get("project") ?? "";
-  const presetInvoiceId = searchParams.get("invoice") ?? "";
 
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [projectId, setProjectId] = useState(presetProjectId);
   const [amount, setAmount] = useState(0);
   const [date, setDate] = useState(todayIsoDate);
@@ -39,41 +34,19 @@ export function PaymentForm() {
   const [projectError, setProjectError] = useState(false);
 
   useEffect(() => {
-    if (!presetInvoiceId) {
-      setInvoice(null);
-      return;
-    }
-    const found = loadInvoices().find((i) => i.id === presetInvoiceId) ?? null;
-    setInvoice(found);
-    if (found) {
-      if (!presetProjectId && found.projectId) {
-        setProjectId(found.projectId);
-      }
-      const remaining = Math.max(
-        0,
-        found.total - invoicePaidAmount(found.id)
-      );
-      if (remaining > 0) setAmount(remaining);
-    }
-  }, [presetInvoiceId, presetProjectId]);
+    if (!presetProjectId) return;
+    const money = getProjectMoneySummary(presetProjectId);
+    if (money.remaining > 0) setAmount(money.remaining);
+  }, [presetProjectId]);
 
-  const remainingOnInvoice = invoice
-    ? Math.max(0, invoice.total - invoicePaidAmount(invoice.id))
-    : 0;
+  const selected = projectId ? getProjectById(projectId) : undefined;
+  const money = projectId ? getProjectMoneySummary(projectId) : null;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
-    const linkedInvoice = presetInvoiceId
-      ? loadInvoices().find((i) => i.id === presetInvoiceId)
-      : undefined;
-
-    let selectedProject = projectId ? getProjectById(projectId) : undefined;
-    if (!selectedProject && linkedInvoice?.projectId) {
-      selectedProject = getProjectById(linkedInvoice.projectId);
-    }
-
-    if (!selectedProject && !linkedInvoice) {
+    const selectedProject = projectId ? getProjectById(projectId) : undefined;
+    if (!selectedProject) {
       setError("اختر المشروع");
       setProjectError(true);
       return;
@@ -84,18 +57,10 @@ export function PaymentForm() {
       return;
     }
 
-    const customerId =
-      selectedProject?.customerId ?? linkedInvoice?.customerId ?? "";
-    if (!customerId) {
-      setError("تعذر تحديد العميل");
-      return;
-    }
-
     upsertPayment({
       id: `pay-${Date.now()}`,
-      customerId,
-      projectId: selectedProject?.id ?? linkedInvoice?.projectId,
-      invoiceId: linkedInvoice?.id,
+      customerId: selectedProject.customerId,
+      projectId: selectedProject.id,
       amount,
       date,
       method,
@@ -103,15 +68,7 @@ export function PaymentForm() {
       createdAt: new Date().toISOString(),
     });
 
-    const syncProjectId = selectedProject?.id ?? linkedInvoice?.projectId;
-    if (syncProjectId) {
-      queueProjectAfterPayment(syncProjectId, amount, date);
-    }
-
-    if (linkedInvoice) {
-      router.replace(ROUTES.accounting.invoice(linkedInvoice.id));
-      return;
-    }
+    queueProjectAfterPayment(selectedProject.id, amount, date);
     router.replace(ROUTES.home);
   }
 
@@ -121,13 +78,7 @@ export function PaymentForm() {
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
       <p className="rounded-2xl border border-primary/20 bg-primary-soft/40 px-3.5 py-3 text-xs leading-relaxed text-foreground">
-        {invoice
-          ? `تحصيل على الفاتورة ${invoice.number}${
-              remainingOnInvoice > 0
-                ? ` — المتبقي ${formatCurrency(remainingOnInvoice)} ج.م`
-                : ""
-            }.`
-          : "ابحث عن المشروع بالعميل أو الاسم، ثم سجّل المبلغ. أي دفعة على المشروع تدخله قائمة انتظار الورشة."}
+        سجّل المبلغ على المشروع. أي دفعة على مقايسة تدخل قائمة انتظار الورشة.
       </p>
 
       <PaymentProjectPicker
@@ -136,11 +87,36 @@ export function PaymentForm() {
           setProjectId(id);
           setProjectError(false);
           setError("");
+          const next = getProjectMoneySummary(id);
+          if (next.remaining > 0) setAmount(next.remaining);
         }}
         error={projectError}
         includeDone
-        required={!invoice}
+        required
       />
+
+      {selected && money ? (
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
+          <div>
+            <p className="text-[10px] text-muted">الحساب</p>
+            <p className="mt-0.5 text-sm font-bold tabular-nums">
+              {formatCurrency(money.sale)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted">مدفوع</p>
+            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#2F9B7A]">
+              {formatCurrency(money.paid)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted">باقي</p>
+            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#E85A8A]">
+              {formatCurrency(money.remaining)}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">

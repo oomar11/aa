@@ -8,8 +8,6 @@ import type { DesignItem, FrameColorId, WindowStyle } from "@/lib/design-items";
 import type { Company } from "@/lib/company";
 import type {
   Expense,
-  Invoice,
-  InvoiceStatus,
   Payment,
 } from "@/lib/accounting";
 import type { Project, ProjectWorkflow } from "@/lib/projects";
@@ -118,7 +116,6 @@ export type LegacyImportSummary = {
   customers: number;
   projects: number;
   items: number;
-  invoices: number;
   payments: number;
   expenses: number;
   skippedKeys: string[];
@@ -302,10 +299,11 @@ export function convertLegacyBackup(backup: LegacyBackup): {
 
   const projectItems: Record<string, DesignItem[]> = {};
   const convertedProjects: Project[] = [];
-  const invoices: Invoice[] = [];
   const payments: Payment[] = [];
   let itemsCount = 0;
   let queueCursor = 1;
+  /** بيع المشروع من البنود / totalAmount — لحساب المتبقي على العميل */
+  const projectSaleById = new Map<string, number>();
 
   for (const project of projects) {
     const projectId = asId("p", project.id);
@@ -330,11 +328,12 @@ export function convertLegacyBackup(backup: LegacyBackup): {
       return sum + ((item.widthMm * item.heightMm) / 1_000_000) * item.pricePerSqm * qty;
     }, 0);
 
-    const invoiceTotal = Math.max(
+    const saleTotal = Math.max(
       totalAmount > 0 ? totalAmount : 0,
       Math.round(saleFromItems * 100) / 100,
       paidAmount
     );
+    projectSaleById.set(projectId, saleTotal);
 
     let depositAt: string | undefined;
     if (paidAmount > 0) {
@@ -371,34 +370,6 @@ export function convertLegacyBackup(backup: LegacyBackup): {
         customer.lastDealAt = project.createdAt;
       }
     }
-
-    if (invoiceTotal > 0) {
-      const invoiceId = asId("inv", project.id);
-      let invoiceStatus: InvoiceStatus = "issued";
-      if (paidAmount <= 0) invoiceStatus = "issued";
-      else if (paidAmount + 0.01 >= invoiceTotal) invoiceStatus = "paid";
-      else invoiceStatus = "partial";
-
-      invoices.push({
-        id: invoiceId,
-        number: `INV-${String(project.id).padStart(4, "0")}`,
-        customerId: customer.id,
-        projectId,
-        date: (project.startDate ?? project.createdAt ?? "").slice(0, 10) ||
-          new Date().toISOString().slice(0, 10),
-        lines: [
-          {
-            id: `${invoiceId}-line-1`,
-            description: converted.name,
-            amount: invoiceTotal,
-          },
-        ],
-        total: invoiceTotal,
-        note: "مستورد من البرنامج القديم",
-        status: invoiceStatus,
-        createdAt: project.createdAt ?? new Date().toISOString(),
-      });
-    }
   }
 
   const projectByLegacyId = new Map(
@@ -413,13 +384,11 @@ export function convertLegacyBackup(backup: LegacyBackup): {
     const project = projectByLegacyId.get(String(contract.projectId));
     if (!project) continue;
 
-    const invoice = invoices.find((i) => i.projectId === project.id);
     const kindLabel =
       contract.type === "agreement" ? "اتفاق / مقدمة" : "إيصال استلام";
     payments.push({
       id: asId("pay", contract.id),
       customerId: project.customerId,
-      invoiceId: invoice?.id,
       projectId: project.id,
       kind: contract.type === "agreement" ? "deposit" : "payment",
       amount,
@@ -441,11 +410,9 @@ export function convertLegacyBackup(backup: LegacyBackup): {
       .reduce((sum, p) => sum + p.amount, 0);
     const remainder = Math.round((paidAmount - already) * 100) / 100;
     if (remainder > 0.01) {
-      const invoice = invoices.find((i) => i.projectId === converted.id);
       payments.push({
         id: asId("pay-adj", project.id),
         customerId: converted.customerId,
-        invoiceId: invoice?.id,
         projectId: converted.id,
         kind: "payment",
         amount: remainder,
@@ -460,9 +427,11 @@ export function convertLegacyBackup(backup: LegacyBackup): {
   }
 
   for (const customer of customers) {
-    const owed = invoices
-      .filter((i) => i.customerId === customer.id && i.status !== "cancelled")
-      .reduce((sum, i) => sum + i.total, 0);
+    const owned = convertedProjects.filter((p) => p.customerId === customer.id);
+    const owed = owned.reduce(
+      (sum, p) => sum + (projectSaleById.get(p.id) ?? 0),
+      0
+    );
     const paid = payments
       .filter((p) => p.customerId === customer.id)
       .reduce((sum, p) => sum + p.amount, 0);
@@ -523,7 +492,7 @@ export function convertLegacyBackup(backup: LegacyBackup): {
     [STORAGE_KEYS.materialSystems]: null,
     [STORAGE_KEYS.company]: JSON.stringify(company),
     [STORAGE_KEYS.pricing]: null,
-    [STORAGE_KEYS.invoices]: JSON.stringify(invoices),
+    [STORAGE_KEYS.invoices]: JSON.stringify([]),
     [STORAGE_KEYS.payments]: JSON.stringify(payments),
     [STORAGE_KEYS.expenses]: JSON.stringify(expenses),
   } as Record<SharedStorageKey, string | null>;
@@ -545,7 +514,6 @@ export function convertLegacyBackup(backup: LegacyBackup): {
       customers: customers.length,
       projects: convertedProjects.length,
       items: itemsCount,
-      invoices: invoices.length,
       payments: payments.length,
       expenses: expenses.length,
       skippedKeys,
@@ -575,5 +543,5 @@ export function formatLegacyImportSummary(summary: LegacyImportSummary): string 
     summary.skippedKeys.length > 0
       ? ` (تخطّينا: ${summary.skippedKeys.join("، ")} — مش مدعومين في البرنامج الحالي)`
       : "";
-  return `تم ترحيل ${summary.customers} عميل، ${summary.projects} مشروع، ${summary.items} بند، ${summary.payments} دفعة، ${summary.invoices} فاتورة، ${summary.expenses} مصروف${skipped}`;
+  return `تم ترحيل ${summary.customers} عميل، ${summary.projects} مشروع، ${summary.items} بند، ${summary.payments} دفعة، ${summary.expenses} مصروف${skipped}`;
 }

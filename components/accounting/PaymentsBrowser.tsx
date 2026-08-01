@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   deletePayment,
-  loadInvoices,
   loadPayments,
   PAYMENT_METHOD_LABELS,
   type Payment,
@@ -115,13 +114,7 @@ export function PaymentsBrowser() {
                     type="button"
                     onClick={() => {
                       if (!window.confirm("هل تريد حذف هذه الدفعة؟")) return;
-                      const projectId =
-                        payment.projectId ??
-                        (payment.invoiceId
-                          ? loadInvoices().find(
-                              (i) => i.id === payment.invoiceId
-                            )?.projectId
-                          : undefined);
+                      const projectId = payment.projectId;
                       deletePayment(payment.id);
                       if (projectId) {
                         syncProjectMoneyFromPayments(projectId);

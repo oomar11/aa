@@ -11,7 +11,6 @@ import {
   upsertPayment,
   type Payment,
   loadPayments,
-  loadInvoices,
 } from "@/lib/accounting";
 
 export const WORKFLOW_LABELS: Record<ProjectWorkflow, string> = {
@@ -113,19 +112,8 @@ export function notifyWorkshopUpdated() {
 
 /** إجمالي المبالغ المسجّلة على المشروع */
 export function projectPaidTotal(projectId: string): number {
-  const payments = loadPayments();
-  const invoices = loadInvoices();
-  const invoiceIds = new Set(
-    invoices
-      .filter((i) => i.projectId === projectId && i.status !== "cancelled")
-      .map((i) => i.id)
-  );
-
-  return payments.reduce((sum, payment) => {
+  return loadPayments().reduce((sum, payment) => {
     if (payment.projectId === projectId) return sum + payment.amount;
-    if (payment.invoiceId && invoiceIds.has(payment.invoiceId)) {
-      return sum + payment.amount;
-    }
     return sum;
   }, 0);
 }

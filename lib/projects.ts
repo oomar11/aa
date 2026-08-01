@@ -6,11 +6,8 @@ import { STORAGE_KEYS } from "@/lib/storage/keys";
 import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
 import {
   loadExpenses,
-  loadInvoices,
   loadPayments,
-  refreshInvoiceStatuses,
   saveExpenses,
-  saveInvoices,
   savePayments,
 } from "@/lib/accounting";
 
@@ -206,11 +203,6 @@ export function deleteProject(projectId: string) {
     p.projectId === projectId ? { ...p, projectId: undefined } : p
   );
   savePayments(payments);
-
-  const invoices = loadInvoices().map((i) =>
-    i.projectId === projectId ? { ...i, projectId: undefined } : i
-  );
-  saveInvoices(refreshInvoiceStatuses(invoices, payments));
 
   saveExpenses(loadExpenses().filter((e) => e.projectId !== projectId));
 

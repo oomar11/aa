@@ -5,11 +5,12 @@ import { useEffect, useState } from "react";
 import {
   getAccountingSummary,
   loadExpenses,
-  loadInvoices,
   loadPayments,
   type AccountingSummary,
 } from "@/lib/accounting";
 import { DEFAULT_COMPANY, loadCompany, type Company } from "@/lib/company";
+import { listAllProjects } from "@/lib/projects";
+import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency } from "@/lib/utils";
 
@@ -19,12 +20,6 @@ const links = [
     title: "الدفعات",
     description: "سجل ما استلمته من العملاء على المشاريع",
     accent: "bg-primary",
-  },
-  {
-    href: ROUTES.accounting.invoices,
-    title: "الفواتير",
-    description: "فواتير البيع والمتبقي عند كل عميل",
-    accent: "bg-[#2F9B7A]",
   },
   {
     href: ROUTES.accounting.expenses,
@@ -40,11 +35,28 @@ const links = [
   },
 ] as const;
 
+function workshopMoneyTotals() {
+  let sales = 0;
+  let outstanding = 0;
+  for (const project of listAllProjects()) {
+    const money = getProjectMoneySummary(project.id);
+    sales += money.sale;
+    outstanding += money.remaining;
+  }
+  return { sales, outstanding };
+}
+
 function readSummary(): AccountingSummary {
   if (typeof window === "undefined") {
-    return { invoiced: 0, collected: 0, outstanding: 0, expenses: 0, net: 0 };
+    return { sales: 0, collected: 0, outstanding: 0, expenses: 0, net: 0 };
   }
-  return getAccountingSummary(loadInvoices(), loadPayments(), loadExpenses());
+  const { sales, outstanding } = workshopMoneyTotals();
+  return getAccountingSummary(
+    loadPayments(),
+    loadExpenses(),
+    sales,
+    outstanding
+  );
 }
 
 function readCompany(): Company {
@@ -59,15 +71,15 @@ export function AccountingHub() {
   useEffect(() => {
     function refresh() {
       setCompany(loadCompany());
-      setSummary(
-        getAccountingSummary(loadInvoices(), loadPayments(), loadExpenses())
-      );
+      setSummary(readSummary());
     }
     window.addEventListener("upvc-accounting-updated", refresh);
     window.addEventListener("upvc-company-updated", refresh);
+    window.addEventListener("upvc-projects-updated", refresh);
     return () => {
       window.removeEventListener("upvc-accounting-updated", refresh);
       window.removeEventListener("upvc-company-updated", refresh);
+      window.removeEventListener("upvc-projects-updated", refresh);
     };
   }, []);
 
@@ -79,30 +91,24 @@ export function AccountingHub() {
           {company.name}
         </h1>
         <p className="mt-2 text-sm leading-relaxed opacity-90">
-          هنا الفلوس فقط: استلام دفعات، الفواتير، وسجل المصروفات. تسجيل مصروف
-          جديد من داخل المشروع.
+          لكل مشروع: حساب · مدفوع · باقي. سجّل الدفعة على المشروع، والمصروف من
+          داخل المشروع.
         </p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4">
           <Link
             href={ROUTES.accounting.newPayment}
             className="flex h-12 items-center justify-center rounded-xl bg-white text-sm font-bold text-[#1F6B55] transition-all hover:brightness-105 active:scale-[0.98]"
           >
             استلام دفعة
           </Link>
-          <Link
-            href={ROUTES.accounting.invoices}
-            className="flex h-12 items-center justify-center rounded-xl border border-white/40 bg-white/10 text-sm font-bold text-white transition-all hover:bg-white/20 active:scale-[0.98]"
-          >
-            الفواتير
-          </Link>
         </div>
       </section>
 
       <section className="grid grid-cols-2 gap-2.5">
+        <SummaryTile label="إجمالي الحساب" value={summary.sales} tone="neutral" />
         <SummaryTile label="المحصّل" value={summary.collected} tone="good" />
-        <SummaryTile label="المفوتر" value={summary.invoiced} tone="neutral" />
         <SummaryTile
-          label="المتبقي عند العملاء"
+          label="الباقي عند العملاء"
           value={summary.outstanding}
           tone="warn"
         />
@@ -118,14 +124,12 @@ export function AccountingHub() {
           <Link
             key={link.href}
             href={link.href}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-all hover:border-primary/30 active:scale-[0.99]"
           >
             <span
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${link.accent} text-sm font-bold text-white`}
+              className={`h-10 w-1.5 shrink-0 rounded-full ${link.accent}`}
               aria-hidden
-            >
-              {link.title.slice(0, 1)}
-            </span>
+            />
             <div className="min-w-0 flex-1 text-right">
               <p className="text-sm font-bold text-foreground">{link.title}</p>
               <p className="mt-0.5 text-xs text-muted">{link.description}</p>
@@ -147,21 +151,19 @@ function SummaryTile({
 }: {
   label: string;
   value: number;
-  tone: "neutral" | "good" | "warn";
+  tone: "good" | "warn" | "neutral";
 }) {
-  const valueClass =
+  const toneClass =
     tone === "good"
       ? "text-[#2F9B7A]"
       : tone === "warn"
         ? "text-[#E85A8A]"
         : "text-foreground";
-
   return (
-    <div className="rounded-2xl border border-border bg-card px-3 py-3">
-      <p className="text-[11px] font-medium text-muted">{label}</p>
-      <p className={`mt-1 text-base font-bold tabular-nums ${valueClass}`}>
-        {formatCurrency(value)}
-        <span className="mr-1 text-[10px] font-semibold text-muted">ج.م</span>
+    <div className="rounded-2xl border border-border bg-card px-3.5 py-3">
+      <p className="text-[11px] text-muted">{label}</p>
+      <p className={`mt-1 text-base font-bold tabular-nums ${toneClass}`}>
+        {formatCurrency(value)} ج.م
       </p>
     </div>
   );

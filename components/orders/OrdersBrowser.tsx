@@ -548,7 +548,7 @@ export function OrdersBrowser() {
                         {customer.address ? ` • ${customer.address}` : ""}
                       </p>
                       <p className="mt-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        متبقي فواتير:{" "}
+                        متبقي:{" "}
                         {owes
                           ? `${formatCurrency(balance)} ج.م`
                           : "لا يوجد"}{" "}

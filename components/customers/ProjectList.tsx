@@ -109,7 +109,7 @@ export function ProjectList({ customerId }: Props) {
           </span>
           {customer ? (
             <span>
-              متبقي فواتير:{" "}
+              متبقي:{" "}
               <strong
                 className={
                   balance > 0 ? "text-[#E85A8A]" : "text-foreground"
