@@ -16,6 +16,7 @@ export type WorkshopSyncStatus = {
   ready: boolean;
   syncing: boolean;
   backend: "postgres" | "file" | "unknown";
+  durable: boolean;
   revision: number;
   updatedAt: string | null;
   hasData: boolean;
@@ -28,6 +29,7 @@ type StoreResponse = {
   revision?: number;
   updatedAt?: string;
   backend?: "postgres" | "file";
+  durable?: boolean;
   hasData?: boolean;
   data?: Record<string, string | null>;
   error?: string;
@@ -38,6 +40,7 @@ const pending = new Map<string, string | null>();
 
 let revision = 0;
 let backend: WorkshopSyncStatus["backend"] = "unknown";
+let durable = true;
 let updatedAt: string | null = null;
 let hasData = false;
 let ready = false;
@@ -110,6 +113,7 @@ function hydrateFromSnapshot(
   revision = Number(snapshot.revision ?? revision) || 0;
   updatedAt = snapshot.updatedAt ?? updatedAt;
   backend = snapshot.backend ?? backend;
+  durable = snapshot.durable ?? durable;
   hasData = Boolean(snapshot.hasData);
   lastPulledAt = new Date().toISOString();
   ready = true;
@@ -266,6 +270,7 @@ export function getWorkshopSyncStatus(): WorkshopSyncStatus {
     ready,
     syncing,
     backend,
+    durable,
     revision,
     updatedAt,
     hasData,

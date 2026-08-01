@@ -185,6 +185,13 @@ export function DataBackupPanel() {
               {backendLabel(sync.backend)}
             </span>
           </p>
+          {!sync.durable ? (
+            <p className="rounded-xl border border-[#E8A838]/40 bg-[#E8A838]/10 px-3 py-2 text-xs leading-relaxed text-foreground">
+              عشان البيانات تفضل واحدة وثابتة للورشة كلها على الإنترنت، أضف
+              متغير <span className="font-semibold">DATABASE_URL</span> في
+              إعدادات Vercel (Neon أو Vercel Postgres مجاناً)، ثم أعد النشر.
+            </p>
+          ) : null}
           {sync.updatedAt ? (
             <p className="text-xs text-muted">
               آخر تحديث على السيرفر:{" "}

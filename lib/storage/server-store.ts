@@ -11,6 +11,8 @@ export type WorkshopStoreSnapshot = {
   updatedAt: string;
   data: Record<SharedStorageKey, string | null>;
   backend: "postgres" | "file";
+  /** false على Vercel بدون DATABASE_URL — التخزين مؤقت وغير مشترك بين السيرفرات */
+  durable: boolean;
 };
 
 type StoreFile = {
@@ -19,8 +21,25 @@ type StoreFile = {
   data: Record<string, string | null>;
 };
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const STORE_FILE = path.join(DATA_DIR, "workshop-kv.json");
+function isVercelRuntime() {
+  return Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
+}
+
+function resolveStorePaths() {
+  // على Vercel نظام الملفات للقراءة فقط ما عدا /tmp
+  if (isVercelRuntime() && !getDatabaseUrl()) {
+    const dir = path.join("/tmp", "upvc-workshop");
+    return {
+      dir,
+      file: path.join(dir, "workshop-kv.json"),
+    };
+  }
+  const dir = path.join(process.cwd(), "data");
+  return {
+    dir,
+    file: path.join(dir, "workshop-kv.json"),
+  };
+}
 
 function emptyData(): Record<SharedStorageKey, string | null> {
   const data = {} as Record<SharedStorageKey, string | null>;
@@ -54,7 +73,8 @@ function hasAnySharedData(
 }
 
 function readFileStore(): StoreFile {
-  if (!existsSync(STORE_FILE)) {
+  const { file } = resolveStorePaths();
+  if (!existsSync(file)) {
     return {
       revision: 0,
       updatedAt: new Date(0).toISOString(),
@@ -62,7 +82,7 @@ function readFileStore(): StoreFile {
     };
   }
   try {
-    const parsed = JSON.parse(readFileSync(STORE_FILE, "utf8")) as StoreFile;
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as StoreFile;
     return {
       revision: Number(parsed.revision) || 0,
       updatedAt: parsed.updatedAt || new Date(0).toISOString(),
@@ -78,11 +98,12 @@ function readFileStore(): StoreFile {
 }
 
 function writeFileStore(store: StoreFile) {
-  if (!existsSync(DATA_DIR)) {
-    mkdirSync(DATA_DIR, { recursive: true });
+  const { dir, file } = resolveStorePaths();
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
   }
   writeFileSync(
-    STORE_FILE,
+    file,
     JSON.stringify(
       {
         revision: store.revision,
@@ -159,6 +180,7 @@ async function readPostgresStore(): Promise<WorkshopStoreSnapshot> {
       : new Date(0).toISOString(),
     data: normalizeData(raw),
     backend: "postgres",
+    durable: true,
   };
 }
 
@@ -209,6 +231,7 @@ export async function readWorkshopStore(): Promise<WorkshopStoreSnapshot> {
     updatedAt: file.updatedAt,
     data: normalizeData(file.data),
     backend: "file",
+    durable: !isVercelRuntime(),
   };
 }
 
@@ -247,6 +270,7 @@ export async function patchWorkshopStore(
     updatedAt: next.updatedAt,
     data: normalizeData(next.data),
     backend: "file",
+    durable: !isVercelRuntime(),
   };
 }
 
@@ -270,4 +294,8 @@ export function workshopStoreHasData(
 
 export function getWorkshopStoreBackend(): "postgres" | "file" {
   return getDatabaseUrl() ? "postgres" : "file";
+}
+
+export function isWorkshopStoreDurable(): boolean {
+  return Boolean(getDatabaseUrl()) || !isVercelRuntime();
 }

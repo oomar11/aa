@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   getWorkshopStoreBackend,
+  isWorkshopStoreDurable,
   patchWorkshopStore,
   readWorkshopStore,
   replaceWorkshopStore,
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         ok: true,
         backend: snapshot.backend,
+        durable: snapshot.durable,
         revision: snapshot.revision,
         updatedAt: snapshot.updatedAt,
         hasData: workshopStoreHasData(snapshot),
@@ -47,6 +49,7 @@ export async function GET(request: Request) {
         revision: snapshot.revision,
         updatedAt: snapshot.updatedAt,
         backend: snapshot.backend,
+        durable: snapshot.durable,
         hasData: workshopStoreHasData(snapshot),
         data: snapshot.data,
       },
@@ -64,6 +67,7 @@ export async function GET(request: Request) {
         ok: false,
         error: "تعذر قراءة قاعدة بيانات الورشة",
         backend: getWorkshopStoreBackend(),
+        durable: isWorkshopStoreDurable(),
       },
       { status: 500 }
     );
@@ -92,6 +96,7 @@ export async function PATCH(request: Request) {
       revision: snapshot.revision,
       updatedAt: snapshot.updatedAt,
       backend: snapshot.backend,
+      durable: snapshot.durable,
       hasData: workshopStoreHasData(snapshot),
       data: snapshot.data,
     });
@@ -121,6 +126,7 @@ export async function PUT(request: Request) {
       revision: snapshot.revision,
       updatedAt: snapshot.updatedAt,
       backend: snapshot.backend,
+      durable: snapshot.durable,
       hasData: workshopStoreHasData(snapshot),
       data: snapshot.data,
     });
