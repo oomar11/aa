@@ -97,7 +97,7 @@ export function PaymentsBrowser() {
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
-          مفيش تحصيل مطابق
+          لا يوجد تحصيل مطابق
         </div>
       ) : (
         <ul className="flex flex-col gap-2.5">
@@ -129,7 +129,7 @@ export function PaymentsBrowser() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!window.confirm("تمسح الدفعة دي؟")) return;
+                      if (!window.confirm("هل تريد حذف هذه الدفعة؟")) return;
                       deletePayment(payment.id);
                     }}
                     className="shrink-0 text-xs font-semibold text-[#E85A8A]"

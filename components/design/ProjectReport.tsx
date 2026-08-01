@@ -334,7 +334,7 @@ export function ProjectReport({
               <div className="mt-3 min-h-0 flex-1">
                 {pageItems.length === 0 ? (
                   <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#d5dbe5] text-sm text-[#6b7585]">
-                    مفيش بنود في المشروع بعد
+                    لا توجد بنود في المشروع حالياً
                   </div>
                 ) : (
                   <ul className="grid h-full grid-cols-2 grid-rows-2 gap-3">

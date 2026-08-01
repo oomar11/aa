@@ -822,7 +822,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
             </div>
             <div className="flex h-[92px] flex-col items-center justify-center gap-1 p-2.5">
               <span className="text-sm font-semibold">بند جديد</span>
-              <span className="text-[10px] text-muted">اختَر تمبلت جاهز</span>
+              <span className="text-[10px] text-muted">اختر نموذجاً جاهزاً</span>
             </div>
           </button>
         </li>

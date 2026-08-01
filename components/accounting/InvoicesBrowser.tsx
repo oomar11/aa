@@ -89,7 +89,7 @@ export function InvoicesBrowser() {
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
-          مفيش فواتير مطابقة
+          لا توجد فواتير مطابقة
         </div>
       ) : (
         <ul className="flex flex-col gap-2.5">

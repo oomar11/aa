@@ -89,15 +89,15 @@ export function PaymentForm() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!customerId) {
-      setError("اختَر العميل");
+      setError("اختر العميل");
       return;
     }
     if (amount <= 0) {
-      setError("ادخل مبلغ أكبر من صفر");
+      setError("أدخل مبلغاً أكبر من صفر");
       return;
     }
     if (kind === "deposit" && !projectId) {
-      setError("اختَر المشروع لاستلام العربون");
+      setError("اختر المشروع لتسجيل العربون");
       return;
     }
 
@@ -156,12 +156,12 @@ export function PaymentForm() {
                 : "border-border bg-card text-foreground"
             }`}
           >
-            تحصيل عادي
+            دفعة عادية
           </button>
         </div>
         {kind === "deposit" ? (
           <p className="text-[11px] leading-relaxed text-muted">
-            العربون بيدخل المشروع طابور الورشة تلقائياً.
+            يسجّل العربون المشروع في قائمة انتظار الورشة تلقائياً.
           </p>
         ) : null}
       </fieldset>
@@ -181,7 +181,7 @@ export function PaymentForm() {
           }}
           className={fieldClass}
         >
-          <option value="">اختَر عميل…</option>
+          <option value="">اختر عميلاً…</option>
           {allCustomers.map((customer) => (
             <option key={customer.id} value={customer.id}>
               {customer.name}
@@ -208,7 +208,7 @@ export function PaymentForm() {
           disabled={!customerId}
           className={fieldClass}
         >
-          <option value="">اختَر مشروع…</option>
+          <option value="">اختر مشروعاً…</option>
           {customerProjects.map((project) => (
             <option key={project.id} value={project.id}>
               {project.name}
@@ -315,7 +315,7 @@ export function PaymentForm() {
         type="submit"
         className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
       >
-        {kind === "deposit" ? "حفظ العربون والجدولة" : "حفظ التحصيل"}
+        {kind === "deposit" ? "حفظ العربون والإضافة إلى قائمة الانتظار" : "حفظ التحصيل"}
       </button>
     </form>
   );

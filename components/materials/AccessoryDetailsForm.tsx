@@ -144,7 +144,7 @@ export function AccessoryDetailsForm({
     if (!onBrandCatalogChange) return;
     const resolved = ensureBrand(category);
     if (!resolved) {
-      onNotify?.("مفيش سعر مرتبط بالفئة دي");
+      onNotify?.("لا يوجد سعر مرتبط بهذه الفئة");
       return;
     }
     const nextBrands = resolved.brands.map((b) =>
@@ -353,7 +353,7 @@ export function AccessoryDetailsForm({
           </div>
 
           <p className="pt-1 text-[11px] font-bold text-foreground">
-            باب مفصلي — من غير سبلونة/سكاك
+            باب مفصلي — دون سبلونة/سكاك
           </p>
           <div className="grid grid-cols-2 gap-2">
             <NumberField

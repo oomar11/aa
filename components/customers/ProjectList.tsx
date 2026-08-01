@@ -77,7 +77,7 @@ export function ProjectList({ customerId }: Props) {
     const label = project.name.trim() || "المشروع";
     if (
       !window.confirm(
-        `هل تريد حذف «${label}» نهائيًا؟ هتتحذف كل البنود المرتبطة بيه، ومفيش تراجع.`
+        `هل تريد حذف «${label}» نهائياً؟ سيتم حذف جميع البنود المرتبطة به، ولا يمكن التراجع.`
       )
     ) {
       return;
@@ -124,7 +124,7 @@ export function ProjectList({ customerId }: Props) {
               >
                 {balance > 0
                   ? `${formatCurrency(balance)} ج.م`
-                  : "مفيش"}
+                  : "لا يوجد"}
               </strong>
             </span>
           ) : null}
@@ -143,12 +143,12 @@ export function ProjectList({ customerId }: Props) {
 
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-foreground">المشاريع</h2>
-        <p className="text-xs text-muted">اختَر مشروع عشان تشوف البنود</p>
+        <p className="text-xs text-muted">اختر مشروعاً لعرض البنود</p>
       </div>
 
       {projectList.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
-          مفيش مشاريع لهذا العميل بعد
+          لا توجد مشاريع لهذا العميل حالياً
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -212,7 +212,7 @@ export function ProjectList({ customerId }: Props) {
                       )}
                       className="min-w-[7rem] flex-1 rounded-xl bg-primary px-3 py-2 text-center text-xs font-semibold text-white"
                     >
-                      استلام عربون
+                      تسجيل عربون
                     </Link>
                   ) : null}
                   <button

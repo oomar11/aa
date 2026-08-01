@@ -257,7 +257,7 @@ function PurchasePage({
       <div className="mt-3 min-h-0 flex-1 overflow-hidden">
         {lines.length === 0 ? (
           <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#d5dbe5] text-sm text-[#6b7585]">
-            مفيش خامات محسوبة على بنود المشروع بعد
+            لا توجد خامات محسوبة على بنود المشروع حالياً
           </div>
         ) : (
           <div className="space-y-3">

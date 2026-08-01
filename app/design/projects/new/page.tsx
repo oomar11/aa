@@ -19,8 +19,8 @@ export default async function NewProjectPage({ searchParams }: Props) {
         fullHeight
         mainClassName="flex flex-1 flex-col gap-3 px-6 py-6"
       >
-        <ScreenBack href={ROUTES.orders}>رجوع للطلبات</ScreenBack>
-        <p className="text-center font-semibold text-foreground">مفيش عميل محدد</p>
+        <ScreenBack href={ROUTES.orders}>العودة إلى الطلبات</ScreenBack>
+        <p className="text-center font-semibold text-foreground">لم يُحدد عميل</p>
       </AppShell>
     );
   }

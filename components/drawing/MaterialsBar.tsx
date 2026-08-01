@@ -222,7 +222,7 @@ export function MaterialsBar({
         total={profileTotal}
         emptyHint={
           systemId && systemId !== "none"
-            ? "مفيش تكلفة قطاعات — اضبط أسعار العود من تفاصيل النظام"
+            ? "لا توجد تكلفة للقطاعات — اضبط أسعار العود من تفاصيل النظام"
             : "اختار نظام قطاعات للبند"
         }
       >
@@ -527,7 +527,7 @@ function UnpricedMaterialFallback({
   const rows = buildProfileRows(null, materials);
   if (rows.length === 0) {
     return (
-      <p className="text-[10px] text-muted">مفيش قطاعات محسوبة على البند ده</p>
+      <p className="text-[10px] text-muted">لا توجد قطاعات محسوبة على هذا البند</p>
     );
   }
   return <RowsList rows={rows} />;

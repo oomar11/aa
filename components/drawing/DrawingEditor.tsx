@@ -597,7 +597,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
               تقسيم بالتساوي؟
             </h2>
             <p className="mt-2 text-sm text-muted">
-              هتتوزع المسافة على الأجزاء الموجودة بالتساوي. متأكد؟
+              ستُوزَّع المسافة على الأجزاء الموجودة بالتساوي. هل أنت متأكد؟
             </p>
             <div className="mt-4 flex gap-2">
               <button

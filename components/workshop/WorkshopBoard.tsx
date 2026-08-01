@@ -39,10 +39,10 @@ function customerName(
 }
 
 /**
- * صفحة يوم الشغل فقط:
- * - في الورشة دلوقتي
- * - الطابور (عربون)
- * - آخر المشاريع (اختصار — التفاصيل في الطلبات)
+ * صفحة العمل اليومي:
+ * - قيد التنفيذ في الورشة
+ * - قائمة الانتظار (بعد العربون)
+ * - أحدث المشاريع
  */
 export function WorkshopBoard() {
   const [tick, setTick] = useState(0);
@@ -79,14 +79,12 @@ export function WorkshopBoard() {
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-2 px-1">
-          <h2 className="text-base font-bold text-foreground">
-            في الورشة دلوقتي
-          </h2>
+          <h2 className="text-base font-bold text-foreground">قيد التنفيذ</h2>
           <span className="text-xs text-muted">{inWorkshop.length}</span>
         </div>
         {inWorkshop.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
-            مفيش مشروع تحت التنفيذ — ابدأ من الطابور تحت
+            لا يوجد مشروع قيد التنفيذ حالياً — ابدأ من قائمة الانتظار أدناه
           </div>
         ) : (
           <ul className="flex flex-col gap-2.5">
@@ -102,14 +100,14 @@ export function WorkshopBoard() {
                       onClick={() => completeWorkshopProject(project.id)}
                       className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white"
                     >
-                      تمّ التنفيذ
+                      إكمال التنفيذ
                     </button>
                     <button
                       type="button"
                       onClick={() => returnToQueue(project.id)}
                       className="rounded-xl border border-border bg-card px-3 py-1.5 text-[11px] font-semibold"
                     >
-                      رجّع للطابور
+                      إعادة إلى قائمة الانتظار
                     </button>
                   </>
                 }
@@ -121,18 +119,20 @@ export function WorkshopBoard() {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-2 px-1">
-          <h2 className="text-base font-bold text-foreground">الطابور</h2>
+          <h2 className="text-base font-bold text-foreground">
+            قائمة الانتظار
+          </h2>
           <span className="text-xs text-muted">{queued.length}</span>
         </div>
         {queued.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm leading-relaxed text-muted">
-            الطابور فاضي.
+            قائمة الانتظار فارغة.
             <br />
-            استلم عربون من{" "}
+            سجّل العربون من{" "}
             <Link href={ROUTES.orders} className="font-semibold text-primary">
               الطلبات
             </Link>{" "}
-            عشان المشروع يدخل هنا.
+            لإضافة المشروع إلى القائمة.
           </div>
         ) : (
           <ul className="flex flex-col gap-2.5">
@@ -140,7 +140,7 @@ export function WorkshopBoard() {
               <ProjectRow
                 key={project.id}
                 project={project}
-                badge={index === 0 ? "عليه الدور" : `#${index + 1}`}
+                badge={index === 0 ? "التالي للتنفيذ" : `#${index + 1}`}
                 highlight={index === 0}
                 customerLabel={customerName(customerById, project.customerId)}
                 actions={
@@ -150,7 +150,7 @@ export function WorkshopBoard() {
                       onClick={() => startWorkshopProject(project.id)}
                       className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white"
                     >
-                      ابدأ
+                      بدء التنفيذ
                     </button>
                     <button
                       type="button"
@@ -178,17 +178,19 @@ export function WorkshopBoard() {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-base font-bold text-foreground">آخر المشاريع</h2>
+          <h2 className="text-base font-bold text-foreground">
+            أحدث المشاريع
+          </h2>
           <Link
             href={ROUTES.orders}
             className="text-xs font-semibold text-primary"
           >
-            كل الطلبات
+            جميع الطلبات
           </Link>
         </div>
         {recentProjects.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
-            لسه مفيش مشاريع — من الطلبات اضغط «طلب جديد»
+            لا توجد مشاريع بعد — أنشئ طلباً جديداً من صفحة الطلبات
           </div>
         ) : (
           <ul className="flex flex-col gap-2">

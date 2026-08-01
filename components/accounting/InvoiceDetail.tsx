@@ -160,7 +160,7 @@ export function InvoiceDetail() {
         </div>
         {payments.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted">
-            لسه مفيش دفعات على الفاتورة دي
+            لا توجد دفعات على هذه الفاتورة بعد
           </div>
         ) : (
           <ul className="flex flex-col gap-2">

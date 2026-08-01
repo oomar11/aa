@@ -35,7 +35,7 @@ const links = [
   {
     href: ROUTES.settingsCompany,
     title: "بيانات الشركة",
-    description: "الاسم · التليفون · السجل الضريبي",
+    description: "الاسم · الهاتف · السجل الضريبي",
     accent: "bg-[#6B7C93]",
   },
 ] as const;
@@ -79,7 +79,7 @@ export function AccountingHub() {
           {company.name}
         </h1>
         <p className="mt-2 text-sm leading-relaxed opacity-90">
-          البرنامج للشركة فقط — فواتير وتحصيل ومصروفات من مكان واحد.
+          هذا البرنامج مخصص للشركة — الفواتير والتحصيل والمصروفات في مكان واحد.
         </p>
       </section>
 

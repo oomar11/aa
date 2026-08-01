@@ -51,7 +51,7 @@ export function InvoiceForm() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!customerId) {
-      setError("اختَر العميل");
+      setError("اختر العميل");
       return;
     }
     if (!description.trim()) {
@@ -59,7 +59,7 @@ export function InvoiceForm() {
       return;
     }
     if (amount <= 0) {
-      setError("ادخل مبلغ أكبر من صفر");
+      setError("أدخل مبلغاً أكبر من صفر");
       return;
     }
 
@@ -103,7 +103,7 @@ export function InvoiceForm() {
           }}
           className={fieldClass}
         >
-          <option value="">اختَر عميل…</option>
+          <option value="">اختر عميلاً…</option>
           {allCustomers.map((customer) => (
             <option key={customer.id} value={customer.id}>
               {customer.name}

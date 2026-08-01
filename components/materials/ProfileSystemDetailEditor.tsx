@@ -653,7 +653,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
 
           {pieces.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-muted">
-              مفيش عيدان — اضغط «عود جديد»
+              لا توجد عيدان — اضغط «عود جديد»
             </p>
           ) : (
             <ul>

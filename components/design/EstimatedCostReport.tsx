@@ -376,7 +376,7 @@ function SummaryPage({
                   lineHeight: "18px",
                 }}
               >
-                مفيش أسعار كافية لحساب التكلفة — اضبط أسعار القطاعات والزجاج
+                لا توجد أسعار كافية لحساب التكلفة — اضبط أسعار القطاعات والزجاج
                 والاكسسوار من الخامات
               </p>
             )}
@@ -474,7 +474,7 @@ function SummaryPage({
         </h3>
         {items.length === 0 ? (
           <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-[#d5dbe5] text-sm text-[#6b7585]">
-            مفيش بنود في المشروع
+            لا توجد بنود في المشروع
           </div>
         ) : (
           <table
@@ -589,7 +589,7 @@ function LinesPage({
       <div className="mt-3 min-h-0 flex-1 overflow-hidden">
         {lines.length === 0 ? (
           <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#d5dbe5] text-sm text-[#6b7585]">
-            مفيش خامات محسوبة بعد
+            لا توجد خامات محسوبة حالياً
           </div>
         ) : (
           <div className="space-y-3">

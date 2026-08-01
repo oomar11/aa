@@ -35,11 +35,11 @@ export function NewProjectForm({ customerId }: Props) {
     const trimmedAddress = address.trim();
 
     if (!trimmedName) {
-      setError("اكتب اسم المشروع");
+      setError("أدخل اسم المشروع");
       return;
     }
     if (!trimmedAddress) {
-      setError("اكتب عنوان المشروع");
+      setError("أدخل عنوان المشروع");
       return;
     }
 

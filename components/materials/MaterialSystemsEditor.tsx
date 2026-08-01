@@ -51,8 +51,8 @@ function systemSummary(
     const pieces = system.profile?.pieces.length ?? 0;
     const priced = countProfilePricedCategories(system);
     const parts = [
-      pieces > 0 ? `${pieces} عود` : "مفيش عيدان لسه",
-      priced > 0 ? `${priced} سعر` : "مفيش أسعار",
+      pieces > 0 ? `${pieces} عود` : "لا توجد عيدان بعد",
+      priced > 0 ? `${priced} سعر` : "لا توجد أسعار",
     ];
     return parts.join(" · ");
   }
@@ -350,7 +350,7 @@ export function MaterialSystemsEditor({ category }: Props) {
       <ul className="overflow-hidden rounded-2xl border border-border bg-card">
         {systems.length === 0 ? (
           <li className="px-4 py-8 text-center text-sm text-muted">
-            مفيش {isGlass ? "زجاجات" : "أنظمة"} لسه — اضغط «+{" "}
+            لا توجد {isGlass ? "زجاجات" : "أنظمة"} بعد — اضغط «+{" "}
             {isGlass ? "زجاجة جديدة" : "نظام جديد"}»
           </li>
         ) : (

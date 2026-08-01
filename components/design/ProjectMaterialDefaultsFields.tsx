@@ -186,7 +186,7 @@ export function ProjectMaterialDefaultsFields({ value, onChange }: Props) {
               />
             ) : (
               <p className="text-[10px] leading-relaxed text-muted">
-                القواعد محفوظة مع المشروع — اضغط «تعديل القواعد» لو حابب تغيّر
+                القواعد محفوظة مع المشروع — اضغط «تعديل القواعد» إن رغبت في التعديل
                 أرقام المفصلات والجرار.
               </p>
             )}

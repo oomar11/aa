@@ -6,7 +6,7 @@ export default function AccessoriesMaterialsPage() {
   return (
     <MaterialCategoryShell
       title="الاكسسوار"
-      description="اختَر نظام واضغط تفاصيل: الأسعار وقواعد المفصلي والجرار من مكان واحد."
+      description="اختر نظاماً ثم التفاصيل: الأسعار وقواعد المفصلي والجرار من مكان واحد."
       breadcrumb={materialsAccessoriesBreadcrumb()}
     >
       <MaterialSystemsEditor category="accessories" />

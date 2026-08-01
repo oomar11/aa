@@ -23,7 +23,7 @@ export default function CustomersPage() {
       <div className="mt-3 text-center">
         <h1 className="text-xl font-bold text-foreground">عميل موجود</h1>
         <p className="mt-1 text-xs text-muted">
-          اختَر عميل عشان تشوف مشاريعه أو تضيف مشروع جديد
+          اختر عميلاً لعرض مشاريعه أو إضافة مشروع جديد
         </p>
       </div>
       <div className="mt-4 flex-1">

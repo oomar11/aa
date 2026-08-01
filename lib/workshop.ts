@@ -16,8 +16,8 @@ import {
 
 export const WORKFLOW_LABELS: Record<ProjectWorkflow, string> = {
   quote: "مقايسة",
-  queued: "مجدول",
-  workshop: "في الورشة",
+  queued: "في الانتظار",
+  workshop: "قيد التنفيذ",
   done: "مكتمل",
 };
 
@@ -99,7 +99,7 @@ export function applyDepositToProject(
   return updated;
 }
 
-/** استلام عربون → قيد تحصيل + دخول طابور الورشة */
+/** تسجيل عربون → قيد تحصيل + دخول طابور الورشة */
 export function scheduleProjectWithDeposit(input: {
   projectId: string;
   amount: number;
@@ -201,12 +201,12 @@ export function listQueuedProjects(): Project[] {
     .sort(sortByQueue);
 }
 
-/** الشغلانة اللي عليها الدور: أول طابور */
+/** المشروع التالي للتنفيذ: أول عنصر في قائمة الانتظار */
 export function getNextUpProject(): Project | undefined {
   return listQueuedProjects()[0];
 }
 
-/** تحريك ترتيب الطابور */
+/** تغيير ترتيب قائمة الانتظار */
 export function moveInQueue(
   projectId: string,
   direction: "up" | "down"

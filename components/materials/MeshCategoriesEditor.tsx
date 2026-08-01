@@ -111,7 +111,7 @@ export function MeshCategoriesEditor() {
     const linkedTypes = (catalog.meshTypes ?? []).filter((t) => t.kind === id);
     if (linkedTypes.length > 0) {
       const ok = window.confirm(
-        `التصنيف فيه ${linkedTypes.length} نوع سلك — هتتحذف مع التصنيف. متأكد؟`
+        `يحتوي التصنيف على ${linkedTypes.length} نوع سلك — سيتم حذفه مع التصنيف. هل أنت متأكد؟`
       );
       if (!ok) return;
       const nextTypes = (catalog.meshTypes ?? []).filter((t) => t.kind !== id);
@@ -153,7 +153,7 @@ export function MeshCategoriesEditor() {
 
       {categories.length === 0 ? (
         <p className="rounded-lg border border-border bg-background px-2 py-2 text-center text-[11px] text-muted">
-          مفيش تصنيفات — اضغط «+ تصنيف»
+          لا توجد تصنيفات — اضغط «+ تصنيف»
         </p>
       ) : (
         <ul className="space-y-1.5">

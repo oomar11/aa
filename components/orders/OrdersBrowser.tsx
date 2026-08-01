@@ -168,7 +168,7 @@ export function OrdersBrowser() {
     const label = project.name.trim() || "المشروع";
     if (
       !window.confirm(
-        `هل تريد حذف «${label}» نهائيًا؟ هتتحذف كل البنود المرتبطة بيه، ومفيش تراجع.`
+        `هل تريد حذف «${label}» نهائياً؟ سيتم حذف جميع البنود المرتبطة به، ولا يمكن التراجع.`
       )
     ) {
       return;
@@ -349,8 +349,8 @@ export function OrdersBrowser() {
           <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center">
             <p className="text-sm text-muted">
               {deferredQuery.trim()
-                ? "مفيش عميل مطابق للبحث"
-                : "لسه مفيش عملاء — ابدأ بطلب جديد"}
+                ? "لا يوجد عميل مطابق للبحث"
+                : "لا يوجد عملاء بعد — ابدأ بطلب جديد"}
             </p>
             {!deferredQuery.trim() ? (
               <Link
@@ -396,7 +396,7 @@ export function OrdersBrowser() {
                         صافي:{" "}
                         {owes
                           ? `${formatCurrency(balance)} ج.م`
-                          : "مفيش"}{" "}
+                          : "لا يوجد"}{" "}
                         • بيع: {formatCurrency(sale)} ج.م
                       </p>
                     </div>
@@ -417,7 +417,7 @@ export function OrdersBrowser() {
                         </p>
                         {linked.length === 0 ? (
                           <p className="py-3 text-center text-sm text-muted">
-                            مفيش مشاريع لهذا العميل
+                            لا توجد مشاريع لهذا العميل
                           </p>
                         ) : (
                           <ul className="flex flex-col gap-1">
@@ -507,8 +507,8 @@ export function OrdersBrowser() {
         <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center">
           <p className="text-sm text-muted">
             {deferredQuery.trim()
-              ? "مفيش مشروع مطابق للبحث"
-              : "لسه مفيش مشاريع — ابدأ بطلب جديد"}
+              ? "لا يوجد مشروع مطابق للبحث"
+              : "لا توجد مشاريع بعد — ابدأ بطلب جديد"}
           </p>
           {!deferredQuery.trim() ? (
             <Link
@@ -571,7 +571,7 @@ export function OrdersBrowser() {
                         )}
                         className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                       >
-                        استلام عربون
+                        تسجيل عربون
                       </Link>
                     ) : null}
                     <button

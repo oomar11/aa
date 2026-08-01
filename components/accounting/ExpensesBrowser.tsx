@@ -67,7 +67,7 @@ export function ExpensesBrowser() {
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
-          مفيش مصروفات مطابقة
+          لا توجد مصروفات مطابقة
         </div>
       ) : (
         <ul className="flex flex-col gap-2.5">
@@ -95,7 +95,7 @@ export function ExpensesBrowser() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!window.confirm("تمسح المصروف ده؟")) return;
+                      if (!window.confirm("هل تريد حذف هذا المصروف؟")) return;
                       deleteExpense(expense.id);
                     }}
                     className="text-xs font-semibold text-[#E85A8A]"

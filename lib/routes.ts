@@ -1,17 +1,17 @@
 /**
  * خريطة مسارات التطبيق — مرجع واحد لكل الروابط والتسميات العربية
  *
- * التدفق الرئيسي (4 أبواب — كل باب لشغل واحد):
- *   الورشة → الشغل الحالي + الطابور + آخر المشاريع
- *   الطلبات → العملاء/المقايسات + طلب جديد + استلام عربون
+ * التدفق الرئيسي (4 أبواب — كل باب لغرض واحد):
+ *   الورشة → العمل الحالي + قائمة الانتظار + أحدث المشاريع
+ *   الطلبات → العملاء والمقايسات + طلب جديد + تسجيل العربون
  *   الحسابات → فواتير · تحصيل · مصروفات
  *   الخامات → قطاعات · اكسسوار · زجاج · سلك · حديد
  */
 
 export const ROUTES = {
-  /** الصفحة الأولى = الورشة (يوم الشغل) */
+  /** الصفحة الأولى = الورشة (العمل اليومي) */
   home: "/",
-  /** توافق قديم — يوجّه للورشة */
+  /** توافق قديم — يوجّه إلى الورشة */
   workshop: "/",
   profile: "/profile",
   settings: "/settings",
@@ -42,7 +42,7 @@ export const ROUTES = {
     invoice: (id: string) => `/accounting/invoices/${id}`,
     payments: "/accounting/payments",
     newPayment: "/accounting/payments/new",
-    /** تحصيل عربون لمشروع معيّن */
+    /** تحصيل عربون لمشروع محدد */
     depositForProject: (customerId: string, projectId: string) =>
       `/accounting/payments/new?customer=${customerId}&project=${projectId}`,
     expenses: "/accounting/expenses",
@@ -66,12 +66,12 @@ export const ROUTES = {
   },
 } as const;
 
-/** الأقسام الظاهرة في شريط التنقل السفلي — 4 أبواب بدون تكرار */
+/** الأقسام الظاهرة في شريط التنقل السفلي — 4 أبواب دون تكرار */
 export const APP_SECTIONS = [
   {
     id: "workshop",
     label: "الورشة",
-    description: "الشغل الحالي والطابور وآخر المشاريع",
+    description: "العمل الحالي وقائمة الانتظار وأحدث المشاريع",
     href: ROUTES.home,
     color: "#2B7DE9",
   },

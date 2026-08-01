@@ -11,7 +11,7 @@ export default function DesignPage() {
       fullHeight
       mainClassName="flex flex-1 flex-col px-4 pb-24 pt-5"
     >
-      <ScreenBack href={ROUTES.orders}>رجوع للطلبات</ScreenBack>
+      <ScreenBack href={ROUTES.orders}>العودة إلى الطلبات</ScreenBack>
       <AppBreadcrumb
         className="mt-3"
         items={[
@@ -24,7 +24,7 @@ export default function DesignPage() {
           طلب جديد
         </h1>
         <p className="mt-1 text-center text-sm text-muted">
-          اختَر عميل جديد أو عميل موجود عشان تبدأ المشروع
+          اختر عميلاً جديداً أو عميلاً موجوداً لبدء المشروع
         </p>
 
         <div className="mt-8 flex w-full max-w-sm flex-col gap-3">

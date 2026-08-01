@@ -98,7 +98,7 @@ export const EstimatedCostPdfExporter = forwardRef<
       );
       if (result === "unsupported") {
         window.alert(
-          "المشاركة غير متاحة على هذا الجهاز. جرّب فتح الملف ثم شاركه من هناك."
+          "المشاركة غير متاحة على هذا الجهاز. حاول فتح الملف ثم مشاركته من هناك."
         );
         return;
       }

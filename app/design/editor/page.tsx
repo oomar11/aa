@@ -12,7 +12,7 @@ export default async function EditorPage({ searchParams }: Props) {
   if (!params.customer) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 bg-background px-6 text-center">
-        <p className="font-semibold text-foreground">اختَر عميل أولاً</p>
+        <p className="font-semibold text-foreground">اختر عميلاً أولاً</p>
         <Link href={ROUTES.orders} className="text-sm text-primary">
           فتح الطلبات
         </Link>
@@ -23,7 +23,7 @@ export default async function EditorPage({ searchParams }: Props) {
   if (!params.project) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 bg-background px-6 text-center">
-        <p className="font-semibold text-foreground">اختَر مشروع أولاً</p>
+        <p className="font-semibold text-foreground">اختر مشروعاً أولاً</p>
         <Link
           href={ROUTES.design.projects(params.customer)}
           className="text-sm text-primary"

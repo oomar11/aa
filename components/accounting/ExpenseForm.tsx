@@ -26,7 +26,7 @@ export function ExpenseForm() {
       return;
     }
     if (amount <= 0) {
-      setError("ادخل مبلغ أكبر من صفر");
+      setError("أدخل مبلغاً أكبر من صفر");
       return;
     }
 

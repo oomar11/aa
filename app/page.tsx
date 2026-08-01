@@ -3,7 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { WorkshopBoard } from "@/components/workshop/WorkshopBoard";
 import { ROUTES } from "@/lib/routes";
 
-/** الصفحة الأولى = يوم الورشة (مش لوحة مكررة) */
+/** الصفحة الأولى: العمل اليومي في الورشة */
 export default function HomePage() {
   return (
     <AppShell mainClassName="flex flex-1 flex-col gap-3 px-4 pb-20 pt-1">
@@ -11,7 +11,7 @@ export default function HomePage() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-foreground">الورشة</h1>
           <p className="mt-0.5 text-xs text-muted">
-            الشغل الحالي والطابور — المقايسات من الطلبات
+            العمل الحالي وقائمة الانتظار — المقايسات من الطلبات
           </p>
         </div>
         <Link

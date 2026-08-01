@@ -156,7 +156,7 @@ export function MeshTypesEditor() {
 
               {catTypes.length === 0 ? (
                 <p className="text-center text-[10px] text-muted">
-                  مفيش أنواع — اضغط «+ نوع»
+                  لا توجد أنواع — اضغط «+ نوع»
                 </p>
               ) : (
                 <ul className="space-y-1.5">

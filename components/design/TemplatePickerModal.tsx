@@ -56,7 +56,7 @@ export function TemplatePickerModal({ open, onClose, onConfirm }: Props) {
             >
               اختيار التمبلت
             </h2>
-            <p className="text-xs text-muted">اختَر شكل الشباك ثم أكّد</p>
+            <p className="text-xs text-muted">اختر شكل الشباك ثم أكّد</p>
           </div>
           <button
             type="button"

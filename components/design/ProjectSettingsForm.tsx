@@ -71,11 +71,11 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
     const trimmedAddress = address.trim();
 
     if (!trimmedName) {
-      setError("اكتب اسم المشروع");
+      setError("أدخل اسم المشروع");
       return;
     }
     if (!trimmedAddress) {
-      setError("اكتب عنوان المشروع");
+      setError("أدخل عنوان المشروع");
       return;
     }
     if (!project) {
@@ -109,7 +109,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
     const label = project.name.trim() || "المشروع";
     if (
       !window.confirm(
-        `هل تريد حذف «${label}» نهائيًا؟ هتتحذف كل البنود المرتبطة بيه، ومفيش تراجع.`
+        `هل تريد حذف «${label}» نهائياً؟ سيتم حذف جميع البنود المرتبطة به، ولا يمكن التراجع.`
       )
     ) {
       return;
@@ -198,7 +198,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
           ))}
         </div>
         <p className="text-[11px] leading-relaxed text-muted">
-          المقايسة تدخل الورشة بعد استلام العربون من الطلبات أو التحصيل.
+          تُضاف المقايسة إلى قائمة انتظار الورشة بعد تسجيل العربون من الطلبات أو التحصيل.
         </p>
       </fieldset>
 
@@ -207,7 +207,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
           href={ROUTES.accounting.depositForProject(customerId, projectId)}
           className="flex h-11 w-full items-center justify-center rounded-2xl border border-primary/30 bg-primary-soft text-sm font-semibold text-primary transition-all hover:brightness-105 active:scale-[0.98]"
         >
-          استلام عربون (تحصيل)
+          تسجيل عربون (تحصيل)
         </Link>
       ) : null}
 

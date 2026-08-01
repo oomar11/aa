@@ -251,7 +251,7 @@ export function ItemSettingsDrawer({
               )}
               {draft.nameIsCustom && (
                 <p className="text-[11px] text-muted">
-                  اسم مخصص — مش هيتغيّر مع الرسم
+                  اسم مخصص — لا يتغير مع الرسم
                 </p>
               )}
             </div>
@@ -311,7 +311,7 @@ export function ItemSettingsDrawer({
               inputMode="decimal"
               value={specialText}
               onChange={(e) => setSpecialText(e.target.value)}
-              placeholder="اتركه فاضي للحساب العادي"
+              placeholder="اتركه فارغاً للحساب العادي"
               className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary focus:bg-card"
             />
           </Section>

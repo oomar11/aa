@@ -312,7 +312,7 @@ export function PanePropertiesModal({
           <p className="mt-0.5 text-[11px] text-muted">
             {expandedExtra
               ? "ضغطتين أو ضغطة مطوّلة لقفل القائمة"
-              : "اختَر نوع الفتح ثم التقسيم الداخلي"}
+              : "اختر نوع الفتح ثم التقسيم الداخلي"}
           </p>
         </div>
 
@@ -354,7 +354,7 @@ export function PanePropertiesModal({
                   ) : (
                     <div className="rounded-xl border border-border bg-card p-3">
                       <p className="text-[12px] leading-relaxed text-muted">
-                        البنل هيغطي الضلفة كاملة. لو عايز أجزاء بنل وأجزاء زجاج،
+                        البنل هيغطي الضلفة كاملة. إن رغبت في أجزاء بنل وأجزاء زجاج،
                         ارجع للتقسيم الداخلي واختار تقسيم.
                       </p>
                     </div>
@@ -398,7 +398,7 @@ export function PanePropertiesModal({
                 <div className="mx-auto w-full max-w-sm space-y-3">
                   <div className="rounded-xl border border-border bg-card p-3">
                     <p className="mb-3 text-[12px] leading-relaxed text-muted">
-                      الباب بيترسم بـ ٣ مفصلات. اختَر اتجاه الفتح:
+                      يُرسم الباب بثلاث مفصلات. اختر اتجاه الفتح:
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -569,7 +569,7 @@ export function PanePropertiesModal({
             {isExhaust && (
               <div className="border-t border-border bg-background/40 px-4 py-6 text-center">
                 <p className="text-[12px] leading-relaxed text-muted">
-                  الشفاط بيتساب فاضي — بدون زجاج أو باكتة أو تقسيم داخلي.
+                  يُترك الشفاط فارغاً — دون زجاج أو باكتة أو تقسيم داخلي.
                 </p>
               </div>
             )}
@@ -763,7 +763,7 @@ function PanelCellPicker({
             أجزاء البنل
           </p>
           <p className="text-[10px] text-muted">
-            اضغط على الجزء عشان يبقى بنل أو زجاج
+            اضغط على الجزء ليصبح بنلاً أو زجاجاً
           </p>
         </div>
         <span className="shrink-0 rounded-md bg-primary-soft px-1.5 py-0.5 text-[10px] font-semibold text-primary">

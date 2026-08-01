@@ -29,11 +29,11 @@ export function NewCustomerForm() {
     const trimmedPhone = phone.trim();
 
     if (!trimmedName) {
-      setError("اكتب اسم العميل");
+      setError("أدخل اسم العميل");
       return;
     }
     if (!trimmedPhone) {
-      setError("اكتب رقم التليفون");
+      setError("أدخل رقم الهاتف");
       return;
     }
 

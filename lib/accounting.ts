@@ -31,7 +31,7 @@ export type Payment = {
   invoiceId?: string;
   /** ربط مباشر بمشروع (مهم لعربون المقايسة) */
   projectId?: string;
-  /** عربون = يدخل المشروع طابور الورشة؛ payment = تحصيل عادي */
+  /** عربون = يدخل المشروع طابور الورشة؛ payment = تحصيل */
   kind?: PaymentKind;
   amount: number;
   date: string;

@@ -7,10 +7,10 @@ import { STORAGE_KEYS } from "@/lib/storage/keys";
 
 /**
  * دورة حياة المشروع:
- * - quote: مقايسة مرفوعة — لسه مشتغلناش فيها
- * - queued: استلمنا عربون واتجدولت في طابور الورشة
- * - workshop: شغّالين عليها في الورشة دلوقتي
- * - done: خلصت
+ * - quote: مقايسة — لم يبدأ التنفيذ بعد
+ * - queued: سُجّل العربون وأُضيف إلى قائمة انتظار الورشة
+ * - workshop: قيد التنفيذ في الورشة
+ * - done: مكتمل
  */
 export type ProjectWorkflow = "quote" | "queued" | "workshop" | "done";
 
@@ -20,15 +20,15 @@ export type Project = {
   name: string;
   location?: string;
   createdAt: string;
-  /** توافق قديم: open ≈ مش مكتمل، done ≈ مكتمل */
+  /** توافق قديم: open ≈ غير مكتمل، done ≈ مكتمل */
   status: "open" | "done";
-  /** مصدر الحقيقة لمسار الورشة — يُستنتج من status لو مش موجود */
+  /** مصدر الحقيقة لمسار الورشة — يُستنتج من status إن لم يكن موجوداً */
   workflow: ProjectWorkflow;
-  /** تاريخ استلام العربون (بداية الجدولة) */
+  /** تاريخ تسجيل العربون (بداية الجدولة) */
   depositAt?: string;
   /** إجمالي العربون المسجّل على المشروع */
   depositAmount?: number;
-  /** ترتيب الطابور (أقل = أقرب للشغل) */
+  /** ترتيب قائمة الانتظار (الأقل = الأقرب للتنفيذ) */
   queueOrder?: number;
   itemsCount: number;
 } & ProjectMaterialDefaults;

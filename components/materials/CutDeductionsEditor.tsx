@@ -163,7 +163,7 @@ export function CutDeductionsEditor() {
       </form>
 
       <section className="space-y-2 rounded-2xl border border-border bg-card p-3">
-        <h3 className="text-xs font-bold text-foreground">جرّب على مقاس فتحة</h3>
+        <h3 className="text-xs font-bold text-foreground">تجربة على مقاس فتحة</h3>
         <p className="text-[10px] leading-relaxed text-muted">
           اكتب مقاس الفتحة بالسنتيمتر وشوف النتيجة.
         </p>

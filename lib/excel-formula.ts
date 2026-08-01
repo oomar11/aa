@@ -69,7 +69,7 @@ function normalizeId(raw: string): string {
 
 function tokenize(input: string): Tok[] | { error: string } {
   const src = input.trim().replace(/^=/, "").replace(/\s+/g, "");
-  if (!src) return { error: "المعادلة فاضية" };
+  if (!src) return { error: "المعادلة فارغة" };
 
   const tokens: Tok[] = [];
   let i = 0;

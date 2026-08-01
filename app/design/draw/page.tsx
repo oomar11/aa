@@ -25,7 +25,7 @@ export default async function DrawPage({ searchParams }: Props) {
         >
           {params.customer && params.project
             ? "الرجوع لبنود المشروع"
-            : "الرجوع للطلبات"}
+            : "الالعودة إلى الطلبات"}
         </ScreenBack>
         <p className="text-center font-semibold text-foreground">
           بيانات الرسم غير مكتملة

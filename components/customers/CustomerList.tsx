@@ -71,7 +71,7 @@ export function CustomerList() {
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
-          مفيش عميل مطابق للبحث
+          لا يوجد عميل مطابق للبحث
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -118,7 +118,7 @@ export function CustomerList() {
                       >
                         {owes
                           ? `${formatCurrency(balance)} ج.م`
-                          : "مفيش"}
+                          : "لا يوجد"}
                       </p>
                     </div>
                     <div>

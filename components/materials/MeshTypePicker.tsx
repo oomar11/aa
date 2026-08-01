@@ -104,7 +104,7 @@ export function MeshTypePicker({
         </p>
         {typesForKind.length === 0 ? (
           <p className="rounded-xl border border-border bg-background px-3 py-2.5 text-[11px] text-muted">
-            مفيش أنواع للتصنيف ده — أضف من صفحة السلك في الخامات
+            لا توجد أنواع لهذا التصنيف — أضفها من صفحة السلك في الخامات
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-1.5">
