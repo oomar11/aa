@@ -1,5 +1,4 @@
 import {
-  sampleDesignItems,
   type DesignItem,
 } from "@/lib/design-items";
 import type { ProjectMaterialDefaults } from "@/lib/project-materials";
@@ -62,137 +61,11 @@ export const PROJECTS_STORAGE_KEY = STORAGE_KEYS.projects;
 
 export const PROJECTS_UPDATED_EVENT = "upvc-projects-updated";
 
-export const projects: Project[] = [
-  {
-    id: "p1",
-    customerId: "1",
-    name: "فيلا المعادي",
-    location: "المعادي",
-    createdAt: "2026-07-18",
-    status: "open",
-    workflow: "workshop",
-    depositAt: "2026-07-20",
-    depositAmount: 7500,
-    queueOrder: 1,
-    itemsCount: 4,
-  },
-  {
-    id: "p2",
-    customerId: "1",
-    name: "شقة الدور التالت",
-    location: "المعادي",
-    createdAt: "2026-05-10",
-    status: "done",
-    workflow: "done",
-    depositAt: "2026-05-12",
-    depositAmount: 5000,
-    itemsCount: 6,
-  },
-  {
-    id: "p3",
-    customerId: "1",
-    name: "غرفة السطح",
-    location: "المعادي",
-    createdAt: "2026-03-02",
-    status: "done",
-    workflow: "done",
-    itemsCount: 2,
-  },
-  {
-    id: "p4",
-    customerId: "2",
-    name: "محل مدينة نصر",
-    location: "مدينة نصر",
-    createdAt: "2026-06-02",
-    status: "open",
-    workflow: "quote",
-    itemsCount: 3,
-  },
-  {
-    id: "p5",
-    customerId: "2",
-    name: "شقة الأسرة",
-    location: "مدينة نصر",
-    createdAt: "2026-01-20",
-    status: "done",
-    workflow: "done",
-    itemsCount: 5,
-  },
-  {
-    id: "p6",
-    customerId: "3",
-    name: "فيلا الشيخ زايد",
-    location: "الشيخ زايد",
-    createdAt: "2026-07-22",
-    status: "open",
-    workflow: "queued",
-    depositAt: "2026-07-25",
-    depositAmount: 10000,
-    queueOrder: 2,
-    itemsCount: 8,
-  },
-  {
-    id: "p7",
-    customerId: "3",
-    name: "غرفة المعيشة",
-    createdAt: "2026-04-11",
-    status: "done",
-    workflow: "done",
-    itemsCount: 2,
-  },
-  {
-    id: "p8",
-    customerId: "3",
-    name: "حمام الضيوف",
-    createdAt: "2026-02-08",
-    status: "done",
-    workflow: "done",
-    itemsCount: 1,
-  },
-  {
-    id: "p9",
-    customerId: "4",
-    name: "عمارة أكتوبر - الدور 1",
-    location: "6 أكتوبر",
-    createdAt: "2026-05-14",
-    status: "open",
-    workflow: "queued",
-    depositAt: "2026-05-20",
-    depositAmount: 22000,
-    queueOrder: 3,
-    itemsCount: 12,
-  },
-  {
-    id: "p10",
-    customerId: "5",
-    name: "شقة مصر الجديدة",
-    location: "مصر الجديدة",
-    createdAt: "2026-07-01",
-    status: "open",
-    workflow: "quote",
-    itemsCount: 4,
-  },
-  {
-    id: "p11",
-    customerId: "6",
-    name: "بيت الجيزة",
-    location: "الجيزة",
-    createdAt: "2026-04-28",
-    status: "open",
-    workflow: "quote",
-    itemsCount: 7,
-  },
-];
+/** لا بذرة — البداية نظيفة */
+export const projects: Project[] = [];
 
-/** بنود تجريبية مربوطة بمشاريع */
-export const projectItems: Record<string, DesignItem[]> = {
-  p1: sampleDesignItems,
-  p4: sampleDesignItems.slice(0, 2),
-  p6: sampleDesignItems,
-  p9: sampleDesignItems.slice(1),
-  p10: sampleDesignItems.slice(0, 3),
-  p11: sampleDesignItems,
-};
+/** بنود مربوطة بمشاريع — فارغة عند البداية */
+export const projectItems: Record<string, DesignItem[]> = {};
 
 export function loadLocalProjects(): Project[] {
   if (typeof window === "undefined") return [];
@@ -237,7 +110,7 @@ function notifyProjectsUpdated() {
   window.dispatchEvent(new Event("upvc-accounting-updated"));
 }
 
-/** كل المشاريع الظاهرة (محلية + تجريبية) بعد استبعاد المحذوفة */
+/** كل المشاريع الظاهرة بعد استبعاد المحذوفة */
 export function listAllProjects(): Project[] {
   const deleted = new Set(loadDeletedProjectIds());
   const local = loadLocalProjects().filter((p) => !deleted.has(p.id));

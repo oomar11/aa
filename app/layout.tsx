@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
 import { ThemeProvider } from "@/components/settings/ThemeProvider";
 import { UnitProvider } from "@/components/settings/UnitProvider";
+import { CleanStartGate } from "@/components/settings/CleanStartGate";
 import { STORAGE_KEYS } from "@/lib/storage/keys";
 import "./globals.css";
 
@@ -39,7 +40,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full font-sans text-foreground bg-background">
         <ThemeProvider>
-          <UnitProvider>{children}</UnitProvider>
+          <UnitProvider>
+            <CleanStartGate>{children}</CleanStartGate>
+          </UnitProvider>
         </ThemeProvider>
       </body>
     </html>

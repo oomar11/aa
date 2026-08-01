@@ -53,7 +53,6 @@ export function getCustomerById(customerId: string): Customer | undefined {
 export function upsertCustomer(customer: Customer) {
   if (typeof window === "undefined") return;
   const existing = loadLocalCustomers().filter((c) => c.id !== customer.id);
-  // إن كان من البذرة ولم يُحفظ محلياً بعد — انسخه محلياً مع التعديل
   localStorage.setItem(
     CUSTOMERS_STORAGE_KEY,
     JSON.stringify([customer, ...existing])
@@ -67,9 +66,7 @@ export function deleteCustomer(customerId: string) {
   if (hasProjects) {
     throw new Error("لا يمكن حذف عميل له مشاريع");
   }
-  // إخفاء عميل البذرة: خزّنه كمحذوف عبر قائمة محلية فارغة من هذا id + tombstone
   const existing = loadLocalCustomers().filter((c) => c.id !== customerId);
-  // لو كان من البذرة فقط، احفظ نسخة محذوفة بعلامة — نستخدم قائمة deleted
   const deletedKey = "upvc-deleted-customers";
   const deletedRaw = localStorage.getItem(deletedKey);
   let deleted: string[] = [];
@@ -101,59 +98,5 @@ export function customerProjectsCount(customerId: string): number {
   return listAllProjects().filter((p) => p.customerId === customerId).length;
 }
 
-export const customers: Customer[] = [
-  {
-    id: "1",
-    name: "أحمد محمد",
-    phone: "01001234567",
-    address: "المعادي",
-    balance: 12500,
-    lastDealAt: "2026-07-18",
-    projectsCount: 4,
-  },
-  {
-    id: "2",
-    name: "محمود علي",
-    phone: "01009876543",
-    address: "مدينة نصر",
-    balance: 0,
-    lastDealAt: "2026-06-02",
-    projectsCount: 2,
-  },
-  {
-    id: "3",
-    name: "سارة حسن",
-    phone: "01112223344",
-    address: "الشيخ زايد",
-    balance: 4800,
-    lastDealAt: "2026-07-22",
-    projectsCount: 3,
-  },
-  {
-    id: "4",
-    name: "يوسف إبراهيم",
-    phone: "01223334455",
-    address: "6 أكتوبر",
-    balance: 22000,
-    lastDealAt: "2026-05-14",
-    projectsCount: 7,
-  },
-  {
-    id: "5",
-    name: "نورا عبد الرحمن",
-    phone: "01556667788",
-    address: "مصر الجديدة",
-    balance: 0,
-    lastDealAt: "2026-07-01",
-    projectsCount: 1,
-  },
-  {
-    id: "6",
-    name: "خالد فتحي",
-    phone: "01005556666",
-    address: "الجيزة",
-    balance: 3500,
-    lastDealAt: "2026-04-28",
-    projectsCount: 5,
-  },
-];
+/** لا بذرة — البداية نظيفة */
+export const customers: Customer[] = [];

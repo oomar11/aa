@@ -9,11 +9,12 @@ import {
   upsertInvoice,
   type InvoiceLine,
 } from "@/lib/accounting";
-import { mergeCustomers, type Customer } from "@/lib/customers";
-import { getProjectsForCustomer } from "@/lib/projects";
+import { mergeCustomers } from "@/lib/customers";
+import { getProjectById, getProjectsForCustomer } from "@/lib/projects";
+import { projectSaleTotal } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
+import { formatCurrency } from "@/lib/utils";
 import { NumericInput } from "@/components/ui/NumericInput";
-
 
 export function InvoiceForm() {
   const router = useRouter();
@@ -37,6 +38,26 @@ export function InvoiceForm() {
   const validProjectId = projects.some((p) => p.id === projectId)
     ? projectId
     : "";
+
+  const selectedSale =
+    validProjectId && typeof window !== "undefined"
+      ? projectSaleTotal(validProjectId)
+      : 0;
+
+  function applyProject(nextProjectId: string) {
+    setProjectId(nextProjectId);
+    setError("");
+    if (!nextProjectId) return;
+
+    const project = getProjectById(nextProjectId);
+    const sale = projectSaleTotal(nextProjectId);
+    if (sale > 0) {
+      setAmount(sale);
+    }
+    if (project && !description.trim()) {
+      setDescription(`توريد وتركيب — ${project.name}`);
+    }
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -108,7 +129,7 @@ export function InvoiceForm() {
         </span>
         <select
           value={validProjectId}
-          onChange={(e) => setProjectId(e.target.value)}
+          onChange={(e) => applyProject(e.target.value)}
           disabled={!customerId}
           className={fieldClass}
         >
@@ -119,6 +140,20 @@ export function InvoiceForm() {
             </option>
           ))}
         </select>
+        {validProjectId && selectedSale > 0 ? (
+          <p className="text-[11px] text-muted">
+            إجمالي بيع البنود:{" "}
+            <span className="font-semibold text-foreground">
+              {formatCurrency(selectedSale)} ج.م
+            </span>
+            {" — "}
+            يُملأ المبلغ تلقائياً ويمكن تعديله
+          </p>
+        ) : validProjectId ? (
+          <p className="text-[11px] text-muted">
+            لا يوجد بيع على البنود بعد — أدخل المبلغ يدوياً
+          </p>
+        ) : null}
       </label>
 
       <label className="flex flex-col gap-1.5 text-right">
@@ -143,7 +178,7 @@ export function InvoiceForm() {
             setDescription(e.target.value);
             setError("");
           }}
-          placeholder="مثال: دفعة تعاقد / توريد وتركيب"
+          placeholder="مثال: توريد وتركيب"
           className={fieldClass}
         />
       </label>
