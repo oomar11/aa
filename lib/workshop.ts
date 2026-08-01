@@ -40,10 +40,10 @@ export const DELIVERY_VISUAL: Record<
     dot: "bg-wf-done",
   },
   delivered: {
-    badge: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+    badge: "bg-emerald-50 text-emerald-700",
     badgeSolid: "bg-emerald-600 text-white",
-    text: "text-emerald-700 dark:text-emerald-300",
-    soft: "bg-emerald-50 dark:bg-emerald-950/40",
+    text: "text-emerald-700",
+    soft: "bg-emerald-50",
     border: "border-emerald-500/30",
     rail: "border-s-emerald-600",
     dot: "bg-emerald-600",
@@ -51,10 +51,10 @@ export const DELIVERY_VISUAL: Record<
 };
 
 export const HOLD_VISUAL = {
-  badge: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+  badge: "bg-rose-50 text-rose-700",
   badgeSolid: "bg-rose-600 text-white",
-  text: "text-rose-700 dark:text-rose-300",
-  soft: "bg-rose-50 dark:bg-rose-950/40",
+  text: "text-rose-700",
+  soft: "bg-rose-50",
   border: "border-rose-500/35",
   rail: "border-s-rose-600",
   dot: "bg-rose-600",

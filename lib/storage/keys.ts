@@ -1,7 +1,6 @@
 /** مفاتيح التخزين — مصدر واحد لكل البيانات المحفوظة */
 
 export const STORAGE_KEYS = {
-  theme: "upvc-theme",
   unit: "upvc-unit",
   customers: "upvc-customers",
   projects: "upvc-projects",
@@ -23,7 +22,7 @@ export const DELETED_CUSTOMERS_KEY = "upvc-deleted-customers";
 
 /**
  * بيانات الورشة المشتركة — نفس القيم لكل الأجهزة على نفس السيرفر.
- * الثيم ووحدة القياس وترتيب التمبلتات تبقى محلية لكل جهاز.
+ * وحدة القياس وترتيب التمبلتات تبقى محلية لكل جهاز.
  */
 export const SHARED_STORAGE_KEYS = [
   STORAGE_KEYS.customers,

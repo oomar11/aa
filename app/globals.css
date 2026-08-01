@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --background: #f4f6f9;
   --foreground: #152033;
   --card: #ffffff;
@@ -19,26 +20,6 @@
   --wf-workshop-soft: #e6f5ef;
   --wf-done: #3d6fa8;
   --wf-done-soft: #e8f0f8;
-}
-
-.dark {
-  --background: #0f141c;
-  --foreground: #eef2f7;
-  --card: #1a2230;
-  --primary: #4b93f0;
-  --primary-soft: #1c2d45;
-  --primary-foreground: #ffffff;
-  --border: #2a3548;
-  --muted: #8b95a8;
-  --icon-bg: #243247;
-  --wf-quote: #9aa8b8;
-  --wf-quote-soft: #243040;
-  --wf-queued: #e0a045;
-  --wf-queued-soft: #3a2e1a;
-  --wf-workshop: #4db892;
-  --wf-workshop-soft: #1a342c;
-  --wf-done: #7aa8d4;
-  --wf-done-soft: #1e2f42;
 }
 
 @theme inline {
@@ -66,7 +47,6 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-cairo), system-ui, sans-serif;
-  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* تقرير المشروع — طباعة / حفظ PDF */

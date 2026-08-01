@@ -202,7 +202,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
         <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
       ) : null}
       {saved ? (
-        <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+        <p className="text-sm font-medium text-emerald-600">
           تم حفظ إعدادات المشروع
         </p>
       ) : null}

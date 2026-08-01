@@ -4,13 +4,11 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DataBackupPanel } from "@/components/settings/DataBackupPanel";
-import { useTheme } from "@/components/settings/ThemeProvider";
 import { useUnit } from "@/components/settings/UnitProvider";
 import { ROUTES } from "@/lib/routes";
 import type { LengthUnit } from "@/lib/units";
 
 export default function SettingsPage() {
-  const { theme, toggleTheme } = useTheme();
   const { unit, setUnit } = useUnit();
 
   return (
@@ -22,7 +20,7 @@ export default function SettingsPage() {
           اللغة: العربية
         </div>
 
-        <div className="border-b border-border px-4 py-3.5">
+        <div className="px-4 py-3.5">
           <p className="text-sm font-medium text-foreground">وحدة القياس</p>
           <p className="mt-0.5 text-xs text-muted">
             تظهر في مقاسات النوافذ والأبواب
@@ -48,19 +46,6 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="px-4 py-3.5">
-          <p className="text-sm font-medium text-foreground">المظهر</p>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="mt-3 flex h-11 w-full items-center justify-center rounded-xl border border-border bg-background text-sm font-semibold transition-colors hover:bg-primary-soft"
-          >
-            {theme === "dark"
-              ? "التبديل للوضع الفاتح"
-              : "التبديل للوضع الداكن"}
-          </button>
         </div>
       </section>
 

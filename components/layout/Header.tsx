@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { loadCompany } from "@/lib/company";
 
 function WindowLogo() {
@@ -58,7 +57,6 @@ export function Header() {
         </span>
       </Link>
       <div className="flex shrink-0 items-center gap-1">
-        <ThemeToggle />
         <Link
           href="/settings"
           className="flex h-10 w-10 items-center justify-center rounded-full text-primary transition-colors duration-300 hover:bg-primary-soft"

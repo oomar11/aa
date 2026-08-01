@@ -410,7 +410,7 @@ export function MaterialSystemsEditor({ category }: Props) {
                     <button
                       type="button"
                       onClick={() => handleDelete(system.id)}
-                      className="rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40"
+                      className="rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50"
                     >
                       حذف
                     </button>

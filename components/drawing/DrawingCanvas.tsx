@@ -2,7 +2,6 @@
 
 import type { MouseEvent } from "react";
 import { useRef } from "react";
-import { useTheme } from "@/components/settings/ThemeProvider";
 import { useUnit } from "@/components/settings/UnitProvider";
 import {
   FRAME_COLORS,
@@ -97,8 +96,6 @@ export function DrawingCanvas({
   onRequestDeleteMullion,
 }: Props) {
   const { unit } = useUnit();
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
   const layout: LayoutNode = ensurePaneIds(
     item.layout ?? { type: "pane", id: "root" }
   );
@@ -107,30 +104,20 @@ export function DrawingCanvas({
   const frameFill = frameMeta.hex;
   const isWood = Boolean(frameMeta.wood);
 
-  const glass = isDark ? "#3a6180" : "#b7d6f0";
-  const openStroke = isDark ? "#6babf5" : "#2b7de9";
-  const hardware = isDark ? "#a8b2c0" : "#8a93a0";
-  const frameStroke = isDark ? "#8b97a8" : "#9aa3ad";
-  const paneStroke = isDark ? "#9aa8b8" : "#7a8796";
-  const dimColors: DimColors = isDark
-    ? {
-        line: "#d5deea",
-        fill: "#243247",
-        stroke: "#4a5d78",
-        text: "#eef2f7",
-        edgeDot: "#eef2f7",
-        jointDot: "#38bdf8",
-        jointStroke: "#0ea5e9",
-      }
-    : {
-        line: "#222",
-        fill: "#fff",
-        stroke: "#b0b8c2",
-        text: "#111",
-        edgeDot: "#ffffff",
-        jointDot: "#0284c7",
-        jointStroke: "#0369a1",
-      };
+  const glass = "#b7d6f0";
+  const openStroke = "#2b7de9";
+  const hardware = "#8a93a0";
+  const frameStroke = "#9aa3ad";
+  const paneStroke = "#7a8796";
+  const dimColors: DimColors = {
+    line: "#222",
+    fill: "#fff",
+    stroke: "#b0b8c2",
+    text: "#111",
+    edgeDot: "#ffffff",
+    jointDot: "#0284c7",
+    jointStroke: "#0369a1",
+  };
 
   const dimPlan = buildDimPlan(layout, item.widthMm, item.heightMm);
   const { frame: frameBox, viewBoxW, viewBoxH } = dimPlan;

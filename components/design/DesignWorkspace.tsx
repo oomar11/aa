@@ -963,7 +963,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
             className={`flex w-full items-center justify-center gap-3 rounded-2xl border-2 px-4 py-4 shadow-[0_-8px_28px_rgba(15,20,28,0.12)] transition-all duration-200 ${
               overTrash
                 ? "scale-[1.02] border-red-500 bg-red-500 text-white"
-                : "border-red-300 bg-red-50 text-red-700 dark:border-red-500/50 dark:bg-red-950/80 dark:text-red-200"
+                : "border-red-300 bg-red-50 text-red-700"
             }`}
           >
             <TrashIcon active={overTrash} />

@@ -572,7 +572,7 @@ export function OrdersBrowser() {
                         {customer.phone}
                         {customer.address ? ` • ${customer.address}` : ""}
                       </p>
-                      <p className="mt-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <p className="mt-1.5 text-xs font-semibold text-emerald-600">
                         متبقي:{" "}
                         {owes
                           ? `${formatCurrency(balance)} ج.م`

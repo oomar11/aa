@@ -1,6 +1,5 @@
 "use client";
 
-import { useTheme } from "@/components/settings/ThemeProvider";
 import {
   getLayoutPreviewSize,
   type LayoutNode,
@@ -103,17 +102,15 @@ export function TemplatePreview({
   width,
   height,
 }: Props) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
   const auto = getLayoutPreviewSize(layout);
   const vbW = width ?? auto.width;
   const vbH = height ?? auto.height;
 
-  const FRAME = isDark ? "#e8eef6" : "#ffffff";
-  const GLASS = isDark ? "#3a6180" : "#9ec8e8";
-  const GLASS_ALT = isDark ? "#315570" : "#8ebadf";
-  const OUTER = isDark ? "#9aa8b8" : "#8a96a5";
-  const STROKE = isDark ? "#5a6d86" : "#c5d0dc";
+  const FRAME = "#ffffff";
+  const GLASS = "#9ec8e8";
+  const GLASS_ALT = "#8ebadf";
+  const OUTER = "#8a96a5";
+  const STROKE = "#c5d0dc";
 
   const pad = 6;
   const profile = 5;

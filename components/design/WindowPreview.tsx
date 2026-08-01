@@ -1,7 +1,6 @@
 "use client";
 
 import { useId } from "react";
-import { useTheme } from "@/components/settings/ThemeProvider";
 import {
   FRAME_COLORS,
   PANEL_STRIPE_MM,
@@ -39,8 +38,6 @@ type Props = {
   widthMm?: number;
   heightMm?: number;
   className?: string;
-  /** فرض ألوان فاتحة (تقارير الطباعة) بغض النظر عن الثيم */
-  forceLight?: boolean;
   /** إظهار مقاسات العرض/الارتفاع على الرسم (للتقرير) */
   showDimensions?: boolean;
   /** وحدة عرض المقاسات */
@@ -90,12 +87,9 @@ export function WindowPreview({
   widthMm,
   heightMm,
   className = "",
-  forceLight = false,
   showDimensions = false,
   unit = "mm",
 }: Props) {
-  const { theme } = useTheme();
-  const isDark = forceLight ? false : theme === "dark";
   const uid = useId().replace(/:/g, "");
 
   const resolved =
@@ -149,12 +143,12 @@ export function WindowPreview({
   const frameMeta = FRAME_COLORS[normalizeFrameColor(frameColor)];
   const frameFill = frameMeta.hex;
   const isWood = Boolean(frameMeta.wood);
-  const glass = isDark ? "#3a6180" : "#9ec8e8";
-  const openStroke = isDark ? "#7eb6f5" : "#2b7de9";
-  const hardware = isDark ? "#c5ced8" : "#6b7585";
-  const frameStroke = isDark ? "#8b97a8" : "#8a96a5";
-  const emptyFill = isDark ? "#1a2230" : "#f4f6f9";
-  const emptyStroke = isDark ? "#3d4f66" : "#c5d0dc";
+  const glass = "#9ec8e8";
+  const openStroke = "#2b7de9";
+  const hardware = "#6b7585";
+  const frameStroke = "#8a96a5";
+  const emptyFill = "#f4f6f9";
+  const emptyStroke = "#c5d0dc";
   const profile = Math.max(2.8, Math.min(frame.w, frame.h) * 0.045);
   const woodId = `wood-${uid}`;
   const meshId = `mesh-${uid}`;
@@ -192,7 +186,7 @@ export function WindowPreview({
         >
           <path
             d="M0 0 L5 5 M5 0 L0 5"
-            stroke={isDark ? "#8aa0b5" : "#6b7c8f"}
+            stroke="#6b7c8f"
             strokeWidth="0.55"
             opacity="0.65"
           />
@@ -321,7 +315,7 @@ export function WindowPreview({
           widthMm={widthMm}
           heightMm={heightMm}
           unit={unit}
-          color={isDark ? "#9eb6d4" : "#2b7de9"}
+          color="#2b7de9"
         />
       ) : null}
     </svg>
