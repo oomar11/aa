@@ -27,8 +27,8 @@ import {
   type PurchaseOrderPdfExporterHandle,
 } from "@/components/design/PurchaseOrderPdfExporter";
 import {
-  ProjectReportsMenu,
-  type ProjectReportAction,
+  ProjectMoreMenu,
+  type ProjectMoreAction,
 } from "@/components/design/ProjectReportsMenu";
 import { TemplatePickerModal } from "@/components/design/TemplatePickerModal";
 import { WindowPreview } from "@/components/design/WindowPreview";
@@ -222,17 +222,21 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   function handleShare() {
     if (!customerId || !projectId) return;
     if (!pdfExporterRef.current) {
-      window.alert("تعذر بدء مشاركة PDF. حدّث الصفحة وحاول تاني.");
+      window.alert("تعذر بدء مشاركة PDF. حدّث الصفحة وحاول مرة أخرى.");
       return;
     }
     void pdfExporterRef.current.openShare();
   }
 
-  function handleReportAction(action: ProjectReportAction) {
+  function handleMoreAction(action: ProjectMoreAction) {
     if (!customerId || !projectId) return;
+    if (action === "share-quote") {
+      handleShare();
+      return;
+    }
     if (action === "purchase-order") {
       if (!purchaseOrderRef.current) {
-        window.alert("تعذر فتح طلبية المشتريات. حدّث الصفحة وحاول تاني.");
+        window.alert("تعذر فتح طلبية المشتريات. حدّث الصفحة وحاول مرة أخرى.");
         return;
       }
       void purchaseOrderRef.current.openShare();
@@ -240,7 +244,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     }
     if (action === "estimated-cost") {
       if (!estimatedCostRef.current) {
-        window.alert("تعذر فتح التكلفة التقديرية. حدّث الصفحة وحاول تاني.");
+        window.alert("تعذر فتح التكلفة التقديرية. حدّث الصفحة وحاول مرة أخرى.");
         return;
       }
       void estimatedCostRef.current.openShare();
@@ -773,46 +777,23 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
           <p className="truncate text-sm font-bold">
             {project?.name ?? "بنود المشروع"}
           </p>
-          <p className="truncate text-[10px] opacity-80">بنود المشروع</p>
+          <p className="truncate text-[10px] opacity-80">بنود المقايسة</p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
-          {customerId && projectId ? (
-            <Link
-              href={ROUTES.design.expenses(customerId, projectId)}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-              aria-label="مصروفات المشروع"
-              title="مصروفات المشروع"
-            >
-              <ExpenseIcon />
-            </Link>
-          ) : null}
-          <Link
-            href={
-              customerId && projectId
-                ? ROUTES.design.projectSettings(customerId, projectId)
-                : "/settings"
-            }
-            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-            aria-label="إعدادات المشروع"
-          >
-            <SettingsIcon />
-          </Link>
-          <ProjectReportsMenu
-            disabled={!customerId || !projectId}
-            onSelect={handleReportAction}
-          />
-          <button
-            type="button"
-            onClick={handleShare}
-            disabled={!customerId || !projectId}
-            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15 disabled:opacity-60"
-            aria-label="مشاركة PDF"
-            title="مشاركة PDF"
-          >
-            <ShareIcon />
-          </button>
-        </div>
+        <ProjectMoreMenu
+          disabled={!customerId || !projectId}
+          expensesHref={
+            customerId && projectId
+              ? ROUTES.design.expenses(customerId, projectId)
+              : undefined
+          }
+          settingsHref={
+            customerId && projectId
+              ? ROUTES.design.projectSettings(customerId, projectId)
+              : undefined
+          }
+          onSelect={handleMoreAction}
+        />
       </header>
 
       {money ? (
@@ -1194,51 +1175,5 @@ function TrashIcon({ active }: { active: boolean }) {
   );
 }
 
-function ExpenseIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect x="3" y="6" width="18" height="13" rx="2" />
-      <path d="M3 10h18" />
-      <path d="M8 14h3M14 14h2" />
-    </svg>
-  );
-}
-
-function SettingsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
-      <path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.07 7.07 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.34.68.24l2.39-.96c.5.39 1.04.7 1.63.94l.36 2.54c.05.24.26.42.5.42h3.84c.24 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.55 1.63-.94l2.39.96c.26.1.54 0 .68-.24l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z" />
-    </svg>
-  );
-}
-
-function ShareIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="18" cy="5" r="2.5" />
-      <circle cx="6" cy="12" r="2.5" />
-      <circle cx="18" cy="19" r="2.5" />
-      <path d="M8.4 13.2l7.2 4.1M15.6 6.7l-7.2 4.1" />
-    </svg>
-  );
-}
 
 

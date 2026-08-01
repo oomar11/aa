@@ -24,7 +24,8 @@ export default function DesignPage() {
           طلب جديد
         </h1>
         <p className="mt-1 text-center text-sm text-muted">
-          اختر عميلاً جديداً أو عميلاً موجوداً لبدء المشروع
+          اختر عميلاً جديداً أو عميلاً موجوداً لبدء المقايسة. بعد التسجيل تُدار
+          المشاريع من باب الطلبات.
         </p>
 
         <div className="mt-8 flex w-full max-w-sm flex-col gap-3">

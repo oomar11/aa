@@ -254,6 +254,19 @@ export function OrdersBrowser() {
       );
   }, [allProjects, customerById, deferredQuery]);
 
+  const recentProjects = useMemo(
+    () =>
+      [...allProjects]
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, 5),
+    [allProjects]
+  );
+
+  const showRecent = !deferredQuery.trim() && recentProjects.length > 0;
+
   function isExpanded(id: string) {
     if (collapsedOverride.has(id)) return false;
     return expandedId === id || autoExpandIds.has(id);
@@ -278,6 +291,48 @@ export function OrdersBrowser() {
 
   return (
     <div className="flex flex-col gap-4">
+      {showRecent ? (
+        <section className="flex flex-col gap-2.5" aria-labelledby="orders-recent-heading">
+          <div className="px-0.5">
+            <h2
+              id="orders-recent-heading"
+              className="text-sm font-bold text-foreground"
+            >
+              أحدث المشاريع
+            </h2>
+            <p className="mt-0.5 text-[11px] text-muted">
+              للمتابعة السريعة — آخر ما أُنشئ
+            </p>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {recentProjects.map((project) => {
+              const customer = customerById.get(project.customerId);
+              return (
+                <li key={project.id}>
+                  <Link
+                    href={ROUTES.design.editor(project.customerId, project.id)}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 transition-all hover:border-primary/30 active:scale-[0.99]"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-foreground">
+                        {project.name}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted">
+                        {customer?.name ?? "عميل"}
+                        {project.location ? ` · ${project.location}` : ""}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold text-muted">
+                      {statusLabel(project)}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
       <label className="relative block">
         <span className="sr-only">بحث</span>
         <SearchIcon />
@@ -299,7 +354,7 @@ export function OrdersBrowser() {
 
       <div
         role="tablist"
-        aria-label="تصفية الطلبات"
+        aria-label="تصفّح الطلبات"
         className="grid grid-cols-2 border-b border-border"
       >
         <button

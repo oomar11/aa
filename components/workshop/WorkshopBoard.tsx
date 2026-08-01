@@ -14,7 +14,6 @@ import {
   type Customer,
 } from "@/lib/customers";
 import {
-  listAllProjects,
   PROJECTS_UPDATED_EVENT,
   type Project,
 } from "@/lib/projects";
@@ -27,7 +26,6 @@ import {
   moveInQueue,
   returnToQueue,
   startWorkshopProject,
-  WORKFLOW_LABELS,
 } from "@/lib/workshop";
 
 const QUEUE_FLIP_MS = 320;
@@ -44,7 +42,6 @@ function customerName(
  * صفحة العمل اليومي:
  * - قيد التنفيذ في الورشة
  * - قائمة الانتظار (بعد تسجيل دفعة)
- * - أحدث المشاريع
  */
 export function WorkshopBoard() {
   const [tick, setTick] = useState(0);
@@ -74,12 +71,6 @@ export function WorkshopBoard() {
   void tick;
   const inWorkshop = listWorkshopProjects();
   const queued = listQueuedProjects();
-  const recentProjects = [...listAllProjects()]
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    .slice(0, 5);
 
   const queueIds = useMemo(() => queued.map((p) => p.id).join("|"), [queued]);
 
@@ -270,49 +261,6 @@ export function WorkshopBoard() {
                   </>
                 }
               />
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-base font-bold text-foreground">
-            أحدث المشاريع
-          </h2>
-          <Link
-            href={ROUTES.orders}
-            className="text-xs font-semibold text-primary"
-          >
-            جميع الطلبات
-          </Link>
-        </div>
-        {recentProjects.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
-            لا توجد مشاريع بعد — أنشئ طلباً جديداً من صفحة الطلبات
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {recentProjects.map((project) => (
-              <li key={project.id}>
-                <Link
-                  href={ROUTES.design.editor(project.customerId, project.id)}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 transition-all hover:border-primary/30 active:scale-[0.99]"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-foreground">
-                      {project.name}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-muted">
-                      {customerName(customerById, project.customerId)}
-                      {project.location ? ` · ${project.location}` : ""}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold text-muted">
-                    {WORKFLOW_LABELS[project.workflow]}
-                  </span>
-                </Link>
-              </li>
             ))}
           </ul>
         )}
