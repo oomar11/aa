@@ -6,8 +6,9 @@ import {
   loadLocalCustomers,
   type Customer,
 } from "@/lib/customers";
+import { getProjectMoneySummary } from "@/lib/project-money";
 import { listAllProjects, type Project } from "@/lib/projects";
-import { smartSearchMatch } from "@/lib/utils";
+import { formatCurrency, smartSearchMatch } from "@/lib/utils";
 import { WORKFLOW_LABELS } from "@/lib/workshop";
 
 function mergeCustomers(): Customer[] {
@@ -22,6 +23,32 @@ type Props = {
   onChange: (projectId: string) => void;
   error?: boolean;
 };
+
+function MoneyRow({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  tone?: "neutral" | "good" | "warn";
+}) {
+  const valueClass =
+    tone === "good"
+      ? "text-[#2F9B7A]"
+      : tone === "warn"
+        ? "text-[#E85A8A]"
+        : "text-foreground";
+
+  return (
+    <div className="rounded-xl bg-background px-2.5 py-2 text-center">
+      <p className="text-[10px] font-medium text-muted">{label}</p>
+      <p className={`mt-0.5 text-sm font-bold tabular-nums ${valueClass}`}>
+        {formatCurrency(value)}
+      </p>
+    </div>
+  );
+}
 
 /**
  * اختيار مشروع لاستلام دفعة: بحث بالاسم/الهاتف/الموقع ثم بطاقات واضحة.
@@ -63,6 +90,11 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
   const selectedCustomer = selected
     ? customerById.get(selected.customerId)
     : undefined;
+
+  const selectedMoney = useMemo(
+    () => (selected ? getProjectMoneySummary(selected.id) : null),
+    [selected]
+  );
 
   const filtered = useMemo(() => {
     return openProjects.filter((project) => {
@@ -128,6 +160,22 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
               تغيير
             </button>
           </div>
+
+          {selectedMoney ? (
+            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3">
+              <MoneyRow label="الحساب" value={selectedMoney.sale} />
+              <MoneyRow
+                label="المدفوع"
+                value={selectedMoney.paid}
+                tone="good"
+              />
+              <MoneyRow
+                label="المتبقي"
+                value={selectedMoney.remaining}
+                tone={selectedMoney.remaining > 0 ? "warn" : "good"}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     );
@@ -179,7 +227,7 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
       ) : null}
 
       <div
-        className={`max-h-64 overflow-y-auto rounded-2xl border border-border bg-card ${
+        className={`max-h-72 overflow-y-auto rounded-2xl border border-border bg-card ${
           open ? "" : "hidden"
         }`}
       >
@@ -193,41 +241,63 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
           <ul className="divide-y divide-border">
             {filtered.map((project) => {
               const customer = customerById.get(project.customerId);
+              const money = getProjectMoneySummary(project.id);
               const isActive = project.id === value;
               return (
                 <li key={project.id}>
                   <button
                     type="button"
                     onClick={() => selectProject(project)}
-                    className={`flex w-full items-start justify-between gap-3 px-3.5 py-3 text-right transition-colors ${
+                    className={`flex w-full flex-col gap-2 px-3.5 py-3 text-right transition-colors ${
                       isActive
                         ? "bg-primary-soft"
                         : "hover:bg-background active:bg-background"
                     }`}
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-foreground">
-                        {project.name}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-muted">
-                        {customer?.name ?? "عميل"}
-                        {customer?.phone ? ` · ${customer.phone}` : ""}
-                      </p>
-                      {project.location ? (
-                        <p className="mt-0.5 truncate text-[11px] text-muted">
-                          {project.location}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-foreground">
+                          {project.name}
                         </p>
-                      ) : null}
+                        <p className="mt-0.5 truncate text-xs text-muted">
+                          {customer?.name ?? "عميل"}
+                          {customer?.phone ? ` · ${customer.phone}` : ""}
+                        </p>
+                        {project.location ? (
+                          <p className="mt-0.5 truncate text-[11px] text-muted">
+                            {project.location}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          project.workflow === "quote"
+                            ? "bg-background text-muted"
+                            : "bg-primary-soft text-primary"
+                        }`}
+                      >
+                        {WORKFLOW_LABELS[project.workflow]}
+                      </span>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        project.workflow === "quote"
-                          ? "bg-background text-muted"
-                          : "bg-primary-soft text-primary"
-                      }`}
-                    >
-                      {WORKFLOW_LABELS[project.workflow]}
-                    </span>
+                    <p className="text-[11px] text-muted">
+                      حساب {formatCurrency(money.sale)} ج.م
+                      {" · "}
+                      مدفوع{" "}
+                      <span className="font-semibold text-[#2F9B7A]">
+                        {formatCurrency(money.paid)}
+                      </span>
+                      {" · "}
+                      متبقي{" "}
+                      <span
+                        className={`font-semibold ${
+                          money.remaining > 0
+                            ? "text-[#E85A8A]"
+                            : "text-[#2F9B7A]"
+                        }`}
+                      >
+                        {formatCurrency(money.remaining)}
+                      </span>
+                    </p>
                   </button>
                 </li>
               );
