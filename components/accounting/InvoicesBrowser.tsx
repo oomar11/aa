@@ -10,20 +10,10 @@ import {
   type Invoice,
   type Payment,
 } from "@/lib/accounting";
-import {
-  customers,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
+import { mergeCustomers, type Customer } from "@/lib/customers";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
 
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const local = loadLocalCustomers();
-  const localIds = new Set(local.map((c) => c.id));
-  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
-}
 
 export function InvoicesBrowser() {
   const [invoices, setInvoices] = useState<Invoice[]>(() =>

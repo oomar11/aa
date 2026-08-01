@@ -2,11 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import {
-  customers,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
+import { getCustomerById, type Customer } from "@/lib/customers";
 import { resolveCustomerBalance } from "@/lib/customer-balance";
 import {
   deleteProject,
@@ -23,11 +19,7 @@ type Props = {
 };
 
 function readCustomer(customerId: string): Customer | null {
-  if (typeof window === "undefined") {
-    return customers.find((c) => c.id === customerId) ?? null;
-  }
-  const all = [...loadLocalCustomers(), ...customers];
-  return all.find((c) => c.id === customerId) ?? null;
+  return getCustomerById(customerId) ?? null;
 }
 
 function snapshot(customerId: string) {
@@ -116,7 +108,7 @@ export function ProjectList({ customerId }: Props) {
           </span>
           {customer ? (
             <span>
-              باقي عليه:{" "}
+              متبقي فواتير:{" "}
               <strong
                 className={
                   balance > 0 ? "text-[#E85A8A]" : "text-foreground"

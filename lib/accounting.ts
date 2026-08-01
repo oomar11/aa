@@ -337,9 +337,22 @@ export function upsertPayment(payment: Payment) {
 }
 
 export function deletePayment(paymentId: string) {
+  const existing = loadPayments().find((p) => p.id === paymentId);
   const payments = loadPayments().filter((p) => p.id !== paymentId);
   savePayments(payments);
   saveInvoices(refreshInvoiceStatuses(loadInvoices(), payments));
+
+  const projectId =
+    existing?.projectId ??
+    (existing?.invoiceId
+      ? loadInvoices().find((i) => i.id === existing.invoiceId)?.projectId
+      : undefined);
+
+  if (projectId && typeof window !== "undefined") {
+    void import("@/lib/workshop").then(({ syncProjectMoneyFromPayments }) => {
+      syncProjectMoneyFromPayments(projectId);
+    });
+  }
 }
 
 export function upsertExpense(expense: Expense) {

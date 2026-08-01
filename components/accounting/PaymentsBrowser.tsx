@@ -9,22 +9,12 @@ import {
   PAYMENT_METHOD_LABELS,
   type Payment,
 } from "@/lib/accounting";
-import {
-  customers,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
+import { mergeCustomers, type Customer } from "@/lib/customers";
 import { getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
 import { syncProjectMoneyFromPayments } from "@/lib/workshop";
 
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const local = loadLocalCustomers();
-  const localIds = new Set(local.map((c) => c.id));
-  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
-}
 
 export function PaymentsBrowser() {
   const [payments, setPayments] = useState<Payment[]>(() =>

@@ -1,22 +1,12 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import {
-  customers,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
+import { mergeCustomers, type Customer } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { listAllProjects, type Project } from "@/lib/projects";
 import { formatCurrency, smartSearchMatch } from "@/lib/utils";
 import { WORKFLOW_LABELS } from "@/lib/workshop";
 
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const local = loadLocalCustomers();
-  const localIds = new Set(local.map((c) => c.id));
-  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
-}
 
 type Props = {
   value: string;

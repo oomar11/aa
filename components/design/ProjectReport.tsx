@@ -5,11 +5,7 @@ import { useMemo, useState } from "react";
 import { WindowPreview } from "@/components/design/WindowPreview";
 import { useUnit } from "@/components/settings/UnitProvider";
 import { loadCompany } from "@/lib/company";
-import {
-  customers,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
+import { mergeCustomers, type Customer } from "@/lib/customers";
 import {
   itemAreaSqm,
   itemTotalPrice,
@@ -40,12 +36,6 @@ type Props = {
   exportOnly?: boolean;
 };
 
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const local = loadLocalCustomers();
-  const localIds = new Set(local.map((c) => c.id));
-  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
-}
 
 function readCustomer(customerId: string): Customer | null {
   return mergeCustomers().find((c) => c.id === customerId) ?? null;

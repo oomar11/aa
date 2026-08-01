@@ -5,11 +5,7 @@ import {
 } from "@/lib/accessories";
 import { accessoryBrandResolvedPrice } from "@/lib/accessory-price-list-2026";
 import { loadCompany } from "@/lib/company";
-import {
-  customers,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
+import { mergeCustomers, type Customer } from "@/lib/customers";
 import {
   FRAME_COLORS,
   normalizeFrameColor,
@@ -140,13 +136,6 @@ export const COST_ITEMS_PER_PAGE = 12;
 export const COST_LINES_FIRST_PAGE = 10;
 export const COST_LINES_PER_PAGE = 15;
 export const COST_SECTION_COST = 2;
-
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const local = loadLocalCustomers();
-  const localIds = new Set(local.map((c) => c.id));
-  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
-}
 
 function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;

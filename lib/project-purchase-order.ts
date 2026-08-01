@@ -4,11 +4,7 @@ import {
   type AccessoriesBreakdown,
 } from "@/lib/accessories";
 import { loadCompany } from "@/lib/company";
-import {
-  customers,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
+import { mergeCustomers, type Customer } from "@/lib/customers";
 import {
   FRAME_COLORS,
   normalizeFrameColor,
@@ -115,13 +111,6 @@ const SECTION_TITLE: Record<PurchaseSectionId, string> = {
 export const PURCHASE_LINES_FIRST_PAGE = 9;
 export const PURCHASE_LINES_PER_PAGE = 15;
 export const PURCHASE_SECTION_COST = 2;
-
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const local = loadLocalCustomers();
-  const localIds = new Set(local.map((c) => c.id));
-  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
-}
 
 function roundAmount(n: number, unit: PurchaseUnit): number {
   if (unit === "قطعة" || unit === "طقم") return Math.round(n * 100) / 100;

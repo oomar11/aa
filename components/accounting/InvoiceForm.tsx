@@ -9,21 +9,11 @@ import {
   upsertInvoice,
   type InvoiceLine,
 } from "@/lib/accounting";
-import {
-  customers,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
+import { mergeCustomers, type Customer } from "@/lib/customers";
 import { getProjectsForCustomer } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { NumericInput } from "@/components/ui/NumericInput";
 
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const local = loadLocalCustomers();
-  const localIds = new Set(local.map((c) => c.id));
-  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
-}
 
 export function InvoiceForm() {
   const router = useRouter();
