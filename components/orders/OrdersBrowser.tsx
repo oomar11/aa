@@ -32,6 +32,7 @@ import {
   WORKFLOW_VISUAL,
 } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
+import { ProjectMoneyLine } from "@/components/projects/ProjectMoneyLine";
 
 type Tab = "customers" | "projects";
 type WorkflowFilter =
@@ -465,6 +466,7 @@ export function OrdersBrowser() {
                         {customer?.name ?? "عميل"}
                         {project.location ? ` · ${project.location}` : ""}
                       </p>
+                      <ProjectMoneyLine projectId={project.id} className="mt-1" />
                     </div>
                     <WorkflowBadge
                       workflow={project.workflow}
@@ -658,7 +660,6 @@ export function OrdersBrowser() {
                         ) : (
                           <ul className="flex flex-col gap-1">
                             {linked.map((project) => {
-                              const projectSale = projectSaleTotal(project.id);
                               const visual = WORKFLOW_VISUAL[project.workflow];
                               return (
                                 <li key={project.id}>
@@ -692,13 +693,11 @@ export function OrdersBrowser() {
                                             workflow={project.workflow}
                                             project={project}
                                           />
-                                          {projectSale > 0 ? (
-                                            <span>
-                                              بيع: {formatCurrency(projectSale)}{" "}
-                                              ج.م
-                                            </span>
-                                          ) : null}
                                         </div>
+                                        <ProjectMoneyLine
+                                          projectId={project.id}
+                                          className="mt-1"
+                                        />
                                       </div>
                                     </Link>
                                     <button
@@ -794,7 +793,6 @@ export function OrdersBrowser() {
         <ul className="flex flex-col gap-3">
           {filteredProjects.map((project) => {
             const customer = customerById.get(project.customerId);
-            const projectSale = projectSaleTotal(project.id);
             const visual = WORKFLOW_VISUAL[project.workflow];
             return (
               <li key={project.id}>
@@ -823,11 +821,7 @@ export function OrdersBrowser() {
                         project={project}
                       />
                     </div>
-                    {projectSale > 0 ? (
-                      <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        بيع: {formatCurrency(projectSale)} ج.م
-                      </p>
-                    ) : null}
+                    <ProjectMoneyLine projectId={project.id} className="mt-2" />
                   </Link>
                   <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-border pt-3">
                     {project.workflow === "quote" ? (

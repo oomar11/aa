@@ -762,13 +762,9 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     >
       <header className="flex items-center justify-between rounded-2xl bg-primary px-3 py-2.5 text-primary-foreground shadow-[0_6px_18px_rgba(43,125,233,0.28)]">
         <NavBack
-          href={
-            customerId
-              ? `/design/projects?customer=${customerId}`
-              : "/orders"
-          }
+          href={ROUTES.home}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-          aria-label="رجوع لمشاريع العميل"
+          aria-label="رجوع للورشة"
         >
           <BackChevron />
         </NavBack>

@@ -20,7 +20,6 @@ import {
   type ProjectWorkflow,
 } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
-import { formatCurrency } from "@/lib/utils";
 import {
   completeWorkshopProject,
   DELIVERY_VISUAL,
@@ -40,6 +39,7 @@ import {
   WORKFLOW_VISUAL,
 } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
+import { ProjectMoneyLine } from "@/components/projects/ProjectMoneyLine";
 
 const QUEUE_FLIP_MS = 320;
 const QUEUE_FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -654,11 +654,7 @@ function ProjectRow({
                 تاريخ التسليم {deliveredAt}
               </p>
             ) : null}
-            {project.depositAmount ? (
-              <p className={`mt-1 text-[11px] font-medium ${visual.text}`}>
-                مدفوع {formatCurrency(project.depositAmount)}
-              </p>
-            ) : null}
+            <ProjectMoneyLine projectId={project.id} className="mt-1" />
           </div>
           <span className="shrink-0 text-muted" aria-hidden>
             ‹
