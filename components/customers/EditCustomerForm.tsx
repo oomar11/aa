@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { ContactPickerButton } from "@/components/customers/ContactPickerButton";
+import { pickContactFromDevice } from "@/lib/contact-picker";
 import {
   deleteCustomer,
   getCustomerById,
@@ -23,6 +25,7 @@ export function EditCustomerForm({ customerId }: Props) {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     const found = getCustomerById(customerId);
@@ -33,6 +36,28 @@ export function EditCustomerForm({ customerId }: Props) {
     setAddress(found.address ?? "");
     setNote(found.note ?? "");
   }, [customerId]);
+
+  async function handlePickContact() {
+    setError("");
+    setSaved(false);
+    setPicking(true);
+    try {
+      const result = await pickContactFromDevice();
+      if (!result.ok) {
+        if (result.reason !== "cancelled") {
+          setError(result.message);
+        }
+        return;
+      }
+      setName(result.contact.name);
+      setPhone(result.contact.phone);
+      if (result.contact.address) {
+        setAddress(result.contact.address);
+      }
+    } finally {
+      setPicking(false);
+    }
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -94,6 +119,12 @@ export function EditCustomerForm({ customerId }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+      <ContactPickerButton
+        label="تعبئة من جهات الاتصال"
+        picking={picking}
+        onPick={handlePickContact}
+      />
+
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
           الاسم <span className="text-[#E85A8A]">*</span>

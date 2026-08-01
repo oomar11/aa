@@ -23,7 +23,7 @@ export default function NewCustomerPage() {
       <div className="mt-3 text-center">
         <h1 className="text-xl font-bold text-foreground">عميل جديد</h1>
         <p className="mt-1 text-xs text-muted">
-          سجّل بيانات العميل قبل إنشاء المشروع
+          سجّل البيانات يدوياً أو اختر من جهات الاتصال
         </p>
       </div>
       <div className="mt-4 flex-1">

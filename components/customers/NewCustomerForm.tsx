@@ -2,14 +2,39 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { ContactPickerButton } from "@/components/customers/ContactPickerButton";
+import { pickContactFromDevice } from "@/lib/contact-picker";
 import { upsertCustomer, type Customer } from "@/lib/customers";
 
 export function NewCustomerForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [picking, setPicking] = useState(false);
+
+  async function handlePickContact() {
+    setError("");
+    setPicking(true);
+    try {
+      const result = await pickContactFromDevice();
+      if (!result.ok) {
+        if (result.reason !== "cancelled") {
+          setError(result.message);
+        }
+        return;
+      }
+      setName(result.contact.name);
+      setPhone(result.contact.phone);
+      if (result.contact.address) {
+        setAddress(result.contact.address);
+      }
+    } finally {
+      setPicking(false);
+    }
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -29,6 +54,7 @@ export function NewCustomerForm() {
       id: `local-${Date.now()}`,
       name: trimmedName,
       phone: trimmedPhone,
+      address: address.trim() || undefined,
       note: note.trim() || undefined,
       balance: 0,
       lastDealAt: new Date().toISOString().slice(0, 10),
@@ -44,6 +70,12 @@ export function NewCustomerForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+      <ContactPickerButton
+        label="إضافة من جهات الاتصال"
+        picking={picking}
+        onPick={handlePickContact}
+      />
+
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium text-foreground">
           الاسم <span className="text-[#E85A8A]">*</span>
@@ -76,6 +108,23 @@ export function NewCustomerForm() {
           autoComplete="tel"
           className={`${fieldClass} text-left`}
           dir="ltr"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-right">
+        <span className="text-sm font-medium text-foreground">
+          العنوان <span className="font-normal text-muted">(اختياري)</span>
+        </span>
+        <input
+          type="text"
+          value={address}
+          onChange={(e) => {
+            setAddress(e.target.value);
+            setError("");
+          }}
+          placeholder="العنوان"
+          autoComplete="street-address"
+          className={fieldClass}
         />
       </label>
 
