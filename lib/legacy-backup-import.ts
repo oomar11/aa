@@ -192,11 +192,9 @@ function mapProjectWorkflow(
   if (s === "completed" || s === "done" || s === "finished") {
     return { workflow: "done", status: "done" };
   }
+  // مدفوع → قائمة انتظار فقط. التنفيذ يبدأ يدوياً من الورشة.
   if (paidAmount > 0) {
-    if (s === "waiting" || s === "queued" || s === "pending") {
-      return { workflow: "queued", status: "open" };
-    }
-    return { workflow: "workshop", status: "open" };
+    return { workflow: "queued", status: "open" };
   }
   return { workflow: "quote", status: "open" };
 }
