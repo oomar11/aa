@@ -3,6 +3,7 @@ import {
 } from "@/lib/design-items";
 import type { ProjectMaterialDefaults } from "@/lib/project-materials";
 import { STORAGE_KEYS } from "@/lib/storage/keys";
+import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
 import {
   loadExpenses,
   loadInvoices,
@@ -70,7 +71,7 @@ export const projectItems: Record<string, DesignItem[]> = {};
 export function loadLocalProjects(): Project[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    const raw = sharedGetItem(PROJECTS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as Project[];
     return Array.isArray(parsed)
@@ -84,7 +85,7 @@ export function loadLocalProjects(): Project[] {
 export function loadDeletedProjectIds(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.deletedProjects);
+    const raw = sharedGetItem(STORAGE_KEYS.deletedProjects);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as string[];
     return Array.isArray(parsed)
@@ -97,7 +98,7 @@ export function loadDeletedProjectIds(): string[] {
 
 function saveDeletedProjectIds(ids: string[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.deletedProjects, JSON.stringify(ids));
+  sharedSetItem(STORAGE_KEYS.deletedProjects, JSON.stringify(ids));
 }
 
 export function isProjectDeleted(projectId: string): boolean {
@@ -143,7 +144,7 @@ const ITEMS_STORAGE_KEY = STORAGE_KEYS.projectItems;
 function loadLocalItems(): Record<string, DesignItem[]> {
   if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
+    const raw = sharedGetItem(ITEMS_STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as Record<string, DesignItem[]>;
     return parsed && typeof parsed === "object" ? parsed : {};
@@ -163,7 +164,7 @@ export function saveItemsForProject(projectId: string, items: DesignItem[]) {
   if (typeof window === "undefined") return;
   const all = loadLocalItems();
   all[projectId] = items;
-  localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(all));
+  sharedSetItem(ITEMS_STORAGE_KEY, JSON.stringify(all));
 }
 
 function clearItemsForProject(projectId: string) {
@@ -171,7 +172,7 @@ function clearItemsForProject(projectId: string) {
   const all = loadLocalItems();
   if (!(projectId in all)) return;
   delete all[projectId];
-  localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(all));
+  sharedSetItem(ITEMS_STORAGE_KEY, JSON.stringify(all));
 }
 
 export function upsertProjectOverride(project: Project) {
@@ -182,7 +183,7 @@ export function upsertProjectOverride(project: Project) {
   }
   const normalized = normalizeProject(project);
   const local = loadLocalProjects().filter((p) => p.id !== normalized.id);
-  localStorage.setItem(
+  sharedSetItem(
     PROJECTS_STORAGE_KEY,
     JSON.stringify([normalized, ...local])
   );
@@ -193,7 +194,7 @@ export function upsertProjectOverride(project: Project) {
 export function deleteProject(projectId: string) {
   if (typeof window === "undefined") return;
   const local = loadLocalProjects().filter((p) => p.id !== projectId);
-  localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(local));
+  sharedSetItem(PROJECTS_STORAGE_KEY, JSON.stringify(local));
 
   const deleted = new Set(loadDeletedProjectIds());
   deleted.add(projectId);

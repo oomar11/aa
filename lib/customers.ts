@@ -1,4 +1,8 @@
-import { STORAGE_KEYS } from "@/lib/storage/keys";
+import { DELETED_CUSTOMERS_KEY, STORAGE_KEYS } from "@/lib/storage/keys";
+import {
+  sharedGetItem,
+  sharedSetItem,
+} from "@/lib/storage/shared-client";
 import { listAllProjects } from "@/lib/projects";
 
 export type Customer = {
@@ -20,7 +24,7 @@ export const CUSTOMERS_UPDATED_EVENT = "upvc-customers-updated";
 export function loadLocalCustomers(): Customer[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(CUSTOMERS_STORAGE_KEY);
+    const raw = sharedGetItem(CUSTOMERS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as Customer[];
     return Array.isArray(parsed) ? parsed : [];
@@ -53,7 +57,7 @@ export function getCustomerById(customerId: string): Customer | undefined {
 export function upsertCustomer(customer: Customer) {
   if (typeof window === "undefined") return;
   const existing = loadLocalCustomers().filter((c) => c.id !== customer.id);
-  localStorage.setItem(
+  sharedSetItem(
     CUSTOMERS_STORAGE_KEY,
     JSON.stringify([customer, ...existing])
   );
@@ -67,8 +71,7 @@ export function deleteCustomer(customerId: string) {
     throw new Error("لا يمكن حذف عميل له مشاريع");
   }
   const existing = loadLocalCustomers().filter((c) => c.id !== customerId);
-  const deletedKey = "upvc-deleted-customers";
-  const deletedRaw = localStorage.getItem(deletedKey);
+  const deletedRaw = sharedGetItem(DELETED_CUSTOMERS_KEY);
   let deleted: string[] = [];
   try {
     deleted = deletedRaw ? (JSON.parse(deletedRaw) as string[]) : [];
@@ -76,15 +79,15 @@ export function deleteCustomer(customerId: string) {
     deleted = [];
   }
   if (!deleted.includes(customerId)) deleted.push(customerId);
-  localStorage.setItem(deletedKey, JSON.stringify(deleted));
-  localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(existing));
+  sharedSetItem(DELETED_CUSTOMERS_KEY, JSON.stringify(deleted));
+  sharedSetItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(existing));
   notifyCustomersUpdated();
 }
 
 export function loadDeletedCustomerIds(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem("upvc-deleted-customers");
+    const raw = sharedGetItem(DELETED_CUSTOMERS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as string[];
     return Array.isArray(parsed) ? parsed : [];

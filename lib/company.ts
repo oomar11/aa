@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from "@/lib/storage/keys";
+import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
 
 /** بيانات الشركة الواحدة — البرنامج لشركة واحدة فقط */
 export type Company = {
@@ -24,7 +25,7 @@ export const DEFAULT_COMPANY: Company = {
 export function loadCompany(): Company {
   if (typeof window === "undefined") return DEFAULT_COMPANY;
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.company);
+    const raw = sharedGetItem(STORAGE_KEYS.company);
     if (!raw) return DEFAULT_COMPANY;
     const parsed = JSON.parse(raw) as Partial<Company>;
     return {
@@ -50,6 +51,6 @@ export function saveCompany(company: Company) {
     commercialRegister: company.commercialRegister?.trim() || undefined,
     note: company.note?.trim() || undefined,
   };
-  localStorage.setItem(STORAGE_KEYS.company, JSON.stringify(next));
+  sharedSetItem(STORAGE_KEYS.company, JSON.stringify(next));
   window.dispatchEvent(new Event("upvc-company-updated"));
 }

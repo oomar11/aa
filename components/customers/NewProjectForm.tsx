@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { ProjectMaterialDefaultsFields } from "@/components/design/ProjectMaterialDefaultsFields";
 import {
   defaultProjectMaterialDefaults,
@@ -9,8 +9,7 @@ import {
 } from "@/lib/project-materials";
 import { loadMaterialCatalog } from "@/lib/material-systems";
 import {
-  loadLocalProjects,
-  PROJECTS_STORAGE_KEY,
+  upsertProjectOverride,
   type Project,
 } from "@/lib/projects";
 
@@ -22,12 +21,12 @@ export function NewProjectForm({ customerId }: Props) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [materials, setMaterials] = useState<ProjectMaterialDefaults>({});
+  const [materials, setMaterials] = useState<ProjectMaterialDefaults>(() =>
+    typeof window === "undefined"
+      ? {}
+      : defaultProjectMaterialDefaults(loadMaterialCatalog())
+  );
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    setMaterials(defaultProjectMaterialDefaults(loadMaterialCatalog()));
-  }, []);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -55,11 +54,7 @@ export function NewProjectForm({ customerId }: Props) {
       ...materials,
     };
 
-    const existing = loadLocalProjects();
-    localStorage.setItem(
-      PROJECTS_STORAGE_KEY,
-      JSON.stringify([project, ...existing])
-    );
+    upsertProjectOverride(project);
 
     // Replace the “مشروع جديد” form so Back from the editor returns to projects.
     router.replace(

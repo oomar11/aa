@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from "@/lib/storage/keys";
+import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
 
 export type PaymentMethod = "cash" | "transfer" | "cheque" | "other";
 
@@ -85,7 +86,7 @@ const seedExpenses: Expense[] = [];
 function readArray<T>(key: string): T[] | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(key);
+    const raw = sharedGetItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as T[];
     return Array.isArray(parsed) ? parsed : null;
@@ -96,7 +97,7 @@ function readArray<T>(key: string): T[] | null {
 
 function writeArray<T>(key: string, items: T[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(items));
+  sharedSetItem(key, JSON.stringify(items));
   window.dispatchEvent(new Event("upvc-accounting-updated"));
 }
 

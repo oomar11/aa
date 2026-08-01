@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from "@/lib/storage/keys";
+import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
 
 /** إعدادات تسعير البيع الهجين */
 export type PricingSettings = {
@@ -21,7 +22,7 @@ export const PRICING_UPDATED_EVENT = "upvc-pricing-updated";
 export function loadPricingSettings(): PricingSettings {
   if (typeof window === "undefined") return { ...DEFAULT_PRICING };
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.pricing);
+    const raw = sharedGetItem(STORAGE_KEYS.pricing);
     if (!raw) return { ...DEFAULT_PRICING };
     const parsed = JSON.parse(raw) as Partial<PricingSettings>;
     return normalizePricingSettings(parsed);
@@ -49,7 +50,7 @@ export function normalizePricingSettings(
 export function savePricingSettings(settings: PricingSettings) {
   if (typeof window === "undefined") return;
   const next = normalizePricingSettings(settings);
-  localStorage.setItem(STORAGE_KEYS.pricing, JSON.stringify(next));
+  sharedSetItem(STORAGE_KEYS.pricing, JSON.stringify(next));
   window.dispatchEvent(new Event(PRICING_UPDATED_EVENT));
 }
 
