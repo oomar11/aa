@@ -1,6 +1,6 @@
 /**
  * طبقة تخزين العميل للبيانات المشتركة.
- * تقرأ/تكتب بشكل متزامن (متوافق مع الـ libs الحالية) وتدفع للسيرفر في الخلفية.
+ * تفضّل Neon عبر رابط محفوظ في الإعدادات، وإلا /api/store.
  */
 
 import {
@@ -9,26 +9,34 @@ import {
   isSharedStorageKey,
   type SharedStorageKey,
 } from "@/lib/storage/keys";
+import { getSavedNeonConnectionString } from "@/lib/storage/neon-connection";
+import {
+  patchPostgresKv,
+  readPostgresKv,
+  replacePostgresKv,
+  type PostgresKvSnapshot,
+} from "@/lib/storage/postgres-kv";
 
 export const WORKSHOP_SYNC_EVENT = "upvc-workshop-sync";
 
 export type WorkshopSyncStatus = {
   ready: boolean;
   syncing: boolean;
-  backend: "postgres" | "file" | "unknown";
+  backend: "postgres" | "neon" | "file" | "unknown";
   durable: boolean;
   revision: number;
   updatedAt: string | null;
   hasData: boolean;
   error: string | null;
   lastPulledAt: string | null;
+  neonConfigured: boolean;
 };
 
 type StoreResponse = {
   ok: boolean;
   revision?: number;
   updatedAt?: string;
-  backend?: "postgres" | "file";
+  backend?: "postgres" | "neon" | "file";
   durable?: boolean;
   hasData?: boolean;
   data?: Record<string, string | null>;
@@ -50,6 +58,10 @@ let lastPulledAt: string | null = null;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let bootPromise: Promise<void> | null = null;
+
+function neonConfigured(): boolean {
+  return Boolean(getSavedNeonConnectionString());
+}
 
 function notifySyncStatus() {
   if (typeof window === "undefined") return;
@@ -93,6 +105,21 @@ function localHasSharedData(): boolean {
   });
 }
 
+function snapshotToResponse(
+  snapshot: PostgresKvSnapshot,
+  source: "neon" | "postgres"
+): StoreResponse {
+  return {
+    ok: true,
+    revision: snapshot.revision,
+    updatedAt: snapshot.updatedAt,
+    backend: source,
+    durable: true,
+    hasData: snapshot.hasData,
+    data: snapshot.data,
+  };
+}
+
 function hydrateFromSnapshot(
   snapshot: StoreResponse,
   options?: { silent?: boolean }
@@ -124,6 +151,115 @@ function hydrateFromSnapshot(
   notifySyncStatus();
 }
 
+async function pullViaNeon(options?: {
+  migrateIfEmpty?: boolean;
+}): Promise<StoreResponse> {
+  const url = getSavedNeonConnectionString();
+  if (!url) throw new Error("Neon URL missing");
+
+  let snapshot = await readPostgresKv(url);
+  if (
+    !snapshot.hasData &&
+    options?.migrateIfEmpty &&
+    localHasSharedData()
+  ) {
+    snapshot = await replacePostgresKv(url, collectLocalSharedData());
+  }
+  return snapshotToResponse(snapshot, "neon");
+}
+
+async function pushViaNeon(
+  data: Record<string, string | null>
+): Promise<StoreResponse> {
+  const url = getSavedNeonConnectionString();
+  if (!url) throw new Error("Neon URL missing");
+  const snapshot = await patchPostgresKv(url, data);
+  return snapshotToResponse(snapshot, "neon");
+}
+
+async function replaceViaNeon(
+  data: Record<string, string | null>
+): Promise<StoreResponse> {
+  const url = getSavedNeonConnectionString();
+  if (!url) throw new Error("Neon URL missing");
+  const snapshot = await replacePostgresKv(url, data);
+  return snapshotToResponse(snapshot, "neon");
+}
+
+async function pullViaApi(options?: {
+  migrateIfEmpty?: boolean;
+}): Promise<StoreResponse> {
+  const res = await fetch("/api/store", {
+    method: "GET",
+    headers: revision > 0 ? { "If-None-Match": String(revision) } : undefined,
+    cache: "no-store",
+  });
+
+  if (res.status === 304) {
+    return {
+      ok: true,
+      revision,
+      updatedAt: updatedAt ?? undefined,
+      backend: backend === "unknown" ? "file" : backend,
+      durable,
+      hasData,
+    };
+  }
+
+  const json = (await res.json()) as StoreResponse;
+  if (!res.ok || !json.ok) {
+    throw new Error(json.error || "تعذر تحميل بيانات الورشة");
+  }
+
+  if (!json.hasData && options?.migrateIfEmpty && localHasSharedData()) {
+    const putRes = await fetch("/api/store", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: collectLocalSharedData() }),
+      cache: "no-store",
+    });
+    const putJson = (await putRes.json()) as StoreResponse;
+    if (!putRes.ok || !putJson.ok) {
+      throw new Error(putJson.error || "تعذر رفع بيانات الجهاز للورشة");
+    }
+    return putJson;
+  }
+
+  return json;
+}
+
+async function pushViaApi(
+  data: Record<string, string | null>
+): Promise<StoreResponse> {
+  const res = await fetch("/api/store", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data }),
+    cache: "no-store",
+  });
+  const json = (await res.json()) as StoreResponse;
+  if (!res.ok || !json.ok) {
+    throw new Error(json.error || "تعذر مزامنة الحفظ مع السيرفر");
+  }
+  return json;
+}
+
+async function replaceViaApi(
+  data: Record<string, string | null>
+): Promise<StoreResponse> {
+  const res = await fetch("/api/store", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data }),
+    cache: "no-store",
+  });
+  const json = (await res.json()) as StoreResponse;
+  if (!res.ok || !json.ok) {
+    throw new Error(json.error || "تعذر رفع البيانات");
+  }
+  return json;
+}
+
 async function pushPending(): Promise<void> {
   if (pending.size === 0 || typeof window === "undefined") return;
   const data: Record<string, string | null> = {};
@@ -134,27 +270,23 @@ async function pushPending(): Promise<void> {
   syncing = true;
   notifySyncStatus();
   try {
-    const res = await fetch("/api/store", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data }),
-      cache: "no-store",
-    });
-    const json = (await res.json()) as StoreResponse;
-    if (!res.ok || !json.ok) {
-      // أعد الطابور عند الفشل
-      for (const [key, value] of Object.entries(data)) {
-        if (!pending.has(key)) pending.set(key, value);
-      }
-      error = json.error || "تعذر مزامنة الحفظ مع السيرفر";
-      return;
+    const json = neonConfigured()
+      ? await pushViaNeon(data)
+      : await pushViaApi(data);
+    if (json.data) {
+      hydrateFromSnapshot(json, { silent: true });
+    } else {
+      revision = Number(json.revision ?? revision) || revision;
+      updatedAt = json.updatedAt ?? updatedAt;
+      backend = json.backend ?? backend;
+      durable = json.durable ?? durable;
     }
-    hydrateFromSnapshot(json, { silent: true });
-  } catch {
+  } catch (err) {
     for (const [key, value] of Object.entries(data)) {
       if (!pending.has(key)) pending.set(key, value);
     }
-    error = "تعذر الاتصال بقاعدة بيانات الورشة";
+    error =
+      err instanceof Error ? err.message : "تعذر الاتصال بقاعدة بيانات الورشة";
   } finally {
     syncing = false;
     notifySyncStatus();
@@ -178,53 +310,39 @@ async function pullFromServer(options?: {
   syncing = true;
   notifySyncStatus();
   try {
-    const res = await fetch("/api/store", {
-      method: "GET",
-      headers: revision > 0 ? { "If-None-Match": String(revision) } : undefined,
-      cache: "no-store",
-    });
+    const json = neonConfigured()
+      ? await pullViaNeon(options)
+      : await pullViaApi(options);
 
-    if (res.status === 304) {
+    if (!json.data && json.revision === revision) {
       lastPulledAt = new Date().toISOString();
       ready = true;
       error = null;
       return;
     }
 
-    const json = (await res.json()) as StoreResponse;
-    if (!res.ok || !json.ok) {
-      error = json.error || "تعذر تحميل بيانات الورشة";
+    if (json.data) {
+      hydrateFromSnapshot(json);
+    } else {
       ready = true;
-      return;
+      error = null;
+      lastPulledAt = new Date().toISOString();
     }
-
-    const serverEmpty = !json.hasData;
-    if (serverEmpty && options?.migrateIfEmpty && localHasSharedData()) {
-      const localData = collectLocalSharedData();
-      const putRes = await fetch("/api/store", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: localData }),
-        cache: "no-store",
-      });
-      const putJson = (await putRes.json()) as StoreResponse;
-      if (!putRes.ok || !putJson.ok) {
-        error = putJson.error || "تعذر رفع بيانات الجهاز للورشة";
-        ready = true;
-        return;
-      }
-      hydrateFromSnapshot(putJson);
-      return;
-    }
-
-    hydrateFromSnapshot(json);
-  } catch {
-    error = "تعذر الاتصال بقاعدة بيانات الورشة";
+  } catch (err) {
+    error =
+      err instanceof Error ? err.message : "تعذر الاتصال بقاعدة بيانات الورشة";
     ready = true;
   } finally {
     syncing = false;
     notifySyncStatus();
   }
+}
+
+/** إعادة تشغيل المزامنة بعد حفظ/مسح رابط Neon */
+export function resetWorkshopSync(): Promise<void> {
+  bootPromise = null;
+  bootPromise = pullFromServer({ migrateIfEmpty: true });
+  return bootPromise;
 }
 
 /** تهيئة المزامنة مرة واحدة + polling */
@@ -276,6 +394,7 @@ export function getWorkshopSyncStatus(): WorkshopSyncStatus {
     hasData,
     error,
     lastPulledAt,
+    neonConfigured: neonConfigured(),
   };
 }
 
@@ -318,20 +437,12 @@ export async function uploadLocalWorkshopData(): Promise<WorkshopSyncStatus> {
   notifySyncStatus();
   try {
     const data = collectLocalSharedData();
-    const res = await fetch("/api/store", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data }),
-      cache: "no-store",
-    });
-    const json = (await res.json()) as StoreResponse;
-    if (!res.ok || !json.ok) {
-      error = json.error || "تعذر رفع البيانات";
-      return getWorkshopSyncStatus();
-    }
+    const json = neonConfigured()
+      ? await replaceViaNeon(data)
+      : await replaceViaApi(data);
     hydrateFromSnapshot(json);
-  } catch {
-    error = "تعذر رفع البيانات";
+  } catch (err) {
+    error = err instanceof Error ? err.message : "تعذر رفع البيانات";
   } finally {
     syncing = false;
     notifySyncStatus();
@@ -339,13 +450,13 @@ export async function uploadLocalWorkshopData(): Promise<WorkshopSyncStatus> {
   return getWorkshopSyncStatus();
 }
 
-/** سحب أحدث نسخة من السيرفر الآن */
+/** سحب أحدث نسخة الآن */
 export async function refreshWorkshopData(): Promise<WorkshopSyncStatus> {
   await pullFromServer({ migrateIfEmpty: false });
   return getWorkshopSyncStatus();
 }
 
-/** مسح المفاتيح التجارية على السيرفر + الجهاز */
+/** مسح المفاتيح التجارية على القاعدة + الجهاز */
 export async function clearSharedBusinessKeys(
   keys: readonly string[]
 ): Promise<void> {
@@ -362,20 +473,15 @@ export async function clearSharedBusinessKeys(
   syncing = true;
   notifySyncStatus();
   try {
-    const res = await fetch("/api/store", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data }),
-      cache: "no-store",
-    });
-    const json = (await res.json()) as StoreResponse;
-    if (res.ok && json.ok) {
-      hydrateFromSnapshot(json);
-    } else {
-      error = json.error || "تعذر مسح بيانات الورشة على السيرفر";
-    }
-  } catch {
-    error = "تعذر مسح بيانات الورشة على السيرفر";
+    const json = neonConfigured()
+      ? await pushViaNeon(data)
+      : await pushViaApi(data);
+    hydrateFromSnapshot(json);
+  } catch (err) {
+    error =
+      err instanceof Error
+        ? err.message
+        : "تعذر مسح بيانات الورشة على السيرفر";
   } finally {
     syncing = false;
     notifySyncStatus();

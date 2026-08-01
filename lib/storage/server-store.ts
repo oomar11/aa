@@ -1,10 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
-import { neon } from "@neondatabase/serverless";
 import {
   SHARED_STORAGE_KEYS,
   type SharedStorageKey,
 } from "@/lib/storage/keys";
+import {
+  patchPostgresKv,
+  readPostgresKv,
+} from "@/lib/storage/postgres-kv";
 
 export type WorkshopStoreSnapshot = {
   revision: number;
@@ -23,6 +26,33 @@ type StoreFile = {
 
 function isVercelRuntime() {
   return Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
+}
+
+/** أسماء شائعة لرابط Postgres من Neon / Vercel */
+const DATABASE_URL_ENV_KEYS = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "POSTGRES_PRISMA_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+  "NEON_DATABASE_URL",
+] as const;
+
+function getDatabaseUrl(): string | undefined {
+  for (const key of DATABASE_URL_ENV_KEYS) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
+/** أي متغيرات قاعدة موجودة؟ (بدون كشف القيمة) */
+export function getDatabaseEnvPresence(): Record<string, boolean> {
+  const presence: Record<string, boolean> = {};
+  for (const key of DATABASE_URL_ENV_KEYS) {
+    presence[key] = Boolean(process.env[key]?.trim());
+  }
+  return presence;
 }
 
 function resolveStorePaths() {
@@ -117,87 +147,16 @@ function writeFileStore(store: StoreFile) {
   );
 }
 
-/** أسماء شائعة لرابط Postgres من Neon / Vercel */
-const DATABASE_URL_ENV_KEYS = [
-  "DATABASE_URL",
-  "POSTGRES_URL",
-  "POSTGRES_PRISMA_URL",
-  "DATABASE_URL_UNPOOLED",
-  "POSTGRES_URL_NON_POOLING",
-  "NEON_DATABASE_URL",
-] as const;
-
-function getDatabaseUrl(): string | undefined {
-  for (const key of DATABASE_URL_ENV_KEYS) {
-    const value = process.env[key]?.trim();
-    if (value) return value;
-  }
-  return undefined;
-}
-
-/** أي متغيرات قاعدة موجودة؟ (بدون كشف القيمة) */
-export function getDatabaseEnvPresence(): Record<string, boolean> {
-  const presence: Record<string, boolean> = {};
-  for (const key of DATABASE_URL_ENV_KEYS) {
-    presence[key] = Boolean(process.env[key]?.trim());
-  }
-  return presence;
-}
-
-type SqlClient = {
-  (strings: TemplateStringsArray, ...values: unknown[]): Promise<unknown>;
-};
-
-async function ensurePostgresSchema(sql: SqlClient) {
-  await sql`
-    CREATE TABLE IF NOT EXISTS workshop_kv (
-      key TEXT PRIMARY KEY,
-      value TEXT,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS workshop_meta (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      revision BIGINT NOT NULL DEFAULT 0,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-  await sql`
-    INSERT INTO workshop_meta (id, revision, updated_at)
-    VALUES (1, 0, NOW())
-    ON CONFLICT (id) DO NOTHING
-  `;
-}
-
 async function readPostgresStore(): Promise<WorkshopStoreSnapshot> {
   const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
     throw new Error("DATABASE_URL missing");
   }
-  const sql = neon(databaseUrl) as unknown as SqlClient;
-  await ensurePostgresSchema(sql);
-
-  const metaRows = (await sql`
-    SELECT revision, updated_at FROM workshop_meta WHERE id = 1
-  `) as Array<{ revision: string | number; updated_at: string | Date }>;
-
-  const kvRows = (await sql`
-    SELECT key, value FROM workshop_kv
-  `) as Array<{ key: string; value: string | null }>;
-
-  const raw: Record<string, string | null> = {};
-  for (const row of kvRows) {
-    raw[row.key] = row.value;
-  }
-
-  const meta = metaRows[0];
+  const snapshot = await readPostgresKv(databaseUrl);
   return {
-    revision: Number(meta?.revision ?? 0) || 0,
-    updatedAt: meta?.updated_at
-      ? new Date(meta.updated_at).toISOString()
-      : new Date(0).toISOString(),
-    data: normalizeData(raw),
+    revision: snapshot.revision,
+    updatedAt: snapshot.updatedAt,
+    data: snapshot.data,
     backend: "postgres",
     durable: true,
   };
@@ -210,30 +169,14 @@ async function writePostgresStore(
   if (!databaseUrl) {
     throw new Error("DATABASE_URL missing");
   }
-  const sql = neon(databaseUrl) as unknown as SqlClient;
-  await ensurePostgresSchema(sql);
-
-  for (const [key, value] of Object.entries(patch)) {
-    if (!(SHARED_STORAGE_KEYS as readonly string[]).includes(key)) continue;
-    if (value === null) {
-      await sql`DELETE FROM workshop_kv WHERE key = ${key}`;
-    } else {
-      await sql`
-        INSERT INTO workshop_kv (key, value, updated_at)
-        VALUES (${key}, ${value}, NOW())
-        ON CONFLICT (key) DO UPDATE
-        SET value = EXCLUDED.value, updated_at = NOW()
-      `;
-    }
-  }
-
-  await sql`
-    UPDATE workshop_meta
-    SET revision = revision + 1, updated_at = NOW()
-    WHERE id = 1
-  `;
-
-  return readPostgresStore();
+  const snapshot = await patchPostgresKv(databaseUrl, patch);
+  return {
+    revision: snapshot.revision,
+    updatedAt: snapshot.updatedAt,
+    data: snapshot.data,
+    backend: "postgres",
+    durable: true,
+  };
 }
 
 /**
