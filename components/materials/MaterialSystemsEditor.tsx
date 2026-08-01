@@ -58,7 +58,8 @@ function systemSummary(
   }
   if (category === "accessories" && system.accessory) {
     const a = system.accessory;
-    return `أسعار + قواعد · مفصلات ${a.hingesPerSash}/${a.hingesPerDoor}`;
+    const sizes = a.espagnoletteCatalog?.length ?? 0;
+    return `سبلونات ${sizes} مقاس · مفصلات ${a.hingesPerSash}/${a.hingesPerDoor}`;
   }
   if (category === "glass" && system.glass) {
     const price = getGlassBottlePrice(system);

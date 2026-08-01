@@ -309,8 +309,8 @@ export type EspagnoletteCatalogEntry = {
   /** مقاس السبلونة (سم) */
   size: number;
   /**
-   * أقصى ارتفاع ضلفة من ناحية المقبض (مم) — مرجعي في الكتالوج.
-   * الاختيار التلقائي يعتمد على مقاس السبلونة (سم) والفرق عن الضلفة.
+   * أقصى ارتفاع ضلفة مرجعي لهذا المقاس (مم) — للعرض والتنظيم.
+   * الاختيار التلقائي: أكبر مقاس طوله ≤ ارتفاع الضلفة − فرق السبلونة.
    */
   maxHeightMm: number;
   /** متاح لسبلونة المفصلي */
@@ -778,7 +778,7 @@ export const MATERIAL_HUB_ITEMS: {
   {
     id: "accessories",
     label: "الاكسسوار",
-    description: "نظام واحد: الأسعار + قواعد المفصلي والجرار",
+    description: "سبلونات · أسعار القطع · قواعد المفصلي والجرار",
     accent: "#6B8AD8",
     shadow: "rgba(107,138,216,0.35)",
     href: "/materials/accessories",
@@ -1082,10 +1082,11 @@ function newLockPieceId(prefix: string): string {
 }
 
 export function defaultEspagnoletteCatalog(): EspagnoletteCatalogEntry[] {
+  const gap = 200;
   return DEFAULT_ESPAGNOLETTE_SIZE_VALUES.map((size) => ({
     id: `esp-${size}`,
     size,
-    maxHeightMm: size * 10,
+    maxHeightMm: size * 10 + gap,
     hinged: true,
     sliding: true,
   }));

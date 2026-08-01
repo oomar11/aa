@@ -143,7 +143,8 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
       <div className="px-1">
         <h1 className="text-xl font-bold">{system.name}</h1>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          الأسعار والقواعد من مكان واحد — التبويب «متقدم» للتفاصيل النادرة.
+          الأسعار والقواعد مربوطة بحساب البند والبيع. تبويب «السبلونات» لتسجيل
+          سعر كل مقاس، و«الأسعار» لباقي القطع.
         </p>
       </div>
 
