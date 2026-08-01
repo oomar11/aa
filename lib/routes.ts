@@ -4,7 +4,7 @@
  * التدفق الرئيسي (4 أبواب — كل باب لغرض واحد):
  *   الورشة → قيد التنفيذ + قائمة الانتظار
  *   الطلبات → العملاء والمقايسات + أحدث المشاريع + طلب جديد
- *   الحسابات → دفعات · مصروفات
+ *   الحسابات → حسابات الورشة · دفعات · مصروفات
  *   الخامات → قطاعات · اكسسوار · زجاج · سلك · حديد
  */
 
@@ -36,6 +36,9 @@ export const ROUTES = {
       `/design/draw?customer=${customerId}&project=${projectId}&item=${itemId}`,
     projectSettings: (customerId: string, projectId: string) =>
       `/design/project-settings?customer=${customerId}&project=${projectId}`,
+    /** حساب المشروع: بيع · مدفوع · باقي · مصروف */
+    account: (customerId: string, projectId: string) =>
+      `/design/account?customer=${customerId}&project=${projectId}`,
     /** مصروفات المشروع — التسجيل والسجل من داخل المشروع فقط */
     expenses: (customerId: string, projectId: string) =>
       `/design/expenses?customer=${customerId}&project=${projectId}`,
@@ -88,7 +91,7 @@ export const APP_SECTIONS = [
   {
     id: "accounting",
     label: "الحسابات",
-    description: "دفعات · مصروفات",
+    description: "حسابات الورشة · دفعات · مصروفات",
     href: ROUTES.accounting.hub,
     color: "#2F9B7A",
   },

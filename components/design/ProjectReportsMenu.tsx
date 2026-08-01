@@ -10,6 +10,7 @@ export type ProjectMoreAction =
 
 type Props = {
   disabled?: boolean;
+  accountHref?: string;
   expensesHref?: string;
   settingsHref?: string;
   onSelect: (action: ProjectMoreAction) => void;
@@ -20,6 +21,7 @@ type Props = {
  */
 export function ProjectMoreMenu({
   disabled,
+  accountHref,
   expensesHref,
   settingsHref,
   onSelect,
@@ -77,6 +79,16 @@ export function ProjectMoreMenu({
           aria-label="إجراءات المشروع"
           className="absolute top-[calc(100%+6px)] left-0 z-50 min-w-[210px] overflow-hidden rounded-xl border border-border bg-card py-1 text-foreground shadow-[0_12px_28px_rgba(15,20,28,0.18)]"
         >
+          {accountHref ? (
+            <Link
+              href={accountHref}
+              role="menuitem"
+              className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-right text-sm font-semibold transition-colors hover:bg-primary-soft"
+              onClick={() => setOpen(false)}
+            >
+              حساب المشروع
+            </Link>
+          ) : null}
           {expensesHref ? (
             <Link
               href={expensesHref}

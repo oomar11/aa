@@ -1,4 +1,4 @@
-import { loadExpenses } from "@/lib/accounting";
+import { loadExpenses, loadPayments, type Expense, type Payment } from "@/lib/accounting";
 import { itemTotalPrice } from "@/lib/design-items";
 import { getItemsForProject } from "@/lib/projects";
 import { projectPaidTotal } from "@/lib/workshop";
@@ -27,9 +27,16 @@ export function projectExpenseTotal(projectId: string): number {
     .reduce((sum, e) => sum + e.amount, 0);
 }
 
-export function listProjectExpenses(projectId: string) {
+export function listProjectExpenses(projectId: string): Expense[] {
   return loadExpenses()
     .filter((e) => e.projectId === projectId)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+/** دفعات المشروع مرتبة من الأحدث */
+export function listProjectPayments(projectId: string): Payment[] {
+  return loadPayments()
+    .filter((p) => p.projectId === projectId)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 

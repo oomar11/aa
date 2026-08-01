@@ -1,30 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getAccountingSummary,
   loadExpenses,
   loadPayments,
   type AccountingSummary,
 } from "@/lib/accounting";
+import { mergeCustomers, type Customer } from "@/lib/customers";
 import { DEFAULT_COMPANY, loadCompany, type Company } from "@/lib/company";
-import { listAllProjects } from "@/lib/projects";
+import { listAllProjects, type Project } from "@/lib/projects";
+import {
+  compareProjectsByWorkflowThenDate,
+  WORKFLOW_VISUAL,
+} from "@/lib/workshop";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency } from "@/lib/utils";
+import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 
 const links = [
   {
     href: ROUTES.accounting.payments,
     title: "الدفعات",
-    description: "سجل ما استلمته من العملاء على المشاريع",
+    description: "كل ما استلمته من العملاء على المشاريع",
     accent: "bg-primary",
   },
   {
     href: ROUTES.accounting.expenses,
     title: "سجل المصروفات",
-    description: "عرض فقط — التسجيل من داخل المشروع",
+    description: "عرض فقط — التسجيل من داخل حساب المشروع",
     accent: "bg-[#E8956F]",
   },
   {
@@ -34,6 +40,15 @@ const links = [
     accent: "bg-[#6B7C93]",
   },
 ] as const;
+
+type ProjectMoneyRow = {
+  project: Project;
+  customerName: string;
+  sale: number;
+  paid: number;
+  remaining: number;
+  expenses: number;
+};
 
 function workshopMoneyTotals() {
   let sales = 0;
@@ -64,35 +79,67 @@ function readCompany(): Company {
   return loadCompany();
 }
 
+function readProjectRows(): ProjectMoneyRow[] {
+  if (typeof window === "undefined") return [];
+  const customerById = new Map<string, Customer>();
+  for (const c of mergeCustomers()) customerById.set(c.id, c);
+
+  return listAllProjects()
+    .map((project) => {
+      const money = getProjectMoneySummary(project.id);
+      return {
+        project,
+        customerName: customerById.get(project.customerId)?.name ?? "عميل",
+        sale: money.sale,
+        paid: money.paid,
+        remaining: money.remaining,
+        expenses: money.expenses,
+      };
+    })
+    .sort((a, b) => {
+      if (b.remaining !== a.remaining) return b.remaining - a.remaining;
+      return compareProjectsByWorkflowThenDate(a.project, b.project);
+    });
+}
+
 export function AccountingHub() {
   const [company, setCompany] = useState(readCompany);
   const [summary, setSummary] = useState(readSummary);
+  const [projectRows, setProjectRows] = useState(readProjectRows);
 
   useEffect(() => {
     function refresh() {
       setCompany(loadCompany());
       setSummary(readSummary());
+      setProjectRows(readProjectRows());
     }
     window.addEventListener("upvc-accounting-updated", refresh);
     window.addEventListener("upvc-company-updated", refresh);
     window.addEventListener("upvc-projects-updated", refresh);
+    window.addEventListener("upvc-customers-updated", refresh);
     return () => {
       window.removeEventListener("upvc-accounting-updated", refresh);
       window.removeEventListener("upvc-company-updated", refresh);
       window.removeEventListener("upvc-projects-updated", refresh);
+      window.removeEventListener("upvc-customers-updated", refresh);
     };
   }, []);
+
+  const openRemaining = useMemo(
+    () => projectRows.filter((row) => row.remaining > 0).slice(0, 12),
+    [projectRows]
+  );
 
   return (
     <div className="flex flex-col gap-5">
       <section className="rounded-2xl bg-[#1F6B55] px-4 py-5 text-white shadow-[0_8px_24px_rgba(47,155,122,0.28)]">
-        <p className="text-xs font-medium opacity-85">الحسابات</p>
+        <p className="text-xs font-medium opacity-85">حسابات الورشة</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">
           {company.name}
         </h1>
         <p className="mt-2 text-sm leading-relaxed opacity-90">
-          لكل مشروع: حساب · مدفوع · باقي. سجّل الدفعة على المشروع، والمصروف من
-          داخل المشروع.
+          ملخص فلوس الورشة كلها. لتفاصيل مشروع معيّن افتح حساب المشروع من
+          الطلبات أو من شريط الحساب داخل المشروع.
         </p>
         <div className="mt-4">
           <Link
@@ -105,7 +152,7 @@ export function AccountingHub() {
       </section>
 
       <section className="grid grid-cols-2 gap-2.5">
-        <SummaryTile label="إجمالي الحساب" value={summary.sales} tone="neutral" />
+        <SummaryTile label="إجمالي الحسابات" value={summary.sales} tone="neutral" />
         <SummaryTile label="المحصّل" value={summary.collected} tone="good" />
         <SummaryTile
           label="الباقي عند العملاء"
@@ -113,10 +160,71 @@ export function AccountingHub() {
           tone="warn"
         />
         <SummaryTile
-          label="المحصّل ناقص المصروفات"
+          label="مصروفات الورشة"
+          value={summary.expenses}
+          tone="expense"
+        />
+        <SummaryTile
+          label="المحصّل ناقص المصروف"
           value={summary.net}
           tone={summary.net >= 0 ? "good" : "warn"}
+          wide
         />
+      </section>
+
+      <section className="flex flex-col gap-2.5">
+        <div className="flex items-baseline justify-between gap-2 px-0.5">
+          <h2 className="text-sm font-bold text-foreground">
+            مشاريع عليها باقي
+          </h2>
+          <span className="text-xs font-semibold tabular-nums text-muted">
+            {openRemaining.length}
+          </span>
+        </div>
+        {openRemaining.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
+            مفيش مشاريع عليها باقي حالياً
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {openRemaining.map((row) => {
+              const visual = WORKFLOW_VISUAL[row.project.workflow];
+              return (
+                <li key={row.project.id}>
+                  <Link
+                    href={ROUTES.design.account(
+                      row.project.customerId,
+                      row.project.id
+                    )}
+                    className={`flex items-center justify-between gap-3 rounded-2xl border border-s-[3px] bg-card px-3.5 py-3 transition-all active:scale-[0.99] ${visual.rail} border-border`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <WorkflowBadge workflow={row.project.workflow} />
+                        <p className="truncate text-sm font-bold text-foreground">
+                          {row.project.name}
+                        </p>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-muted">
+                        {row.customerName}
+                        {" · حساب "}
+                        {formatCurrency(row.sale)}
+                        {" · مدفوع "}
+                        {formatCurrency(row.paid)}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-end">
+                      <p className="text-[10px] text-muted">باقي</p>
+                      <p className="text-sm font-bold tabular-nums text-[#E85A8A]">
+                        {formatCurrency(row.remaining)}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       <section className="flex flex-col gap-2.5">
@@ -148,19 +256,27 @@ function SummaryTile({
   label,
   value,
   tone,
+  wide,
 }: {
   label: string;
   value: number;
-  tone: "good" | "warn" | "neutral";
+  tone: "good" | "warn" | "neutral" | "expense";
+  wide?: boolean;
 }) {
   const toneClass =
     tone === "good"
       ? "text-[#2F9B7A]"
       : tone === "warn"
         ? "text-[#E85A8A]"
-        : "text-foreground";
+        : tone === "expense"
+          ? "text-[#C45C26]"
+          : "text-foreground";
   return (
-    <div className="rounded-2xl border border-border bg-card px-3.5 py-3">
+    <div
+      className={`rounded-2xl border border-border bg-card px-3.5 py-3 ${
+        wide ? "col-span-2" : ""
+      }`}
+    >
       <p className="text-[11px] text-muted">{label}</p>
       <p className={`mt-1 text-base font-bold tabular-nums ${toneClass}`}>
         {formatCurrency(value)} ج.م

@@ -782,6 +782,11 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
 
         <ProjectMoreMenu
           disabled={!customerId || !projectId}
+          accountHref={
+            customerId && projectId
+              ? ROUTES.design.account(customerId, projectId)
+              : undefined
+          }
           expensesHref={
             customerId && projectId
               ? ROUTES.design.expenses(customerId, projectId)
@@ -796,22 +801,26 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         />
       </header>
 
-      {money ? (
-        <div className="grid grid-cols-4 gap-1.5 rounded-2xl border border-border bg-card px-2 py-2.5">
+      {money && customerId && projectId ? (
+        <Link
+          href={ROUTES.design.account(customerId, projectId)}
+          className="grid grid-cols-4 gap-1.5 rounded-2xl border border-border bg-card px-2 py-2.5 transition-all hover:border-primary/30 active:scale-[0.99]"
+          aria-label="فتح حساب المشروع"
+        >
           <div className="text-center">
-            <p className="text-[9px] text-muted">البيع</p>
+            <p className="text-[9px] text-muted">الحساب</p>
             <p className="mt-0.5 text-[11px] font-bold tabular-nums text-foreground">
               {formatCurrency(money.sale)}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[9px] text-muted">المدفوع</p>
+            <p className="text-[9px] text-muted">مدفوع</p>
             <p className="mt-0.5 text-[11px] font-bold tabular-nums text-[#2F9B7A]">
               {formatCurrency(money.paid)}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[9px] text-muted">المتبقي</p>
+            <p className="text-[9px] text-muted">باقي</p>
             <p
               className={`mt-0.5 text-[11px] font-bold tabular-nums ${
                 money.remaining > 0 ? "text-[#E85A8A]" : "text-[#2F9B7A]"
@@ -820,20 +829,13 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
               {formatCurrency(money.remaining)}
             </p>
           </div>
-          <Link
-            href={
-              customerId && projectId
-                ? ROUTES.design.expenses(customerId, projectId)
-                : "#"
-            }
-            className="text-center transition-opacity hover:opacity-80"
-          >
-            <p className="text-[9px] text-muted">المصروف</p>
+          <div className="text-center">
+            <p className="text-[9px] text-muted">مصروف</p>
             <p className="mt-0.5 text-[11px] font-bold tabular-nums text-[#C45C26]">
               {formatCurrency(money.expenses)}
             </p>
-          </Link>
-        </div>
+          </div>
+        </Link>
       ) : null}
 
       {customerId && projectId ? (
