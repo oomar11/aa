@@ -214,9 +214,16 @@ export function DataBackupPanel() {
           </p>
           {!sync.durable ? (
             <p className="rounded-xl border border-[#E8A838]/40 bg-[#E8A838]/10 px-3 py-2 text-xs leading-relaxed text-foreground">
-              عشان البيانات تفضل واحدة وثابتة للورشة كلها على الإنترنت، أضف
-              متغير <span className="font-semibold">DATABASE_URL</span> في
-              إعدادات Vercel (Neon أو Vercel Postgres مجاناً)، ثم أعد النشر.
+              Neon لسه مش واصل للبرنامج. في Vercel → Settings → Environment
+              Variables ضيف{" "}
+              <span className="font-semibold">DATABASE_URL</span> من Neon
+              (Connection string)، واختَر Production، بعدين Redeploy للمشروع.
+              بعد الربط الصحيح هتظهر الحالة: قاعدة بيانات Postgres.
+            </p>
+          ) : sync.backend === "postgres" ? (
+            <p className="rounded-xl border border-[#2F9B7A]/35 bg-[#2F9B7A]/10 px-3 py-2 text-xs leading-relaxed text-foreground">
+              متصل بقاعدة Neon/Postgres — بيانات الورشة مشتركة وثابتة لكل
+              الأجهزة.
             </p>
           ) : null}
           {sync.updatedAt ? (

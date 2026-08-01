@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  getDatabaseEnvPresence,
   getWorkshopStoreBackend,
   isWorkshopStoreDurable,
   patchWorkshopStore,
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
         updatedAt: snapshot.updatedAt,
         hasData: workshopStoreHasData(snapshot),
         keys: SHARED_STORAGE_KEYS,
+        databaseEnv: getDatabaseEnvPresence(),
       });
     }
 

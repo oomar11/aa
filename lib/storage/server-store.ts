@@ -117,12 +117,31 @@ function writeFileStore(store: StoreFile) {
   );
 }
 
+/** أسماء شائعة لرابط Postgres من Neon / Vercel */
+const DATABASE_URL_ENV_KEYS = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "POSTGRES_PRISMA_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+  "NEON_DATABASE_URL",
+] as const;
+
 function getDatabaseUrl(): string | undefined {
-  const url =
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_PRISMA_URL;
-  return url?.trim() || undefined;
+  for (const key of DATABASE_URL_ENV_KEYS) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
+/** أي متغيرات قاعدة موجودة؟ (بدون كشف القيمة) */
+export function getDatabaseEnvPresence(): Record<string, boolean> {
+  const presence: Record<string, boolean> = {};
+  for (const key of DATABASE_URL_ENV_KEYS) {
+    presence[key] = Boolean(process.env[key]?.trim());
+  }
+  return presence;
 }
 
 type SqlClient = {
