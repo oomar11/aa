@@ -1,17 +1,18 @@
 /**
  * خريطة مسارات التطبيق — مرجع واحد لكل الروابط والتسميات العربية
  *
- * التدفق الرئيسي:
- *   الرئيسية → آخر المشاريع + طلب جديد
- *   الورشة → شغل الورشة الحالي + طابور العربون
- *   الطلبات → العملاء/المشاريع + طلب جديد → عميل → مشروع → بنود → رسم
- *   الحسابات → فواتير · تحصيل · مصروفات (+ بيانات الشركة)
- *   الخامات → (قطاعات | اكسسوار | زجاج | سلك | حديد)
+ * التدفق الرئيسي (4 أبواب — كل باب لشغل واحد):
+ *   الورشة → الشغل الحالي + الطابور + آخر المشاريع
+ *   الطلبات → العملاء/المقايسات + طلب جديد + استلام عربون
+ *   الحسابات → فواتير · تحصيل · مصروفات
+ *   الخامات → قطاعات · اكسسوار · زجاج · سلك · حديد
  */
 
 export const ROUTES = {
+  /** الصفحة الأولى = الورشة (يوم الشغل) */
   home: "/",
-  workshop: "/workshop",
+  /** توافق قديم — يوجّه للورشة */
+  workshop: "/",
   profile: "/profile",
   settings: "/settings",
   settingsDesign: "/settings/design",
@@ -41,6 +42,9 @@ export const ROUTES = {
     invoice: (id: string) => `/accounting/invoices/${id}`,
     payments: "/accounting/payments",
     newPayment: "/accounting/payments/new",
+    /** تحصيل عربون لمشروع معيّن */
+    depositForProject: (customerId: string, projectId: string) =>
+      `/accounting/payments/new?customer=${customerId}&project=${projectId}`,
     expenses: "/accounting/expenses",
     newExpense: "/accounting/expenses/new",
   },
@@ -62,26 +66,19 @@ export const ROUTES = {
   },
 } as const;
 
-/** الأقسام الظاهرة في شريط التنقل السفلي */
+/** الأقسام الظاهرة في شريط التنقل السفلي — 4 أبواب بدون تكرار */
 export const APP_SECTIONS = [
   {
-    id: "home",
-    label: "الرئيسية",
-    description: "آخر المشاريع وطلب جديد",
+    id: "workshop",
+    label: "الورشة",
+    description: "الشغل الحالي والطابور وآخر المشاريع",
     href: ROUTES.home,
     color: "#2B7DE9",
   },
   {
-    id: "workshop",
-    label: "الورشة",
-    description: "الشغل الحالي وطابور العربون",
-    href: ROUTES.workshop,
-    color: "#C45C26",
-  },
-  {
     id: "orders",
     label: "الطلبات",
-    description: "كل العملاء والمشاريع + طلب جديد",
+    description: "المقايسات والعملاء + طلب جديد + عربون",
     href: ROUTES.orders,
     color: "#E85A8A",
   },

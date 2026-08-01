@@ -204,6 +204,17 @@ export function ProjectList({ customerId }: Props) {
                   >
                     فتح البنود
                   </Link>
+                  {project.workflow === "quote" ? (
+                    <Link
+                      href={ROUTES.accounting.depositForProject(
+                        customerId,
+                        project.id
+                      )}
+                      className="min-w-[7rem] flex-1 rounded-xl bg-primary px-3 py-2 text-center text-xs font-semibold text-white"
+                    >
+                      استلام عربون
+                    </Link>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => handleDeleteProject(project)}

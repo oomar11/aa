@@ -4,28 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 
-function HomeIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill={active ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z" />
-    </svg>
-  );
-}
-
 function WorkshopIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-6 w-6"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -45,7 +28,7 @@ function OrdersIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-6 w-6"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -63,7 +46,7 @@ function AccountingIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-6 w-6"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -81,7 +64,7 @@ function MaterialsIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-6 w-6"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -96,19 +79,13 @@ function MaterialsIcon({ active }: { active: boolean }) {
   );
 }
 
-/** RTL: أول عنصر في الـ DOM يظهر يمين → الرئيسية يمين، الخامات شمال */
+/** RTL: أول عنصر يمين → الورشة يمين، الخامات شمال */
 const items = [
   {
     href: ROUTES.home,
-    label: "الرئيسية",
-    Icon: HomeIcon,
-    match: (p: string) => p === "/",
-  },
-  {
-    href: ROUTES.workshop,
     label: "الورشة",
     Icon: WorkshopIcon,
-    match: (p: string) => p.startsWith("/workshop"),
+    match: (p: string) => p === "/" || p.startsWith("/workshop"),
   },
   {
     href: ROUTES.orders,
@@ -137,21 +114,21 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-20">
       <div className="mx-auto w-full max-w-md border-t border-border bg-card/95 backdrop-blur-sm">
-        <div className="flex h-14 items-center justify-around px-1">
+        <div className="flex h-14 items-center justify-around px-2">
           {items.map(({ href, label, Icon, match }) => {
             const active = match(pathname);
             return (
               <Link
-                key={href}
+                key={label}
                 href={href}
-                className={`flex min-w-12 flex-col items-center gap-0.5 transition-colors duration-300 ${
+                className={`flex min-w-14 flex-col items-center gap-0.5 transition-colors duration-300 ${
                   active ? "text-primary" : "text-muted"
                 }`}
                 aria-label={label}
                 aria-current={active ? "page" : undefined}
               >
                 <Icon active={active} />
-                <span className="text-[9px] font-medium">{label}</span>
+                <span className="text-[10px] font-medium">{label}</span>
               </Link>
             );
           })}

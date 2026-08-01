@@ -464,6 +464,17 @@ export function OrdersBrowser() {
                                     >
                                       حذف
                                     </button>
+                                    {project.workflow === "quote" ? (
+                                      <Link
+                                        href={ROUTES.accounting.depositForProject(
+                                          customer.id,
+                                          project.id
+                                        )}
+                                        className="shrink-0 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-white"
+                                      >
+                                        عربون
+                                      </Link>
+                                    ) : null}
                                   </div>
                                 </li>
                               );
@@ -551,7 +562,18 @@ export function OrdersBrowser() {
                       </p>
                     ) : null}
                   </Link>
-                  <div className="mt-3 flex justify-end border-t border-border pt-3">
+                  <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+                    {project.workflow === "quote" ? (
+                      <Link
+                        href={ROUTES.accounting.depositForProject(
+                          project.customerId,
+                          project.id
+                        )}
+                        className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                      >
+                        استلام عربون
+                      </Link>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => handleDeleteProject(project)}

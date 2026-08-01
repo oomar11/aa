@@ -19,9 +19,8 @@ import {
   type ProjectWorkflow,
 } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
-import { WORKFLOW_LABELS, scheduleProjectWithDeposit } from "@/lib/workshop";
-import { NumericInput } from "@/components/ui/NumericInput";
-import { todayIsoDate } from "@/lib/accounting";
+import { WORKFLOW_LABELS } from "@/lib/workshop";
+import Link from "next/link";
 
 type Props = {
   customerId: string;
@@ -35,7 +34,6 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
   const [address, setAddress] = useState("");
   const [workflow, setWorkflow] = useState<ProjectWorkflow>("quote");
   const [materials, setMaterials] = useState<ProjectMaterialDefaults>({});
-  const [depositAmount, setDepositAmount] = useState(0);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -200,49 +198,17 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
           ))}
         </div>
         <p className="text-[11px] leading-relaxed text-muted">
-          المقايسة متترفعش للورشة غير بعد استلام العربون — أو غيّر الحالة يدوي
-          من هنا.
+          المقايسة تدخل الورشة بعد استلام العربون من الطلبات أو التحصيل.
         </p>
       </fieldset>
 
       {workflow === "quote" ? (
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <h2 className="mb-2 text-sm font-bold text-foreground">
-            استلام عربون وجدولة
-          </h2>
-          <label className="flex flex-col gap-1.5 text-right">
-            <span className="text-xs font-medium">المبلغ (ج.م)</span>
-            <NumericInput
-              value={depositAmount}
-              onChange={setDepositAmount}
-              min={0}
-              blankZero
-              className={`${fieldClass} text-left`}
-              dir="ltr"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              if (depositAmount <= 0) {
-                setError("ادخل مبلغ العربون");
-                return;
-              }
-              scheduleProjectWithDeposit({
-                projectId,
-                amount: depositAmount,
-                date: todayIsoDate(),
-              });
-              setWorkflow("queued");
-              setDepositAmount(0);
-              setError("");
-              setSaved(true);
-            }}
-            className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white"
-          >
-            استلام عربون وإضافة للطابور
-          </button>
-        </div>
+        <Link
+          href={ROUTES.accounting.depositForProject(customerId, projectId)}
+          className="flex h-11 w-full items-center justify-center rounded-2xl border border-primary/30 bg-primary-soft text-sm font-semibold text-primary transition-all hover:brightness-105 active:scale-[0.98]"
+        >
+          استلام عربون (تحصيل)
+        </Link>
       ) : null}
 
       <div className="rounded-2xl border border-border bg-card p-4">

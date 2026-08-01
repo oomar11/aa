@@ -124,7 +124,7 @@ export function PaymentForm() {
     }
 
     router.replace(
-      kind === "deposit" ? ROUTES.workshop : ROUTES.accounting.payments
+      kind === "deposit" ? ROUTES.home : ROUTES.accounting.payments
     );
   }
 
