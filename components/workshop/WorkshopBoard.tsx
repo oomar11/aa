@@ -238,6 +238,8 @@ function ProjectRow({
   highlight?: boolean;
   actions: ReactNode;
 }) {
+  const editorHref = ROUTES.design.editor(project.customerId, project.id);
+
   return (
     <li
       className={`rounded-2xl border bg-card p-3.5 ${
@@ -246,43 +248,46 @@ function ProjectRow({
           : "border-border"
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            {badge ? (
-              <span
-                className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-                  highlight
-                    ? "bg-primary text-white"
-                    : "bg-primary-soft text-primary"
-                }`}
-              >
-                {badge}
-              </span>
+      <Link
+        href={editorHref}
+        className="block active:opacity-80"
+        aria-label={`فتح ${project.name}`}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              {badge ? (
+                <span
+                  className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                    highlight
+                      ? "bg-primary text-white"
+                      : "bg-primary-soft text-primary"
+                  }`}
+                >
+                  {badge}
+                </span>
+              ) : null}
+              <p className="truncate text-sm font-bold text-foreground">
+                {project.name}
+              </p>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-muted">
+              {customerLabel}
+              {project.location ? ` · ${project.location}` : ""}
+            </p>
+            {project.depositAmount ? (
+              <p className="mt-1 text-[11px] font-medium text-primary">
+                مدفوع {formatCurrency(project.depositAmount)}
+              </p>
             ) : null}
-            <p className="truncate text-sm font-bold text-foreground">
-              {project.name}
-            </p>
           </div>
-          <p className="mt-0.5 truncate text-xs text-muted">
-            {customerLabel}
-            {project.location ? ` · ${project.location}` : ""}
-          </p>
-          {project.depositAmount ? (
-            <p className="mt-1 text-[11px] font-medium text-primary">
-              مدفوع {formatCurrency(project.depositAmount)}
-            </p>
-          ) : null}
+          <span className="shrink-0 text-muted" aria-hidden>
+            ‹
+          </span>
         </div>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      </Link>
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         {actions}
-        <Link
-          href={ROUTES.design.editor(project.customerId, project.id)}
-          className="rounded-xl border border-border px-3 py-1.5 text-[11px] font-semibold"
-        >
-          البنود
-        </Link>
       </div>
     </li>
   );
