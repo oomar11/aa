@@ -25,6 +25,8 @@ import {
   DELIVERY_VISUAL,
   HOLD_VISUAL,
   isProjectOnHold,
+  markProjectAwaitingDelivery,
+  markProjectDelivered,
   projectDeliveryStatus,
   WORKFLOW_LABELS,
   WORKFLOW_VISUAL,
@@ -225,6 +227,16 @@ export function OrdersBrowser() {
       return;
     }
     deleteProject(project.id);
+    setAllProjects(mergeProjects());
+  }
+
+  function handleMarkDelivered(project: Project) {
+    markProjectDelivered(project.id);
+    setAllProjects(mergeProjects());
+  }
+
+  function handleMarkAwaitingDelivery(project: Project) {
+    markProjectAwaitingDelivery(project.id);
     setAllProjects(mergeProjects());
   }
 
@@ -699,6 +711,30 @@ export function OrdersBrowser() {
                                     >
                                       حذف
                                     </button>
+                                    {projectDeliveryStatus(project) ===
+                                    "awaiting" ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleMarkDelivered(project)
+                                        }
+                                        className="shrink-0 rounded-lg bg-emerald-600 px-2.5 py-2 text-xs font-semibold text-white"
+                                      >
+                                        تم التسليم
+                                      </button>
+                                    ) : null}
+                                    {projectDeliveryStatus(project) ===
+                                    "delivered" ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleMarkAwaitingDelivery(project)
+                                        }
+                                        className="shrink-0 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold"
+                                      >
+                                        لسه متسلمش
+                                      </button>
+                                    ) : null}
                                     {project.workflow === "quote" ? (
                                       <Link
                                         href={ROUTES.accounting.depositForProject(
@@ -804,6 +840,24 @@ export function OrdersBrowser() {
                       >
                         تسجيل دفعة
                       </Link>
+                    ) : null}
+                    {projectDeliveryStatus(project) === "awaiting" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkDelivered(project)}
+                        className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white"
+                      >
+                        انقل لتم التسليم
+                      </button>
+                    ) : null}
+                    {projectDeliveryStatus(project) === "delivered" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAwaitingDelivery(project)}
+                        className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold"
+                      >
+                        رجّع لجاهز للتسليم
+                      </button>
                     ) : null}
                     <button
                       type="button"

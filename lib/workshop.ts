@@ -480,9 +480,9 @@ export function listAwaitingDeliveryProjects(): Project[] {
     });
 }
 
-/** تم التسليم حديثاً */
-export function listDeliveredProjects(limit = 20): Project[] {
-  return listAllProjects()
+/** تم التسليم (الأحدث أولاً) — بدون حد إن لم يُمرَّر limit */
+export function listDeliveredProjects(limit?: number): Project[] {
+  const list = listAllProjects()
     .filter(
       (p) =>
         p.workflow === "done" && projectDeliveryStatus(p) === "delivered"
@@ -491,8 +491,8 @@ export function listDeliveredProjects(limit = 20): Project[] {
       const ad = a.deliveredAt ?? a.createdAt;
       const bd = b.deliveredAt ?? b.createdAt;
       return new Date(bd).getTime() - new Date(ad).getTime();
-    })
-    .slice(0, limit);
+    });
+  return limit == null ? list : list.slice(0, limit);
 }
 
 /** المشروع التالي للتنفيذ: أول عنصر في قائمة الانتظار (غير متوقف) */

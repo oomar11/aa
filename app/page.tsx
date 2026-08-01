@@ -17,6 +17,8 @@ export default function HomePage() {
           <span className="font-semibold text-rose-700">أحمر = متوقف</span>
           {" · "}
           <span className="font-semibold text-wf-done">أزرق = جاهز للتسليم</span>
+          {" · "}
+          <span className="font-semibold text-emerald-700">أخضر غامق = تم التسليم</span>
         </p>
       </div>
       <WorkshopBoard />

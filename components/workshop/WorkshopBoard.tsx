@@ -27,9 +27,11 @@ import {
   HOLD_VISUAL,
   holdProject,
   listAwaitingDeliveryProjects,
+  listDeliveredProjects,
   listHeldProjects,
   listQueuedProjects,
   listWorkshopProjects,
+  markProjectAwaitingDelivery,
   markProjectDelivered,
   moveInQueue,
   resumeProject,
@@ -94,6 +96,7 @@ export function WorkshopBoard() {
   const queued = listQueuedProjects({ includeHeld: false });
   const held = listHeldProjects();
   const awaiting = listAwaitingDeliveryProjects();
+  const delivered = listDeliveredProjects();
 
   const queueIds = useMemo(() => queued.map((p) => p.id).join("|"), [queued]);
 
@@ -178,11 +181,12 @@ export function WorkshopBoard() {
   const queuedV = WORKFLOW_VISUAL.queued;
   const holdV = HOLD_VISUAL;
   const awaitV = DELIVERY_VISUAL.awaiting;
+  const deliveredV = DELIVERY_VISUAL.delivered;
 
   return (
     <div className="flex flex-col gap-5">
       <div
-        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
         role="group"
         aria-label="ملخص الورشة"
       >
@@ -201,6 +205,11 @@ export function WorkshopBoard() {
           label="جاهز للتسليم"
           value={awaiting.length}
           visual={awaitV}
+        />
+        <SummaryTile
+          label="تم التسليم"
+          value={delivered.length}
+          visual={deliveredV}
         />
       </div>
 
@@ -419,9 +428,46 @@ export function WorkshopBoard() {
                       markProjectDelivered(project.id);
                       setTick((n) => n + 1);
                     }}
-                    className="rounded-xl bg-wf-done px-3 py-1.5 text-[11px] font-bold text-white"
+                    className="rounded-xl bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white"
                   >
-                    تم التسليم
+                    انقل لتم التسليم
+                  </button>
+                }
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHead
+          title="تم التسليم"
+          count={delivered.length}
+          visual={deliveredV}
+        />
+        {delivered.length === 0 ? (
+          <EmptyBox visual={deliveredV}>
+            لسه مفيش تسليم مسجّل — انقل من «جاهز للتسليم» لما العميل يستلم.
+          </EmptyBox>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {delivered.map((project) => (
+              <ProjectRow
+                key={project.id}
+                project={project}
+                tone="delivered"
+                customerLabel={customerName(customerById, project.customerId)}
+                deliveredAt={project.deliveredAt}
+                actions={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markProjectAwaitingDelivery(project.id);
+                      setTick((n) => n + 1);
+                    }}
+                    className="rounded-xl border border-border bg-card px-3 py-1.5 text-[11px] font-semibold"
+                  >
+                    رجّع لجاهز للتسليم
                   </button>
                 }
               />
@@ -500,7 +546,7 @@ function EmptyBox({
   );
 }
 
-type RowTone = "workshop" | "queued" | "hold" | "awaiting";
+type RowTone = "workshop" | "queued" | "hold" | "awaiting" | "delivered";
 
 function ProjectRow({
   project,
@@ -511,6 +557,7 @@ function ProjectRow({
   moving,
   listRef,
   holdReason,
+  deliveredAt,
   actions,
 }: {
   project: Project;
@@ -521,6 +568,7 @@ function ProjectRow({
   moving?: boolean;
   listRef?: (el: HTMLLIElement | null) => void;
   holdReason?: string;
+  deliveredAt?: string;
   actions: ReactNode;
 }) {
   const editorHref = ROUTES.design.editor(project.customerId, project.id);
@@ -529,14 +577,16 @@ function ProjectRow({
       ? HOLD_VISUAL
       : tone === "awaiting"
         ? DELIVERY_VISUAL.awaiting
-        : WORKFLOW_VISUAL[tone as ProjectWorkflow];
+        : tone === "delivered"
+          ? DELIVERY_VISUAL.delivered
+          : WORKFLOW_VISUAL[tone as ProjectWorkflow];
 
   const workflowForBadge: ProjectWorkflow =
     tone === "hold"
       ? project.workflow === "workshop"
         ? "workshop"
         : "queued"
-      : tone === "awaiting"
+      : tone === "awaiting" || tone === "delivered"
         ? "done"
         : tone;
 
@@ -573,6 +623,12 @@ function ProjectRow({
                 >
                   جاهز للتسليم
                 </span>
+              ) : tone === "delivered" ? (
+                <span
+                  className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide ${DELIVERY_VISUAL.delivered.badgeSolid}`}
+                >
+                  تم التسليم
+                </span>
               ) : badge ? (
                 <WorkflowBadge workflow={workflowForBadge} solid={highlight}>
                   {badge}
@@ -591,6 +647,11 @@ function ProjectRow({
             {holdReason ? (
               <p className={`mt-1 text-[11px] font-semibold ${HOLD_VISUAL.text}`}>
                 واقف على: {holdReason}
+              </p>
+            ) : null}
+            {deliveredAt ? (
+              <p className={`mt-1 text-[11px] font-medium ${visual.text}`}>
+                تاريخ التسليم {deliveredAt}
               </p>
             ) : null}
             {project.depositAmount ? (
