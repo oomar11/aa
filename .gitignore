@@ -45,3 +45,6 @@ next-env.d.ts
 
 # workshop shared store (local file backend)
 /data/workshop-kv.json
+
+# باكبات خام/مرحّلة محلية (بيانات عملاء)
+/data/imports/

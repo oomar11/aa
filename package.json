@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "import:legacy": "node scripts/import-legacy-backup.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

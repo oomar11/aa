@@ -8,6 +8,11 @@ import {
   DATA_VERSION_KEY,
 } from "@/lib/clean-start";
 import {
+  buildUpvcBackupFromLegacy,
+  formatLegacyImportSummary,
+  isLegacyBackup,
+} from "@/lib/legacy-backup-import";
+import {
   DELETED_CUSTOMERS_KEY,
   SHARED_STORAGE_KEYS,
   STORAGE_KEYS,
@@ -83,17 +88,35 @@ export function DataBackupPanel() {
     reader.onload = () => {
       void (async () => {
         try {
-          const parsed = JSON.parse(String(reader.result)) as BackupPayload;
-          if (!parsed || parsed.version !== 1 || !parsed.data) {
-            throw new Error("ملف غير صالح");
+          const raw = JSON.parse(String(reader.result)) as unknown;
+          let parsed: BackupPayload;
+          let legacyNote = "";
+
+          if (isLegacyBackup(raw)) {
+            const converted = buildUpvcBackupFromLegacy(raw);
+            parsed = converted;
+            legacyNote = formatLegacyImportSummary(converted.meta!.summary);
+            if (
+              !window.confirm(
+                `هذا باكب من البرنامج القديم.\n${legacyNote}\n\nسيتم استبدال بيانات الورشة المشتركة لكل الأجهزة. هل تريد المتابعة؟`
+              )
+            ) {
+              return;
+            }
+          } else {
+            parsed = raw as BackupPayload;
+            if (!parsed || parsed.version !== 1 || !parsed.data) {
+              throw new Error("ملف غير صالح");
+            }
+            if (
+              !window.confirm(
+                "سيتم استبدال بيانات الورشة المشتركة بالنسخة المستوردة لكل الأجهزة. هل تريد المتابعة؟"
+              )
+            ) {
+              return;
+            }
           }
-          if (
-            !window.confirm(
-              "سيتم استبدال بيانات الورشة المشتركة بالنسخة المستوردة لكل الأجهزة. هل تريد المتابعة؟"
-            )
-          ) {
-            return;
-          }
+
           setBusy(true);
           for (const [key, value] of Object.entries(parsed.data)) {
             if ((SHARED_STORAGE_KEYS as readonly string[]).includes(key)) {
@@ -109,7 +132,11 @@ export function DataBackupPanel() {
             }
           }
           await uploadLocalWorkshopData();
-          setMessage("تم الاستيراد والمزامنة — جاري إعادة تحميل الصفحة…");
+          setMessage(
+            legacyNote
+              ? `${legacyNote} — جاري إعادة تحميل الصفحة…`
+              : "تم الاستيراد والمزامنة — جاري إعادة تحميل الصفحة…"
+          );
           setError("");
           window.setTimeout(() => window.location.reload(), 700);
         } catch {
@@ -225,7 +252,8 @@ export function DataBackupPanel() {
           <p className="text-sm font-medium text-foreground">نسخة احتياطية</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted">
             صدّر نسخة JSON بانتظام. الاستيراد يستبدل بيانات الورشة المشتركة
-            للجميع.
+            للجميع. يدعم أيضاً باكب البرنامج القديم (clients / projects /
+            contracts).
           </p>
         </div>
         <div className="flex flex-col gap-2 px-4 py-3.5">
