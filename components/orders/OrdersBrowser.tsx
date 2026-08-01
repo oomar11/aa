@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
-  customers,
-  loadLocalCustomers,
+  mergeCustomers,
   type Customer,
 } from "@/lib/customers";
 import { resolveCustomerBalance } from "@/lib/customer-balance";
@@ -23,6 +22,23 @@ import { WORKFLOW_LABELS } from "@/lib/workshop";
 
 type Tab = "customers" | "projects";
 
+function statusLabel(project: Project): string {
+  return WORKFLOW_LABELS[project.workflow];
+}
+
+function mergeProjects(): Project[] {
+  if (typeof window === "undefined") return listAllProjects();
+  return listAllProjects();
+}
+
+function balanceMap(list: Customer[]): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  const next: Record<string, number> = {};
+  for (const customer of list) {
+    next[customer.id] = resolveCustomerBalance(customer);
+  }
+  return next;
+}
 function projectSaleTotal(projectId: string): number {
   return getItemsForProject(projectId).reduce(
     (sum, item) => sum + itemTotalPrice(item),
@@ -109,34 +125,6 @@ function SearchIcon() {
   );
 }
 
-function statusLabel(project: Project): string {
-  return WORKFLOW_LABELS[project.workflow];
-}
-
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const localCustomers = loadLocalCustomers();
-  const localIds = new Set(localCustomers.map((c) => c.id));
-  return [
-    ...localCustomers,
-    ...customers.filter((c) => !localIds.has(c.id)),
-  ];
-}
-
-function mergeProjects(): Project[] {
-  if (typeof window === "undefined") return listAllProjects();
-  return listAllProjects();
-}
-
-function balanceMap(list: Customer[]): Record<string, number> {
-  if (typeof window === "undefined") return {};
-  const next: Record<string, number> = {};
-  for (const customer of list) {
-    next[customer.id] = resolveCustomerBalance(customer);
-  }
-  return next;
-}
-
 export function OrdersBrowser() {
   const [tab, setTab] = useState<Tab>("customers");
   const [query, setQuery] = useState("");
@@ -157,9 +145,11 @@ export function OrdersBrowser() {
       setAllProjects(mergeProjects());
     }
     window.addEventListener("upvc-accounting-updated", refresh);
+    window.addEventListener("upvc-customers-updated", refresh);
     window.addEventListener(PROJECTS_UPDATED_EVENT, refresh);
     return () => {
       window.removeEventListener("upvc-accounting-updated", refresh);
+      window.removeEventListener("upvc-customers-updated", refresh);
       window.removeEventListener(PROJECTS_UPDATED_EVENT, refresh);
     };
   }, []);
@@ -393,7 +383,7 @@ export function OrdersBrowser() {
                         {customer.address ? ` • ${customer.address}` : ""}
                       </p>
                       <p className="mt-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        صافي:{" "}
+                        متبقي فواتير:{" "}
                         {owes
                           ? `${formatCurrency(balance)} ج.م`
                           : "لا يوجد"}{" "}
@@ -489,10 +479,10 @@ export function OrdersBrowser() {
                             مشروع جديد
                           </Link>
                           <Link
-                            href={ROUTES.design.projects(customer.id)}
+                            href={ROUTES.design.editCustomer(customer.id)}
                             className="flex-1 rounded-xl border border-border py-2 text-center text-xs font-semibold text-muted transition-colors hover:bg-card"
                           >
-                            كل المشاريع
+                            تعديل العميل
                           </Link>
                         </div>
                       </div>

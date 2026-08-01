@@ -66,7 +66,7 @@ function systemSummary(
     const thick = `${system.glass.pane1.thicknessMm} مم`;
     return price > 0
       ? `${kind} · ${thick} · ${price} ج.م/م²`
-      : `${kind} · ${thick} · السعر مش متحدد`;
+      : `${kind} · ${thick} · السعر غير محدد`;
   }
   if (category === "iron" && system.iron) {
     const n = system.iron.pieces.filter((p) => p.enabled).length;
@@ -256,7 +256,7 @@ export function MaterialSystemsEditor({ category }: Props) {
             أسعار عامة — تدبيل وجورجيا
           </h3>
           <p className="text-[11px] text-muted">
-            بتتضاف لما الضلفة تبقى دبل أو فيها جورجيا
+            تُضاف عندما تكون الضلفة مزدوجة أو فيها جورجيان
           </p>
           <div className="grid grid-cols-2 gap-2">
             <label className="block text-[11px] text-muted">
@@ -423,8 +423,8 @@ export function MaterialSystemsEditor({ category }: Props) {
 
       <p className="px-1 text-center text-[11px] text-muted">
         {isGlass
-          ? "الزجاجات دي بتظهر في خصائص الضلفة وقت التصميم"
-          : "الأنظمة دي بتظهر في تفاصيل البند وقت التصميم"}
+          ? "تظهر هذه الزجاجات في خصائص الضلفة أثناء التصميم"
+          : "تظهر هذه الأنظمة في تفاصيل البند أثناء التصميم"}
       </p>
     </div>
   );

@@ -77,7 +77,7 @@ export function InvoiceDetail() {
   if (!invoice) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
-        الفاتورة مش موجودة
+        الفاتورة غير موجودة
       </div>
     );
   }

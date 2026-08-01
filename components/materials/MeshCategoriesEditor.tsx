@@ -131,7 +131,7 @@ export function MeshCategoriesEditor() {
         <div>
           <h3 className="text-xs font-bold text-foreground">تصنيفات السلك</h3>
           <p className="mt-0.5 text-[11px] text-muted">
-            التصنيف اللي فيه «قطاع ضلفة» بيتحسب ضلفة سلك جرار إضافية فوق
+            التصنيف الذي يتضمن «قطاع ضلفة» يُحسب له ضلفة سلك جرار إضافية فوق
             الضلفة العادية والزجاج + مساحة السلك + عجل (٢/ضلفة) + مقبض لطش
             (١/ضلفة).
           </p>

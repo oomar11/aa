@@ -125,7 +125,7 @@ export function AccessorySystemDetailEditor({ systemId }: Props) {
   if (missing) {
     return (
       <div className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">
-        نظام الاكسسوار مش موجود
+        نظام الإكسسوار غير موجود
       </div>
     );
   }

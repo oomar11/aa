@@ -46,6 +46,7 @@ import {
   type Project,
 } from "@/lib/projects";
 import { projectMaterialDefaultsFrom } from "@/lib/project-materials";
+import { getProjectMoneySummary } from "@/lib/project-money";
 import { formatCurrency } from "@/lib/utils";
 import { formatSizePair, type LengthUnit } from "@/lib/units";
 import { useUnit } from "@/components/settings/UnitProvider";
@@ -163,6 +164,30 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     const qty = items.reduce((sum, item) => sum + item.qty, 0);
     return { area, price, qty };
   }, [items]);
+
+  const [money, setMoney] = useState(() =>
+    projectId && typeof window !== "undefined"
+      ? getProjectMoneySummary(projectId)
+      : null
+  );
+
+  useEffect(() => {
+    if (!projectId) {
+      setMoney(null);
+      return;
+    }
+    const id = projectId;
+    function refresh() {
+      setMoney(getProjectMoneySummary(id));
+    }
+    refresh();
+    window.addEventListener("upvc-accounting-updated", refresh);
+    window.addEventListener("upvc-projects-updated", refresh);
+    return () => {
+      window.removeEventListener("upvc-accounting-updated", refresh);
+      window.removeEventListener("upvc-projects-updated", refresh);
+    };
+  }, [projectId, items]);
 
   const draggingItem = useMemo(
     () => items.find((item) => item.id === draggingId) ?? null,
@@ -789,6 +814,46 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
           </button>
         </div>
       </header>
+
+      {money ? (
+        <div className="grid grid-cols-4 gap-1.5 rounded-2xl border border-border bg-card px-2 py-2.5">
+          <div className="text-center">
+            <p className="text-[9px] text-muted">البيع</p>
+            <p className="mt-0.5 text-[11px] font-bold tabular-nums text-foreground">
+              {formatCurrency(money.sale)}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[9px] text-muted">المدفوع</p>
+            <p className="mt-0.5 text-[11px] font-bold tabular-nums text-[#2F9B7A]">
+              {formatCurrency(money.paid)}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[9px] text-muted">المتبقي</p>
+            <p
+              className={`mt-0.5 text-[11px] font-bold tabular-nums ${
+                money.remaining > 0 ? "text-[#E85A8A]" : "text-[#2F9B7A]"
+              }`}
+            >
+              {formatCurrency(money.remaining)}
+            </p>
+          </div>
+          <Link
+            href={
+              customerId && projectId
+                ? ROUTES.design.expenses(customerId, projectId)
+                : "#"
+            }
+            className="text-center transition-opacity hover:opacity-80"
+          >
+            <p className="text-[9px] text-muted">المصروف</p>
+            <p className="mt-0.5 text-[11px] font-bold tabular-nums text-[#C45C26]">
+              {formatCurrency(money.expenses)}
+            </p>
+          </Link>
+        </div>
+      ) : null}
 
       {customerId && projectId ? (
         <>

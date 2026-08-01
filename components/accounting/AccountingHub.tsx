@@ -101,7 +101,7 @@ export function AccountingHub() {
           tone="warn"
         />
         <SummaryTile
-          label="صافي بعد المصروفات"
+          label="المحصّل ناقص المصروفات"
           value={summary.net}
           tone={summary.net >= 0 ? "good" : "warn"}
         />

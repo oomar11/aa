@@ -308,7 +308,7 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     return (
       <div className="space-y-3">
         <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">
-          النظام مش موجود
+          النظام غير موجود
         </p>
         <Link
           href={ROUTES.materials.profiles}

@@ -406,7 +406,7 @@ export function AccessoryDetailsForm({
         <>
           <Section
             title="سكاك وفرش"
-            hint="لو مش محتاج تعدّل التفاصيل دي، سيبها زي ما هي"
+            hint="إن لم تحتج إلى تعديل هذه التفاصيل فاتركها كما هي"
             compact={compact}
           >
             <div className="grid grid-cols-2 gap-2">

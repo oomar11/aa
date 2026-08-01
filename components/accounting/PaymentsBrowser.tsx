@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   deletePayment,
+  loadInvoices,
   loadPayments,
   PAYMENT_METHOD_LABELS,
   type Payment,
@@ -16,6 +17,7 @@ import {
 import { getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
+import { syncProjectMoneyFromPayments } from "@/lib/workshop";
 
 function mergeCustomers(): Customer[] {
   if (typeof window === "undefined") return customers;
@@ -123,7 +125,17 @@ export function PaymentsBrowser() {
                     type="button"
                     onClick={() => {
                       if (!window.confirm("هل تريد حذف هذه الدفعة؟")) return;
+                      const projectId =
+                        payment.projectId ??
+                        (payment.invoiceId
+                          ? loadInvoices().find(
+                              (i) => i.id === payment.invoiceId
+                            )?.projectId
+                          : undefined);
                       deletePayment(payment.id);
+                      if (projectId) {
+                        syncProjectMoneyFromPayments(projectId);
+                      }
                     }}
                     className="shrink-0 text-xs font-semibold text-[#E85A8A]"
                   >

@@ -52,7 +52,6 @@ export function projectDepositTotal(projectId: string): number {
 }
 
 export function projectHasPayment(project: Project): boolean {
-  if ((project.depositAmount ?? 0) > 0 || project.depositAt) return true;
   return projectPaidTotal(project.id) > 0;
 }
 
@@ -75,31 +74,66 @@ function nextQueueOrder(projects: Project[] = listAllProjects()): number {
 }
 
 /**
- * بعد تسجيل دفعة على مشروع: يدخل قائمة الانتظار إن لم يكن فيها أو قيد التنفيذ.
+ * يعيد مزامنة depositAmount + حالة الطابور من مجموع الدفعات الفعلي.
+ * - فيه فلوس + مقايسة → قائمة انتظار
+ * - مفيش فلوس + (انتظار) → يرجع مقايسة
+ * - قيد التنفيذ / مكتمل: لا يُخرج من حالته تلقائياً
  */
-export function queueProjectAfterPayment(
+export function syncProjectMoneyFromPayments(
   projectId: string,
-  amount: number,
   date: string = todayIsoDate()
 ): Project | undefined {
   const project = getProjectById(projectId);
-  if (!project || project.workflow === "done") return project;
+  if (!project) return undefined;
 
-  const addAmount = Math.max(0, amount);
+  const paid = projectPaidTotal(projectId);
+  const hasMoney = paid > 0;
+
+  let workflow = project.workflow;
+  let status = project.status;
+  let queueOrder = project.queueOrder;
+  let depositAt = project.depositAt;
+
+  if (hasMoney) {
+    if (workflow === "quote") {
+      workflow = "queued";
+      status = "open";
+      queueOrder = queueOrder ?? nextQueueOrder();
+    }
+    depositAt = depositAt ?? date;
+  } else {
+    // لا فلوس: اخرج من قائمة الانتظار فقط (لا تلمس ورشة/مكتمل)
+    if (workflow === "queued") {
+      workflow = "quote";
+      status = "open";
+      queueOrder = undefined;
+    }
+    depositAt = undefined;
+  }
+
   const updated: Project = {
     ...project,
-    status: "open",
-    workflow:
-      project.workflow === "workshop" || project.workflow === "queued"
-        ? project.workflow
-        : "queued",
-    depositAt: project.depositAt ?? date,
-    depositAmount: (project.depositAmount ?? 0) + addAmount,
-    queueOrder: project.queueOrder ?? nextQueueOrder(),
+    status,
+    workflow,
+    depositAt,
+    depositAmount: paid,
+    queueOrder,
   };
 
   upsertProjectOverride(updated);
   return updated;
+}
+
+/**
+ * بعد تسجيل دفعة على مشروع: يزامن المال ويدخل قائمة الانتظار إن لزم.
+ * المشاريع المكتملة: تُحدَّث المبالغ فقط دون إعادتها للطابور.
+ */
+export function queueProjectAfterPayment(
+  projectId: string,
+  _amount: number = 0,
+  date: string = todayIsoDate()
+): Project | undefined {
+  return syncProjectMoneyFromPayments(projectId, date);
 }
 
 /** @deprecated استخدم queueProjectAfterPayment */
@@ -111,7 +145,7 @@ export function applyDepositToProject(
   return queueProjectAfterPayment(projectId, amount, date);
 }
 
-/** تسجيل دفعة + دخول قائمة الانتظار */
+/** تسجيل دفعة + دخول قائمة الانتظار (أو تحديث المال للمشاريع المكتملة) */
 export function scheduleProjectWithDeposit(input: {
   projectId: string;
   amount: number;
@@ -121,7 +155,6 @@ export function scheduleProjectWithDeposit(input: {
 }): Project | undefined {
   const project = getProjectById(input.projectId);
   if (!project) return undefined;
-  if (project.workflow === "done") return project;
 
   const date = input.date ?? todayIsoDate();
   const amount = Math.max(0, input.amount);
@@ -139,7 +172,7 @@ export function scheduleProjectWithDeposit(input: {
     });
   }
 
-  return queueProjectAfterPayment(project.id, amount, date);
+  return syncProjectMoneyFromPayments(project.id, date);
 }
 
 /** بدء التنفيذ في الورشة */

@@ -29,9 +29,9 @@ export type Payment = {
   id: string;
   customerId: string;
   invoiceId?: string;
-  /** ربط مباشر بمشروع (مهم لعربون المقايسة) */
+  /** ربط مباشر بمشروع */
   projectId?: string;
-  /** عربون = يدخل المشروع طابور الورشة؛ payment = تحصيل */
+  /** توافق قديم — غير مستخدم في الواجهة */
   kind?: PaymentKind;
   amount: number;
   date: string;

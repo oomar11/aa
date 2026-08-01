@@ -105,7 +105,7 @@ export function CutDeductionsEditor() {
         className="space-y-3 rounded-2xl border border-border bg-card p-3"
       >
         <div className="rounded-xl border border-primary/25 bg-primary-soft/30 px-3 py-2.5 text-[11px] leading-relaxed text-muted">
-          <p className="font-bold text-primary">بالبلدي كده</p>
+          <p className="font-bold text-primary">بمعنى مبسّط</p>
           <ol className="mt-1.5 list-inside list-decimal space-y-1">
             <li>
               <span className="text-foreground">الحلق</span> أكبر من الفتحة

@@ -16,7 +16,6 @@ import {
   getProjectById,
   upsertProjectOverride,
   type Project,
-  type ProjectWorkflow,
 } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { WORKFLOW_LABELS } from "@/lib/workshop";
@@ -32,7 +31,6 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
   const [project, setProject] = useState<Project | null>(null);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [workflow, setWorkflow] = useState<ProjectWorkflow>("quote");
   const [materials, setMaterials] = useState<ProjectMaterialDefaults>({});
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -43,7 +41,6 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
     setProject(found);
     setName(found.name);
     setAddress(found.location ?? "");
-    setWorkflow(found.workflow);
     const catalog = loadMaterialCatalog();
     const defaults = defaultProjectMaterialDefaults(catalog);
     setMaterials({
@@ -87,8 +84,6 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
       ...project,
       name: trimmedName,
       location: trimmedAddress,
-      status: workflow === "done" ? "done" : "open",
-      workflow,
       ...materials,
     };
 
@@ -167,42 +162,18 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
         />
       </label>
 
-      <fieldset className="flex flex-col gap-2 text-right">
-        <legend className="text-sm font-medium text-foreground">
-          حالة المشروع
-        </legend>
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              "quote",
-              "queued",
-              "workshop",
-              "done",
-            ] as const satisfies readonly ProjectWorkflow[]
-          ).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => {
-                setWorkflow(key);
-                setSaved(false);
-              }}
-              className={`h-11 rounded-2xl border text-sm font-semibold transition-colors ${
-                workflow === key
-                  ? "border-primary bg-primary text-white"
-                  : "border-border bg-card text-foreground"
-              }`}
-            >
-              {WORKFLOW_LABELS[key]}
-            </button>
-          ))}
-        </div>
-        <p className="text-[11px] leading-relaxed text-muted">
-          المشروع يدخل قائمة انتظار الورشة بعد تسجيل دفعة عليه من الحسابات.
+      <div className="rounded-2xl border border-border bg-card px-4 py-3 text-right">
+        <p className="text-xs text-muted">حالة المشروع</p>
+        <p className="mt-1 text-sm font-bold text-foreground">
+          {WORKFLOW_LABELS[project.workflow]}
         </p>
-      </fieldset>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted">
+          الحالة تتحدد تلقائياً: دفعة → قائمة الانتظار، ثم أزرار الورشة
+          (بدء / إكمال). لا تُعدَّل من هنا.
+        </p>
+      </div>
 
-      {workflow === "quote" ? (
+      {project.workflow === "quote" ? (
         <Link
           href={ROUTES.accounting.depositForProject(customerId, projectId)}
           className="flex h-11 w-full items-center justify-center rounded-2xl border border-primary/30 bg-primary-soft text-sm font-semibold text-primary transition-all hover:brightness-105 active:scale-[0.98]"

@@ -10,8 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import {
-  customers,
-  loadLocalCustomers,
+  mergeCustomers,
   type Customer,
 } from "@/lib/customers";
 import {
@@ -34,24 +33,17 @@ import {
 const QUEUE_FLIP_MS = 320;
 const QUEUE_FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  const local = loadLocalCustomers();
-  const localIds = new Set(local.map((c) => c.id));
-  return [...local, ...customers.filter((c) => !localIds.has(c.id))];
-}
-
 function customerName(
-  map: Map<string, Customer>,
+  customerById: Map<string, Customer>,
   customerId: string
 ): string {
-  return map.get(customerId)?.name ?? "عميل";
+  return customerById.get(customerId)?.name ?? "عميل";
 }
 
 /**
  * صفحة العمل اليومي:
  * - قيد التنفيذ في الورشة
- * - قائمة الانتظار (بعد العربون)
+ * - قائمة الانتظار (بعد تسجيل دفعة)
  * - أحدث المشاريع
  */
 export function WorkshopBoard() {
@@ -183,7 +175,16 @@ export function WorkshopBoard() {
                   <>
                     <button
                       type="button"
-                      onClick={() => completeWorkshopProject(project.id)}
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            "هل تريد إكمال تنفيذ هذا المشروع؟"
+                          )
+                        ) {
+                          return;
+                        }
+                        completeWorkshopProject(project.id);
+                      }}
                       className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white"
                     >
                       إكمال التنفيذ

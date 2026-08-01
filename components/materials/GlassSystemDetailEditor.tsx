@@ -106,7 +106,7 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
     return (
       <div className="space-y-3">
         <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">
-          الزجاجة مش موجودة
+          الزجاجة غير موجودة
         </p>
         <ScreenBack href="/materials/glass">رجوع للزجاج</ScreenBack>
       </div>
@@ -196,7 +196,7 @@ export function GlassSystemDetailEditor({ systemId }: Props) {
           <div>
             <h3 className="text-xs font-bold text-foreground">السعر</h3>
             <p className="mt-0.5 text-[11px] text-muted">
-              سعر المتر المربع بالجنيه — بيتحسب لكل ضلفة تختار فيها الزجاجة دي
+              سعر المتر المربع بالجنيه — يُحسب لكل ضلفة تُختار فيها هذه الزجاجة
             </p>
           </div>
           <label className="block text-[11px] text-muted">

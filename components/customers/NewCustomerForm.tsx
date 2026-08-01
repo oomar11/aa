@@ -2,19 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import {
-  CUSTOMERS_STORAGE_KEY,
-  loadLocalCustomers,
-  type Customer,
-} from "@/lib/customers";
-
-function saveLocalCustomer(customer: Customer) {
-  const existing = loadLocalCustomers();
-  localStorage.setItem(
-    CUSTOMERS_STORAGE_KEY,
-    JSON.stringify([customer, ...existing])
-  );
-}
+import { upsertCustomer, type Customer } from "@/lib/customers";
 
 export function NewCustomerForm() {
   const router = useRouter();
@@ -47,8 +35,7 @@ export function NewCustomerForm() {
       projectsCount: 0,
     };
 
-    saveLocalCustomer(customer);
-    // Replace so Back from “مشروع جديد” does not return to the empty form.
+    upsertCustomer(customer);
     router.replace(`/design/projects/new?customer=${customer.id}`);
   }
 
@@ -76,7 +63,7 @@ export function NewCustomerForm() {
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium text-foreground">
-          رقم التليفون <span className="text-[#E85A8A]">*</span>
+          رقم الهاتف <span className="text-[#E85A8A]">*</span>
         </span>
         <input
           type="tel"
@@ -86,22 +73,20 @@ export function NewCustomerForm() {
             setError("");
           }}
           placeholder="01xxxxxxxxx"
-          inputMode="tel"
           autoComplete="tel"
-          dir="ltr"
           className={`${fieldClass} text-left`}
+          dir="ltr"
         />
       </label>
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium text-foreground">
-          ملاحظة <span className="text-muted font-normal">(اختياري)</span>
+          ملاحظة <span className="font-normal text-muted">(اختياري)</span>
         </span>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="أي تفاصيل مهمة عن العميل…"
-          rows={3}
+          rows={2}
           className={`${fieldClass} resize-none`}
         />
       </label>
@@ -114,7 +99,7 @@ export function NewCustomerForm() {
         type="submit"
         className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
       >
-        حفظ ومتابعة
+        حفظ ومتابعة لإنشاء مشروع
       </button>
     </form>
   );

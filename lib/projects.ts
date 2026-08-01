@@ -4,11 +4,20 @@ import {
 } from "@/lib/design-items";
 import type { ProjectMaterialDefaults } from "@/lib/project-materials";
 import { STORAGE_KEYS } from "@/lib/storage/keys";
+import {
+  loadExpenses,
+  loadInvoices,
+  loadPayments,
+  refreshInvoiceStatuses,
+  saveExpenses,
+  saveInvoices,
+  savePayments,
+} from "@/lib/accounting";
 
 /**
  * دورة حياة المشروع:
- * - quote: مقايسة — لم يبدأ التنفيذ بعد
- * - queued: سُجّل العربون وأُضيف إلى قائمة انتظار الورشة
+ * - quote: مقايسة — لا توجد دفعات بعد
+ * - queued: سُجّلت دفعة وأُضيف إلى قائمة انتظار الورشة
  * - workshop: قيد التنفيذ في الورشة
  * - done: مكتمل
  */
@@ -22,11 +31,11 @@ export type Project = {
   createdAt: string;
   /** توافق قديم: open ≈ غير مكتمل، done ≈ مكتمل */
   status: "open" | "done";
-  /** مصدر الحقيقة لمسار الورشة — يُستنتج من status إن لم يكن موجوداً */
+  /** مسار الورشة — يُحدَّث من الدفعات وأزرار الورشة فقط */
   workflow: ProjectWorkflow;
-  /** تاريخ تسجيل العربون (بداية الجدولة) */
+  /** تاريخ أول دفعة (بداية الجدولة) */
   depositAt?: string;
-  /** إجمالي العربون المسجّل على المشروع */
+  /** إجمالي المدفوع على المشروع (متزامن مع سجل الدفعات) */
   depositAmount?: number;
   /** ترتيب قائمة الانتظار (الأقل = الأقرب للتنفيذ) */
   queueOrder?: number;
@@ -307,7 +316,7 @@ export function upsertProjectOverride(project: Project) {
   notifyProjectsUpdated();
 }
 
-/** حذف نهائي للمشروع وبنوده من التخزين المحلي */
+/** حذف نهائي للمشروع وبنوده، وفك ربط الحركات المحاسبية */
 export function deleteProject(projectId: string) {
   if (typeof window === "undefined") return;
   const local = loadLocalProjects().filter((p) => p.id !== projectId);
@@ -318,5 +327,19 @@ export function deleteProject(projectId: string) {
   saveDeletedProjectIds([...deleted]);
 
   clearItemsForProject(projectId);
+
+  const payments = loadPayments().map((p) =>
+    p.projectId === projectId ? { ...p, projectId: undefined } : p
+  );
+  savePayments(payments);
+
+  const invoices = loadInvoices().map((i) =>
+    i.projectId === projectId ? { ...i, projectId: undefined } : i
+  );
+  saveInvoices(refreshInvoiceStatuses(invoices, payments));
+
+  saveExpenses(loadExpenses().filter((e) => e.projectId !== projectId));
+
   notifyProjectsUpdated();
+  window.dispatchEvent(new Event("upvc-accounting-updated"));
 }

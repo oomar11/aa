@@ -3,7 +3,7 @@
  *
  * التدفق الرئيسي (4 أبواب — كل باب لغرض واحد):
  *   الورشة → العمل الحالي + قائمة الانتظار + أحدث المشاريع
- *   الطلبات → العملاء والمقايسات + طلب جديد + تسجيل العربون
+ *   الطلبات → العملاء والمقايسات + طلب جديد
  *   الحسابات → فواتير · تحصيل · مصروفات
  *   الخامات → قطاعات · اكسسوار · زجاج · سلك · حديد
  */
@@ -23,6 +23,8 @@ export const ROUTES = {
     hub: "/design",
     newCustomer: "/design/new-customer",
     customers: "/design/customers",
+    editCustomer: (customerId: string) =>
+      `/design/customers/edit?customer=${customerId}`,
     projects: (customerId: string) =>
       `/design/projects?customer=${customerId}`,
     newProject: (customerId: string) =>
@@ -45,7 +47,7 @@ export const ROUTES = {
     invoice: (id: string) => `/accounting/invoices/${id}`,
     payments: "/accounting/payments",
     newPayment: "/accounting/payments/new",
-    /** تحصيل عربون لمشروع محدد */
+    /** تحصيل دفعة لمشروع محدد */
     depositForProject: (customerId: string, projectId: string) =>
       `/accounting/payments/new?customer=${customerId}&project=${projectId}`,
     /** سجل المصروفات العام — للعرض فقط؛ التسجيل من داخل المشروع */
@@ -81,7 +83,7 @@ export const APP_SECTIONS = [
   {
     id: "orders",
     label: "الطلبات",
-    description: "المقايسات والعملاء + طلب جديد + عربون",
+    description: "المقايسات والعملاء + طلب جديد",
     href: ROUTES.orders,
     color: "#E85A8A",
   },

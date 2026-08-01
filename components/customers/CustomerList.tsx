@@ -2,14 +2,10 @@
 
 import Link from "next/link";
 import { useDeferredValue, useEffect, useState } from "react";
-import { customers, loadLocalCustomers, type Customer } from "@/lib/customers";
+import { mergeCustomers, type Customer } from "@/lib/customers";
 import { resolveCustomerBalance } from "@/lib/customer-balance";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
-
-function mergeCustomers(): Customer[] {
-  if (typeof window === "undefined") return customers;
-  return [...loadLocalCustomers(), ...customers];
-}
+import { ROUTES } from "@/lib/routes";
 
 function balanceMap(list: Customer[]): Record<string, number> {
   if (typeof window === "undefined") return {};
@@ -33,7 +29,11 @@ export function CustomerList() {
       setBalances(balanceMap(merged));
     }
     window.addEventListener("upvc-accounting-updated", refresh);
-    return () => window.removeEventListener("upvc-accounting-updated", refresh);
+    window.addEventListener("upvc-customers-updated", refresh);
+    return () => {
+      window.removeEventListener("upvc-accounting-updated", refresh);
+      window.removeEventListener("upvc-customers-updated", refresh);
+    };
   }, []);
 
   const filtered = allCustomers.filter((customer) =>

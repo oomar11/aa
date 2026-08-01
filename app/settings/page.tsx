@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { DataBackupPanel } from "@/components/settings/DataBackupPanel";
 import { useTheme } from "@/components/settings/ThemeProvider";
 import { useUnit } from "@/components/settings/UnitProvider";
 import { ROUTES } from "@/lib/routes";
@@ -24,7 +25,7 @@ export default function SettingsPage() {
         <div className="border-b border-border px-4 py-3.5">
           <p className="text-sm font-medium text-foreground">وحدة القياس</p>
           <p className="mt-0.5 text-xs text-muted">
-            بتظهر في مقاسات الشباك والأبواب
+            تظهر في مقاسات النوافذ والأبواب
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {(
@@ -71,7 +72,7 @@ export default function SettingsPage() {
           <div className="min-w-0 text-right">
             <p className="text-sm font-medium text-foreground">بيانات الشركة</p>
             <p className="mt-0.5 text-xs text-muted">
-              اسم الشركة · التليفون · الرقم الضريبي
+              اسم الشركة · الهاتف · الرقم الضريبي
             </p>
           </div>
           <span className="shrink-0 text-muted" aria-hidden>
@@ -93,6 +94,8 @@ export default function SettingsPage() {
           </span>
         </Link>
       </section>
+
+      <DataBackupPanel />
     </AppShell>
   );
 }

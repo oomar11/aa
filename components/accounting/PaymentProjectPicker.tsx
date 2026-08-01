@@ -22,6 +22,10 @@ type Props = {
   value: string;
   onChange: (projectId: string) => void;
   error?: boolean;
+  /** إظهار المشاريع المكتملة (لتحصيل الباقي) */
+  includeDone?: boolean;
+  /** إلزام اختيار مشروع */
+  required?: boolean;
 };
 
 function MoneyRow({
@@ -53,7 +57,13 @@ function MoneyRow({
 /**
  * اختيار مشروع لاستلام دفعة: بحث بالاسم/الهاتف/الموقع ثم بطاقات واضحة.
  */
-export function PaymentProjectPicker({ value, onChange, error }: Props) {
+export function PaymentProjectPicker({
+  value,
+  onChange,
+  error,
+  includeDone = false,
+  required = true,
+}: Props) {
   const [allCustomers] = useState(mergeCustomers);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(!value);
@@ -68,11 +78,14 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
 
   const openProjects = useMemo(() => {
     return listAllProjects()
-      .filter((p) => p.workflow !== "done")
+      .filter((p) => includeDone || p.workflow !== "done")
       .sort((a, b) => {
         // المقايسات أولاً (الأقرب لاستلام دفعة)
         if (a.workflow === "quote" && b.workflow !== "quote") return -1;
         if (b.workflow === "quote" && a.workflow !== "quote") return 1;
+        // المكتمل في الآخر
+        if (a.workflow === "done" && b.workflow !== "done") return 1;
+        if (b.workflow === "done" && a.workflow !== "done") return -1;
         const ca = customerById.get(a.customerId)?.name ?? "";
         const cb = customerById.get(b.customerId)?.name ?? "";
         if (ca !== cb) return ca.localeCompare(cb, "ar");
@@ -80,12 +93,15 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
       });
-  }, [customerById]);
+  }, [customerById, includeDone]);
 
-  const selected = useMemo(
-    () => openProjects.find((p) => p.id === value),
-    [openProjects, value]
-  );
+  const selected = useMemo(() => {
+    if (!value) return undefined;
+    return (
+      openProjects.find((p) => p.id === value) ??
+      listAllProjects().find((p) => p.id === value)
+    );
+  }, [openProjects, value]);
 
   const selectedCustomer = selected
     ? customerById.get(selected.customerId)
@@ -131,7 +147,8 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
     return (
       <div className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
-          المشروع <span className="text-[#E85A8A]">*</span>
+          المشروع
+          {required ? <span className="text-[#E85A8A]"> *</span> : null}
         </span>
         <div
           className={`rounded-2xl border bg-card p-3.5 ${
@@ -189,7 +206,11 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
   return (
     <div className="flex flex-col gap-2 text-right">
       <span className="text-sm font-medium">
-        المشروع <span className="text-[#E85A8A]">*</span>
+        المشروع
+        {required ? <span className="text-[#E85A8A]"> *</span> : " "}
+        {!required ? (
+          <span className="font-normal text-muted">(اختياري)</span>
+        ) : null}
       </span>
 
       <div className="relative">
