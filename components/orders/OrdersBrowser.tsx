@@ -361,19 +361,6 @@ export function OrdersBrowser() {
       .sort(compareProjectsByWorkflowThenDate);
   }, [allProjects, customerById, deferredQuery, workflowFilter]);
 
-  const recentProjects = useMemo(
-    () =>
-      [...allProjects]
-        .sort(compareProjectsByWorkflowThenDate)
-        .slice(0, 5),
-    [allProjects]
-  );
-
-  const showRecent =
-    !deferredQuery.trim() &&
-    workflowFilter === "all" &&
-    recentProjects.length > 0;
-
   function isExpanded(id: string) {
     if (collapsedOverride.has(id)) return false;
     return expandedId === id || autoExpandIds.has(id);
@@ -434,51 +421,6 @@ export function OrdersBrowser() {
           }
         )}
       </div>
-
-      {showRecent ? (
-        <section className="flex flex-col gap-2.5" aria-labelledby="orders-priority-heading">
-          <div className="px-0.5">
-            <h2
-              id="orders-priority-heading"
-              className="text-sm font-bold text-foreground"
-            >
-              أولوية الشغل
-            </h2>
-            <p className="mt-0.5 text-[11px] text-muted">
-              تنفيذ أولاً، ثم الانتظار، ثم المقايسات
-            </p>
-          </div>
-          <ul className="flex flex-col gap-2">
-            {recentProjects.map((project) => {
-              const customer = customerById.get(project.customerId);
-              const visual = WORKFLOW_VISUAL[project.workflow];
-              return (
-                <li key={project.id}>
-                  <Link
-                    href={ROUTES.design.editor(project.customerId, project.id)}
-                    className={`flex items-center justify-between gap-3 rounded-2xl border border-s-[3px] bg-card px-3.5 py-3 transition-all active:scale-[0.99] ${visual.rail} border-border hover:brightness-[0.99]`}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-foreground">
-                        {project.name}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-muted">
-                        {customer?.name ?? "عميل"}
-                        {project.location ? ` · ${project.location}` : ""}
-                      </p>
-                      <ProjectMoneyLine projectId={project.id} className="mt-1" />
-                    </div>
-                    <WorkflowBadge
-                      workflow={project.workflow}
-                      project={project}
-                    />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ) : null}
 
       <label className="relative block">
         <span className="sr-only">بحث</span>
