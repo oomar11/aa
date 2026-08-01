@@ -150,14 +150,14 @@ export function PaymentProjectPicker({ value, onChange, error }: Props) {
           }}
           onFocus={() => setOpen(true)}
           placeholder="ابحث باسم العميل أو المشروع أو الهاتف…"
-          className={`h-12 w-full rounded-2xl border bg-card py-3 pe-10 ps-4 text-sm outline-none transition-shadow placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20 ${
+          className={`h-12 w-full rounded-2xl border bg-card py-3 ps-10 pe-4 text-sm outline-none transition-shadow placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20 ${
             error ? "border-[#E85A8A]" : "border-border"
           }`}
           autoComplete="off"
         />
         <svg
           viewBox="0 0 24 24"
-          className="pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 text-muted"
+          className="pointer-events-none absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-muted"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.75"
