@@ -472,7 +472,7 @@ export function OrdersBrowser() {
                                         )}
                                         className="shrink-0 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-white"
                                       >
-                                        عربون
+                                        دفعة
                                       </Link>
                                     ) : null}
                                   </div>
@@ -571,7 +571,7 @@ export function OrdersBrowser() {
                         )}
                         className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                       >
-                        تسجيل عربون
+                        تسجيل دفعة
                       </Link>
                     ) : null}
                     <button

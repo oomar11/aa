@@ -85,7 +85,7 @@ export const APP_SECTIONS = [
   {
     id: "accounting",
     label: "الحسابات",
-    description: "فواتير · تحصيل · مصروفات",
+    description: "فواتير · دفعات · مصروفات",
     href: ROUTES.accounting.hub,
     color: "#2F9B7A",
   },

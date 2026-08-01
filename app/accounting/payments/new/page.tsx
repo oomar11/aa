@@ -9,9 +9,9 @@ export default function NewPaymentPage() {
     <AppShell>
       <PageHeader
         backHref={ROUTES.accounting.payments}
-        backLabel="التحصيل"
-        title="تحصيل جديد"
-        description="سجّل دفعة من عميل — مع أو بدون فاتورة"
+        backLabel="الدفعات"
+        title="استلام دفعة"
+        description="اختر المشروع وسجّل المبلغ — يدخل قائمة انتظار الورشة تلقائياً"
       />
       <div className="mt-4">
         <Suspense

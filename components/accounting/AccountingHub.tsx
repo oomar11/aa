@@ -15,21 +15,21 @@ import { formatCurrency } from "@/lib/utils";
 
 const links = [
   {
-    href: ROUTES.accounting.invoices,
-    title: "الفواتير",
-    description: "فواتير العملاء والمتبقي",
-    accent: "bg-[#2F9B7A]",
+    href: ROUTES.accounting.payments,
+    title: "الدفعات",
+    description: "استلام فلوس العميل وربطها بمشروع",
+    accent: "bg-primary",
   },
   {
-    href: ROUTES.accounting.payments,
-    title: "التحصيل",
-    description: "دفعات العملاء الواردة",
-    accent: "bg-primary",
+    href: ROUTES.accounting.invoices,
+    title: "الفواتير",
+    description: "فواتير البيع والمتبقي",
+    accent: "bg-[#2F9B7A]",
   },
   {
     href: ROUTES.accounting.expenses,
     title: "المصروفات",
-    description: "مصروفات الشركة",
+    description: "مصروفات الورشة والشركة",
     accent: "bg-[#E8956F]",
   },
   {
@@ -74,18 +74,25 @@ export function AccountingHub() {
   return (
     <div className="flex flex-col gap-5">
       <section className="rounded-2xl bg-[#1F6B55] px-4 py-5 text-white shadow-[0_8px_24px_rgba(47,155,122,0.28)]">
-        <p className="text-xs font-medium opacity-85">حسابات الشركة</p>
+        <p className="text-xs font-medium opacity-85">الحسابات</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">
           {company.name}
         </h1>
         <p className="mt-2 text-sm leading-relaxed opacity-90">
-          هذا البرنامج مخصص للشركة — الفواتير والتحصيل والمصروفات في مكان واحد.
+          استلم الفلوس هنا وحدّد المشروع. المشروع الذي عليه دفعات يدخل الورشة —
+          والذي بلا دفعات يبقى مقايسة فقط.
         </p>
+        <Link
+          href={ROUTES.accounting.newPayment}
+          className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-white text-sm font-bold text-[#1F6B55] transition-all hover:brightness-105 active:scale-[0.98]"
+        >
+          استلام دفعة
+        </Link>
       </section>
 
       <section className="grid grid-cols-2 gap-2.5">
-        <SummaryTile label="المفوتر" value={summary.invoiced} tone="neutral" />
         <SummaryTile label="المحصّل" value={summary.collected} tone="good" />
+        <SummaryTile label="المفوتر" value={summary.invoiced} tone="neutral" />
         <SummaryTile
           label="المتبقي عند العملاء"
           value={summary.outstanding}
@@ -121,12 +128,6 @@ export function AccountingHub() {
           </Link>
         ))}
       </section>
-
-      <div className="grid grid-cols-3 gap-2">
-        <QuickAction href={ROUTES.accounting.newInvoice} label="فاتورة" />
-        <QuickAction href={ROUTES.accounting.newPayment} label="تحصيل" />
-        <QuickAction href={ROUTES.accounting.newExpense} label="مصروف" />
-      </div>
     </div>
   );
 }
@@ -155,16 +156,5 @@ function SummaryTile({
         <span className="mr-1 text-[10px] font-semibold text-muted">ج.م</span>
       </p>
     </div>
-  );
-}
-
-function QuickAction({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="flex h-11 items-center justify-center rounded-xl bg-primary text-xs font-bold text-white transition-all hover:brightness-105 active:scale-[0.98]"
-    >
-      + {label}
-    </Link>
   );
 }

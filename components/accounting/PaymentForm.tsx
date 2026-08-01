@@ -3,13 +3,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import {
-  invoiceRemaining,
-  loadInvoices,
   PAYMENT_METHOD_LABELS,
   todayIsoDate,
   upsertPayment,
-  type Invoice,
-  type PaymentKind,
   type PaymentMethod,
 } from "@/lib/accounting";
 import {
@@ -17,11 +13,10 @@ import {
   loadLocalCustomers,
   type Customer,
 } from "@/lib/customers";
-import { getProjectsForCustomer, type Project } from "@/lib/projects";
+import { listAllProjects, type Project } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
-import { applyDepositToProject } from "@/lib/workshop";
+import { queueProjectAfterPayment } from "@/lib/workshop";
 import { NumericInput } from "@/components/ui/NumericInput";
-import { formatCurrency } from "@/lib/utils";
 
 function mergeCustomers(): Customer[] {
   if (typeof window === "undefined") return customers;
@@ -30,102 +25,69 @@ function mergeCustomers(): Customer[] {
   return [...local, ...customers.filter((c) => !localIds.has(c.id))];
 }
 
-function remainingForInvoice(invoiceId: string): number {
-  const invoice = loadInvoices().find((i) => i.id === invoiceId);
-  return invoice ? invoiceRemaining(invoice) : 0;
-}
-
+/**
+ * استلام دفعة: المشروع + المبلغ فقط.
+ * أي مبلغ مربوط بمشروع يدخله قائمة انتظار الورشة تلقائياً.
+ */
 export function PaymentForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const presetCustomerId = searchParams.get("customer") ?? "";
-  const presetInvoiceId = searchParams.get("invoice") ?? "";
   const presetProjectId = searchParams.get("project") ?? "";
 
   const [allCustomers] = useState(mergeCustomers);
-  const [customerId, setCustomerId] = useState(presetCustomerId);
-  const [invoiceId, setInvoiceId] = useState(presetInvoiceId);
   const [projectId, setProjectId] = useState(presetProjectId);
-  const [kind, setKind] = useState<PaymentKind>(
-    presetProjectId ? "deposit" : "payment"
-  );
-  const [amount, setAmount] = useState(() =>
-    presetInvoiceId ? remainingForInvoice(presetInvoiceId) : 0
-  );
+  const [amount, setAmount] = useState(0);
   const [date, setDate] = useState(todayIsoDate);
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
 
-  const customerProjects = useMemo(() => {
-    if (!customerId) return [] as Project[];
-    return getProjectsForCustomer(customerId).filter(
-      (p) => p.workflow !== "done"
-    );
-  }, [customerId]);
+  const customerById = useMemo(() => {
+    const map = new Map<string, Customer>();
+    for (const customer of allCustomers) map.set(customer.id, customer);
+    return map;
+  }, [allCustomers]);
 
-  const openInvoices = useMemo(() => {
-    if (!customerId) return [] as Invoice[];
-    return loadInvoices().filter(
-      (invoice) =>
-        invoice.customerId === customerId &&
-        invoice.status !== "cancelled" &&
-        invoiceRemaining(invoice) > 0
-    );
-  }, [customerId]);
+  const openProjects = useMemo(() => {
+    return listAllProjects()
+      .filter((p) => p.workflow !== "done")
+      .sort((a, b) => {
+        const ca = customerById.get(a.customerId)?.name ?? "";
+        const cb = customerById.get(b.customerId)?.name ?? "";
+        if (ca !== cb) return ca.localeCompare(cb, "ar");
+        return a.name.localeCompare(b.name, "ar");
+      });
+  }, [customerById]);
 
-  const selectedInvoice = useMemo(() => {
-    if (!invoiceId) return undefined;
-    return (
-      openInvoices.find((i) => i.id === invoiceId) ??
-      loadInvoices().find(
-        (i) => i.id === invoiceId && i.customerId === customerId
-      )
-    );
-  }, [invoiceId, openInvoices, customerId]);
-
-  const validInvoiceId = selectedInvoice?.id ?? "";
+  const selectedProject: Project | undefined = useMemo(
+    () => openProjects.find((p) => p.id === projectId),
+    [openProjects, projectId]
+  );
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!customerId) {
-      setError("اختر العميل");
+    if (!selectedProject) {
+      setError("اختر المشروع");
       return;
     }
     if (amount <= 0) {
       setError("أدخل مبلغاً أكبر من صفر");
       return;
     }
-    if (kind === "deposit" && !projectId) {
-      setError("اختر المشروع لتسجيل العربون");
-      return;
-    }
-
-    const resolvedProjectId =
-      projectId || selectedInvoice?.projectId || undefined;
 
     upsertPayment({
       id: `pay-${Date.now()}`,
-      customerId,
-      invoiceId: validInvoiceId || undefined,
-      projectId: resolvedProjectId,
-      kind,
+      customerId: selectedProject.customerId,
+      projectId: selectedProject.id,
       amount,
       date,
       method,
-      note:
-        note.trim() ||
-        (kind === "deposit" ? "عربون" : undefined),
+      note: note.trim() || undefined,
       createdAt: new Date().toISOString(),
     });
 
-    if (kind === "deposit" && resolvedProjectId) {
-      applyDepositToProject(resolvedProjectId, amount, date);
-    }
-
-    router.replace(
-      kind === "deposit" ? ROUTES.home : ROUTES.accounting.payments
-    );
+    queueProjectAfterPayment(selectedProject.id, amount, date);
+    router.replace(ROUTES.home);
   }
 
   const fieldClass =
@@ -133,71 +95,14 @@ export function PaymentForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
-      <fieldset className="flex flex-col gap-2 text-right">
-        <legend className="text-sm font-medium">نوع التحصيل</legend>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setKind("deposit")}
-            className={`h-11 rounded-2xl border text-sm font-semibold ${
-              kind === "deposit"
-                ? "border-primary bg-primary text-white"
-                : "border-border bg-card text-foreground"
-            }`}
-          >
-            عربون
-          </button>
-          <button
-            type="button"
-            onClick={() => setKind("payment")}
-            className={`h-11 rounded-2xl border text-sm font-semibold ${
-              kind === "payment"
-                ? "border-primary bg-primary text-white"
-                : "border-border bg-card text-foreground"
-            }`}
-          >
-            دفعة عادية
-          </button>
-        </div>
-        {kind === "deposit" ? (
-          <p className="text-[11px] leading-relaxed text-muted">
-            يسجّل العربون المشروع في قائمة انتظار الورشة تلقائياً.
-          </p>
-        ) : null}
-      </fieldset>
+      <p className="rounded-2xl border border-primary/20 bg-primary-soft/40 px-3.5 py-3 text-xs leading-relaxed text-foreground">
+        سجّل المبلغ وحدّد المشروع. إذا وُجدت دفعات على المشروع يدخل قائمة انتظار
+        الورشة تلقائياً — وإلا يبقى مقايسة فقط في الطلبات.
+      </p>
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
-          العميل <span className="text-[#E85A8A]">*</span>
-        </span>
-        <select
-          value={customerId}
-          onChange={(e) => {
-            setCustomerId(e.target.value);
-            setInvoiceId("");
-            setProjectId("");
-            setAmount(0);
-            setError("");
-          }}
-          className={fieldClass}
-        >
-          <option value="">اختر عميلاً…</option>
-          {allCustomers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="flex flex-col gap-1.5 text-right">
-        <span className="text-sm font-medium">
-          المشروع{" "}
-          {kind === "deposit" ? (
-            <span className="text-[#E85A8A]">*</span>
-          ) : (
-            <span className="font-normal text-muted">(اختياري)</span>
-          )}
+          المشروع <span className="text-[#E85A8A]">*</span>
         </span>
         <select
           value={projectId}
@@ -205,48 +110,17 @@ export function PaymentForm() {
             setProjectId(e.target.value);
             setError("");
           }}
-          disabled={!customerId}
           className={fieldClass}
         >
           <option value="">اختر مشروعاً…</option>
-          {customerProjects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-              {project.workflow === "quote" ? " — مقايسة" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="flex flex-col gap-1.5 text-right">
-        <span className="text-sm font-medium">
-          الفاتورة <span className="font-normal text-muted">(اختياري)</span>
-        </span>
-        <select
-          value={validInvoiceId}
-          onChange={(e) => {
-            const nextId = e.target.value;
-            setInvoiceId(nextId);
-            setAmount(nextId ? remainingForInvoice(nextId) : 0);
-            const inv = openInvoices.find((i) => i.id === nextId);
-            if (inv?.projectId) setProjectId(inv.projectId);
-            setError("");
-          }}
-          disabled={!customerId}
-          className={fieldClass}
-        >
-          <option value="">بدون ربط بفاتورة</option>
-          {openInvoices.map((invoice) => (
-            <option key={invoice.id} value={invoice.id}>
-              {invoice.number} — متبقي {formatCurrency(invoiceRemaining(invoice))}
-            </option>
-          ))}
-          {selectedInvoice &&
-          !openInvoices.some((i) => i.id === selectedInvoice.id) ? (
-            <option value={selectedInvoice.id}>
-              {selectedInvoice.number}
-            </option>
-          ) : null}
+          {openProjects.map((project) => {
+            const customer = customerById.get(project.customerId);
+            return (
+              <option key={project.id} value={project.id}>
+                {customer?.name ?? "عميل"} — {project.name}
+              </option>
+            );
+          })}
         </select>
       </label>
 
@@ -302,7 +176,8 @@ export function PaymentForm() {
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          rows={3}
+          rows={2}
+          placeholder="مثال: دفعة أولى"
           className={`${fieldClass} resize-none`}
         />
       </label>
@@ -315,7 +190,7 @@ export function PaymentForm() {
         type="submit"
         className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
       >
-        {kind === "deposit" ? "حفظ العربون والإضافة إلى قائمة الانتظار" : "حفظ التحصيل"}
+        حفظ الدفعة
       </button>
     </form>
   );

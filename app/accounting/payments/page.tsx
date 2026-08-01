@@ -9,8 +9,8 @@ export default function PaymentsPage() {
       <PageHeader
         backHref={ROUTES.accounting.hub}
         backLabel="الحسابات"
-        title="التحصيل"
-        description="دفعات العملاء الواردة"
+        title="الدفعات"
+        description="كل المبالغ المستلمة — المربوطة بمشروع تدخل الورشة"
       />
       <div className="mt-4">
         <PaymentsBrowser />

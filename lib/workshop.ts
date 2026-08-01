@@ -27,8 +27,8 @@ export function notifyWorkshopUpdated() {
   window.dispatchEvent(new Event("upvc-accounting-updated"));
 }
 
-/** مبلغ العربون المسجّل على المشروع (تحصيل بنوع عربون أو مربوط بفواتيره) */
-export function projectDepositTotal(projectId: string): number {
+/** إجمالي المبالغ المسجّلة على المشروع */
+export function projectPaidTotal(projectId: string): number {
   const payments = loadPayments();
   const invoices = loadInvoices();
   const invoiceIds = new Set(
@@ -38,23 +38,27 @@ export function projectDepositTotal(projectId: string): number {
   );
 
   return payments.reduce((sum, payment) => {
-    if (payment.projectId === projectId && payment.kind === "deposit") {
-      return sum + payment.amount;
-    }
-    if (
-      payment.kind === "deposit" &&
-      payment.invoiceId &&
-      invoiceIds.has(payment.invoiceId)
-    ) {
+    if (payment.projectId === projectId) return sum + payment.amount;
+    if (payment.invoiceId && invoiceIds.has(payment.invoiceId)) {
       return sum + payment.amount;
     }
     return sum;
   }, 0);
 }
 
-export function projectHasDeposit(project: Project): boolean {
+/** @deprecated استخدم projectPaidTotal */
+export function projectDepositTotal(projectId: string): number {
+  return projectPaidTotal(projectId);
+}
+
+export function projectHasPayment(project: Project): boolean {
   if ((project.depositAmount ?? 0) > 0 || project.depositAt) return true;
-  return projectDepositTotal(project.id) > 0;
+  return projectPaidTotal(project.id) > 0;
+}
+
+/** @deprecated استخدم projectHasPayment */
+export function projectHasDeposit(project: Project): boolean {
+  return projectHasPayment(project);
 }
 
 function nextQueueOrder(projects: Project[] = listAllProjects()): number {
@@ -71,10 +75,9 @@ function nextQueueOrder(projects: Project[] = listAllProjects()): number {
 }
 
 /**
- * تطبيق عربون على المشروع (بدون إنشاء قيد تحصيل جديد).
- * يُستدعى بعد حفظ التحصيل أو من شاشة الورشة.
+ * بعد تسجيل دفعة على مشروع: يدخل قائمة الانتظار إن لم يكن فيها أو قيد التنفيذ.
  */
-export function applyDepositToProject(
+export function queueProjectAfterPayment(
   projectId: string,
   amount: number,
   date: string = todayIsoDate()
@@ -99,7 +102,16 @@ export function applyDepositToProject(
   return updated;
 }
 
-/** تسجيل عربون → قيد تحصيل + دخول طابور الورشة */
+/** @deprecated استخدم queueProjectAfterPayment */
+export function applyDepositToProject(
+  projectId: string,
+  amount: number,
+  date: string = todayIsoDate()
+): Project | undefined {
+  return queueProjectAfterPayment(projectId, amount, date);
+}
+
+/** تسجيل دفعة + دخول قائمة الانتظار */
 export function scheduleProjectWithDeposit(input: {
   projectId: string;
   amount: number;
@@ -122,20 +134,19 @@ export function scheduleProjectWithDeposit(input: {
       amount,
       date,
       method: input.method ?? "cash",
-      kind: "deposit",
-      note: input.note?.trim() || "عربون",
+      note: input.note?.trim() || undefined,
       createdAt: new Date().toISOString(),
     });
   }
 
-  return applyDepositToProject(project.id, amount, date);
+  return queueProjectAfterPayment(project.id, amount, date);
 }
 
 /** بدء التنفيذ في الورشة */
 export function startWorkshopProject(projectId: string): Project | undefined {
   const project = getProjectById(projectId);
   if (!project) return undefined;
-  if (project.workflow === "quote" && !projectHasDeposit(project)) {
+  if (project.workflow === "quote" && !projectHasPayment(project)) {
     return project;
   }
 

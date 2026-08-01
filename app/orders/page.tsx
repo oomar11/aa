@@ -10,7 +10,7 @@ export default function OrdersPage() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-foreground">الطلبات</h1>
           <p className="mt-0.5 text-xs text-muted">
-            المقايسات والعملاء — تسجيل العربون يضيف المشروع إلى قائمة انتظار الورشة
+            المقايسات والعملاء — تسجيل الدفعة من الحسابات يضيف المشروع إلى الورشة
           </p>
         </div>
         <Link

@@ -128,11 +128,14 @@ export function WorkshopBoard() {
           <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm leading-relaxed text-muted">
             قائمة الانتظار فارغة.
             <br />
-            سجّل العربون من{" "}
-            <Link href={ROUTES.orders} className="font-semibold text-primary">
-              الطلبات
+            سجّل دفعة من{" "}
+            <Link
+              href={ROUTES.accounting.newPayment}
+              className="font-semibold text-primary"
+            >
+              الحسابات
             </Link>{" "}
-            لإضافة المشروع إلى القائمة.
+            وحدد المشروع ليدخل هنا.
           </div>
         ) : (
           <ul className="flex flex-col gap-2.5">
@@ -267,7 +270,7 @@ function ProjectRow({
           </p>
           {project.depositAmount ? (
             <p className="mt-1 text-[11px] font-medium text-primary">
-              عربون {formatCurrency(project.depositAmount)}
+              مدفوع {formatCurrency(project.depositAmount)}
             </p>
           ) : null}
         </div>

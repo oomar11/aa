@@ -198,7 +198,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
           ))}
         </div>
         <p className="text-[11px] leading-relaxed text-muted">
-          تُضاف المقايسة إلى قائمة انتظار الورشة بعد تسجيل العربون من الطلبات أو التحصيل.
+          المشروع يدخل قائمة انتظار الورشة بعد تسجيل دفعة عليه من الحسابات.
         </p>
       </fieldset>
 
@@ -207,7 +207,7 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
           href={ROUTES.accounting.depositForProject(customerId, projectId)}
           className="flex h-11 w-full items-center justify-center rounded-2xl border border-primary/30 bg-primary-soft text-sm font-semibold text-primary transition-all hover:brightness-105 active:scale-[0.98]"
         >
-          تسجيل عربون (تحصيل)
+          تسجيل دفعة في الحسابات
         </Link>
       ) : null}
 
