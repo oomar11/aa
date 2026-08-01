@@ -33,6 +33,9 @@ export const ROUTES = {
       `/design/draw?customer=${customerId}&project=${projectId}&item=${itemId}`,
     projectSettings: (customerId: string, projectId: string) =>
       `/design/project-settings?customer=${customerId}&project=${projectId}`,
+    /** مصروفات المشروع — التسجيل والسجل من داخل المشروع فقط */
+    expenses: (customerId: string, projectId: string) =>
+      `/design/expenses?customer=${customerId}&project=${projectId}`,
   },
 
   accounting: {
@@ -45,11 +48,8 @@ export const ROUTES = {
     /** تحصيل عربون لمشروع محدد */
     depositForProject: (customerId: string, projectId: string) =>
       `/accounting/payments/new?customer=${customerId}&project=${projectId}`,
+    /** سجل المصروفات العام — للعرض فقط؛ التسجيل من داخل المشروع */
     expenses: "/accounting/expenses",
-    newExpense: "/accounting/expenses/new",
-    /** مصروفات مشروع محدد — سجل + تسجيل */
-    expenseForProject: (_customerId: string, projectId: string) =>
-      `/accounting/expenses?project=${projectId}`,
   },
 
   materials: {

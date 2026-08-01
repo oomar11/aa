@@ -28,8 +28,8 @@ const links = [
   },
   {
     href: ROUTES.accounting.expenses,
-    title: "المصروفات",
-    description: "مصروفات المشاريع: خامات · نقل · أجور",
+    title: "سجل المصروفات",
+    description: "عرض مصروفات كل المشاريع — التسجيل من داخل المشروع",
     accent: "bg-[#E8956F]",
   },
   {
@@ -79,20 +79,15 @@ export function AccountingHub() {
           {company.name}
         </h1>
         <p className="mt-2 text-sm leading-relaxed opacity-90">
-          استلم الدفعات وسجّل مصروفات المشاريع من هنا — كل مبلغ مربوط بمشروع.
+          استلم دفعات العملاء من هنا. مصروفات كل مشروع تُسجَّل من داخل المشروع
+          نفسه.
         </p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4">
           <Link
             href={ROUTES.accounting.newPayment}
-            className="flex h-12 items-center justify-center rounded-xl bg-white text-sm font-bold text-[#1F6B55] transition-all hover:brightness-105 active:scale-[0.98]"
+            className="flex h-12 w-full items-center justify-center rounded-xl bg-white text-sm font-bold text-[#1F6B55] transition-all hover:brightness-105 active:scale-[0.98]"
           >
             استلام دفعة
-          </Link>
-          <Link
-            href={ROUTES.accounting.newExpense}
-            className="flex h-12 items-center justify-center rounded-xl border border-white/40 bg-white/15 text-sm font-bold text-white transition-all hover:bg-white/25 active:scale-[0.98]"
-          >
-            مصروف مشروع
           </Link>
         </div>
       </section>

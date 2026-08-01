@@ -188,15 +188,6 @@ export function WorkshopBoard() {
                     >
                       إكمال التنفيذ
                     </button>
-                    <Link
-                      href={ROUTES.accounting.expenseForProject(
-                        project.customerId,
-                        project.id
-                      )}
-                      className="rounded-xl border border-[#E8956F]/40 bg-[#E8956F]/10 px-3 py-1.5 text-[11px] font-semibold text-[#C45C26]"
-                    >
-                      مصروف
-                    </Link>
                     <button
                       type="button"
                       onClick={() => returnToQueue(project.id)}
@@ -255,15 +246,6 @@ export function WorkshopBoard() {
                     >
                       بدء التنفيذ
                     </button>
-                    <Link
-                      href={ROUTES.accounting.expenseForProject(
-                        project.customerId,
-                        project.id
-                      )}
-                      className="rounded-xl border border-[#E8956F]/40 bg-[#E8956F]/10 px-3 py-1.5 text-[11px] font-semibold text-[#C45C26]"
-                    >
-                      مصروف
-                    </Link>
                     <button
                       type="button"
                       disabled={index === 0 || movingId !== null}

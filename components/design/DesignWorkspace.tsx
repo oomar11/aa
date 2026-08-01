@@ -754,10 +754,10 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         <div className="flex shrink-0 items-center gap-1">
           {customerId && projectId ? (
             <Link
-              href={ROUTES.accounting.expenseForProject(customerId, projectId)}
+              href={ROUTES.design.expenses(customerId, projectId)}
               className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-              aria-label="مصروف المشروع"
-              title="مصروف المشروع"
+              aria-label="مصروفات المشروع"
+              title="مصروفات المشروع"
             >
               <ExpenseIcon />
             </Link>
