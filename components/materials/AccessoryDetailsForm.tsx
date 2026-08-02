@@ -352,7 +352,8 @@ export function AccessoryDetailsForm({
             <p className="font-semibold text-primary">كيف تُحسب السبلونة؟</p>
             <p className="mt-1 text-muted">
               طول السبلونة ≈ ارتفاع الضلفة − الفرق أدناه. يُختار أكبر مقاس مفعّل
-              ≤ هذا الطول، ويُضرب سعره في عدد الضلف.
+              ≤ هذا الطول. كل ضلفة مفصلي لوحدها = سبلونة؛ ضلفتين مقابض في وش بعض
+              (بوكلير) = سبلونة واحدة فقط.
               {onBrandCatalogChange
                 ? ` · مسجّل: ${sablonPricedCount} سعر مقاس`
                 : ""}

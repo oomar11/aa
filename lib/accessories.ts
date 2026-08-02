@@ -5,7 +5,7 @@
  * - مفصلات لكل ضلفة (٢ — من الإعدادات)
  * - سبلونة مفصلي حسب ارتفاع ناحية المقبض
  * - سكاك مفصلي لكل سبلونة (كميات قابلة للتعديل)
- * - ضلفتين + بوكلير: سبلونة واحدة، سكاك بوكلير، ترباس + سكاك ترباس، مقبض بارز
+ * - ضلفتين مقابض في وش بعض (بوكلير): سبلونة واحدة مش اثنين، سكاك بوكلير، ترباس + سكاك ترباس، مقبض بارز
  *
  * باب مفصلي:
  * - مفصلات باب (٣ — من الإعدادات)
@@ -242,14 +242,21 @@ function lockPieceLines(
     }));
 }
 
+type BouclierPair = {
+  left: PaneBox;
+  right: PaneBox;
+  /** ضلفة ثابتة بوكلير في الوسط — إن وُجدت */
+  bouclier: PaneBox | null;
+};
+
 /**
  * مجموعات المفصلي:
- * - ضلفتين متقابلتين وبينهم بوكلير → مجموعة واحدة (سبلونة مشتركة)
+ * - ضلفتين مقابض في وش بعض (متجاورتين أو بينهم بوكلير ثابت) → مجموعة واحدة = سبلونة واحدة
  * - باقي الضلف المفصلي كل واحدة لوحدها
  */
 function hingedLocksetGroups(boxes: PaneBox[]): {
   solo: PaneBox[];
-  bouclierPairs: { left: PaneBox; right: PaneBox; bouclier: PaneBox }[];
+  bouclierPairs: BouclierPair[];
 } {
   const hinged = boxes.filter((b) => isHingedOpening(b.opening));
   // الأبواب مفصليّة بس مش بتدخل في مجموعات البوكلير/السبلونة
@@ -257,14 +264,10 @@ function hingedLocksetGroups(boxes: PaneBox[]): {
   const hingedDoors = hinged.filter((b) => b.isDoor);
   const boucliers = boxes.filter((b) => b.bouclier && b.opening === "fixed");
   const used = new Set<string>();
-  const bouclierPairs: {
-    left: PaneBox;
-    right: PaneBox;
-    bouclier: PaneBox;
-  }[] = [];
+  const bouclierPairs: BouclierPair[] = [];
 
   for (const mid of boucliers) {
-    // يمين ويسار على نفس الصف تقريباً
+    // يمين ويسار على نفس الصف تقريباً — ضلفة بوكلير ثابتة بينهم
     const left = hingedWindows
       .filter(
         (b) =>
@@ -291,6 +294,32 @@ function hingedLocksetGroups(boxes: PaneBox[]): {
     used.add(right.id);
     used.add(mid.id);
     bouclierPairs.push({ left, right, bouclier: mid });
+  }
+
+  // ضلفتين مفصلي متجاورتين والمقابض في وش بعض (من غير ضلفة ثابتة في الوسط)
+  // → برضو سبلونة واحدة + سكاك/ترباس بوكلير — مش سبلونتين
+  const remaining = hingedWindows
+    .filter((b) => !used.has(b.id))
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+
+  for (let i = 0; i < remaining.length; i++) {
+    const left = remaining[i]!;
+    if (used.has(left.id)) continue;
+
+    const right = remaining.find(
+      (b) =>
+        !used.has(b.id) &&
+        b.id !== left.id &&
+        Math.abs(b.y - left.y) < 2 &&
+        Math.abs(b.h - left.h) < 2 &&
+        Math.abs(left.x + left.w - b.x) < 3
+    );
+    if (!right) continue;
+    if (!areFacingHandles(left.opening, right.opening)) continue;
+
+    used.add(left.id);
+    used.add(right.id);
+    bouclierPairs.push({ left, right, bouclier: null });
   }
 
   const soloWindows = hingedWindows.filter((b) => !used.has(b.id));
