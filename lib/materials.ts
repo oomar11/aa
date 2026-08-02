@@ -1612,7 +1612,13 @@ function profileCostEntries(m: MaterialsBreakdown): ProfileCostEntry[] {
     { category: "mesh-sliding-profile", lengthM: m.meshSlidingProfileM },
     { category: "four-leaf-meeting", lengthM: m.fourLeafMeetingM },
     { category: "mesh-meeting", lengthM: m.meshMeetingM },
-    { category: "mullion", lengthM: m.mullionTotalM },
+    {
+      category:
+        m.frameSlidingM > 0.0005 && m.frameHingedM <= 0.0005
+          ? "mullion-sliding"
+          : "mullion-hinged",
+      lengthM: m.mullionTotalM,
+    },
   ];
   return entries.filter((e) => e.lengthM > 0.0005);
 }

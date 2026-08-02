@@ -550,28 +550,10 @@ function buildProfileRows(
         ok: materials.sashSlidingM > 0.0005,
       },
       {
-        key: "mullion-hinged",
-        label: "سوقاس مفصلي",
-        qty: formatMeters(materials.mullionHingedM),
-        ok: materials.mullionHingedM > 0.0005,
-      },
-      {
-        key: "mullion-sliding",
-        label: "سوقاس جرار",
-        qty: formatMeters(materials.mullionSlidingM),
-        ok: materials.mullionSlidingM > 0.0005,
-      },
-      {
-        key: "mullion-kit-hinged",
-        label: "طقم تجميع سقاس مفصلي",
-        qty: formatCount(materials.mullionHingedQty),
-        ok: materials.mullionHingedQty > 0,
-      },
-      {
-        key: "mullion-kit-sliding",
-        label: "طقم تجميع سقاس جرار",
-        qty: formatCount(materials.mullionSlidingQty),
-        ok: materials.mullionSlidingQty > 0,
+        key: "mullion",
+        label: "سوقاس",
+        qty: formatMeters(materials.mullionTotalM),
+        ok: materials.mullionTotalM > 0.0005,
       },
       {
         key: "bouclier",
@@ -837,101 +819,6 @@ function buildAccessoryRows(
   }
 
   pushPiece("hinge", "مفصلات", breakdown.hingeQty, "hinge");
-
-  const tiltEspQty = breakdown.tiltEspagnolettes.reduce((s, l) => s + l.qty, 0);
-  if (tiltEspQty > 0) {
-    for (const line of breakdown.tiltEspagnolettes) {
-      if (line.qty < 0.5) continue;
-      const brand = brandByCategoryId(brands, labels, "tilt-espagnolette");
-      const unit = accessoryBrandResolvedPrice(brand, line.maxDimMm);
-      rows.push({
-        key: `tilt-esp-${line.id}`,
-        label: `سبلونة مفصلي قلاب ${line.label}`,
-        qty: String(line.qty),
-        unitHint:
-          unit != null
-            ? `${unit} ج.م${brand ? ` · ${brand.name}` : ""}`
-            : brand?.name,
-        cost: unit != null ? Math.round(line.qty * unit * 100) / 100 : null,
-        sub: `مقاس ${line.label} · حد ${line.maxDimMm}مم`,
-      });
-    }
-  }
-
-  const tiltScissorsQty = breakdown.tiltScissors.reduce((s, l) => s + l.qty, 0);
-  if (tiltScissorsQty > 0) {
-    for (const line of breakdown.tiltScissors) {
-      if (line.qty < 0.5) continue;
-      const brand = brandByCategoryId(brands, labels, "tilt-scissors");
-      const unit = accessoryBrandResolvedPrice(brand, line.maxDimMm);
-      rows.push({
-        key: `tilt-scissors-${line.id}`,
-        label: `مقص قلاب ${line.label}`,
-        qty: String(line.qty),
-        unitHint:
-          unit != null
-            ? `${unit} ج.م${brand ? ` · ${brand.name}` : ""}`
-            : brand?.name,
-        cost: unit != null ? Math.round(line.qty * unit * 100) / 100 : null,
-        sub: `مقاس ${line.label} · حد ${line.maxDimMm}مم`,
-      });
-    }
-  }
-
-  pushPiece(
-    "tilt-corner-upper",
-    "كورنر علوي",
-    breakdown.tiltCornerUpperQty,
-    "tilt-corner-upper"
-  );
-  pushPiece(
-    "tilt-corner-lower",
-    "كورنر سفلي",
-    breakdown.tiltCornerLowerQty,
-    "tilt-corner-lower"
-  );
-  pushPiece(
-    "tilt-top-hinge",
-    "مفصلة علوية جزء الضلفة",
-    breakdown.tiltTopHingeQty,
-    "tilt-top-hinge"
-  );
-  pushPiece(
-    "tilt-top-frame-hinge",
-    "مفصلة علوية جزء الحلق",
-    breakdown.tiltTopFrameHingeQty,
-    "tilt-top-frame-hinge"
-  );
-  pushPiece(
-    "tilt-bottom-frame-hinge",
-    "مفصلة سفلية جزء الحلق",
-    breakdown.tiltBottomFrameHingeQty,
-    "tilt-bottom-frame-hinge"
-  );
-  pushPiece(
-    "tilt-bottom-sash-hinge",
-    "مفصلة سفلية جزء الضلفة",
-    breakdown.tiltBottomSashHingeQty,
-    "tilt-bottom-sash-hinge"
-  );
-  pushPiece(
-    "tilt-hinge-pin",
-    "مفصلة علوية بنز",
-    breakdown.tiltHingePinQty,
-    "tilt-hinge-pin"
-  );
-  pushPiece(
-    "tilt-corner-striker",
-    "سكاك كورنر سفلي",
-    breakdown.tiltCornerStrikerQty,
-    "tilt-corner-striker"
-  );
-  pushPiece(
-    "tilt-hinge-cover",
-    "غطاء مفصلة",
-    breakdown.tiltHingeCoverQty,
-    "tilt-hinge-cover"
-  );
 
   pushPiece("door-cylinder", "كالون", breakdown.doorCylinderQty, "door-cylinder");
   if (breakdown.doorSignalHandleQty > 0.5) {

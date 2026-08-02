@@ -8,6 +8,7 @@ import {
   ACCESSORY_BRAND_CATEGORIES,
   accessoryBrandCategoryLabel,
   defaultEspagnoletteCatalog,
+  defaultEspagnoletteLockQty,
   newAccessoryLockPieceId,
   newEspagnoletteCatalogId,
   type AccessoryBrand,
@@ -172,12 +173,15 @@ export function AccessoryDetailsForm({
     let size = 100;
     while (used.has(size) && size < 999) size += 10;
     const gap = Math.max(0, details.espagnoletteSashDeductionMm || 200);
+    const lockQty = defaultEspagnoletteLockQty(size);
     const entry: EspagnoletteCatalogEntry = {
       id: newEspagnoletteCatalogId(),
       size,
       maxHeightMm: size * 10 + gap,
       hinged: true,
       sliding: true,
+      hingedLockQty: lockQty,
+      slidingLockQty: lockQty,
     };
     patchDetails({
       espagnoletteCatalog: [...details.espagnoletteCatalog, entry].sort(
