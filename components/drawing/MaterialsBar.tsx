@@ -33,7 +33,9 @@ import {
 import {
   hybridSaleBreakdown,
   loadPricingSettings,
+  perSqmSaleBreakdown,
   PRICING_UPDATED_EVENT,
+  resolveProfileSalePricePerSqm,
 } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
 
@@ -50,6 +52,10 @@ type Props = {
   systemId?: string | null;
   /** خصم البند — يُطبَّق على إجمالي تكلفة الخامات */
   discountId?: DiscountId | string | null;
+  /** البند دبل زجاج — لوضع التسعير بالمتر */
+  isDoubleGlazing?: boolean;
+  /** رجوع لسعر المتر على البند لو النظام بدون سعر بيع */
+  fallbackPricePerSqm?: number;
 };
 
 type MaterialRow = {
@@ -73,6 +79,8 @@ export function MaterialsBar({
   heightMm,
   systemId,
   discountId,
+  isDoubleGlazing = false,
+  fallbackPricePerSqm = 0,
 }: Props) {
   const [profileSystem, setProfileSystem] = useState<MaterialSystem | null>(
     null
@@ -185,15 +193,39 @@ export function MaterialsBar({
 
   const saleHint = useMemo(() => {
     void pricingTick;
-    if (!hasAnyCost || grandTotal <= 0) return null;
     const settings = loadPricingSettings();
-    if (!settings.enabled) return null;
     const unitArea =
       widthMm && heightMm && widthMm > 0 && heightMm > 0
         ? (widthMm * heightMm) / 1_000_000
         : 1;
+    const doubleFromGlass =
+      glassBreakdown?.lines.some((l) => l.glazing === "double") ?? false;
+    const isDouble = isDoubleGlazing || doubleFromGlass;
+
+    if (settings.mode === "per_sqm") {
+      const salePerSqm = resolveProfileSalePricePerSqm(
+        systemId,
+        fallbackPricePerSqm
+      );
+      if (salePerSqm <= 0) return null;
+      return perSqmSaleBreakdown(salePerSqm, unitArea, isDouble, settings);
+    }
+
+    if (!hasAnyCost || grandTotal <= 0) return null;
     return hybridSaleBreakdown(grandTotal, unitArea, settings);
-  }, [grandTotal, hasAnyCost, widthMm, heightMm, pricingTick]);
+  }, [
+    grandTotal,
+    hasAnyCost,
+    widthMm,
+    heightMm,
+    pricingTick,
+    systemId,
+    isDoubleGlazing,
+    fallbackPricePerSqm,
+    glassBreakdown,
+  ]);
+
+  const showSummary = hasAnyCost || saleHint != null;
 
   return (
     <section
@@ -209,41 +241,48 @@ export function MaterialsBar({
         </p>
       </div>
 
-      {hasAnyCost ? (
+      {showSummary ? (
         <div className="border-b border-primary/20 bg-primary-soft/40 px-3 py-2.5">
-          {discountPct > 0 ? (
-            <div className="space-y-1">
+          {hasAnyCost ? (
+            discountPct > 0 ? (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] text-muted">قبل الخصم</p>
+                  <p className="text-sm font-semibold tabular-nums text-foreground">
+                    {formatCurrency(Math.round(grandTotal))} ج.م
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-medium text-primary">
+                    {discountText ?? `خصم ${discountPct}%`}
+                  </p>
+                  <p className="text-[11px] tabular-nums text-muted">
+                    −{formatCurrency(Math.round(grandTotal - discountedTotal))}{" "}
+                    ج.م
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-primary/15 pt-1">
+                  <p className="text-[11px] font-bold text-primary">بعد الخصم</p>
+                  <p className="text-base font-bold tabular-nums text-foreground">
+                    {formatCurrency(Math.round(discountedTotal))} ج.م
+                  </p>
+                </div>
+              </div>
+            ) : (
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] text-muted">قبل الخصم</p>
-                <p className="text-sm font-semibold tabular-nums text-foreground">
+                <p className="text-[11px] font-bold text-primary">
+                  إجمالي التكلفة
+                </p>
+                <p className="text-base font-bold tabular-nums text-foreground">
                   {formatCurrency(Math.round(grandTotal))} ج.م
                 </p>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] font-medium text-primary">
-                  {discountText ?? `خصم ${discountPct}%`}
-                </p>
-                <p className="text-[11px] tabular-nums text-muted">
-                  −{formatCurrency(Math.round(grandTotal - discountedTotal))} ج.م
-                </p>
-              </div>
-              <div className="flex items-center justify-between gap-2 border-t border-primary/15 pt-1">
-                <p className="text-[11px] font-bold text-primary">بعد الخصم</p>
-                <p className="text-base font-bold tabular-nums text-foreground">
-                  {formatCurrency(Math.round(discountedTotal))} ج.م
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] font-bold text-primary">إجمالي التكلفة</p>
-              <p className="text-base font-bold tabular-nums text-foreground">
-                {formatCurrency(Math.round(grandTotal))} ج.م
-              </p>
-            </div>
-          )}
-          {saleHint ? (
-            <div className="mt-2 space-y-1 border-t border-primary/15 pt-2">
+            )
+          ) : null}
+          {saleHint?.mode === "hybrid" ? (
+            <div
+              className={`space-y-1 ${hasAnyCost ? "mt-2 border-t border-primary/15 pt-2" : ""}`}
+            >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[10px] text-muted">
                   هامش {saleHint.marginPercent}%
@@ -268,6 +307,47 @@ export function MaterialsBar({
                   +{formatCurrency(Math.round(saleHint.laborAmount))} ج.م
                 </p>
               </div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-bold text-[#C45C26]">
+                  سعر البيع المقترح
+                </p>
+                <p className="text-base font-bold tabular-nums text-[#C45C26]">
+                  {formatCurrency(Math.round(saleHint.unitSale))} ج.م
+                </p>
+              </div>
+            </div>
+          ) : null}
+          {saleHint?.mode === "per_sqm" ? (
+            <div
+              className={`space-y-1 ${hasAnyCost ? "mt-2 border-t border-primary/15 pt-2" : ""}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] text-muted">
+                  {saleHint.salePricePerSqm} ج.م/م² ×{" "}
+                  {saleHint.billableArea.toFixed(
+                    saleHint.billableArea === 1 ? 0 : 2
+                  )}{" "}
+                  م²
+                  {saleHint.billableArea > 0 &&
+                  (widthMm ?? 0) * (heightMm ?? 0) > 0 &&
+                  (widthMm! * heightMm!) / 1_000_000 < 1
+                    ? " (حد أدنى متر)"
+                    : ""}
+                </p>
+                <p className="text-[11px] tabular-nums text-muted">
+                  {formatCurrency(Math.round(saleHint.baseAmount))} ج.م
+                </p>
+              </div>
+              {saleHint.isDouble && saleHint.doubleAmount > 0 ? (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] text-muted">
+                    زيادة دبل {saleHint.doubleExtraPerSqm} ج.م/م²
+                  </p>
+                  <p className="text-[11px] tabular-nums text-muted">
+                    +{formatCurrency(Math.round(saleHint.doubleAmount))} ج.م
+                  </p>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] font-bold text-[#C45C26]">
                   سعر البيع المقترح
@@ -309,7 +389,7 @@ export function MaterialsBar({
         </Section>
       ) : null}
 
-      {accessoryRows.length > 0 ? (
+      {accessoryRows.length > 0 || accessoriesBreakdown?.systemName ? (
         <Section
           title="الاكسسوار"
           total={accessoryTotal}
@@ -318,8 +398,13 @@ export function MaterialsBar({
               ? accessoriesBreakdown.systemName
               : undefined
           }
+          emptyHint={
+            accessoryRows.length === 0
+              ? "لا يوجد اكسسوار — الضلف كلها ثابتة أو مفيش فتحات"
+              : undefined
+          }
         >
-          <RowsList rows={accessoryRows} />
+          {accessoryRows.length > 0 ? <RowsList rows={accessoryRows} /> : null}
         </Section>
       ) : null}
 
@@ -465,10 +550,28 @@ function buildProfileRows(
         ok: materials.sashSlidingM > 0.0005,
       },
       {
-        key: "mullion",
-        label: "سوقاس",
-        qty: formatMeters(materials.mullionTotalM),
-        ok: materials.mullionTotalM > 0.0005,
+        key: "mullion-hinged",
+        label: "سوقاس مفصلي",
+        qty: formatMeters(materials.mullionHingedM),
+        ok: materials.mullionHingedM > 0.0005,
+      },
+      {
+        key: "mullion-sliding",
+        label: "سوقاس جرار",
+        qty: formatMeters(materials.mullionSlidingM),
+        ok: materials.mullionSlidingM > 0.0005,
+      },
+      {
+        key: "mullion-kit-hinged",
+        label: "طقم تجميع سقاس مفصلي",
+        qty: formatCount(materials.mullionHingedQty),
+        ok: materials.mullionHingedQty > 0,
+      },
+      {
+        key: "mullion-kit-sliding",
+        label: "طقم تجميع سقاس جرار",
+        qty: formatCount(materials.mullionSlidingQty),
+        ok: materials.mullionSlidingQty > 0,
       },
       {
         key: "bouclier",
@@ -566,10 +669,10 @@ function profileLineToRow(line: ProfileCostLine): MaterialRow {
       label: line.label,
       qty: `${line.qty ?? 0} طقم`,
       unitHint:
-        line.unitPrice != null
+        line.unitPrice != null && line.unitPrice > 0
           ? `${line.unitPrice} ج.م/طقم`
-          : "طقم لكل بوكلير",
-      cost: line.totalCost,
+          : line.productName ?? "طقم",
+      cost: line.totalCost > 0 ? line.totalCost : null,
       sub: line.productName,
     };
   }
@@ -734,6 +837,101 @@ function buildAccessoryRows(
   }
 
   pushPiece("hinge", "مفصلات", breakdown.hingeQty, "hinge");
+
+  const tiltEspQty = breakdown.tiltEspagnolettes.reduce((s, l) => s + l.qty, 0);
+  if (tiltEspQty > 0) {
+    for (const line of breakdown.tiltEspagnolettes) {
+      if (line.qty < 0.5) continue;
+      const brand = brandByCategoryId(brands, labels, "tilt-espagnolette");
+      const unit = accessoryBrandResolvedPrice(brand, line.maxDimMm);
+      rows.push({
+        key: `tilt-esp-${line.id}`,
+        label: `سبلونة مفصلي قلاب ${line.label}`,
+        qty: String(line.qty),
+        unitHint:
+          unit != null
+            ? `${unit} ج.م${brand ? ` · ${brand.name}` : ""}`
+            : brand?.name,
+        cost: unit != null ? Math.round(line.qty * unit * 100) / 100 : null,
+        sub: `مقاس ${line.label} · حد ${line.maxDimMm}مم`,
+      });
+    }
+  }
+
+  const tiltScissorsQty = breakdown.tiltScissors.reduce((s, l) => s + l.qty, 0);
+  if (tiltScissorsQty > 0) {
+    for (const line of breakdown.tiltScissors) {
+      if (line.qty < 0.5) continue;
+      const brand = brandByCategoryId(brands, labels, "tilt-scissors");
+      const unit = accessoryBrandResolvedPrice(brand, line.maxDimMm);
+      rows.push({
+        key: `tilt-scissors-${line.id}`,
+        label: `مقص قلاب ${line.label}`,
+        qty: String(line.qty),
+        unitHint:
+          unit != null
+            ? `${unit} ج.م${brand ? ` · ${brand.name}` : ""}`
+            : brand?.name,
+        cost: unit != null ? Math.round(line.qty * unit * 100) / 100 : null,
+        sub: `مقاس ${line.label} · حد ${line.maxDimMm}مم`,
+      });
+    }
+  }
+
+  pushPiece(
+    "tilt-corner-upper",
+    "كورنر علوي",
+    breakdown.tiltCornerUpperQty,
+    "tilt-corner-upper"
+  );
+  pushPiece(
+    "tilt-corner-lower",
+    "كورنر سفلي",
+    breakdown.tiltCornerLowerQty,
+    "tilt-corner-lower"
+  );
+  pushPiece(
+    "tilt-top-hinge",
+    "مفصلة علوية جزء الضلفة",
+    breakdown.tiltTopHingeQty,
+    "tilt-top-hinge"
+  );
+  pushPiece(
+    "tilt-top-frame-hinge",
+    "مفصلة علوية جزء الحلق",
+    breakdown.tiltTopFrameHingeQty,
+    "tilt-top-frame-hinge"
+  );
+  pushPiece(
+    "tilt-bottom-frame-hinge",
+    "مفصلة سفلية جزء الحلق",
+    breakdown.tiltBottomFrameHingeQty,
+    "tilt-bottom-frame-hinge"
+  );
+  pushPiece(
+    "tilt-bottom-sash-hinge",
+    "مفصلة سفلية جزء الضلفة",
+    breakdown.tiltBottomSashHingeQty,
+    "tilt-bottom-sash-hinge"
+  );
+  pushPiece(
+    "tilt-hinge-pin",
+    "مفصلة علوية بنز",
+    breakdown.tiltHingePinQty,
+    "tilt-hinge-pin"
+  );
+  pushPiece(
+    "tilt-corner-striker",
+    "سكاك كورنر سفلي",
+    breakdown.tiltCornerStrikerQty,
+    "tilt-corner-striker"
+  );
+  pushPiece(
+    "tilt-hinge-cover",
+    "غطاء مفصلة",
+    breakdown.tiltHingeCoverQty,
+    "tilt-hinge-cover"
+  );
 
   pushPiece("door-cylinder", "كالون", breakdown.doorCylinderQty, "door-cylinder");
   if (breakdown.doorSignalHandleQty > 0.5) {

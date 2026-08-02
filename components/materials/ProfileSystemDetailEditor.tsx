@@ -65,7 +65,7 @@ const PROFILE_PRICE_GROUPS: {
   },
   {
     label: "تقسيم وإكسسوار قطاع",
-    ids: ["mullion", "coupling", "knife", "bouclier"],
+    ids: ["mullion-hinged", "mullion-sliding", "coupling", "knife", "bouclier"],
   },
   {
     label: "باكتة",
@@ -139,6 +139,10 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
   const [systemName, setSystemName] = useState("");
   const [systemNotes, setSystemNotes] = useState("");
   const [bouclierCapKitPrice, setBouclierCapKitPrice] = useState("");
+  const [mullionAssemblyKitPrice, setMullionAssemblyKitPrice] = useState("");
+  const [slidingMullionAssemblyKitPrice, setSlidingMullionAssemblyKitPrice] =
+    useState("");
+  const [salePricePerSqm, setSalePricePerSqm] = useState("");
   const [rates, setRates] = useState<
     Partial<Record<ProfilePriceCategory, ProfileBarRate>>
   >({});
@@ -171,6 +175,23 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
           ? String(details.bouclierCapKitPrice)
           : ""
       );
+      setMullionAssemblyKitPrice(
+        details.mullionAssemblyKitPrice != null &&
+          details.mullionAssemblyKitPrice > 0
+          ? String(details.mullionAssemblyKitPrice)
+          : ""
+      );
+      setSlidingMullionAssemblyKitPrice(
+        details.slidingMullionAssemblyKitPrice != null &&
+          details.slidingMullionAssemblyKitPrice > 0
+          ? String(details.slidingMullionAssemblyKitPrice)
+          : ""
+      );
+      setSalePricePerSqm(
+        details.salePricePerSqm != null && details.salePricePerSqm > 0
+          ? String(details.salePricePerSqm)
+          : ""
+      );
       setRates(details.rates ?? {});
       setPieces(details.pieces);
     });
@@ -181,16 +202,32 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
     name = systemName,
     notes = systemNotes,
     nextRates = rates,
-    kitPriceRaw = bouclierCapKitPrice
+    kitPriceRaw = bouclierCapKitPrice,
+    mullionKitRaw = mullionAssemblyKitPrice,
+    slidingMullionKitRaw = slidingMullionAssemblyKitPrice,
+    salePriceRaw = salePricePerSqm
   ) {
     if (!catalog || !system) return;
     const kitN = Number(kitPriceRaw);
+    const mullionKitN = Number(mullionKitRaw);
+    const slidingMullionKitN = Number(slidingMullionKitRaw);
+    const saleN = Number(salePriceRaw);
     const profile: ProfileSystemDetails = {
       pieces: nextPieces,
       deductions: unifiedToProfileDeductions(getCutDeductions(catalog)),
       rates: { ...nextRates },
+      salePricePerSqm:
+        Number.isFinite(saleN) && saleN > 0 ? saleN : undefined,
       bouclierCapKitPrice:
         Number.isFinite(kitN) && kitN >= 0 ? kitN : undefined,
+      mullionAssemblyKitPrice:
+        Number.isFinite(mullionKitN) && mullionKitN >= 0
+          ? mullionKitN
+          : undefined,
+      slidingMullionAssemblyKitPrice:
+        Number.isFinite(slidingMullionKitN) && slidingMullionKitN >= 0
+          ? slidingMullionKitN
+          : undefined,
     };
     const nextSystem: MaterialSystem = {
       ...system,
@@ -212,6 +249,23 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
       setBouclierCapKitPrice(
         details.bouclierCapKitPrice != null && details.bouclierCapKitPrice > 0
           ? String(details.bouclierCapKitPrice)
+          : ""
+      );
+      setMullionAssemblyKitPrice(
+        details.mullionAssemblyKitPrice != null &&
+          details.mullionAssemblyKitPrice > 0
+          ? String(details.mullionAssemblyKitPrice)
+          : ""
+      );
+      setSlidingMullionAssemblyKitPrice(
+        details.slidingMullionAssemblyKitPrice != null &&
+          details.slidingMullionAssemblyKitPrice > 0
+          ? String(details.slidingMullionAssemblyKitPrice)
+          : ""
+      );
+      setSalePricePerSqm(
+        details.salePricePerSqm != null && details.salePricePerSqm > 0
+          ? String(details.salePricePerSqm)
           : ""
       );
       setRates(details.rates ?? {});
@@ -374,6 +428,22 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
           <label className="block text-[11px] text-muted">
+            سعر البيع للمتر (ج.م/م²) — شامل زجاج مفرد
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={salePricePerSqm}
+              onChange={(e) => setSalePricePerSqm(e.target.value)}
+              placeholder="مثلاً: 2800"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            />
+            <span className="mt-1 block text-[10px] leading-relaxed text-muted">
+              يُستخدم عند اختيار تسعير «بالمتر حسب القطاع» من الإعدادات. أقل من
+              متر يُحسب متر. زيادة الدبل من صفحة التسعير.
+            </span>
+          </label>
+          <label className="block text-[11px] text-muted">
             سعر طقم طبة البوكلير (ج.م/طقم)
             <input
               type="number"
@@ -382,6 +452,32 @@ export function ProfileSystemDetailEditor({ systemId }: Props) {
               value={bouclierCapKitPrice}
               onChange={(e) => setBouclierCapKitPrice(e.target.value)}
               placeholder="مثلاً: 45"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            />
+          </label>
+          <label className="block text-[11px] text-muted">
+            سعر طقم تجميع السقاس المفصلي (ج.م/طقم)
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={mullionAssemblyKitPrice}
+              onChange={(e) => setMullionAssemblyKitPrice(e.target.value)}
+              placeholder="مثلاً: 25"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            />
+          </label>
+          <label className="block text-[11px] text-muted">
+            سعر طقم تجميع السقاس الجرار (ج.م/طقم)
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={slidingMullionAssemblyKitPrice}
+              onChange={(e) =>
+                setSlidingMullionAssemblyKitPrice(e.target.value)
+              }
+              placeholder="مثلاً: 30"
               className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
             />
           </label>

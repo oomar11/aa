@@ -38,6 +38,7 @@ import {
   type PaneConfig,
   type PaneOpening,
 } from "@/lib/design-items";
+import { itemIsDoubleGlazing } from "@/lib/pricing";
 import { withSuggestedName } from "@/lib/item-naming";
 import { calcGlassBreakdown, calcItemMaterials, calcMeshBreakdown, calcProfileCostBreakdown, scaleMaterials, type GlassBreakdown, type MeshBreakdown, type ProfileCostBreakdown } from "@/lib/materials";
 import {
@@ -258,12 +259,12 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   }, [calcItem]);
 
   const accessoriesBreakdown = useMemo((): AccessoriesBreakdown | null => {
-    if (!calcItem || !item) return null;
+    if (!calcItem) return null;
     return scaleAccessories(
-      calcItemAccessories(item, undefined, projectMaterials),
+      calcItemAccessories(calcItem, undefined, projectMaterials),
       calcItem.qty
     );
-  }, [calcItem, item, projectMaterials]);
+  }, [calcItem, projectMaterials]);
 
   const [catalogTick, setCatalogTick] = useState(0);
 
@@ -566,6 +567,8 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
             heightMm={item.heightMm}
             systemId={calcItem?.systemId ?? item.systemId}
             discountId={item.discountId}
+            isDoubleGlazing={itemIsDoubleGlazing(item)}
+            fallbackPricePerSqm={item.pricePerSqm}
           />
         ) : null}
       </main>

@@ -10,7 +10,7 @@ export default function PricingSettingsPage() {
         backHref={ROUTES.settings}
         backLabel="الإعدادات"
         title="تسعير البيع"
-        description="هامش الربح · المصنعية · حد أدنى متر للمصنعية"
+        description="اختر نظام التسعير · هامش · مصنعية · سعر المتر للقطاع"
       />
       <div className="mt-4">
         <PricingForm />

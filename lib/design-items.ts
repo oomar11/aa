@@ -16,7 +16,10 @@ import {
   resolveGlassBottleId,
   type MaterialCatalog,
 } from "@/lib/material-systems";
-import type { ProjectMaterialDefaults } from "@/lib/project-materials";
+import {
+  projectUsesCustomAccessory,
+  type ProjectMaterialDefaults,
+} from "@/lib/project-materials";
 import { applyDiscountAmount } from "@/lib/item-catalogs";
 import { suggestItemName } from "@/lib/item-naming";
 import type { Project } from "@/lib/projects";
@@ -416,25 +419,49 @@ export function itemTotalPrice(
   if (typeof window !== "undefined") {
     try {
       // تحميل كسول لتفادي الاعتماد الدائري بين التسعير وحساب الخامات
-      const { loadPricingSettings, hybridUnitSalePrice } =
-        require("@/lib/pricing") as typeof import("@/lib/pricing");
-      const { calcItemMaterialsCost } =
-        require("@/lib/project-estimated-cost") as typeof import("@/lib/project-estimated-cost");
+      const {
+        loadPricingSettings,
+        hybridUnitSalePrice,
+        perSqmUnitSalePrice,
+        itemIsDoubleGlazing,
+        resolveProfileSalePricePerSqm,
+      } = require("@/lib/pricing") as typeof import("@/lib/pricing");
       const settings = loadPricingSettings();
-      if (settings.enabled) {
+      const unitArea = itemUnitAreaSqm(item);
+
+      if (settings.mode === "per_sqm") {
+        const systemId =
+          item.systemId ??
+          (project as ProjectMaterialDefaults | null | undefined)?.systemId;
+        const salePerSqm = resolveProfileSalePricePerSqm(
+          systemId,
+          item.pricePerSqm
+        );
+        const unitSale = perSqmUnitSalePrice(
+          salePerSqm,
+          unitArea,
+          itemIsDoubleGlazing(item),
+          settings
+        );
+        return applyDiscountAmount(unitSale * qty, item.discountId);
+      }
+
+      if (settings.mode === "hybrid") {
+        const { calcItemMaterialsCost } =
+          require("@/lib/project-estimated-cost") as typeof import("@/lib/project-estimated-cost");
         const cost = calcItemMaterialsCost(item, project as Project | null);
         if (cost.hasCost && cost.beforeDiscount > 0) {
           const materialsUnit = cost.beforeDiscount / cost.qty;
           const unitSale = hybridUnitSalePrice(
             materialsUnit,
-            itemUnitAreaSqm(item),
+            unitArea,
             settings
           );
           return applyDiscountAmount(unitSale * qty, item.discountId);
         }
       }
     } catch {
-      // الرجوع للتسعير اليدوي
+      // الرجوع لسعر المتر على البند
     }
   }
 
@@ -442,26 +469,44 @@ export function itemTotalPrice(
   return applyDiscountAmount(base, item.discountId);
 }
 
-/** سعر البيع المقترح للقطعة (بدون خصم) من التسعير الهجين */
+/** سعر البيع المقترح للقطعة (بدون خصم) حسب نظام التسعير المختار */
 export function itemSuggestedUnitSale(
   item: DesignItem,
   project?: Project | null
 ): number | null {
   if (typeof window === "undefined") return null;
   try {
-    const { loadPricingSettings, hybridUnitSalePrice } =
-      require("@/lib/pricing") as typeof import("@/lib/pricing");
+    const {
+      loadPricingSettings,
+      hybridUnitSalePrice,
+      perSqmUnitSalePrice,
+      itemIsDoubleGlazing,
+      resolveProfileSalePricePerSqm,
+    } = require("@/lib/pricing") as typeof import("@/lib/pricing");
+    const settings = loadPricingSettings();
+    const unitArea = itemUnitAreaSqm(item);
+
+    if (settings.mode === "per_sqm") {
+      const systemId =
+        item.systemId ??
+        (project as ProjectMaterialDefaults | null | undefined)?.systemId;
+      const salePerSqm = resolveProfileSalePricePerSqm(
+        systemId,
+        item.pricePerSqm
+      );
+      return perSqmUnitSalePrice(
+        salePerSqm,
+        unitArea,
+        itemIsDoubleGlazing(item),
+        settings
+      );
+    }
+
     const { calcItemMaterialsCost } =
       require("@/lib/project-estimated-cost") as typeof import("@/lib/project-estimated-cost");
-    const settings = loadPricingSettings();
-    if (!settings.enabled) return null;
     const cost = calcItemMaterialsCost({ ...item, qty: 1 }, project);
     if (!cost.hasCost || cost.beforeDiscount <= 0) return null;
-    return hybridUnitSalePrice(
-      cost.beforeDiscount,
-      itemUnitAreaSqm(item),
-      settings
-    );
+    return hybridUnitSalePrice(cost.beforeDiscount, unitArea, settings);
   } catch {
     return null;
   }
@@ -506,8 +551,10 @@ export function createItemFromTemplate(
     discountId: "none",
     systemId:
       projectDefaults.systemId ?? getDefaultSystemId("profiles", catalog),
-    accessoryId:
-      projectDefaults.accessoryId ?? getDefaultSystemId("accessories", catalog),
+    accessoryId: projectUsesCustomAccessory(projectDefaults)
+      ? undefined
+      : (projectDefaults.accessoryId ??
+        getDefaultSystemId("accessories", catalog)),
     glassPane1Id:
       projectDefaults.glassPane1Id ?? getDefaultGlassBottleId(catalog),
     glassPane2Id: projectDefaults.glassPane2Id,

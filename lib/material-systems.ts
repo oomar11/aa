@@ -110,7 +110,8 @@ export type ProfilePriceCategory =
   | "sash-hinged"
   | "sash-door"
   | "sash-sliding"
-  | "mullion"
+  | "mullion-hinged"
+  | "mullion-sliding"
   | "coupling"
   | "knife"
   | "bouclier"
@@ -132,7 +133,8 @@ export const PROFILE_PRICE_CATEGORIES: {
   { id: "sash-hinged", label: "ضلفة شباك مفصلي" },
   { id: "sash-door", label: "ضلفة باب مفصلي" },
   { id: "sash-sliding", label: "ضلفة جرار" },
-  { id: "mullion", label: "سوقاس" },
+  { id: "mullion-hinged", label: "سوقاس مفصلي" },
+  { id: "mullion-sliding", label: "سوقاس جرار" },
   { id: "coupling", label: "كوبلن" },
   { id: "knife", label: "سكينة" },
   { id: "bouclier", label: "بوكلير" },
@@ -228,10 +230,25 @@ export type ProfileSystemDetails = {
    */
   rates?: Partial<Record<ProfilePriceCategory, ProfileBarRate>>;
   /**
+   * سعر بيع المتر المربع (ج.م) — شامل زجاج مفرد.
+   * يُستخدم في وضع التسعير «بالمتر حسب القطاع».
+   */
+  salePricePerSqm?: number;
+  /**
    * سعر طقم طبة البوكلير (ج.م/طقم).
    * طقم بيركب لكل حتة بوكلير — مش بالعود، وبيختلف من سيستم للتاني.
    */
   bouclierCapKitPrice?: number;
+  /**
+   * سعر طقم تجميع السقاس المفصلي (ج.م/طقم).
+   * طقم واحد لكل سقاس مفصلي — مش بالمتر.
+   */
+  mullionAssemblyKitPrice?: number;
+  /**
+   * سعر طقم تجميع السقاس الجرار (ج.م/طقم).
+   * طقم واحد لكل سقاس جرار (جوا/بين ضلف الجرار).
+   */
+  slidingMullionAssemblyKitPrice?: number;
 };
 
 /** نوع الزجاجة الواحدة */
@@ -322,7 +339,29 @@ export type EspagnoletteCatalogEntry = {
   hinged: boolean;
   /** متاح لسبلونة الجرار */
   sliding: boolean;
+  /** عدد سكاك مفصلي لهذا المقاس */
+  hingedLockQty: number;
+  /** عدد سكاك جرار لهذا المقاس */
+  slidingLockQty: number;
 };
+
+/** رينج مقاس لمجموعة المفصلي القلاب (سبلونة / مقص) — من قائمة بريمير */
+export type TiltSizeRange = {
+  id: string;
+  /** عرض القائمة مثل 450/700 أو 350-600 */
+  label: string;
+  /** الحد الأقصى لبعد الضلفة (مم) المستخدم في الاختيار التلقائي */
+  maxDimMm: number;
+};
+
+/** عدد سكاك افتراضي حسب مقاس السبلونة (سم) — قابل للتعديل من الشاشة */
+export function defaultEspagnoletteLockQty(sizeCm: number): number {
+  if (sizeCm <= 40) return 1;
+  if (sizeCm <= 80) return 2;
+  if (sizeCm <= 120) return 3;
+  if (sizeCm <= 160) return 4;
+  return 5;
+}
 
 /** @deprecated — للترحيل من الإصدارات القديمة فقط */
 export type EspagnoletteSizeRule = {
@@ -344,6 +383,17 @@ export type AccessoryBrandCategory =
   | "hinged-espagnolette"
   | "hinged-lock"
   | "protruding-handle"
+  | "tilt-espagnolette"
+  | "tilt-scissors"
+  | "tilt-top-hinge"
+  | "tilt-top-frame-hinge"
+  | "tilt-bottom-frame-hinge"
+  | "tilt-bottom-sash-hinge"
+  | "tilt-corner-upper"
+  | "tilt-corner-lower"
+  | "tilt-corner-striker"
+  | "tilt-hinge-pin"
+  | "tilt-hinge-cover"
   | "door-cylinder"
   | "door-signal-handle"
   | "door-escutcheon"
@@ -356,7 +406,12 @@ export type AccessoryBrandCategory =
   | "sliding-lock"
   | "recessed-handle";
 
-export type AccessoryBrandGroup = "hinged" | "door" | "bouclier" | "sliding";
+export type AccessoryBrandGroup =
+  | "hinged"
+  | "tilt"
+  | "door"
+  | "bouclier"
+  | "sliding";
 
 export const ACCESSORY_BRAND_CATEGORIES: {
   id: AccessoryBrandCategory;
@@ -367,6 +422,33 @@ export const ACCESSORY_BRAND_CATEGORIES: {
   { id: "hinged-espagnolette", label: "سبلونة مفصلي", group: "hinged" },
   { id: "hinged-lock", label: "سكاك مفصلي", group: "hinged" },
   { id: "protruding-handle", label: "مقبض بارز", group: "hinged" },
+  { id: "tilt-espagnolette", label: "سبلونة مفصلي قلاب", group: "tilt" },
+  { id: "tilt-scissors", label: "مقص قلاب", group: "tilt" },
+  {
+    id: "tilt-top-hinge",
+    label: "مفصلة علوية جزء الضلفة",
+    group: "tilt",
+  },
+  {
+    id: "tilt-top-frame-hinge",
+    label: "مفصلة علوية جزء الحلق",
+    group: "tilt",
+  },
+  {
+    id: "tilt-bottom-frame-hinge",
+    label: "مفصلة سفلية جزء الحلق",
+    group: "tilt",
+  },
+  {
+    id: "tilt-bottom-sash-hinge",
+    label: "مفصلة سفلية جزء الضلفة",
+    group: "tilt",
+  },
+  { id: "tilt-corner-upper", label: "كورنر علوي", group: "tilt" },
+  { id: "tilt-corner-lower", label: "كورنر سفلي", group: "tilt" },
+  { id: "tilt-corner-striker", label: "سكاك كورنر سفلي", group: "tilt" },
+  { id: "tilt-hinge-pin", label: "مفصلة علوية بنز", group: "tilt" },
+  { id: "tilt-hinge-cover", label: "غطاء مفصلة", group: "tilt" },
   { id: "door-cylinder", label: "كالون", group: "door" },
   { id: "door-signal-handle", label: "مقبض إشارة", group: "door" },
   { id: "door-escutcheon", label: "وش تسكيك", group: "door" },
@@ -406,11 +488,35 @@ export type AccessorySystemDetails = {
   /** البراند المختار لكل فئة (معرّف من كتالوج accessoryBrands) */
   categoryBrands: Partial<Record<AccessoryBrandCategory, string>>;
   // ── مفصلي ──────────────────────────────────────────
-  /** مفصلات لكل ضلفة شباك مفصلي */
+  /** مفصلات عادية لكل ضلفة شباك مفصلي (مش قلاب) */
   hingesPerSash: number;
-  /** مفصلات لكل ضلفة باب */
+  /** مفصلات عادية لكل ضلفة باب — نفس قطعة الشباك */
   hingesPerDoor: number;
-  /** كتالوج مقاسات السبلونة — قابل للتعديل */
+  /** مفصلة علوية جزء الضلفة لكل ضلفة قلاب */
+  tiltTopHingesPerSash: number;
+  /** مفصلة علوية جزء الحلق لكل ضلفة قلاب */
+  tiltTopFrameHingesPerSash: number;
+  /** مفصلة سفلية جزء الحلق لكل ضلفة قلاب */
+  tiltBottomFrameHingesPerSash: number;
+  /** مفصلة سفلية جزء الضلفة لكل ضلفة قلاب */
+  tiltBottomSashHingesPerSash: number;
+  /** مقص قلاب لكل ضلفة قلاب */
+  tiltScissorsPerSash: number;
+  /** كورنر علوي لكل ضلفة قلاب */
+  tiltCornersUpperPerSash: number;
+  /** كورنر سفلي لكل ضلفة قلاب */
+  tiltCornersLowerPerSash: number;
+  /** سكاك كورنر سفلي لكل ضلفة قلاب */
+  tiltCornerStrikersPerSash: number;
+  /** بنز مفصلة علوية لكل ضلفة قلاب */
+  tiltHingePinsPerSash: number;
+  /** أغطية مفصلات لكل ضلفة قلاب */
+  tiltHingeCoversPerSash: number;
+  /** رينجات سبلونة مفصلي القلاب (بريمير) */
+  tiltEspagnoletteRanges: TiltSizeRange[];
+  /** رينجات مقص القلاب (بريمير) */
+  tiltScissorsRanges: TiltSizeRange[];
+  /** كتالوج مقاسات السبلونة — مفصلي/جرار */
   espagnoletteCatalog: EspagnoletteCatalogEntry[];
   /**
    * أقل فرق مطلوب بين ارتفاع الضلفة ومقاس السبلونة (مم).
@@ -443,10 +549,12 @@ export type AccessorySystemDetails = {
   brushSashPerimeterMultiplier: number;
   /** مضاعف ارتفاع السكينة للفرش (افتراضي ١) */
   brushKnifeHeightMultiplier: number;
-  /** سكاك جرار — مكان المفصلي */
+  /** سكاك جرار — اسم واحد؛ العدد من مقاس السبلونة */
   slidingLockPieces: AccessoryLockPiece[];
   /** مقبض غاطس لكل ضلفة جرار غاطسة */
   recessedHandlesPerRecessedSash: number;
+  /** مقبض بارز لكل ضلفة جرار بارزة */
+  protrudingHandlesPerProtrudingSash: number;
 };
 
 /** دور عود الحديد — حلق/ضلفة حسب مفصلي أو جرار (وباب للشباك المفصلي) */
@@ -1086,13 +1194,57 @@ function newLockPieceId(prefix: string): string {
 
 export function defaultEspagnoletteCatalog(): EspagnoletteCatalogEntry[] {
   const gap = 200;
-  return DEFAULT_ESPAGNOLETTE_SIZE_VALUES.map((size) => ({
-    id: `esp-${size}`,
-    size,
-    maxHeightMm: size * 10 + gap,
-    hinged: true,
-    sliding: true,
-  }));
+  return DEFAULT_ESPAGNOLETTE_SIZE_VALUES.map((size) => {
+    const lockQty = defaultEspagnoletteLockQty(size);
+    return {
+      id: `esp-${size}`,
+      size,
+      maxHeightMm: size * 10 + gap,
+      hinged: true,
+      sliding: true,
+      hingedLockQty: lockQty,
+      slidingLockQty: lockQty,
+    };
+  });
+}
+
+/** رينجات سبلونة مفصلي القلاب — بريمير/فورنا 2026 */
+export function defaultTiltEspagnoletteRanges(): TiltSizeRange[] {
+  return [
+    { id: "tilt-esp-450-700", label: "450/700", maxDimMm: 700 },
+    { id: "tilt-esp-800-600", label: "800/600", maxDimMm: 800 },
+    { id: "tilt-esp-700-1200", label: "700/1200", maxDimMm: 1200 },
+    { id: "tilt-esp-900-1400", label: "900/1400", maxDimMm: 1400 },
+    { id: "tilt-esp-1200-1700", label: "1200/1700", maxDimMm: 1700 },
+    { id: "tilt-esp-1700-2200", label: "1700/2200", maxDimMm: 2200 },
+  ];
+}
+
+/** رينجات مقص القلاب — بريمير/فورنا 2026 */
+export function defaultTiltScissorsRanges(): TiltSizeRange[] {
+  return [
+    { id: "tilt-sc-350-600", label: "350-600", maxDimMm: 600 },
+    { id: "tilt-sc-400-650", label: "400-650", maxDimMm: 650 },
+    { id: "tilt-sc-600-850", label: "600-850", maxDimMm: 850 },
+    { id: "tilt-sc-850-1100", label: "850-1100", maxDimMm: 1100 },
+  ];
+}
+
+/**
+ * يختار أصغر رينج يستوعب بعد الضلفة (مم).
+ * لو الضلفة أكبر من كل الرينجات → أكبر رينج.
+ */
+export function pickTiltSizeRange(
+  sashDimMm: number,
+  ranges: TiltSizeRange[]
+): TiltSizeRange | null {
+  const sorted = [...ranges].sort((a, b) => a.maxDimMm - b.maxDimMm);
+  if (sorted.length === 0) return null;
+  const dim = Math.max(0, sashDimMm);
+  for (const r of sorted) {
+    if (r.maxDimMm >= dim) return r;
+  }
+  return sorted[sorted.length - 1]!;
 }
 
 /** @deprecated */
@@ -1104,28 +1256,19 @@ export function defaultEspagnoletteSizeRules(): EspagnoletteSizeRule[] {
 }
 
 export function defaultHingedLockPieces(): AccessoryLockPiece[] {
-  return [
-    { id: "hl-keeper-main", name: "سكة رئيسية", qtyPerLockset: 1 },
-    { id: "hl-keeper-mid", name: "سكة وسط", qtyPerLockset: 2 },
-  ];
+  return [{ id: "hl-keeper", name: "سكاك مفصلي", qtyPerLockset: 1 }];
 }
 
 export function defaultBouclierLockPieces(): AccessoryLockPiece[] {
-  return [
-    { id: "bl-keeper", name: "سكة بوكلير", qtyPerLockset: 1 },
-    { id: "bl-strike", name: "لقمة بوكلير", qtyPerLockset: 1 },
-  ];
+  return [{ id: "bl-keeper", name: "سكاك بوكلير", qtyPerLockset: 1 }];
 }
 
 export function defaultBouclierBoltLockPieces(): AccessoryLockPiece[] {
-  return [{ id: "bb-keeper", name: "سكة ترباس", qtyPerLockset: 1 }];
+  return [{ id: "bb-keeper", name: "سكاك ترباس", qtyPerLockset: 1 }];
 }
 
 export function defaultSlidingLockPieces(): AccessoryLockPiece[] {
-  return [
-    { id: "sl-keeper-main", name: "سكة جرار", qtyPerLockset: 1 },
-    { id: "sl-keeper-mid", name: "سكة وسط جرار", qtyPerLockset: 1 },
-  ];
+  return [{ id: "sl-keeper", name: "سكاك جرار", qtyPerLockset: 1 }];
 }
 
 export function defaultAccessoryDetails(): AccessorySystemDetails {
@@ -1133,6 +1276,18 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     categoryBrands: defaultVorneCategoryBrands(),
     hingesPerSash: 2,
     hingesPerDoor: 3,
+    tiltTopHingesPerSash: 1,
+    tiltTopFrameHingesPerSash: 1,
+    tiltBottomFrameHingesPerSash: 1,
+    tiltBottomSashHingesPerSash: 1,
+    tiltScissorsPerSash: 1,
+    tiltCornersUpperPerSash: 1,
+    tiltCornersLowerPerSash: 1,
+    tiltCornerStrikersPerSash: 1,
+    tiltHingePinsPerSash: 1,
+    tiltHingeCoversPerSash: 4,
+    tiltEspagnoletteRanges: defaultTiltEspagnoletteRanges(),
+    tiltScissorsRanges: defaultTiltScissorsRanges(),
     espagnoletteCatalog: defaultEspagnoletteCatalog(),
     espagnoletteSashDeductionMm: 200,
     hingedLockPieces: defaultHingedLockPieces(),
@@ -1149,6 +1304,7 @@ export function defaultAccessoryDetails(): AccessorySystemDetails {
     brushKnifeHeightMultiplier: 1,
     slidingLockPieces: defaultSlidingLockPieces(),
     recessedHandlesPerRecessedSash: 1,
+    protrudingHandlesPerProtrudingSash: 1,
   };
 }
 
@@ -1331,14 +1487,24 @@ export function ironDeductionsFromOffsets(mm: {
  * يختار مقاس السبلونة (سم) حسب ارتفاع الضلفة (مم).
  * يُختار أكبر مقاس طوله ≤ (ارتفاع الضلفة − الفرق الأدنى)، وإلا أصغر مقاس متاح.
  */
+export type EspagnoletteKind = "hinged" | "sliding";
+
+function espagnoletteKindEnabled(
+  entry: EspagnoletteCatalogEntry,
+  kind: EspagnoletteKind
+): boolean {
+  if (kind === "hinged") return entry.hinged;
+  return entry.sliding;
+}
+
 export function pickEspagnoletteSize(
   sashHeightMm: number,
   catalog: EspagnoletteCatalogEntry[],
-  kind: "hinged" | "sliding",
+  kind: EspagnoletteKind,
   minGapMm = 200
 ): number {
   const allowed = catalog
-    .filter((e) => (kind === "hinged" ? e.hinged : e.sliding))
+    .filter((e) => espagnoletteKindEnabled(e, kind))
     .sort((a, b) => a.size - b.size);
 
   if (allowed.length === 0) {
@@ -1361,10 +1527,10 @@ export function pickEspagnoletteSize(
 
 export function espagnoletteCatalogSummary(
   catalog: EspagnoletteCatalogEntry[],
-  kind?: "hinged" | "sliding"
+  kind?: EspagnoletteKind
 ): string {
   const sizes = catalog
-    .filter((e) => !kind || (kind === "hinged" ? e.hinged : e.sliding))
+    .filter((e) => !kind || espagnoletteKindEnabled(e, kind))
     .map((e) => e.size)
     .sort((a, b) => a - b);
   if (sizes.length === 0) return "—";
@@ -1498,7 +1664,8 @@ export function cityPremierProfileBarRates(): Partial<
     "sash-hinged": r(830, 6, "ضلفة شباك مفصلي"),
     "sash-door": r(980, 6, "ضلفة باب مفصلي"),
     bouclier: r(710, 6.5, "قائم متحرك بوكلير"),
-    mullion: r(875, 6.5, "قائم ثابت سوقاس"),
+    "mullion-hinged": r(875, 6.5, "قائم ثابت سوقاس مفصلي"),
+    "mullion-sliding": r(875, 6.5, "قائم ثابت سوقاس جرار"),
     "bead-single-hinged": r(208, 6, "باكتة 35مم"),
     "bead-double-hinged": r(165, 6, "باكتة 20مم"),
     panel: r(165, 6, "بنل عرض ١٥ سم"),
@@ -1516,13 +1683,14 @@ export function cityPremierProfileBarRates(): Partial<
 }
 
 /** أسعار افتراضية قديمة (ج.م/م) — للترحيل فقط */
-const LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES = {
+const LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES: Record<string, number> = {
   "frame-hinged": 42,
   "frame-sliding": 48,
   "sash-hinged": 52,
   "sash-door": 58,
   "sash-sliding": 38,
   mullion: 50,
+  "mullion-hinged": 50,
   coupling: 45,
   knife: 28,
   bouclier: 35,
@@ -1532,14 +1700,20 @@ const LEGACY_PLACEHOLDER_PROFILE_BRAND_PRICES = {
   "bead-double-sliding": 18,
   panel: 18,
   "mesh-sliding-profile": 38,
-} as const satisfies Partial<Record<ProfilePriceCategory, number>>;
+};
 
 function profileBrandPricesMatch(
-  prices: Partial<Record<ProfilePriceCategory, number>>,
-  expected: Partial<Record<ProfilePriceCategory, number>>
+  prices: Partial<Record<string, number>>,
+  expected: Record<string, number>
 ): boolean {
   for (const [key, value] of Object.entries(expected)) {
-    if ((prices[key as ProfilePriceCategory] ?? 0) !== value) return false;
+    if (key === "mullion-hinged") {
+      const legacy = prices.mullion ?? prices["mullion-hinged"] ?? 0;
+      if (legacy !== value) return false;
+      continue;
+    }
+    if (key === "mullion") continue;
+    if ((prices[key] ?? 0) !== value) return false;
   }
   return true;
 }
@@ -1596,6 +1770,19 @@ export function normalizeProfileBrandRates(
       out.panel = {
         ...legacyPanel,
         productName: "بنل عرض ١٥ سم",
+      };
+    }
+  }
+
+  // ترحيل سوقاس موحّد → مفصلي + جرار
+  const legacyMullion = normalizeProfileBarRate(o["mullion"]);
+  if (legacyMullion) {
+    if (!out["mullion-hinged"]) out["mullion-hinged"] = legacyMullion;
+    if (!out["mullion-sliding"]) {
+      out["mullion-sliding"] = {
+        ...legacyMullion,
+        productName: legacyMullion.productName?.replace(/سوقاس(?! جرار)/, "سوقاس جرار")
+          ?? "سوقاس جرار",
       };
     }
   }
@@ -1697,7 +1884,8 @@ export function defaultProfileBrands(): ProfileBrand[] {
         "sash-hinged": makeProfileBarRate(408, 6),
         "sash-door": makeProfileBarRate(450, 6),
         "sash-sliding": makeProfileBarRate(288, 6),
-        mullion: makeProfileBarRate(390, 6),
+        "mullion-hinged": makeProfileBarRate(390, 6),
+        "mullion-sliding": makeProfileBarRate(390, 6),
         coupling: makeProfileBarRate(348, 6),
         knife: makeProfileBarRate(210, 6),
         bouclier: makeProfileBarRate(252, 6),
@@ -2827,6 +3015,14 @@ function normalizeProfileDetails(raw: unknown): ProfileSystemDetails {
       const n = Number(d.bouclierCapKitPrice);
       return Number.isFinite(n) && n >= 0 ? n : undefined;
     })(),
+    mullionAssemblyKitPrice: (() => {
+      const n = Number(d.mullionAssemblyKitPrice);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    })(),
+    slidingMullionAssemblyKitPrice: (() => {
+      const n = Number(d.slidingMullionAssemblyKitPrice);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    })(),
   };
 }
 
@@ -2996,13 +3192,29 @@ function normalizeEspagnoletteCatalog(
       if (!size) continue;
       const maxH = Number(o.maxHeightMm);
       seenIds.add(id);
+      const lockDefault = defaultEspagnoletteLockQty(size);
+      const hingedLockRaw = Number(o.hingedLockQty);
+      const slidingLockRaw = Number(o.slidingLockQty);
+      const hinged =
+        o.hinged === undefined ? true : Boolean(o.hinged);
+      const sliding =
+        o.sliding === undefined ? true : Boolean(o.sliding);
+      const hingedLockQty =
+        Number.isFinite(hingedLockRaw) && hingedLockRaw >= 0
+          ? Math.round(hingedLockRaw)
+          : lockDefault;
       out.push({
         id,
         size,
         maxHeightMm:
           Number.isFinite(maxH) && maxH > 0 ? Math.round(maxH) : size * 10,
-        hinged: o.hinged === undefined ? true : Boolean(o.hinged),
-        sliding: o.sliding === undefined ? true : Boolean(o.sliding),
+        hinged,
+        sliding,
+        hingedLockQty,
+        slidingLockQty:
+          Number.isFinite(slidingLockRaw) && slidingLockRaw >= 0
+            ? Math.round(slidingLockRaw)
+            : lockDefault,
       });
     }
     if (out.length > 0) {
@@ -3070,13 +3282,18 @@ function migrateLegacyEspagnoletteCatalog(
 
   return [...allSizes]
     .sort((a, b) => a - b)
-    .map((size) => ({
-      id: `esp-${size}`,
-      size,
-      maxHeightMm: bySize.get(size)?.maxHeightMm ?? size * 10,
-      hinged: hingedSet.size === 0 || hingedSet.has(size),
-      sliding: slidingSet.size === 0 || slidingSet.has(size),
-    }));
+    .map((size) => {
+      const lockQty = defaultEspagnoletteLockQty(size);
+      return {
+        id: `esp-${size}`,
+        size,
+        maxHeightMm: bySize.get(size)?.maxHeightMm ?? size * 10,
+        hinged: hingedSet.size === 0 || hingedSet.has(size),
+        sliding: slidingSet.size === 0 || slidingSet.has(size),
+        hingedLockQty: lockQty,
+        slidingLockQty: lockQty,
+      };
+    });
 }
 
 function normalizeLockPieces(
@@ -3101,7 +3318,28 @@ function normalizeLockPieces(
         Number.isFinite(qty) && qty >= 0 ? Math.round(qty) : 1,
     });
   }
-  return out.length > 0 ? out : fallback.map((p) => ({ ...p }));
+  if (out.length === 0) return fallback.map((p) => ({ ...p }));
+
+  // ترحيل القطع القديمة (سكة وسط / لقمة) → الاسم الواحد المعتمد
+  const ids = new Set(out.map((p) => p.id));
+  const names = out.map((p) => p.name);
+  const isLegacyHinged =
+    ids.has("hl-keeper-mid") ||
+    names.some((n) => n.includes("سكة وسط") && !n.includes("جرار"));
+  const isLegacySliding =
+    ids.has("sl-keeper-mid") || names.some((n) => n.includes("سكة وسط جرار"));
+  const isLegacyBouclier =
+    ids.has("bl-strike") || names.some((n) => n.includes("لقمة"));
+
+  if (
+    (fallback[0]?.id === "hl-keeper" && isLegacyHinged) ||
+    (fallback[0]?.id === "sl-keeper" && isLegacySliding) ||
+    (fallback[0]?.id === "bl-keeper" && isLegacyBouclier)
+  ) {
+    return fallback.map((p) => ({ ...p }));
+  }
+
+  return out;
 }
 
 function normalizePositiveInt(raw: unknown, fallback: number): number {
@@ -3181,6 +3419,35 @@ function normalizeAccessorySizePrices(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+function normalizeTiltSizeRanges(
+  raw: unknown,
+  fallback: TiltSizeRange[]
+): TiltSizeRange[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return fallback.map((r) => ({ ...r }));
+  }
+  const out: TiltSizeRange[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const id =
+      typeof o.id === "string" && o.id.trim()
+        ? o.id.trim()
+        : `tilt-rng-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+    if (seen.has(id)) continue;
+    const label =
+      typeof o.label === "string" && o.label.trim()
+        ? o.label.trim()
+        : String(o.maxDimMm ?? "");
+    const maxDim = Math.round(Number(o.maxDimMm));
+    if (!label || !Number.isFinite(maxDim) || maxDim <= 0) continue;
+    seen.add(id);
+    out.push({ id, label, maxDimMm: maxDim });
+  }
+  return out.length > 0 ? out.sort((a, b) => a.maxDimMm - b.maxDimMm) : fallback.map((r) => ({ ...r }));
+}
+
 export function normalizeAccessoryDetails(
   raw: unknown,
   brands: AccessoryBrand[] = defaultAccessoryBrands()
@@ -3197,12 +3464,61 @@ export function normalizeAccessoryDetails(
   return {
     categoryBrands: (() => {
       const mapped = normalizeCategoryBrands(o.categoryBrands, brands);
-      return Object.keys(mapped).length > 0
-        ? mapped
-        : defaultVorneCategoryBrands();
+      const defaults = defaultVorneCategoryBrands();
+      if (Object.keys(mapped).length === 0) return defaults;
+      // املأ الفئات الناقصة (مثل القلاب الجديد) من الافتراضي
+      return { ...defaults, ...mapped };
     })(),
     hingesPerSash: normalizePositiveInt(o.hingesPerSash, fallback.hingesPerSash),
     hingesPerDoor: normalizePositiveInt(o.hingesPerDoor, fallback.hingesPerDoor),
+    tiltTopHingesPerSash: normalizePositiveInt(
+      o.tiltTopHingesPerSash,
+      fallback.tiltTopHingesPerSash
+    ),
+    tiltTopFrameHingesPerSash: normalizePositiveInt(
+      o.tiltTopFrameHingesPerSash,
+      fallback.tiltTopFrameHingesPerSash
+    ),
+    tiltBottomFrameHingesPerSash: normalizePositiveInt(
+      o.tiltBottomFrameHingesPerSash,
+      fallback.tiltBottomFrameHingesPerSash
+    ),
+    tiltBottomSashHingesPerSash: normalizePositiveInt(
+      o.tiltBottomSashHingesPerSash,
+      fallback.tiltBottomSashHingesPerSash
+    ),
+    tiltScissorsPerSash: normalizePositiveInt(
+      o.tiltScissorsPerSash,
+      fallback.tiltScissorsPerSash
+    ),
+    tiltCornersUpperPerSash: normalizePositiveInt(
+      o.tiltCornersUpperPerSash,
+      fallback.tiltCornersUpperPerSash
+    ),
+    tiltCornersLowerPerSash: normalizePositiveInt(
+      o.tiltCornersLowerPerSash,
+      fallback.tiltCornersLowerPerSash
+    ),
+    tiltCornerStrikersPerSash: normalizePositiveInt(
+      o.tiltCornerStrikersPerSash,
+      fallback.tiltCornerStrikersPerSash
+    ),
+    tiltHingePinsPerSash: normalizePositiveInt(
+      o.tiltHingePinsPerSash,
+      fallback.tiltHingePinsPerSash
+    ),
+    tiltHingeCoversPerSash: normalizePositiveInt(
+      o.tiltHingeCoversPerSash,
+      fallback.tiltHingeCoversPerSash
+    ),
+    tiltEspagnoletteRanges: normalizeTiltSizeRanges(
+      o.tiltEspagnoletteRanges,
+      fallback.tiltEspagnoletteRanges
+    ),
+    tiltScissorsRanges: normalizeTiltSizeRanges(
+      o.tiltScissorsRanges,
+      fallback.tiltScissorsRanges
+    ),
     espagnoletteCatalog,
     espagnoletteSashDeductionMm: normalizePositiveInt(
       o.espagnoletteSashDeductionMm,
@@ -3260,6 +3576,10 @@ export function normalizeAccessoryDetails(
     recessedHandlesPerRecessedSash: normalizePositiveInt(
       o.recessedHandlesPerRecessedSash,
       fallback.recessedHandlesPerRecessedSash
+    ),
+    protrudingHandlesPerProtrudingSash: normalizePositiveInt(
+      o.protrudingHandlesPerProtrudingSash,
+      fallback.protrudingHandlesPerProtrudingSash
     ),
   };
 }
