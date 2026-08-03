@@ -2046,6 +2046,117 @@ export function ensureKraftAllenProfileSystems(
   return [...withoutSplit, defaultKraftAllenSystem(deductions)];
 }
 
+/** قطاعات بريمير — مفصلي + جرار في نظام واحد */
+export function premierProfilePieces(): ProfilePiece[] {
+  const byRole = new Map<ProfilePieceRole, ProfilePiece>();
+  for (const p of [
+    ...standardHingedProfilePieces(),
+    ...standardSlidingProfilePieces(),
+  ]) {
+    if (!byRole.has(p.role)) {
+      byRole.set(p.role, {
+        ...p,
+        id: `pvc1-${p.role}`,
+      });
+    }
+  }
+  return [...byRole.values()];
+}
+
+/** يدمج قطاعات بريمير الناقصة (جرار مع المفصلي) بدون تكرار الدور */
+export function mergePremierProfilePieces(
+  existing: ProfilePiece[]
+): ProfilePiece[] {
+  const byRole = new Map<ProfilePieceRole, ProfilePiece>();
+  for (const p of existing) {
+    const role = normalizeProfilePieceRole(p.role);
+    byRole.set(role, { ...p, role });
+  }
+  for (const p of premierProfilePieces()) {
+    if (!byRole.has(p.role)) byRole.set(p.role, p);
+  }
+  return [...byRole.values()];
+}
+
+const PREMIER_NOTES =
+  "سيستم بريمير — مفصلي وجرار · أسعار القطاعات من قائمة سيتي بريمير (فبراير 2025)";
+
+/** نظام بريمير الموحّد (مفصلي + جرار) */
+export function defaultPremierSystem(
+  deductions: ProfileDeductions
+): MaterialSystem {
+  return withDefaultProfile({
+    id: "pvc1",
+    name: "بريمير",
+    notes: PREMIER_NOTES,
+    isDefault: true,
+    profile: {
+      pieces: premierProfilePieces(),
+      deductions,
+      rates: cityPremierProfileBarRates(),
+    },
+  });
+}
+
+function isSplitPremierSystem(system: MaterialSystem): boolean {
+  return (
+    system.id === "pvc2" ||
+    system.name === "بريمير سلايد" ||
+    /^بريمير\s*سلايد$/i.test(system.name.trim())
+  );
+}
+
+function isUnifiedPremierSystem(system: MaterialSystem): boolean {
+  if (isSplitPremierSystem(system)) return false;
+  return (
+    system.id === "pvc1" ||
+    system.name === "بريمير" ||
+    system.name === "بريمير سيتي" ||
+    systemLooksLikeCityPremier(system)
+  );
+}
+
+/**
+ * نظام بريمير واحد فقط:
+ * - يشيل بريمير سلايد (pvc2)
+ * - يوحّد بريمير سيتي → بريمير مع قطاعات مفصلي+جرار
+ */
+export function ensurePremierProfileSystems(
+  systems: MaterialSystem[],
+  deductions: ProfileDeductions
+): MaterialSystem[] {
+  const withoutSplit = systems.filter((s) => !isSplitPremierSystem(s));
+  const idx = withoutSplit.findIndex(isUnifiedPremierSystem);
+
+  if (idx < 0) {
+    return [defaultPremierSystem(deductions), ...withoutSplit];
+  }
+
+  return withoutSplit.map((s, i) => {
+    if (i !== idx) return s;
+    const profile = s.profile ?? defaultProfileDetails();
+    const renameToPremier =
+      s.name === "بريمير سيتي" || s.name === "نظام PVC مخصص 1";
+    return {
+      ...s,
+      name: renameToPremier ? "بريمير" : s.name,
+      notes:
+        !s.notes?.trim() ||
+        /بريمير سيتي|سيستم جرار|نظام PVC مخصص/.test(s.notes)
+          ? PREMIER_NOTES
+          : s.notes,
+      profile: {
+        ...profile,
+        pieces: mergePremierProfilePieces(profile.pieces),
+        rates: profileRatesHasPricing(profile.rates)
+          ? profile.rates
+          : cityPremierProfileBarRates(),
+        deductions,
+      },
+    };
+  });
+}
+
 export function normalizeProfileBrandPrices(
   raw: unknown
 ): Partial<Record<ProfilePriceCategory, number>> {
@@ -2578,37 +2689,7 @@ export function getDefaultCatalog(): MaterialCatalog {
   return {
     cutDeductions,
     profiles: [
-      withDefaultProfile({
-        id: "pvc1",
-        name: "بريمير سيتي",
-        notes:
-          "سيستم بريمير سيتي — أسعار القطاعات من قائمة سيتي بريمير (فبراير 2025)",
-        isDefault: true,
-        profile: {
-          pieces: [
-            ...standardHingedProfilePieces().map((p) => ({
-              ...p,
-              id: `pvc1-${p.role}`,
-            })),
-          ],
-          deductions: syncedDeductions,
-          rates: cityPremierProfileBarRates(),
-        },
-      }),
-      withDefaultProfile({
-        id: "pvc2",
-        name: "بريمير سلايد",
-        notes:
-          "سيستم جرار — أسعار القطاعات من قائمة سيتي بريمير (فبراير 2025)",
-        profile: {
-          pieces: standardSlidingProfilePieces().map((p) => ({
-            ...p,
-            id: `pvc2-${p.role}`,
-          })),
-          deductions: syncedDeductions,
-          rates: cityPremierProfileBarRates(),
-        },
-      }),
+      defaultPremierSystem(syncedDeductions),
       defaultKraftAllenSystem(syncedDeductions),
       withDefaultProfile({
         id: "pvc3",
@@ -3779,16 +3860,9 @@ function migrateProfileSystemLabels(systems: MaterialSystem[]): MaterialSystem[]
     { fromNames: string[]; name: string; notes: string }
   > = {
     pvc1: {
-      fromNames: ["نظام PVC مخصص 1"],
-      name: "بريمير سيتي",
-      notes:
-        "سيستم بريمير سيتي — أسعار القطاعات من قائمة سيتي بريمير (فبراير 2025)",
-    },
-    pvc2: {
-      fromNames: ["نظام PVC مخصص 2"],
-      name: "بريمير سلايد",
-      notes:
-        "سيستم جرار — أسعار القطاعات من قائمة سيتي بريمير (فبراير 2025)",
+      fromNames: ["نظام PVC مخصص 1", "بريمير سيتي"],
+      name: "بريمير",
+      notes: PREMIER_NOTES,
     },
   };
 
@@ -3953,12 +4027,11 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       if (cat.id === "profiles") {
         merged = migrateProfileSystemLabels(merged);
         merged = foldProfileBrandRatesIntoSystems(merged, profileBrands);
-        merged = ensureKraftAllenProfileSystems(
-          merged,
-          unifiedToProfileDeductions(
-            normalizeUnifiedCutDeductions(raw.cutDeductions)
-          )
+        const profileDeductions = unifiedToProfileDeductions(
+          normalizeUnifiedCutDeductions(raw.cutDeductions)
         );
+        merged = ensurePremierProfileSystems(merged, profileDeductions);
+        merged = ensureKraftAllenProfileSystems(merged, profileDeductions);
       }
 
       if (cat.id === "iron") {

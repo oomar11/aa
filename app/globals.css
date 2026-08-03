@@ -94,3 +94,27 @@ body {
     color: inherit !important;
   }
 }
+
+/*
+ * قفل عمودي على الموبايل: لو الجهاز اتعمل لاندسكيب، الواجهة تفضل عمودي.
+ * يكمّل orientation: portrait في الـ manifest وقفل Screen Orientation API.
+ */
+@media screen and (max-width: 900px) {
+  html.portrait-lock-active,
+  html.portrait-lock-active body {
+    width: 100dvh;
+    height: 100dvw;
+    overflow-x: hidden;
+  }
+
+  html.portrait-lock-active body {
+    position: fixed;
+    inset: auto;
+    top: 0;
+    left: 0;
+    transform: rotate(-90deg);
+    transform-origin: top left;
+    translate: 0 100dvw;
+  }
+}
+
