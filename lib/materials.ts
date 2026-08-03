@@ -1151,18 +1151,6 @@ function paneGlassAreaMm2(
   );
 }
 
-/** مساحة السلك داخل الضلفة (مم²) */
-function paneMeshAreaMm2(
-  w: number,
-  h: number,
-  opening: PaneOpening,
-  cfg: PaneConfig
-): number {
-  const norm = normalizePaneConfig(cfg);
-  if (!norm.mesh) return 0;
-  return paneFillAreaMm2(w, h, opening, cfg);
-}
-
 /** قطاع ضلفة سلك جرار — محيط كل وحدة حساب (كتلة أو ضلفة) */
 const MESH_SLIDING_WHEELS_PER_SASH = 2;
 const MESH_PUSH_HANDLE_PER_SASH = 1;
