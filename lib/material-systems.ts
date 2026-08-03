@@ -10,6 +10,11 @@ import {
   IRON_STOCK_BAR_LENGTH_M,
   ironOfficialRateForRole,
 } from "@/lib/iron-price-list-2026";
+import {
+  KRAFT_ALLEN_BAR_LENGTH_M,
+  KRAFT_ALLEN_PRICE_LIST_NOTES,
+  kraftAllenProfileBarRates,
+} from "@/lib/kraft-allen-price-list-2026";
 import type { MeshKind } from "@/lib/design-items";
 import {
   deductToFormula,
@@ -1880,6 +1885,12 @@ export function defaultProfileBrands(): ProfileBrand[] {
       rates: cityPremierProfileBarRates(),
     },
     {
+      id: "brand-kraft-allen",
+      name: "كرافت الين",
+      notes: KRAFT_ALLEN_PRICE_LIST_NOTES,
+      rates: kraftAllenProfileBarRates(),
+    },
+    {
       id: "brand-premier",
       name: "بريمير",
       notes: "قائمة أسعار بريمير — تسعير بالعود · لأي سيستم مربوط ببراند بريمير",
@@ -1903,6 +1914,115 @@ export function defaultProfileBrands(): ProfileBrand[] {
       },
     },
   ];
+}
+
+/** يثبّت براند كرافت الين من قائمة المصنع (7/4/2026) */
+export function migrateKraftAllenProfileBrandPrices(
+  brands: ProfileBrand[]
+): ProfileBrand[] {
+  const official = kraftAllenProfileBarRates();
+  let list = brands.map((brand) => {
+    const isKraft =
+      brand.id === "brand-kraft-allen" ||
+      brand.name === "كرافت الين" ||
+      brand.name === "كرافت" ||
+      /kraft\s*allen|kraftline/i.test(brand.name);
+
+    if (!isKraft) return brand;
+
+    return {
+      ...brand,
+      id: "brand-kraft-allen",
+      name: "كرافت الين",
+      notes: KRAFT_ALLEN_PRICE_LIST_NOTES,
+      rates: { ...official },
+    };
+  });
+
+  if (
+    !list.some(
+      (b) =>
+        b.id === "brand-kraft-allen" ||
+        b.name === "كرافت الين" ||
+        /kraft\s*allen|kraftline/i.test(b.name)
+    )
+  ) {
+    list = [
+      ...list,
+      {
+        id: "brand-kraft-allen",
+        name: "كرافت الين",
+        notes: KRAFT_ALLEN_PRICE_LIST_NOTES,
+        rates: { ...official },
+      },
+    ];
+  }
+
+  return list;
+}
+
+function withKraftBarLength(pieces: ProfilePiece[], prefix: string): ProfilePiece[] {
+  return pieces.map((p) => ({
+    ...p,
+    id: `${prefix}-${p.role}`,
+    barLengthM: KRAFT_ALLEN_BAR_LENGTH_M,
+  }));
+}
+
+export function defaultKraftAllenHingedSystem(
+  deductions: ProfileDeductions
+): MaterialSystem {
+  return withDefaultProfile({
+    id: "kraft-hinged",
+    name: "كرافت الين مفصلي",
+    notes:
+      "سيستم مفصلي كرافت الين — أسعار القطاعات من قائمة كرافت الين (7/4/2026 · أبيض/بيج)",
+    profile: {
+      pieces: withKraftBarLength(standardHingedProfilePieces(), "kraft-hinged"),
+      deductions,
+      rates: kraftAllenProfileBarRates(),
+    },
+  });
+}
+
+export function defaultKraftAllenSlidingSystem(
+  deductions: ProfileDeductions
+): MaterialSystem {
+  return withDefaultProfile({
+    id: "kraft-sliding",
+    name: "كرافت الين جرار",
+    notes:
+      "سيستم جرار كرافت الين — أسعار القطاعات من قائمة كرافت الين (7/4/2026 · أبيض/بيج)",
+    profile: {
+      pieces: withKraftBarLength(standardSlidingProfilePieces(), "kraft-sliding"),
+      deductions,
+      rates: kraftAllenProfileBarRates(),
+    },
+  });
+}
+
+/** يضيف أنظمة كرافت الين الناقصة للكتالوج المحفوظ */
+export function ensureKraftAllenProfileSystems(
+  systems: MaterialSystem[],
+  deductions: ProfileDeductions
+): MaterialSystem[] {
+  const hasHinged = systems.some(
+    (s) =>
+      s.id === "kraft-hinged" ||
+      s.name === "كرافت الين مفصلي" ||
+      /كرافت.*مفصلي/i.test(s.name)
+  );
+  const hasSliding = systems.some(
+    (s) =>
+      s.id === "kraft-sliding" ||
+      s.name === "كرافت الين جرار" ||
+      /كرافت.*جرار/i.test(s.name)
+  );
+
+  const next = [...systems];
+  if (!hasHinged) next.push(defaultKraftAllenHingedSystem(deductions));
+  if (!hasSliding) next.push(defaultKraftAllenSlidingSystem(deductions));
+  return next;
 }
 
 export function normalizeProfileBrandPrices(
@@ -2468,6 +2588,8 @@ export function getDefaultCatalog(): MaterialCatalog {
           rates: cityPremierProfileBarRates(),
         },
       }),
+      defaultKraftAllenHingedSystem(syncedDeductions),
+      defaultKraftAllenSlidingSystem(syncedDeductions),
       withDefaultProfile({
         id: "pvc3",
         name: "نظام PVC مخصص 3",
@@ -3682,6 +3804,14 @@ function foldProfileBrandRatesIntoSystems(
     brandById.get("brand-city") ??
     brands.find((b) => b.name === "سيتي بريمير" || b.name === "سيتي") ??
     brands.find((b) => profileBrandHasPricing(b));
+  const kraftBrand =
+    brandById.get("brand-kraft-allen") ??
+    brands.find(
+      (b) =>
+        b.name === "كرافت الين" ||
+        b.name === "كرافت" ||
+        /kraft\s*allen|kraftline/i.test(b.name)
+    );
 
   return systems.map((s) => {
     const profile = s.profile ?? defaultProfileDetails();
@@ -3708,6 +3838,17 @@ function foldProfileBrandRatesIntoSystems(
       };
     }
 
+    if (
+      !profileRatesHasPricing(rates) &&
+      (s.id === "kraft-hinged" ||
+        s.id === "kraft-sliding" ||
+        /كرافت|kraft\s*allen|kraftline/i.test(`${s.name} ${s.notes ?? ""}`))
+    ) {
+      rates = {
+        ...(kraftBrand?.rates ?? kraftAllenProfileBarRates()),
+      };
+    }
+
     return {
       ...s,
       profileBrandId: undefined,
@@ -3729,10 +3870,12 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       : normalizeAccessoryBrands(raw.accessoryBrands)
   );
 
-  const profileBrands = migrateCityPremierProfileBrandPrices(
-    raw.profileBrands === undefined
-      ? defaults.profileBrands ?? defaultProfileBrands()
-      : normalizeProfileBrands(raw.profileBrands)
+  const profileBrands = migrateKraftAllenProfileBrandPrices(
+    migrateCityPremierProfileBrandPrices(
+      raw.profileBrands === undefined
+        ? defaults.profileBrands ?? defaultProfileBrands()
+        : normalizeProfileBrands(raw.profileBrands)
+    )
   );
 
   for (const cat of MATERIAL_CATEGORIES) {
@@ -3789,6 +3932,12 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       if (cat.id === "profiles") {
         merged = migrateProfileSystemLabels(merged);
         merged = foldProfileBrandRatesIntoSystems(merged, profileBrands);
+        merged = ensureKraftAllenProfileSystems(
+          merged,
+          unifiedToProfileDeductions(
+            normalizeUnifiedCutDeductions(raw.cutDeductions)
+          )
+        );
       }
 
       if (cat.id === "iron") {
