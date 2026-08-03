@@ -68,6 +68,7 @@ export function MeshTypesEditor() {
       name: "",
       kind,
       pricePerSqm: 0,
+      mergeIntoOneBlock: false,
     });
   }
 
@@ -87,6 +88,7 @@ export function MeshTypesEditor() {
       ...draft,
       name,
       pricePerSqm: price,
+      mergeIntoOneBlock: Boolean(draft.mergeIntoOneBlock),
       kind: categoryOpts.some((c) => c.id === draft.kind)
         ? draft.kind
         : categoryOpts[0]?.id ?? "fixed",
@@ -171,6 +173,7 @@ export function MeshTypesEditor() {
                         </p>
                         <p className="text-[10px] text-muted">
                           {t.pricePerSqm} ج.م/م²
+                          {t.mergeIntoOneBlock ? " · كتلة واحدة" : ""}
                         </p>
                       </div>
                       <div className="flex shrink-0 gap-1">
@@ -223,6 +226,22 @@ export function MeshTypesEditor() {
               }
               className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary"
             />
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 text-[11px] text-foreground">
+            <input
+              type="checkbox"
+              checked={Boolean(draft.mergeIntoOneBlock)}
+              onChange={(e) =>
+                setDraft({ ...draft, mergeIntoOneBlock: e.target.checked })
+              }
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]"
+            />
+            <span>
+              بيندمج في كتلة واحدة
+              <span className="mt-0.5 block text-[10px] text-muted">
+                الضلف المتجاورة بنفس الصنف تتحسب مساحة/قطاع واحد بدل كل ضلفة لوحدها
+              </span>
+            </span>
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button

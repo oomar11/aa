@@ -727,6 +727,11 @@ export type MeshType = {
   name: string;
   kind: MeshKind;
   pricePerSqm: number;
+  /**
+   * الضلف المتجاورة بنفس الصنف تتحسب كتلة واحدة
+   * (مساحة المحيط الخارجي · قطاع واحد لو التصنيف بيحسب ضلفة).
+   */
+  mergeIntoOneBlock?: boolean;
   notes?: string;
 };
 
@@ -2171,6 +2176,14 @@ export function findMeshType(
   };
   const resolved = aliases[id] ?? id;
   return getMeshTypes(catalog).find((m) => m.id === resolved);
+}
+
+/** هل صنف السلك بيندمج في كتلة واحدة للفتحات المتجاورة؟ */
+export function meshTypeMergesIntoOneBlock(
+  meshTypeId: string | undefined | null,
+  catalog?: MaterialCatalog
+): boolean {
+  return Boolean(findMeshType(meshTypeId, catalog)?.mergeIntoOneBlock);
 }
 
 export function meshTypeOptions(
@@ -3861,6 +3874,7 @@ function normalizeMeshTypes(raw: unknown, categories: MeshCategory[]): MeshType[
       name,
       kind,
       pricePerSqm: Number.isFinite(price) && price >= 0 ? price : 0,
+      mergeIntoOneBlock: Boolean(o.mergeIntoOneBlock),
       notes: typeof o.notes === "string" ? o.notes.trim() || undefined : undefined,
     });
   }

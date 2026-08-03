@@ -28,6 +28,7 @@ import {
   loadMaterialCatalog,
   meshCategoryCalcProfile,
   meshKindLabel,
+  meshTypeMergesIntoOneBlock,
   paneGlassHasPricing,
   profileBarPricePerM,
   profileSystemHasPricing,
@@ -851,31 +852,148 @@ function slidingRowGroups(boxes: PaneBox[]): PaneBox[][] {
   return rows.map((r) => r.sort((a, b) => a.x - b.x));
 }
 
-/** مجموعات سلك جرار في نفس الفتحة (صف أفقي) */
+/** مجموعات سلك جرار في نفس الفتحة (صف أفقي) — وحدات الحساب بعد الدمج */
 function meshSlidingRowGroups(
+  units: MeshCalcUnit[]
+): MeshCalcUnit[][] {
+  const sliding = units
+    .filter((u) => u.calcProfile)
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+  if (sliding.length === 0) return [];
+
+  const rows: MeshCalcUnit[][] = [];
+  for (const unit of sliding) {
+    const row = rows.find(
+      (r) => Math.abs(r[0]!.y - unit.y) < 2 && Math.abs(r[0]!.h - unit.h) < 2
+    );
+    if (row) row.push(unit);
+    else rows.push([unit]);
+  }
+  return rows.map((r) => r.sort((a, b) => a.x - b.x));
+}
+
+/** وحدة حساب سلك — ضلفة واحدة أو كتلة مدمجة من ضلف متجاورة */
+export type MeshCalcUnit = {
+  paneIds: string[];
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  meshKind: MeshKind;
+  meshTypeId?: string;
+  mergeIntoOneBlock: boolean;
+  calcProfile: boolean;
+};
+
+function boxesShareEdge(a: PaneBox, b: PaneBox): boolean {
+  return sharedEdgeMm(a, b) != null;
+}
+
+/**
+ * يجمع وحدات السلك للحساب:
+ * - صنف «كتلة واحدة» → الضلف المتجاورة بنفس الـ meshTypeId تتدمج لمحيط خارجي واحد
+ * - غير كده → كل ضلفة وحدة لوحدها
+ */
+export function collectMeshCalcUnits(
   boxes: PaneBox[],
   panes: Record<string, PaneConfig> | undefined,
   catalog?: MaterialCatalog
-): PaneBox[][] {
-  const meshBoxes: PaneBox[] = [];
+): MeshCalcUnit[] {
+  const cat =
+    catalog ??
+    (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
+
+  type Seed = {
+    box: PaneBox;
+    meshKind: MeshKind;
+    meshTypeId?: string;
+    mergeIntoOneBlock: boolean;
+    calcProfile: boolean;
+  };
+
+  const seeds: Seed[] = [];
   for (const box of boxes) {
     const cfg = normalizePaneConfig(panes?.[box.id]);
     if (!cfg.mesh) continue;
-    const kind = resolvePaneMeshKind(cfg, box.opening, catalog);
-    if (!meshCategoryCalcProfile(kind, catalog)) continue;
-    meshBoxes.push(box);
+    const meshKind = resolvePaneMeshKind(cfg, box.opening, cat);
+    const meshType =
+      findMeshType(cfg.meshTypeId, cat) ??
+      defaultMeshTypeForKind(meshKind, cat);
+    const meshTypeId = meshType?.id ?? cfg.meshTypeId;
+    const mergeIntoOneBlock = meshTypeMergesIntoOneBlock(meshTypeId, cat);
+    seeds.push({
+      box,
+      meshKind,
+      meshTypeId,
+      mergeIntoOneBlock,
+      calcProfile: meshCategoryCalcProfile(meshKind, cat),
+    });
   }
 
-  meshBoxes.sort((a, b) => a.y - b.y || a.x - b.x);
-  const rows: PaneBox[][] = [];
-  for (const box of meshBoxes) {
-    const row = rows.find(
-      (r) => Math.abs(r[0]!.y - box.y) < 2 && Math.abs(r[0]!.h - box.h) < 2
-    );
-    if (row) row.push(box);
-    else rows.push([box]);
+  const units: MeshCalcUnit[] = [];
+  const used = new Set<string>();
+
+  for (const seed of seeds) {
+    if (used.has(seed.box.id)) continue;
+
+    if (!seed.mergeIntoOneBlock) {
+      used.add(seed.box.id);
+      units.push({
+        paneIds: [seed.box.id],
+        x: seed.box.x,
+        y: seed.box.y,
+        w: seed.box.w,
+        h: seed.box.h,
+        meshKind: seed.meshKind,
+        meshTypeId: seed.meshTypeId,
+        mergeIntoOneBlock: false,
+        calcProfile: seed.calcProfile,
+      });
+      continue;
+    }
+
+    // فيضان للضلف المتجاورة بنفس الصنف والدمج
+    const group: Seed[] = [];
+    const queue: Seed[] = [seed];
+    used.add(seed.box.id);
+    while (queue.length > 0) {
+      const cur = queue.pop()!;
+      group.push(cur);
+      for (const other of seeds) {
+        if (used.has(other.box.id)) continue;
+        if (!other.mergeIntoOneBlock) continue;
+        if (other.meshTypeId !== seed.meshTypeId) continue;
+        if (!boxesShareEdge(cur.box, other.box)) continue;
+        used.add(other.box.id);
+        queue.push(other);
+      }
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const g of group) {
+      minX = Math.min(minX, g.box.x);
+      minY = Math.min(minY, g.box.y);
+      maxX = Math.max(maxX, g.box.x + g.box.w);
+      maxY = Math.max(maxY, g.box.y + g.box.h);
+    }
+
+    units.push({
+      paneIds: group.map((g) => g.box.id),
+      x: minX,
+      y: minY,
+      w: Math.max(0, maxX - minX),
+      h: Math.max(0, maxY - minY),
+      meshKind: seed.meshKind,
+      meshTypeId: seed.meshTypeId,
+      mergeIntoOneBlock: true,
+      calcProfile: seed.calcProfile,
+    });
   }
-  return rows.map((r) => r.sort((a, b) => a.x - b.x));
+
+  return units;
 }
 
 /** طبة بوكلير — قطعة واحدة بارتفاع الضلفة (بعد التخصيم) لكل بوكلير صالح */
@@ -935,15 +1053,13 @@ function fourLeafMeetingStats(
   return { qty, lengthMm };
 }
 
-/** تقابل سلك جرار — ضلفتين سلك في نفس الفتحة */
+/** تقابل سلك جرار — وحدتين سلك (قطاع) في نفس الفتحة */
 function meshMeetingStats(
-  boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined,
-  catalog?: MaterialCatalog
+  units: MeshCalcUnit[]
 ): { qty: number; lengthMm: number } {
   let qty = 0;
   let lengthMm = 0;
-  for (const row of meshSlidingRowGroups(boxes, panes, catalog)) {
+  for (const row of meshSlidingRowGroups(units)) {
     if (row.length < 2) continue;
     qty += 1;
     lengthMm += row[0]!.h;
@@ -1047,48 +1163,27 @@ function paneMeshAreaMm2(
   return paneFillAreaMm2(w, h, opening, cfg);
 }
 
-/** قطاع ضلفة سلك جرار — محيط الضلفة لما السلك نوعه جرار */
+/** قطاع ضلفة سلك جرار — محيط كل وحدة حساب (كتلة أو ضلفة) */
 const MESH_SLIDING_WHEELS_PER_SASH = 2;
 const MESH_PUSH_HANDLE_PER_SASH = 1;
 
 function slidingMeshSashStats(
-  boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined,
-  catalog?: MaterialCatalog
+  units: MeshCalcUnit[]
 ): { sashCount: number; profileMm: number } {
-  const cat =
-    catalog ??
-    (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
   let sashCount = 0;
   let profileMm = 0;
-  for (const box of boxes) {
-    const cfg = normalizePaneConfig(panes?.[box.id]);
-    if (!cfg.mesh) continue;
-    const kind = resolvePaneMeshKind(cfg, box.opening, cat);
-    if (!meshCategoryCalcProfile(kind, cat)) continue;
+  for (const unit of units) {
+    if (!unit.calcProfile) continue;
     sashCount += 1;
-    profileMm += panePerimeterMm(box.w, box.h);
+    profileMm += panePerimeterMm(unit.w, unit.h);
   }
   return { sashCount, profileMm };
 }
 
-function meshSlidingProfileMm(
-  boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined,
-  catalog?: MaterialCatalog
-): number {
-  return slidingMeshSashStats(boxes, panes, catalog).profileMm;
-}
-
-function totalMeshAreaSqm(
-  boxes: PaneBox[],
-  panes: Record<string, PaneConfig> | undefined
-): number {
+function totalMeshAreaSqm(units: MeshCalcUnit[]): number {
   let mm2 = 0;
-  for (const box of boxes) {
-    const cfg = normalizePaneConfig(panes?.[box.id]);
-    if (!cfg.mesh) continue;
-    mm2 += paneMeshAreaMm2(box.w, box.h, box.opening, cfg);
+  for (const unit of units) {
+    mm2 += unit.w * unit.h;
   }
   return roundM(mm2 / 1_000_000);
 }
@@ -1239,14 +1334,15 @@ export function calcItemMaterials(
   const sashMm = sashProfileMm(boxes, panes, cat, deductions);
   const beadMm = beadTotalsMm(boxes, panes, item, cat, deductions);
   const glassAreaSqm = totalGlassAreaSqm(boxes, panes, cat, deductions);
-  const meshAreaSqm = totalMeshAreaSqm(boxes, panes);
-  const slidingMesh = slidingMeshSashStats(boxes, panes, cat);
+  const meshUnits = collectMeshCalcUnits(boxes, panes, cat);
+  const meshAreaSqm = totalMeshAreaSqm(meshUnits);
+  const slidingMesh = slidingMeshSashStats(meshUnits);
   const meshSlidingProfileM = roundM(mmToM(slidingMesh.profileMm));
   const meshSlidingSashCount = slidingMesh.sashCount;
   const meshSlidingWheelQty = meshSlidingSashCount * MESH_SLIDING_WHEELS_PER_SASH;
   const meshPushHandleQty = meshSlidingSashCount * MESH_PUSH_HANDLE_PER_SASH;
   const fourLeafMeeting = fourLeafMeetingStats(boxes, deductions);
-  const meshMeeting = meshMeetingStats(boxes, panes, cat);
+  const meshMeeting = meshMeetingStats(meshUnits);
   const fourLeafMeetingM = roundM(mmToM(fourLeafMeeting.lengthMm));
   const meshMeetingM = roundM(mmToM(meshMeeting.lengthMm));
   const bouclierCap = bouclierCapStats(boxes, deductions);
@@ -1565,34 +1661,31 @@ export function calcMeshBreakdown(
   const boxes: PaneBox[] = [];
   collectPaneBoxes(layout, 0, 0, widthMm, heightMm, panes, boxes);
 
+  const units = collectMeshCalcUnits(boxes, panes, cat);
   const lines: PaneMeshLine[] = [];
 
-  for (const box of boxes) {
-    const cfg = normalizePaneConfig(panes[box.id]);
-    if (!cfg.mesh) continue;
-
-    const meshKind = resolvePaneMeshKind(cfg, box.opening, cat);
+  for (const unit of units) {
     const meshType =
-      findMeshType(cfg.meshTypeId, cat) ??
-      defaultMeshTypeForKind(meshKind, cat);
+      findMeshType(unit.meshTypeId, cat) ??
+      defaultMeshTypeForKind(unit.meshKind, cat);
     const costPerSqm = meshType?.pricePerSqm ?? 0;
-
-    const areaSqm = roundM(
-      paneMeshAreaMm2(box.w, box.h, box.opening, cfg) / 1_000_000
-    );
-    const isSlidingMesh = meshCategoryCalcProfile(meshKind, cat);
-    const profileM = isSlidingMesh
-      ? roundM(panePerimeterMm(box.w, box.h) / 1000)
+    const areaSqm = roundM((unit.w * unit.h) / 1_000_000);
+    const profileM = unit.calcProfile
+      ? roundM(panePerimeterMm(unit.w, unit.h) / 1000)
       : 0;
-    const wheelQty = isSlidingMesh ? MESH_SLIDING_WHEELS_PER_SASH : 0;
-    const handleQty = isSlidingMesh ? MESH_PUSH_HANDLE_PER_SASH : 0;
-    const label = meshType
-      ? `${meshType.name} · ${meshKindLabel(meshKind, cat)}`
-      : meshKindLabel(meshKind, cat);
+    const wheelQty = unit.calcProfile ? MESH_SLIDING_WHEELS_PER_SASH : 0;
+    const handleQty = unit.calcProfile ? MESH_PUSH_HANDLE_PER_SASH : 0;
+    const baseLabel = meshType
+      ? `${meshType.name} · ${meshKindLabel(unit.meshKind, cat)}`
+      : meshKindLabel(unit.meshKind, cat);
+    const label =
+      unit.mergeIntoOneBlock && unit.paneIds.length > 1
+        ? `${baseLabel} · كتلة واحدة`
+        : baseLabel;
 
     lines.push({
-      paneId: box.id,
-      meshKind,
+      paneId: unit.paneIds.join("+"),
+      meshKind: unit.meshKind,
       label,
       areaSqm,
       costPerSqm,
