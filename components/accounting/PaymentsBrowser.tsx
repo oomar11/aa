@@ -110,20 +110,30 @@ export function PaymentsBrowser() {
                       {payment.note ? ` · ${payment.note}` : ""}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!window.confirm("هل تريد حذف هذه الدفعة؟")) return;
-                      const projectId = payment.projectId;
-                      deletePayment(payment.id);
-                      if (projectId) {
-                        syncProjectMoneyFromPayments(projectId);
-                      }
-                    }}
-                    className="shrink-0 text-xs font-semibold text-[#E85A8A]"
-                  >
-                    حذف
-                  </button>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={ROUTES.accounting.editPayment(payment.id)}
+                        className="text-xs font-semibold text-primary"
+                      >
+                        تعديل
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!window.confirm("هل تريد حذف هذه الدفعة؟")) return;
+                          const projectId = payment.projectId;
+                          deletePayment(payment.id);
+                          if (projectId) {
+                            syncProjectMoneyFromPayments(projectId);
+                          }
+                        }}
+                        className="text-xs font-semibold text-[#E85A8A]"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </li>
             );

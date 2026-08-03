@@ -1,23 +1,25 @@
 /**
  * حساب اكسسوار المفصلي والجرار من إعدادات نظام الاكسسوار + رسم البند.
  *
- * مفصلي (شباك):
- * - مفصلات لكل ضلفة (٢ — من الإعدادات)
+ * مفصلي عادي (شباك casement):
+ * - مفصلات عادية لكل ضلفة (٢ — من الإعداد) — نفس قطعة الباب
  * - سبلونة مفصلي حسب ارتفاع ناحية المقبض
- * - سكاك مفصلي لكل سبلونة (كميات قابلة للتعديل)
+ * - سكاك مفصلي لكل سبلونة (كميات قابلة للتعديل عبر hingedLockQty)
  * - ضلفتين مقابض في وش بعض (بوكلير): سبلونة واحدة مش اثنين، سكاك بوكلير، ترباس + سكاك ترباس، مقبض بارز
  *
+ * مفصلي قلاب / قلاب (tilt / tilt-turn) — مجموعة بريمير كاملة لكل ضلفة:
+ * - سبلونة مفصلي قلاب (رينج) + مقص قلاب (رينج)
+ * - كورنر علوي/سفلي + سكاك كورنر سفلي
+ * - مفصلات علوية/سفلية (حلق + ضلفة) + بنز + أغطية + مقبض بارز
+ *
  * باب مفصلي:
- * - مفصلات باب (٣ — من الإعدادات)
- * - كالون + مقبض إشارة + وش تسكيك (من غير سبلونة/سكاك مفصلي)
- * - لون المقبض = لون الإطار/الباب
+ * - نفس المفصلة العادية بعدد أكبر (٣–٤) + كالون + مقبض إشارة + وش تسكيك
  *
  * جرار:
  * - عجلتين لكل ضلفة
  * - فرش: محيط الضلفة ×٢ + ارتفاع السكينة ×١
- * - سبلونة/سكاك جرار
- * - مقبض غاطس على الضلفة الغاطسة
- * (التراك مع الحديد — مش هنا)
+ * - سبلونة جرار + سكاك جرار بعدد slidingLockQty لمقاس السبلونة
+ * - مقبض غاطس على الضلفة الغاطسة + مقبض بارز على الضلفة البارزة
  */
 
 import {
@@ -44,8 +46,10 @@ import {
   ACCESSORY_BRAND_CATEGORIES,
   findSystem,
   getDefaultAccessoryDetails,
+  getDefaultSystemId,
   loadMaterialCatalog,
   pickEspagnoletteSize,
+  pickTiltSizeRange,
   resolveCategoryBrandName,
   type AccessoryBrandCategory,
   type AccessoryLockPiece,
@@ -60,6 +64,14 @@ export type EspagnoletteLine = {
   qty: number;
 };
 
+/** سطر رينج قلاب (سبلونة أو مقص) */
+export type TiltRangeLine = {
+  id: string;
+  label: string;
+  maxDimMm: number;
+  qty: number;
+};
+
 export type LockPieceLine = {
   id: string;
   name: string;
@@ -71,7 +83,7 @@ export type AccessoriesBreakdown = {
   systemName: string | null;
   hasAccessories: boolean;
 
-  // ── مفصلي ──────────────────────────────────────────
+  // ── مفصلي عادي ─────────────────────────────────────
   hingeQty: number;
   hingedEspagnolettes: EspagnoletteLine[];
   hingedLockPieces: LockPieceLine[];
@@ -87,6 +99,19 @@ export type AccessoriesBreakdown = {
   doorEscutcheonQty: number;
   /** لون مقبض الباب (= لون الإطار) */
   doorHandleColorLabel: string | null;
+
+  // ── قلاب / مفصلي قلاب — مجموعة بريمير ────────────────
+  tiltEspagnolettes: TiltRangeLine[];
+  tiltScissors: TiltRangeLine[];
+  tiltTopHingeQty: number;
+  tiltTopFrameHingeQty: number;
+  tiltBottomFrameHingeQty: number;
+  tiltBottomSashHingeQty: number;
+  tiltCornerUpperQty: number;
+  tiltCornerLowerQty: number;
+  tiltCornerStrikerQty: number;
+  tiltHingePinQty: number;
+  tiltHingeCoverQty: number;
 
   // ── جرار ───────────────────────────────────────────
   rollerQty: number;
@@ -136,6 +161,20 @@ function isHingedOpening(opening: PaneOpening): boolean {
   return frameKindForOpening(opening) === "hinged" && isOpeningSash(opening);
 }
 
+function isTiltOpening(opening: PaneOpening): boolean {
+  return (
+    opening === "tilt" ||
+    opening === "tilt-inverted" ||
+    opening === "tilt-turn" ||
+    opening === "tilt-turn-left"
+  );
+}
+
+/** مفصلي عادي (casement) — مش قلاب */
+function isCasementHingedOpening(opening: PaneOpening): boolean {
+  return isHingedOpening(opening) && !isTiltOpening(opening);
+}
+
 function isSlidingOpening(opening: PaneOpening): boolean {
   return frameKindForOpening(opening) === "sliding" && isOpeningSash(opening);
 }
@@ -159,6 +198,17 @@ function emptyBreakdown(systemName: string | null): AccessoriesBreakdown {
     doorSignalHandleQty: 0,
     doorEscutcheonQty: 0,
     doorHandleColorLabel: null,
+    tiltEspagnolettes: [],
+    tiltScissors: [],
+    tiltTopHingeQty: 0,
+    tiltTopFrameHingeQty: 0,
+    tiltBottomFrameHingeQty: 0,
+    tiltBottomSashHingeQty: 0,
+    tiltCornerUpperQty: 0,
+    tiltCornerLowerQty: 0,
+    tiltCornerStrikerQty: 0,
+    tiltHingePinQty: 0,
+    tiltHingeCoverQty: 0,
     rollerQty: 0,
     brushLengthM: 0,
     slidingEspagnolettes: [],
@@ -250,6 +300,53 @@ type BouclierPair = {
 };
 
 /**
+ * يجمع عدد السكاك من مقاسات السبلونات المستخدمة.
+ * لكل سبلونة: كمية السكاك = hingedLockQty أو slidingLockQty حسب النوع.
+ */
+function lockPieceLinesFromEspSizes(
+  pieces: AccessoryLockPiece[],
+  espMap: Map<EspagnoletteSize, number>,
+  catalog: AccessorySystemDetails["espagnoletteCatalog"],
+  kind: "hinged" | "sliding"
+): LockPieceLine[] {
+  let lockCount = 0;
+  for (const [size, espQty] of espMap) {
+    if (espQty <= 0) continue;
+    const entry = catalog.find((e) => e.size === size);
+    const perEsp =
+      kind === "hinged"
+        ? (entry?.hingedLockQty ?? 1)
+        : (entry?.slidingLockQty ?? 1);
+    lockCount += Math.max(0, perEsp) * espQty;
+  }
+  return lockPieceLines(pieces, lockCount);
+}
+
+function addTiltRange(
+  map: Map<string, TiltRangeLine>,
+  range: { id: string; label: string; maxDimMm: number },
+  qty = 1
+) {
+  const prev = map.get(range.id);
+  if (prev) {
+    prev.qty += qty;
+    return;
+  }
+  map.set(range.id, {
+    id: range.id,
+    label: range.label,
+    maxDimMm: range.maxDimMm,
+    qty,
+  });
+}
+
+function tiltRangeLines(map: Map<string, TiltRangeLine>): TiltRangeLine[] {
+  return [...map.values()]
+    .filter((l) => l.qty > 0)
+    .sort((a, b) => a.maxDimMm - b.maxDimMm);
+}
+
+/**
  * مجموعات المفصلي:
  * - ضلفتين مقابض في وش بعض (متجاورتين أو بينهم بوكلير ثابت) → مجموعة واحدة = سبلونة واحدة
  * - باقي الضلف المفصلي كل واحدة لوحدها
@@ -258,7 +355,7 @@ function hingedLocksetGroups(boxes: PaneBox[]): {
   solo: PaneBox[];
   bouclierPairs: BouclierPair[];
 } {
-  const hinged = boxes.filter((b) => isHingedOpening(b.opening));
+  const hinged = boxes.filter((b) => isCasementHingedOpening(b.opening));
   // الأبواب مفصليّة بس مش بتدخل في مجموعات البوكلير/السبلونة
   const hingedWindows = hinged.filter((b) => !b.isDoor);
   const hingedDoors = hinged.filter((b) => b.isDoor);
@@ -395,19 +492,14 @@ function resolveAccessoryDetails(
     }
   }
 
-  const id = item.accessoryId;
-  if (!id || id === "none") {
-    if (project?.accessoryId && project.accessoryId !== "none") {
-      const system = findSystem("accessories", project.accessoryId, cat);
-      if (system) {
-        return {
-          details: system.accessory ?? getDefaultAccessoryDetails(),
-          systemName: system.name,
-        };
-      }
-    }
-    return null;
-  }
+  const id =
+    item.accessoryId && item.accessoryId !== "none"
+      ? item.accessoryId
+      : project?.accessoryId && project.accessoryId !== "none"
+        ? project.accessoryId
+        : getDefaultSystemId("accessories", cat);
+
+  if (!id || id === "none") return null;
 
   const system = findSystem("accessories", id, cat);
   if (!system) return null;
@@ -447,16 +539,24 @@ export function calcItemAccessories(
     catalog ??
     (typeof window !== "undefined" ? loadMaterialCatalog() : undefined);
 
-  // ── مفصلي ────────────────────────────────────────────────
+  // ── مفصلي عادي ────────────────────────────────────────────
   let hingeQty = 0;
   const hingedEspMap = new Map<EspagnoletteSize, number>();
-  let hingedLocksetCount = 0;
   let bouclierLocksetCount = 0;
   let boltQty = 0;
   let protrudingHandleQty = 0;
   let doorCylinderQty = 0;
   let doorSignalHandleQty = 0;
   let doorEscutcheonQty = 0;
+  let tiltTopHingeQty = 0;
+  let tiltTopFrameHingeQty = 0;
+  let tiltBottomFrameHingeQty = 0;
+  let tiltBottomSashHingeQty = 0;
+  let tiltCornerUpperQty = 0;
+  let tiltCornerLowerQty = 0;
+  let tiltCornerStrikerQty = 0;
+  let tiltHingePinQty = 0;
+  let tiltHingeCoverQty = 0;
 
   const { solo, bouclierPairs } = hingedLocksetGroups(boxes);
   const espGap = details.espagnoletteSashDeductionMm;
@@ -477,12 +577,11 @@ export function calcItemAccessories(
       espGap
     );
     addEspagnolette(hingedEspMap, size);
-    hingedLocksetCount += 1;
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
 
   for (const pair of bouclierPairs) {
-    // مفصلات لكل ضلفة شباك مفصلي في الزوج (الأبواب مش هنا)
+    // مفصلات عادية لكل ضلفة شباك مفصلي في الزوج (الأبواب مش هنا)
     for (const leaf of [pair.left, pair.right]) {
       hingeQty += details.hingesPerSash;
     }
@@ -503,6 +602,39 @@ export function calcItemAccessories(
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
 
+  // ── قلاب / مفصلي قلاب — مجموعة بريمير كاملة ────────────────
+  const tiltEspMap = new Map<string, TiltRangeLine>();
+  const tiltScissorsMap = new Map<string, TiltRangeLine>();
+  const tiltBoxes = boxes.filter(
+    (b) => isTiltOpening(b.opening) && !b.isDoor && isOpeningSash(b.opening)
+  );
+  for (const box of tiltBoxes) {
+    // سبلونة القلاب حسب ارتفاع الضلفة؛ المقص حسب عرض الضلفة
+    const espRange = pickTiltSizeRange(box.h, details.tiltEspagnoletteRanges);
+    if (espRange) {
+      addTiltRange(tiltEspMap, espRange, 1);
+    }
+
+    const scissorsRange = pickTiltSizeRange(
+      box.w,
+      details.tiltScissorsRanges
+    );
+    if (scissorsRange) {
+      addTiltRange(tiltScissorsMap, scissorsRange, details.tiltScissorsPerSash);
+    }
+
+    tiltTopHingeQty += details.tiltTopHingesPerSash;
+    tiltTopFrameHingeQty += details.tiltTopFrameHingesPerSash;
+    tiltBottomFrameHingeQty += details.tiltBottomFrameHingesPerSash;
+    tiltBottomSashHingeQty += details.tiltBottomSashHingesPerSash;
+    tiltCornerUpperQty += details.tiltCornersUpperPerSash;
+    tiltCornerLowerQty += details.tiltCornersLowerPerSash;
+    tiltCornerStrikerQty += details.tiltCornerStrikersPerSash;
+    tiltHingePinQty += details.tiltHingePinsPerSash;
+    tiltHingeCoverQty += details.tiltHingeCoversPerSash;
+    protrudingHandleQty += details.protrudingHandlesPerLockset;
+  }
+
   const frameColorId = normalizeFrameColor(item.frameColor);
   const doorHandleColorLabel =
     doorSignalHandleQty > 0 ||
@@ -511,9 +643,11 @@ export function calcItemAccessories(
       ? FRAME_COLORS[frameColorId].label
       : null;
 
-  const hingedLockPieces = lockPieceLines(
+  const hingedLockPieces = lockPieceLinesFromEspSizes(
     details.hingedLockPieces,
-    hingedLocksetCount
+    hingedEspMap,
+    details.espagnoletteCatalog,
+    "hinged"
   );
   const bouclierLockPieces = lockPieceLines(
     details.bouclierLockPieces,
@@ -529,11 +663,14 @@ export function calcItemAccessories(
   let rollerQty = 0;
   let brushMm = 0;
   const slidingEspMap = new Map<EspagnoletteSize, number>();
-  let slidingLocksetCount = 0;
   let recessedHandleQty = 0;
 
   if (slidingBoxes.length > 0) {
     const depthMap = slidingSashDepthMap(boxes, panes);
+    const protrudingPer =
+      details.protrudingHandlesPerProtrudingSash ??
+      details.protrudingHandlesPerLockset ??
+      1;
 
     for (const box of slidingBoxes) {
       rollerQty += details.rollersPerSlidingSash;
@@ -550,27 +687,44 @@ export function calcItemAccessories(
         espGap
       );
       addEspagnolette(slidingEspMap, size);
-      slidingLocksetCount += 1;
 
-      if (depthMap.get(box.id) === "recessed") {
+      const depth = depthMap.get(box.id);
+      if (depth === "recessed") {
         recessedHandleQty += details.recessedHandlesPerRecessedSash;
+      } else if (depth === "protruding") {
+        protrudingHandleQty += protrudingPer;
       }
     }
   }
 
-  const slidingLockPieces = lockPieceLines(
+  const slidingLockPieces = lockPieceLinesFromEspSizes(
     details.slidingLockPieces,
-    slidingLocksetCount
+    slidingEspMap,
+    details.espagnoletteCatalog,
+    "sliding"
   );
 
   const brushLengthM = roundM(mmToM(brushMm));
 
   const hingedEspagnolettes = espagnoletteLines(hingedEspMap);
+  const tiltEspagnolettes = tiltRangeLines(tiltEspMap);
+  const tiltScissors = tiltRangeLines(tiltScissorsMap);
   const slidingEspagnolettes = espagnoletteLines(slidingEspMap);
   const brandLabels = buildBrandLabels(details, cat);
 
   const hasAccessories =
     hingeQty > 0 ||
+    tiltEspagnolettes.length > 0 ||
+    tiltScissors.length > 0 ||
+    tiltTopHingeQty > 0 ||
+    tiltTopFrameHingeQty > 0 ||
+    tiltBottomFrameHingeQty > 0 ||
+    tiltBottomSashHingeQty > 0 ||
+    tiltCornerUpperQty > 0 ||
+    tiltCornerLowerQty > 0 ||
+    tiltCornerStrikerQty > 0 ||
+    tiltHingePinQty > 0 ||
+    tiltHingeCoverQty > 0 ||
     hingedEspagnolettes.length > 0 ||
     hingedLockPieces.length > 0 ||
     bouclierLockPieces.length > 0 ||
@@ -600,6 +754,17 @@ export function calcItemAccessories(
     doorSignalHandleQty,
     doorEscutcheonQty,
     doorHandleColorLabel,
+    tiltEspagnolettes,
+    tiltScissors,
+    tiltTopHingeQty,
+    tiltTopFrameHingeQty,
+    tiltBottomFrameHingeQty,
+    tiltBottomSashHingeQty,
+    tiltCornerUpperQty,
+    tiltCornerLowerQty,
+    tiltCornerStrikerQty,
+    tiltHingePinQty,
+    tiltHingeCoverQty,
     rollerQty,
     brushLengthM,
     slidingEspagnolettes,
@@ -633,6 +798,17 @@ export function scaleAccessories(
     doorSignalHandleQty: a.doorSignalHandleQty * q,
     doorEscutcheonQty: a.doorEscutcheonQty * q,
     doorHandleColorLabel: a.doorHandleColorLabel,
+    tiltEspagnolettes: scaleLines(a.tiltEspagnolettes),
+    tiltScissors: scaleLines(a.tiltScissors),
+    tiltTopHingeQty: a.tiltTopHingeQty * q,
+    tiltTopFrameHingeQty: a.tiltTopFrameHingeQty * q,
+    tiltBottomFrameHingeQty: a.tiltBottomFrameHingeQty * q,
+    tiltBottomSashHingeQty: a.tiltBottomSashHingeQty * q,
+    tiltCornerUpperQty: a.tiltCornerUpperQty * q,
+    tiltCornerLowerQty: a.tiltCornerLowerQty * q,
+    tiltCornerStrikerQty: a.tiltCornerStrikerQty * q,
+    tiltHingePinQty: a.tiltHingePinQty * q,
+    tiltHingeCoverQty: a.tiltHingeCoverQty * q,
     rollerQty: a.rollerQty * q,
     brushLengthM: roundM(a.brushLengthM * q),
     slidingEspagnolettes: scaleLines(a.slidingEspagnolettes),

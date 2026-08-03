@@ -12,8 +12,7 @@ import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
 
 /**
- * سجل مصروفات الشركة — للعرض فقط.
- * تسجيل مصروف المشروع يتم من داخل المشروع.
+ * سجل مصروفات الورشة — عرض وحذف + رابط لتسجيل مصروف جديد.
  */
 export function ExpensesBrowser() {
   const [expenses, setExpenses] = useState<Expense[]>(() =>
@@ -51,10 +50,12 @@ export function ExpensesBrowser() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="rounded-2xl border border-[#E8956F]/30 bg-[#E8956F]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
-        هذا سجل عرض لكل المصروفات. لتسجيل مصروف جديد: افتح المشروع → أيقونة
-        المصروفات.
-      </p>
+      <Link
+        href={ROUTES.accounting.newExpense}
+        className="flex h-12 items-center justify-center rounded-2xl bg-[#C45C26] text-sm font-bold text-white transition-all hover:brightness-105 active:scale-[0.98]"
+      >
+        تسجيل مصروف
+      </Link>
 
       <input
         type="search"
@@ -75,7 +76,7 @@ export function ExpensesBrowser() {
         <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm leading-relaxed text-muted">
           لا توجد مصروفات بعد.
           <br />
-          سجّل المصروف من داخل المشروع.
+          سجّل مصروف ورشة من الزر أعلاه أو من داخل المشروع.
         </div>
       ) : (
         <ul className="flex flex-col gap-2.5">
@@ -95,7 +96,9 @@ export function ExpensesBrowser() {
                     </p>
                     <p className="mt-0.5 text-xs text-muted">
                       {expense.category} · {formatDate(expense.date)}
-                      {project ? ` · ${project.name}` : ""}
+                      {project
+                        ? ` · ${project.name}`
+                        : " · مصروف ورشة عام"}
                     </p>
                     {expense.note ? (
                       <p className="mt-1 text-xs text-muted">{expense.note}</p>

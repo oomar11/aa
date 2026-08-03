@@ -13,18 +13,11 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <PageHeader title="الإعدادات" />
+      <PageHeader backHref={ROUTES.more} title="الإعدادات" />
 
       <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="border-b border-border px-4 py-3.5 text-sm">
-          اللغة: العربية
-        </div>
-
         <div className="px-4 py-3.5">
           <p className="text-sm font-medium text-foreground">وحدة القياس</p>
-          <p className="mt-0.5 text-xs text-muted">
-            تظهر في مقاسات النوافذ والأبواب
-          </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {(
               [
@@ -54,12 +47,7 @@ export default function SettingsPage() {
           href={ROUTES.settingsCompany}
           className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5 transition-colors hover:bg-primary-soft/50"
         >
-          <div className="min-w-0 text-right">
-            <p className="text-sm font-medium text-foreground">بيانات الشركة</p>
-            <p className="mt-0.5 text-xs text-muted">
-              اسم الشركة · الهاتف · الرقم الضريبي
-            </p>
-          </div>
+          <p className="text-sm font-medium text-foreground">بيانات الشركة</p>
           <span className="shrink-0 text-muted" aria-hidden>
             ‹
           </span>
@@ -68,12 +56,7 @@ export default function SettingsPage() {
           href={ROUTES.settingsPricing}
           className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5 transition-colors hover:bg-primary-soft/50"
         >
-          <div className="min-w-0 text-right">
-            <p className="text-sm font-medium text-foreground">تسعير البيع</p>
-            <p className="mt-0.5 text-xs text-muted">
-              هامش الربح · المصنعية · حد أدنى متر
-            </p>
-          </div>
+          <p className="text-sm font-medium text-foreground">تسعير البيع</p>
           <span className="shrink-0 text-muted" aria-hidden>
             ‹
           </span>
@@ -82,12 +65,7 @@ export default function SettingsPage() {
           href={ROUTES.settingsDesign}
           className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-primary-soft/50"
         >
-          <div className="min-w-0 text-right">
-            <p className="text-sm font-medium text-foreground">ترتيب الأشكال</p>
-            <p className="mt-0.5 text-xs text-muted">
-              رتّب التمبلتات في قائمة اختيار الشكل
-            </p>
-          </div>
+          <p className="text-sm font-medium text-foreground">ترتيب الأشكال</p>
           <span className="shrink-0 text-muted" aria-hidden>
             ‹
           </span>

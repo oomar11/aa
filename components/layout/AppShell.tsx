@@ -15,7 +15,7 @@ type AppShellProps = {
 
 /**
  * الغلاف الموحد لمعظم شاشات التطبيق.
- * يجمع الهيدر + المحتوى + شريط التنقل السفلي في مكان واحد.
+ * موبايل مريح + عرض أوسع منظم على الكمبيوتر.
  */
 export function AppShell({
   children,
@@ -28,7 +28,7 @@ export function AppShell({
 
   return (
     <div
-      className={`mx-auto flex ${heightClass} w-full max-w-md flex-col bg-background`}
+      className={`mx-auto flex ${heightClass} w-full max-w-lg flex-col bg-background lg:max-w-5xl`}
     >
       {showHeader && <Header />}
       <main className={mainClassName}>{children}</main>

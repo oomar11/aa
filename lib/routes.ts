@@ -1,18 +1,22 @@
 /**
  * خريطة مسارات التطبيق — مرجع واحد لكل الروابط والتسميات العربية
  *
- * التدفق الرئيسي (4 أبواب — كل باب لغرض واحد):
- *   الورشة → تنفيذ + انتظار + متوقف + جاهز للتسليم
- *   الطلبات → العملاء والمقايسات + أحدث المشاريع + طلب جديد
- *   الحسابات → حسابات الورشة · دفعات · مصروفات
- *   الخامات → قطاعات · اكسسوار · زجاج · سلك · حديد
+ * التدفق الرئيسي (5 أبواب):
+ *   الرئيسية → ملخص اليوم + اختصارات
+ *   الطلبات → العملاء والمقايسات + طلب جديد
+ *   الورشة → تنفيذ + انتظار + متوقف + تسليم
+ *   الحسابات → دفعات · مصروفات · حركة
+ *   المزيد → خامات · إعدادات · نسخ احتياطي
  */
 
 export const ROUTES = {
-  /** الصفحة الأولى = الورشة (العمل اليومي) */
+  /** الصفحة الأولى = الرئيسية */
   home: "/",
-  /** توافق قديم — يوجّه إلى الورشة */
-  workshop: "/",
+  /** العمل اليومي في الورشة */
+  workshop: "/workshop",
+  /** قائمة المزيد: خامات وإعدادات */
+  more: "/more",
+  /** توافق قديم */
   profile: "/profile",
   settings: "/settings",
   settingsDesign: "/settings/design",
@@ -30,18 +34,20 @@ export const ROUTES = {
       `/design/projects?customer=${customerId}`,
     newProject: (customerId: string) =>
       `/design/projects/new?customer=${customerId}`,
-    editor: (customerId: string, projectId: string) =>
-      `/design/editor?customer=${customerId}&project=${projectId}`,
+    editor: (customerId: string, projectId: string, tab?: string) => {
+      const base = `/design/editor?customer=${customerId}&project=${projectId}`;
+      return tab ? `${base}&tab=${tab}` : base;
+    },
     draw: (customerId: string, projectId: string, itemId: string) =>
       `/design/draw?customer=${customerId}&project=${projectId}&item=${itemId}`,
     projectSettings: (customerId: string, projectId: string) =>
       `/design/project-settings?customer=${customerId}&project=${projectId}`,
-    /** حساب المشروع: بيع · مدفوع · باقي · مصروف */
+    /** حساب المشروع — يفتح تبويب الحساب داخل المحرر */
     account: (customerId: string, projectId: string) =>
-      `/design/account?customer=${customerId}&project=${projectId}`,
-    /** مصروفات المشروع — التسجيل والسجل من داخل المشروع فقط */
+      `/design/editor?customer=${customerId}&project=${projectId}&tab=account`,
+    /** مصروفات المشروع — يفتح تبويب المصروفات داخل المحرر */
     expenses: (customerId: string, projectId: string) =>
-      `/design/expenses?customer=${customerId}&project=${projectId}`,
+      `/design/editor?customer=${customerId}&project=${projectId}&tab=expenses`,
   },
 
   accounting: {
@@ -51,8 +57,14 @@ export const ROUTES = {
     /** تحصيل دفعة لمشروع محدد */
     depositForProject: (customerId: string, projectId: string) =>
       `/accounting/payments/new?customer=${customerId}&project=${projectId}`,
-    /** سجل المصروفات العام — للعرض فقط؛ التسجيل من داخل المشروع */
+    /** تعديل دفعة موجودة */
+    editPayment: (paymentId: string) =>
+      `/accounting/payments/new?payment=${paymentId}`,
+    /** مصروفات الورشة — تسجيل وعرض */
     expenses: "/accounting/expenses",
+    newExpense: "/accounting/expenses/new",
+    /** سجل حركة الفلوس (تحصيل + مصروف) */
+    ledger: "/accounting/ledger",
   },
 
   materials: {
@@ -72,34 +84,41 @@ export const ROUTES = {
   },
 } as const;
 
-/** الأقسام الظاهرة في شريط التنقل السفلي — 4 أبواب دون تكرار */
+/** الأقسام الظاهرة في شريط التنقل السفلي — 5 أبواب */
 export const APP_SECTIONS = [
   {
-    id: "workshop",
-    label: "الورشة",
-    description: "قيد التنفيذ وقائمة الانتظار",
+    id: "home",
+    label: "الرئيسية",
+    description: "ملخص اليوم والاختصارات",
     href: ROUTES.home,
     color: "#2B7DE9",
   },
   {
     id: "orders",
     label: "الطلبات",
-    description: "العملاء والمقايسات وأحدث المشاريع",
+    description: "المقايسات والمشاريع + طلب جديد",
     href: ROUTES.orders,
     color: "#E85A8A",
   },
   {
+    id: "workshop",
+    label: "الورشة",
+    description: "قيد التنفيذ وقائمة الانتظار",
+    href: ROUTES.workshop,
+    color: "#C47A12",
+  },
+  {
     id: "accounting",
     label: "الحسابات",
-    description: "حسابات الورشة · دفعات · مصروفات",
+    description: "دفعات · مصروفات · حركة",
     href: ROUTES.accounting.hub,
     color: "#2F9B7A",
   },
   {
-    id: "materials",
-    label: "الخامات",
-    description: "قطاعات · اكسسوار · تخصيمات · زجاج · سلك · حديد",
-    href: ROUTES.materials.hub,
-    color: "#E8956F",
+    id: "more",
+    label: "المزيد",
+    description: "خامات · إعدادات · نسخ احتياطي",
+    href: ROUTES.more,
+    color: "#6B7C93",
   },
 ] as const;

@@ -249,6 +249,63 @@ function addAccessoryCostLines(
   };
 
   pushPiece("مفصلات", acc.hingeQty, "hinge");
+
+  if (acc.tiltEspagnolettes.length) {
+    for (const line of acc.tiltEspagnolettes) {
+      const brand = brandFor(brands, labels, "tilt-espagnolette");
+      const unit = accessoryBrandResolvedPrice(brand, line.maxDimMm);
+      addCostLine(map, {
+        section: "accessories",
+        label: `سبلونة مفصلي قلاب ${line.label}`,
+        amount: line.qty,
+        unit: "قطعة",
+        cost: unit != null ? roundMoney(line.qty * unit) : null,
+        note: joinNotes(brandNote("tilt-espagnolette"), `حد ${line.maxDimMm}مم`),
+      });
+    }
+  }
+
+  if (acc.tiltScissors.length) {
+    for (const line of acc.tiltScissors) {
+      const brand = brandFor(brands, labels, "tilt-scissors");
+      const unit = accessoryBrandResolvedPrice(brand, line.maxDimMm);
+      addCostLine(map, {
+        section: "accessories",
+        label: `مقص قلاب ${line.label}`,
+        amount: line.qty,
+        unit: "قطعة",
+        cost: unit != null ? roundMoney(line.qty * unit) : null,
+        note: joinNotes(brandNote("tilt-scissors"), `حد ${line.maxDimMm}مم`),
+      });
+    }
+  }
+
+  pushPiece("كورنر علوي", acc.tiltCornerUpperQty, "tilt-corner-upper");
+  pushPiece("كورنر سفلي", acc.tiltCornerLowerQty, "tilt-corner-lower");
+  pushPiece(
+    "مفصلة علوية جزء الضلفة",
+    acc.tiltTopHingeQty,
+    "tilt-top-hinge"
+  );
+  pushPiece(
+    "مفصلة علوية جزء الحلق",
+    acc.tiltTopFrameHingeQty,
+    "tilt-top-frame-hinge"
+  );
+  pushPiece(
+    "مفصلة سفلية جزء الحلق",
+    acc.tiltBottomFrameHingeQty,
+    "tilt-bottom-frame-hinge"
+  );
+  pushPiece(
+    "مفصلة سفلية جزء الضلفة",
+    acc.tiltBottomSashHingeQty,
+    "tilt-bottom-sash-hinge"
+  );
+  pushPiece("مفصلة علوية بنز", acc.tiltHingePinQty, "tilt-hinge-pin");
+  pushPiece("سكاك كورنر سفلي", acc.tiltCornerStrikerQty, "tilt-corner-striker");
+  pushPiece("غطاء مفصلة", acc.tiltHingeCoverQty, "tilt-hinge-cover");
+
   pushPiece("كالون", acc.doorCylinderQty, "door-cylinder");
   pushPiece("مقبض إشارة", acc.doorSignalHandleQty, "door-signal-handle", tint);
   pushPiece("وش تسكيك", acc.doorEscutcheonQty, "door-escutcheon", tint);
@@ -282,6 +339,7 @@ function addAccessoryCostLines(
   for (const piece of acc.hingedLockPieces) {
     pushPiece(piece.name, piece.qty, "hinged-lock");
   }
+
   for (const piece of acc.bouclierLockPieces) {
     pushPiece(piece.name, piece.qty, "bouclier-lock");
   }

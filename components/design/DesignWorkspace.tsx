@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -30,6 +29,8 @@ import {
   ProjectMoreMenu,
   type ProjectMoreAction,
 } from "@/components/design/ProjectReportsMenu";
+import { ProjectAccount } from "@/components/design/ProjectAccount";
+import { ProjectExpenses } from "@/components/design/ProjectExpenses";
 import { TemplatePickerModal } from "@/components/design/TemplatePickerModal";
 import { WindowPreview } from "@/components/design/WindowPreview";
 import {
@@ -96,7 +97,10 @@ function autoScrollSpeed(progress: number) {
 type Props = {
   customerId?: string;
   projectId?: string;
+  initialTab?: "items" | "account" | "expenses";
 };
+
+export type WorkspaceTab = "items" | "account" | "expenses";
 
 type DragSession = {
   id: string;
@@ -113,12 +117,18 @@ type DropHit = {
   highlightId: string;
 };
 
-export function DesignWorkspace({ customerId, projectId }: Props) {
+export function DesignWorkspace({
+  customerId,
+  projectId,
+  initialTab = "items",
+}: Props) {
   const router = useRouter();
   const { unit } = useUnit();
+  const [tab, setTab] = useState<WorkspaceTab>(initialTab);
   const [project, setProject] = useState<Project | undefined>();
   const [items, setItems] = useState<DesignItem[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [editExpenseId, setEditExpenseId] = useState<string | null>(null);
   const pdfExporterRef = useRef<ProjectPdfExporterHandle>(null);
   const purchaseOrderRef = useRef<PurchaseOrderPdfExporterHandle>(null);
   const estimatedCostRef = useRef<EstimatedCostPdfExporterHandle>(null);
@@ -151,6 +161,10 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
   useEffect(() => {
     projectIdRef.current = projectId;
   }, [projectId]);
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -762,32 +776,21 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
     >
       <header className="flex items-center justify-between rounded-2xl bg-primary px-3 py-2.5 text-primary-foreground shadow-[0_6px_18px_rgba(43,125,233,0.28)]">
         <NavBack
-          href={ROUTES.home}
+          href={ROUTES.orders}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/15"
-          aria-label="رجوع للورشة"
+          aria-label="رجوع للطلبات"
         >
           <BackChevron />
         </NavBack>
 
         <div className="min-w-0 flex-1 px-2 text-center">
           <p className="truncate text-sm font-bold">
-            {project?.name ?? "بنود المشروع"}
+            {project?.name ?? "المشروع"}
           </p>
-          <p className="truncate text-[10px] opacity-80">بنود المقايسة</p>
         </div>
 
         <ProjectMoreMenu
           disabled={!customerId || !projectId}
-          accountHref={
-            customerId && projectId
-              ? ROUTES.design.account(customerId, projectId)
-              : undefined
-          }
-          expensesHref={
-            customerId && projectId
-              ? ROUTES.design.expenses(customerId, projectId)
-              : undefined
-          }
           settingsHref={
             customerId && projectId
               ? ROUTES.design.projectSettings(customerId, projectId)
@@ -797,10 +800,88 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
         />
       </header>
 
+      <div
+        role="tablist"
+        aria-label="أقسام المشروع"
+        className="grid grid-cols-3 rounded-xl border border-border bg-card p-1"
+      >
+        {(
+          [
+            { id: "items" as const, label: "البنود" },
+            { id: "account" as const, label: "الحساب" },
+            { id: "expenses" as const, label: "المصروفات" },
+          ] as const
+        ).map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === opt.id}
+            onClick={() => {
+              setEditExpenseId(null);
+              setTab(opt.id);
+            }}
+            className={`rounded-lg py-2 text-xs font-bold transition-colors ${
+              tab === opt.id
+                ? "bg-primary text-white"
+                : "text-muted hover:text-foreground"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "account" && customerId && projectId ? (
+        <ProjectAccount
+          customerId={customerId}
+          projectId={projectId}
+          embedded
+          onOpenExpenses={(expenseId) => {
+            setEditExpenseId(expenseId ?? null);
+            setTab("expenses");
+          }}
+        />
+      ) : null}
+
+      {tab === "expenses" && customerId && projectId ? (
+        <ProjectExpenses
+          customerId={customerId}
+          projectId={projectId}
+          editExpenseId={editExpenseId}
+        />
+      ) : null}
+
+      {customerId && projectId ? (
+        <>
+          <ProjectPdfExporter
+            ref={pdfExporterRef}
+            customerId={customerId}
+            projectId={projectId}
+            projectName={project?.name}
+          />
+          <PurchaseOrderPdfExporter
+            ref={purchaseOrderRef}
+            customerId={customerId}
+            projectId={projectId}
+            projectName={project?.name}
+          />
+          <EstimatedCostPdfExporter
+            ref={estimatedCostRef}
+            customerId={customerId}
+            projectId={projectId}
+            projectName={project?.name}
+          />
+        </>
+      ) : null}
+
+      {tab === "items" ? (
+        <>
       {money && customerId && projectId ? (
-        <Link
-          href={ROUTES.design.account(customerId, projectId)}
-          className="grid grid-cols-4 gap-1.5 rounded-2xl border border-border bg-card px-2 py-2.5 transition-all hover:border-primary/30 active:scale-[0.99]"
+        <button
+          type="button"
+          onClick={() => setTab("account")}
+          className="grid w-full grid-cols-4 gap-1.5 rounded-2xl border border-border bg-card px-2 py-2.5 transition-all hover:border-primary/30 active:scale-[0.99]"
           aria-label="فتح حساب المشروع"
         >
           <div className="text-center">
@@ -831,30 +912,7 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
               {formatCurrency(money.expenses)}
             </p>
           </div>
-        </Link>
-      ) : null}
-
-      {customerId && projectId ? (
-        <>
-          <ProjectPdfExporter
-            ref={pdfExporterRef}
-            customerId={customerId}
-            projectId={projectId}
-            projectName={project?.name}
-          />
-          <PurchaseOrderPdfExporter
-            ref={purchaseOrderRef}
-            customerId={customerId}
-            projectId={projectId}
-            projectName={project?.name}
-          />
-          <EstimatedCostPdfExporter
-            ref={estimatedCostRef}
-            customerId={customerId}
-            projectId={projectId}
-            projectName={project?.name}
-          />
-        </>
+        </button>
       ) : null}
 
       <ul
@@ -1062,6 +1120,8 @@ export function DesignWorkspace({ customerId, projectId }: Props) {
             </div>
           </div>
         </div>
+      ) : null}
+        </>
       ) : null}
     </div>
   );

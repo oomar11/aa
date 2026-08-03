@@ -77,7 +77,8 @@ export function ProjectMaterialDefaultsFields({ value, onChange }: Props) {
         (base ? `${base.name} (مخصص)` : "اكسسوار مخصص للمشروع"),
       accessoryDetails: value.accessoryDetails ?? details,
     });
-    setShowCustomEditor(true);
+    // لا تفتح المحرر تلقائياً — على الموبايل بيمدّ الشاشة ويكسر الواجهة
+    setShowCustomEditor(false);
   }
 
   function copyFromCatalog(catalogId: string) {
@@ -135,7 +136,7 @@ export function ProjectMaterialDefaultsFields({ value, onChange }: Props) {
         </div>
 
         {isCustom ? (
-          <div className="space-y-3 rounded-2xl border border-primary/30 bg-primary-soft/20 p-3">
+          <div className="max-w-full space-y-3 overflow-x-hidden rounded-2xl border border-primary/30 bg-primary-soft/20 p-3">
             <label className="block text-right text-[11px] text-muted">
               اسم نظام الاكسسوار
               <input
@@ -178,12 +179,14 @@ export function ProjectMaterialDefaultsFields({ value, onChange }: Props) {
             </div>
 
             {showCustomEditor && value.accessoryDetails ? (
-              <AccessoryDetailsForm
-                compact
-                details={value.accessoryDetails}
-                onChange={(next) => patch({ accessoryDetails: next })}
-                brandCatalog={brandCatalog}
-              />
+              <div className="max-w-full overflow-x-hidden">
+                <AccessoryDetailsForm
+                  compact
+                  details={value.accessoryDetails}
+                  onChange={(next) => patch({ accessoryDetails: next })}
+                  brandCatalog={brandCatalog}
+                />
+              </div>
             ) : (
               <p className="text-[10px] leading-relaxed text-muted">
                 القواعد محفوظة مع المشروع — اضغط «تعديل القواعد» إن رغبت في التعديل

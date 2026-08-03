@@ -1,36 +1,31 @@
 import type { Crumb } from "@/components/layout/AppBreadcrumb";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { MaterialWorkflowGuide } from "@/components/materials/MaterialWorkflowGuide";
-import type { MaterialWorkflowStep } from "@/lib/materials-navigation";
 import { ROUTES } from "@/lib/routes";
 
 type MaterialCategoryShellProps = {
   title: string;
-  description: string;
+  description?: string;
   breadcrumb?: Crumb[];
-  workflowSteps?: MaterialWorkflowStep[];
+  workflowSteps?: unknown;
   children: React.ReactNode;
 };
 
-/** غلاف موحد لصفحات فئات الخامات (قطاعات، اكسسوار، زجاج، حديد) */
+/** غلاف موحد لصفحات فئات الخامات — رجوع + عنوان فقط */
 export function MaterialCategoryShell({
   title,
   description,
   breadcrumb,
-  workflowSteps,
   children,
 }: MaterialCategoryShellProps) {
   return (
     <AppShell mainClassName="flex flex-1 flex-col gap-3 px-4 pb-24 pt-2">
       <PageHeader
         backHref={ROUTES.materials.hub}
-        backLabel="رجوع للخامات"
-        breadcrumb={breadcrumb}
         title={title}
         description={description}
+        breadcrumb={breadcrumb}
       />
-      {workflowSteps ? <MaterialWorkflowGuide steps={workflowSteps} /> : null}
       {children}
     </AppShell>
   );

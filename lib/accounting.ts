@@ -105,8 +105,20 @@ export function customerPaidTotal(
 }
 
 export function upsertPayment(payment: Payment) {
+  const previous = loadPayments().find((p) => p.id === payment.id);
   const payments = [payment, ...loadPayments().filter((p) => p.id !== payment.id)];
   savePayments(payments);
+
+  if (typeof window === "undefined") return;
+  const projectIds = new Set<string>();
+  if (previous?.projectId) projectIds.add(previous.projectId);
+  if (payment.projectId) projectIds.add(payment.projectId);
+  if (projectIds.size === 0) return;
+  void import("@/lib/workshop").then(({ syncProjectMoneyFromPayments }) => {
+    for (const projectId of projectIds) {
+      syncProjectMoneyFromPayments(projectId, payment.date);
+    }
+  });
 }
 
 export function deletePayment(paymentId: string) {
@@ -131,11 +143,11 @@ export function deleteExpense(expenseId: string) {
 }
 
 export type AccountingSummary = {
-  /** إجمالي بيع كل المشاريع */
+  /** إجمالي بيع المشاريع غير المقايسة (عربون / ورشة / مكتمل) */
   sales: number;
   /** مجموع الدفعات المحصّلة */
   collected: number;
-  /** مجموع المتبقي على المشاريع */
+  /** مجموع المتبقي على الشغل المكتمل فقط */
   outstanding: number;
   expenses: number;
   net: number;

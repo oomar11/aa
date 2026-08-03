@@ -1,47 +1,15 @@
-import { ProjectExpenses } from "@/components/design/ProjectExpenses";
-import { ScreenBack } from "@/components/layout/ScreenBack";
+import { redirect } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 
 type Props = {
   searchParams: Promise<{ customer?: string; project?: string }>;
 };
 
-export default async function ProjectExpensesPage({ searchParams }: Props) {
+/** توافق قديم — المصروفات صارت تبويب داخل المحرر */
+export default async function ProjectExpensesRedirect({ searchParams }: Props) {
   const params = await searchParams;
-
   if (!params.customer || !params.project) {
-    return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-3 bg-background px-6 py-6">
-        <ScreenBack href={ROUTES.orders}>العودة إلى الطلبات</ScreenBack>
-        <p className="text-center font-semibold text-foreground">
-          بيانات المشروع ناقصة
-        </p>
-      </div>
-    );
+    redirect(ROUTES.orders);
   }
-
-  return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
-      <header className="px-4 pt-5 pb-3">
-        <ScreenBack
-          href={ROUTES.design.editor(params.customer, params.project)}
-        >
-          رجوع لبنود المشروع
-        </ScreenBack>
-        <div className="mt-3 text-center">
-          <h1 className="text-xl font-bold text-foreground">مصروفات المشروع</h1>
-          <p className="mt-1 text-xs text-muted">
-            إجمالي المصروف · تسجيل جديد · السجل
-          </p>
-        </div>
-      </header>
-
-      <main className="flex-1 px-4 pb-16">
-        <ProjectExpenses
-          customerId={params.customer}
-          projectId={params.project}
-        />
-      </main>
-    </div>
-  );
+  redirect(ROUTES.design.expenses(params.customer, params.project));
 }

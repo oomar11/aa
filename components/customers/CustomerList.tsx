@@ -81,7 +81,7 @@ export function CustomerList() {
             return (
               <li key={customer.id}>
                 <Link
-                  href={`/design/projects?customer=${customer.id}`}
+                  href={ROUTES.design.newProject(customer.id)}
                   className="block rounded-2xl border border-border bg-card p-4 shadow-[0_2px_10px_rgba(15,20,28,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 active:scale-[0.99]"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -104,7 +104,7 @@ export function CustomerList() {
                       ) : null}
                     </div>
                     <span className="shrink-0 rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
-                      اختيار
+                      مشروع جديد
                     </span>
                   </div>
 

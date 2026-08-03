@@ -10,7 +10,10 @@ type PageHeaderProps = {
   className?: string;
 };
 
-/** عنوان الصفحة مع زر رجوع اختياري ومسار تنقل */
+/**
+ * عنوان الصفحة مع رجوع اختياري.
+ * القاعدة: رجوع + عنوان فقط؛ الوصف يُعرض فقط إن وُجد وكان قصيراً.
+ */
 export function PageHeader({
   backHref,
   backLabel,
@@ -19,20 +22,22 @@ export function PageHeader({
   description,
   className = "px-1",
 }: PageHeaderProps) {
+  const showBreadcrumb = breadcrumb && breadcrumb.length >= 3;
+
   return (
     <div className={className}>
-      {backHref && backLabel && (
+      {backHref ? (
         <ScreenBack href={backHref} className="mb-2">
-          {backLabel}
+          {backLabel ?? "رجوع"}
         </ScreenBack>
-      )}
-      {breadcrumb && breadcrumb.length > 0 ? (
+      ) : null}
+      {showBreadcrumb ? (
         <AppBreadcrumb className="mb-2" items={breadcrumb} />
       ) : null}
       <h1 className="text-xl font-bold">{title}</h1>
-      {description && (
+      {description && description.length <= 60 ? (
         <p className="mt-1 text-xs leading-relaxed text-muted">{description}</p>
-      )}
+      ) : null}
     </div>
   );
 }

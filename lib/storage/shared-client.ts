@@ -125,6 +125,21 @@ function hydrateFromSnapshot(
   options?: { silent?: boolean }
 ) {
   if (!snapshot.data) return;
+
+  // أمان إضافي: لو اللقطة فاضية متلمسش localStorage أبداً
+  if (!snapshotHasSharedPayload(snapshot)) {
+    revision = Number(snapshot.revision ?? revision) || 0;
+    updatedAt = snapshot.updatedAt ?? updatedAt;
+    backend = snapshot.backend ?? backend;
+    durable = snapshot.durable ?? durable;
+    hasData = localHasSharedData();
+    lastPulledAt = new Date().toISOString();
+    ready = true;
+    error = null;
+    notifySyncStatus();
+    return;
+  }
+
   const changed: string[] = [];
   for (const key of SHARED_STORAGE_KEYS) {
     const next = key in snapshot.data ? snapshot.data[key] : null;
@@ -141,7 +156,7 @@ function hydrateFromSnapshot(
   updatedAt = snapshot.updatedAt ?? updatedAt;
   backend = snapshot.backend ?? backend;
   durable = snapshot.durable ?? durable;
-  hasData = Boolean(snapshot.hasData);
+  hasData = Boolean(snapshot.hasData) || snapshotHasSharedPayload(snapshot);
   lastPulledAt = new Date().toISOString();
   ready = true;
   error = null;
@@ -149,6 +164,23 @@ function hydrateFromSnapshot(
     notifyKeyEvents(changed);
   }
   notifySyncStatus();
+}
+
+/** هل لقطة السيرفر فيها أي بيانات مشتركة؟ (نتحقق من المحتوى مش العلم فقط) */
+function snapshotHasSharedPayload(snapshot: StoreResponse): boolean {
+  if (!snapshot.data) return false;
+  return SHARED_STORAGE_KEYS.some((key) => {
+    const value = snapshot.data![key];
+    return typeof value === "string" && value.length > 0;
+  });
+}
+
+/** رفع المحلي للسيرفر بدون مسح الجهاز عند الفشل */
+async function migrateLocalToServer(): Promise<StoreResponse> {
+  const data = collectLocalSharedData();
+  return neonConfigured()
+    ? await replaceViaNeon(data)
+    : await replaceViaApi(data);
 }
 
 async function pullViaNeon(options?: {
@@ -211,7 +243,11 @@ async function pullViaApi(options?: {
     throw new Error(json.error || "تعذر تحميل بيانات الورشة");
   }
 
-  if (!json.hasData && options?.migrateIfEmpty && localHasSharedData()) {
+  if (
+    !snapshotHasSharedPayload(json) &&
+    options?.migrateIfEmpty &&
+    localHasSharedData()
+  ) {
     const putRes = await fetch("/api/store", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -310,14 +346,48 @@ async function pullFromServer(options?: {
   syncing = true;
   notifySyncStatus();
   try {
+    // عند السيرفر الفاضي: ارفع المحلي دائماً (حتى في الـ polling)
+    // عشان /tmp على Vercel بعد الـ deploy ما يمسحش بيانات الجهاز.
+    const migrateIfEmpty = options?.migrateIfEmpty ?? true;
     const json = neonConfigured()
-      ? await pullViaNeon(options)
-      : await pullViaApi(options);
+      ? await pullViaNeon({ migrateIfEmpty })
+      : await pullViaApi({ migrateIfEmpty });
 
     if (!json.data && json.revision === revision) {
       lastPulledAt = new Date().toISOString();
       ready = true;
       error = null;
+      return;
+    }
+
+    // سيرفر فاضي: متكتبش null فوق المحلي أبداً
+    if (!snapshotHasSharedPayload(json)) {
+      if (localHasSharedData()) {
+        try {
+          const uploaded = await migrateLocalToServer();
+          hydrateFromSnapshot(uploaded);
+          return;
+        } catch (err) {
+          error =
+            err instanceof Error
+              ? err.message
+              : "تعذر رفع بيانات الجهاز للورشة";
+          ready = true;
+          backend = json.backend ?? backend;
+          durable = json.durable ?? durable;
+          hasData = localHasSharedData();
+          lastPulledAt = new Date().toISOString();
+          return;
+        }
+      }
+      revision = Number(json.revision ?? revision) || 0;
+      updatedAt = json.updatedAt ?? updatedAt;
+      backend = json.backend ?? backend;
+      durable = json.durable ?? durable;
+      hasData = false;
+      ready = true;
+      error = null;
+      lastPulledAt = new Date().toISOString();
       return;
     }
 
@@ -359,13 +429,14 @@ export function startWorkshopSync(): () => void {
     pollTimer = setInterval(() => {
       if (document.visibilityState === "hidden") return;
       if (pending.size > 0) return;
-      void pullFromServer({ migrateIfEmpty: false });
+      // migrateIfEmpty: true — لو الـ deploy مسح /tmp نرفع المحلي تاني
+      void pullFromServer({ migrateIfEmpty: true });
     }, 8000);
   }
 
   const onVisible = () => {
     if (document.visibilityState === "visible") {
-      void pullFromServer({ migrateIfEmpty: false });
+      void pullFromServer({ migrateIfEmpty: true });
     }
   };
   document.addEventListener("visibilitychange", onVisible);

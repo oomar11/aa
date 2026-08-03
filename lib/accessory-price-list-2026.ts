@@ -22,6 +22,24 @@ export const VORNE_ESPAGNOLETTE_STANDARD_PRICES: Record<number, number> = {
   200: 150,
 };
 
+/** أسعار سبلونة مفصلي قلاب — رينج maxDimMm (بريمير 2026) */
+export const VORNE_TILT_ESPAGNOLETTE_PRICES: Record<number, number> = {
+  700: 53.4,
+  800: 73.4,
+  1200: 108.9,
+  1400: 122.3,
+  1700: 161.2,
+  2200: 205.6,
+};
+
+/** أسعار مقص قلاب — رينج maxDimMm (بريمير 2026) */
+export const VORNE_TILT_SCISSORS_PRICES: Record<number, number> = {
+  600: 138.9,
+  650: 144.5,
+  850: 172.3,
+  1100: 222.3,
+};
+
 /** أسعار سبلونة جرار اكس 7.5 (ج.م/قطعة) */
 export const VORNE_ESPAGNOLETTE_SLIDING_75_PRICES: Record<number, number> = {
   40: 60,
@@ -81,11 +99,99 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
   return [
     brand(
       "brand-vorne-hinge",
-      "مفصلة علوية 9 axis (جزء الضلفة)",
+      "مفصلة",
       "hinge",
+      undefined,
+      undefined,
+      "مفصلة عادية للشباك والباب — نفس القطعة؛ العدد ٢ شباك / ٣–٤ باب"
+    ),
+    brand(
+      "brand-vorne-tilt-esp",
+      "سبلونة مفصلي قلاب",
+      "tilt-espagnolette",
+      undefined,
+      { ...VORNE_TILT_ESPAGNOLETTE_PRICES },
+      "مجموعة المفصلي القلاب T&T — بريمير/فورنا 2026"
+    ),
+    brand(
+      "brand-vorne-tilt-scissors",
+      "مقص قلاب",
+      "tilt-scissors",
+      undefined,
+      { ...VORNE_TILT_SCISSORS_PRICES },
+      "مجموعة المفصلي القلاب T&T — بريمير/فورنا 2026"
+    ),
+    brand(
+      "brand-vorne-tilt-top-hinge",
+      "مفصلة علوية 9 axis (جزء الضلفة)",
+      "tilt-top-hinge",
       23.4,
       undefined,
-      "مجموعة المفصلي القالب T&T"
+      "مجموعة المفصلي القلاب T&T"
+    ),
+    brand(
+      "brand-vorne-tilt-top-frame-hinge",
+      "مفصلة علوية (جزء الحلق)",
+      "tilt-top-frame-hinge",
+      36.7,
+      undefined,
+      "مجموعة المفصلي القلاب T&T"
+    ),
+    brand(
+      "brand-vorne-tilt-bottom-frame-hinge",
+      "مفصلة سفلية (جزء الحلق)",
+      "tilt-bottom-frame-hinge",
+      33.4,
+      undefined,
+      "مجموعة المفصلي القلاب T&T"
+    ),
+    brand(
+      "brand-vorne-tilt-bottom-sash-hinge",
+      "مفصلة سفلية (جزء الضلفة)",
+      "tilt-bottom-sash-hinge",
+      33.4,
+      undefined,
+      "مجموعة المفصلي القلاب T&T"
+    ),
+    brand(
+      "brand-vorne-tilt-corner-upper",
+      "كورنر علوي",
+      "tilt-corner-upper",
+      72.3,
+      undefined,
+      "مجموعة المفصلي القلاب T&T"
+    ),
+    brand(
+      "brand-vorne-tilt-corner-lower",
+      "كورنر سفلي",
+      "tilt-corner-lower",
+      94.5,
+      undefined,
+      "مجموعة المفصلي القلاب T&T"
+    ),
+    brand(
+      "brand-vorne-tilt-corner-striker",
+      "سكاك كورنر سفلي 9 اكس",
+      "tilt-corner-striker",
+      26.7,
+      undefined,
+      "مجموعة المفصلي القلاب T&T"
+    ),
+    brand(
+      "brand-vorne-tilt-hinge-pin",
+      "مفصلة علوية بنز",
+      "tilt-hinge-pin",
+      7.8,
+      undefined,
+      "مجموعة المفصلي القلاب T&T"
+    ),
+    brand(
+      "brand-vorne-tilt-hinge-cover",
+      "غطاء مفصلة أبيض",
+      "tilt-hinge-cover",
+      13.4,
+      undefined,
+      "مجموعة المفصلي القلاب T&T — أبيض افتراضي"
     ),
     brand(
       "brand-vorne-hinged-esp",
@@ -231,19 +337,24 @@ export function migrateVorneAccessoryBrands(
       merged.push(def);
       continue;
     }
+    // تصحيح هجرة: براند المفصلة كان متسمّي بقطعة القلاب اكس 9
+    const forceHingeRename =
+      def.id === "brand-vorne-hinge" &&
+      /9\s*axis|علوية|T&T|قلاب/i.test(prev.name);
     merged.push({
       ...prev,
-      name: prev.name || def.name,
-      category: prev.category,
-      unitPrice:
-        prev.unitPrice != null && prev.unitPrice > 0
+      name: forceHingeRename ? def.name : prev.name || def.name,
+      category: def.category,
+      unitPrice: forceHingeRename
+        ? def.unitPrice
+        : prev.unitPrice != null && prev.unitPrice > 0
           ? prev.unitPrice
           : def.unitPrice,
       sizePrices:
         prev.sizePrices && Object.keys(prev.sizePrices).length > 0
           ? prev.sizePrices
           : def.sizePrices,
-      notes: prev.notes ?? def.notes,
+      notes: forceHingeRename ? def.notes : (prev.notes ?? def.notes),
     });
     byId.delete(def.id);
   }
@@ -251,6 +362,19 @@ export function migrateVorneAccessoryBrands(
   for (const rest of byId.values()) {
     // التراك انتقل للحديد — لا نبقي براندات تراك في الاكسسوار
     if ((rest.category as string) === "track") continue;
+    // سكاك قلاب وهمي — استُبدل بسكاك كورنر سفلي
+    if ((rest.category as string) === "tilt-lock") continue;
+    if (rest.id === "brand-vorne-tilt-lock") continue;
+    if (
+      (rest.category as string) === "tilt-esp-triple-sash" ||
+      (rest.category as string) === "tilt-esp-triple-frame"
+    )
+      continue;
+    if (
+      rest.id === "brand-vorne-tilt-esp-triple-sash" ||
+      rest.id === "brand-vorne-tilt-esp-triple-frame"
+    )
+      continue;
     merged.push(rest);
   }
 

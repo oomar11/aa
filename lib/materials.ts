@@ -64,10 +64,14 @@ export type MaterialsBreakdown = {
   bouclierCapQty: number;
   /** طبة بوكلير — متر طولي (ارتفاع الضلفة) */
   bouclierCapM: number;
-  /** سوقاس بيقسم الحلق (خطوط التقسيم في اللليآوت) */
-  mullionFrameM: number;
-  /** سوقاس بيقسم الضلفة (تقسيم داخلي / عوائد) */
-  mullionSashM: number;
+  /** سوقاس مفصلي — متر طولي */
+  mullionHingedM: number;
+  /** سوقاس جرار — متر طولي (جوا/بين ضلف الجرار) */
+  mullionSlidingM: number;
+  /** عدد قطع السقاس المفصلي — لطقم التجميع */
+  mullionHingedQty: number;
+  /** عدد قطع السقاس الجرار — لطقم التجميع */
+  mullionSlidingQty: number;
   /** ضلفة مفصلي — متر طولي (محيط كل ضلفة متحركة) */
   sashHingedM: number;
   /** ضلفة باب — متر طولي */
@@ -110,8 +114,10 @@ export type MaterialsBreakdown = {
   meshMeetingM: number;
   /** إجمالي الحلق */
   frameTotalM: number;
-  /** إجمالي السوقاس */
+  /** إجمالي السوقاس (مفصلي + جرار) */
   mullionTotalM: number;
+  /** إجمالي عدد قطع السقاس */
+  mullionQty: number;
   /** هل الشباك فيه مفصلي وجرار معاً */
   isMixedFrame: boolean;
   /** ملخص نوع الحلق للعرض */
@@ -132,7 +138,10 @@ type PaneBox = {
 type EdgeKey = string;
 
 type JunctionTotals = {
-  mullionMm: number;
+  mullionHingedMm: number;
+  mullionHingedQty: number;
+  mullionSlidingMm: number;
+  mullionSlidingQty: number;
   couplingMm: number;
   bouclierMm: number;
 };
@@ -159,8 +168,10 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     bouclierM: 0,
     bouclierCapQty: 0,
     bouclierCapM: 0,
-    mullionFrameM: 0,
-    mullionSashM: 0,
+    mullionHingedM: 0,
+    mullionSlidingM: 0,
+    mullionHingedQty: 0,
+    mullionSlidingQty: 0,
     sashHingedM: 0,
     sashDoorM: 0,
     sashSlidingM: 0,
@@ -183,6 +194,7 @@ function emptyBreakdown(areaSqm: number): MaterialsBreakdown {
     meshMeetingM: 0,
     frameTotalM: 0,
     mullionTotalM: 0,
+    mullionQty: 0,
     isMixedFrame: false,
     frameLabel: "مفصلي",
   };
@@ -653,7 +665,17 @@ function collectJunctions(
     const span = node.dir === "v" ? h : w;
 
     if (kind === "mullion") {
-      out.mullionMm += span;
+      const leftKind = regionKind(child, panes);
+      const rightKind = regionKind(next, panes);
+      const isSliding =
+        leftKind === "sliding" && rightKind === "sliding";
+      if (isSliding) {
+        out.mullionSlidingMm += span;
+        out.mullionSlidingQty += 1;
+      } else {
+        out.mullionHingedMm += span;
+        out.mullionHingedQty += 1;
+      }
       return;
     }
     if (kind === "coupling") {
@@ -672,12 +694,20 @@ function collectJunctions(
   });
 }
 
-/** سوقاس داخل الضلفة من التقسيم الداخلي */
-function sashMullionMm(
+/** سوقاس داخل الضلفة من التقسيم الداخلي — طول + عدد حسب مفصلي/جرار */
+function sashMullionStats(
   boxes: PaneBox[],
   panes: Record<string, PaneConfig> | undefined
-): number {
-  let total = 0;
+): {
+  hingedMm: number;
+  hingedQty: number;
+  slidingMm: number;
+  slidingQty: number;
+} {
+  let hingedMm = 0;
+  let hingedQty = 0;
+  let slidingMm = 0;
+  let slidingQty = 0;
   for (const box of boxes) {
     if (isExhaustPane(box.opening)) continue;
     // ضلفة البوكلير الثابتة مش بتتقسم بسوقاس داخلي للخامات دي
@@ -688,10 +718,26 @@ function sashMullionMm(
     for (const line of lines) {
       const dx = line.x2 - line.x1;
       const dy = line.y2 - line.y1;
-      total += Math.hypot(dx, dy);
+      const len = Math.hypot(dx, dy);
+      if (box.kind === "sliding") {
+        slidingMm += len;
+        slidingQty += 1;
+      } else {
+        hingedMm += len;
+        hingedQty += 1;
+      }
     }
   }
-  return total;
+  return { hingedMm, hingedQty, slidingMm, slidingQty };
+}
+
+/** @deprecated استخدم sashMullionStats */
+function sashMullionMm(
+  boxes: PaneBox[],
+  panes: Record<string, PaneConfig> | undefined
+): number {
+  const s = sashMullionStats(boxes, panes);
+  return s.hingedMm + s.slidingMm;
 }
 
 /** مقاسات القطع بعد التخصيم الموحد */
@@ -1119,7 +1165,10 @@ export function calcItemMaterials(
   let frameSlidingMm = 0;
 
   const junctions: JunctionTotals = {
-    mullionMm: 0,
+    mullionHingedMm: 0,
+    mullionHingedQty: 0,
+    mullionSlidingMm: 0,
+    mullionSlidingQty: 0,
     couplingMm: 0,
     bouclierMm: 0,
   };
@@ -1177,7 +1226,9 @@ export function calcItemMaterials(
   // سوقاس/بوكلير/كوبلن: أطوال التقسيم من اللليآوت (مقاس الفتحة).
   // الحلق والضلفة والسكينة والتقابل بتاخد مقاس القطع بعد التخصيم.
 
-  const mullionSashMm = sashMullionMm(boxes, panes);
+  const sashMullion = sashMullionStats(boxes, panes);
+  const mullionHingedMm = junctions.mullionHingedMm + sashMullion.hingedMm;
+  const mullionSlidingMm = junctions.mullionSlidingMm + sashMullion.slidingMm;
   const sashMm = sashProfileMm(boxes, panes, cat, deductions);
   const beadMm = beadTotalsMm(boxes, panes, item, cat, deductions);
   const glassAreaSqm = totalGlassAreaSqm(boxes, panes, cat, deductions);
@@ -1199,8 +1250,8 @@ export function calcItemMaterials(
   const couplingM = roundM(mmToM(junctions.couplingMm));
   const knifeM = roundM(mmToM(slidingKnifeProfileMm(boxes, deductions)));
   const bouclierM = roundM(mmToM(junctions.bouclierMm));
-  const mullionFrameM = roundM(mmToM(junctions.mullionMm));
-  const mullionSashM = roundM(mmToM(mullionSashMm));
+  const mullionHingedM = roundM(mmToM(mullionHingedMm));
+  const mullionSlidingM = roundM(mmToM(mullionSlidingMm));
   const sashHingedM = roundM(mmToM(sashMm.hinged));
   const sashDoorM = roundM(mmToM(sashMm.door));
   const sashSlidingM = roundM(mmToM(sashMm.sliding));
@@ -1217,7 +1268,12 @@ export function calcItemMaterials(
       beadDoubleSlidingM
   );
   const frameTotalM = roundM(frameHingedM + frameSlidingM);
-  const mullionTotalM = roundM(mullionFrameM + mullionSashM);
+  const mullionTotalM = roundM(mullionHingedM + mullionSlidingM);
+  const mullionHingedQty =
+    junctions.mullionHingedQty + sashMullion.hingedQty;
+  const mullionSlidingQty =
+    junctions.mullionSlidingQty + sashMullion.slidingQty;
+  const mullionQty = mullionHingedQty + mullionSlidingQty;
 
   return {
     areaSqm: roundM(areaSqm),
@@ -1228,8 +1284,10 @@ export function calcItemMaterials(
     bouclierM,
     bouclierCapQty: bouclierCap.qty,
     bouclierCapM,
-    mullionFrameM,
-    mullionSashM,
+    mullionHingedM,
+    mullionSlidingM,
+    mullionHingedQty,
+    mullionSlidingQty,
     sashHingedM,
     sashDoorM,
     sashSlidingM,
@@ -1252,6 +1310,7 @@ export function calcItemMaterials(
     meshMeetingM,
     frameTotalM,
     mullionTotalM,
+    mullionQty,
     isMixedFrame,
     frameLabel: frameLabelFor(frameHingedM, frameSlidingM, couplingM),
   };
@@ -1274,8 +1333,10 @@ export function scaleMaterials(
     bouclierM: roundM(m.bouclierM * q),
     bouclierCapQty: m.bouclierCapQty * q,
     bouclierCapM: roundM(m.bouclierCapM * q),
-    mullionFrameM: roundM(m.mullionFrameM * q),
-    mullionSashM: roundM(m.mullionSashM * q),
+    mullionHingedM: roundM(m.mullionHingedM * q),
+    mullionSlidingM: roundM(m.mullionSlidingM * q),
+    mullionHingedQty: m.mullionHingedQty * q,
+    mullionSlidingQty: m.mullionSlidingQty * q,
     sashHingedM: roundM(m.sashHingedM * q),
     sashDoorM: roundM(m.sashDoorM * q),
     sashSlidingM: roundM(m.sashSlidingM * q),
@@ -1298,6 +1359,7 @@ export function scaleMaterials(
     meshMeetingM: roundM(m.meshMeetingM * q),
     frameTotalM: roundM(m.frameTotalM * q),
     mullionTotalM: roundM(m.mullionTotalM * q),
+    mullionQty: m.mullionQty * q,
   };
 }
 
@@ -1612,13 +1674,8 @@ function profileCostEntries(m: MaterialsBreakdown): ProfileCostEntry[] {
     { category: "mesh-sliding-profile", lengthM: m.meshSlidingProfileM },
     { category: "four-leaf-meeting", lengthM: m.fourLeafMeetingM },
     { category: "mesh-meeting", lengthM: m.meshMeetingM },
-    {
-      category:
-        m.frameSlidingM > 0.0005 && m.frameHingedM <= 0.0005
-          ? "mullion-sliding"
-          : "mullion-hinged",
-      lengthM: m.mullionTotalM,
-    },
+    { category: "mullion-hinged", lengthM: m.mullionHingedM },
+    { category: "mullion-sliding", lengthM: m.mullionSlidingM },
   ];
   return entries.filter((e) => e.lengthM > 0.0005);
 }
@@ -1642,9 +1699,14 @@ export function calcProfileCostBreakdown(
 
   const system = findSystem("profiles", item.systemId, cat);
   const kitPrice = system?.profile?.bouclierCapKitPrice ?? 0;
+  const mullionKitPrice = system?.profile?.mullionAssemblyKitPrice ?? 0;
+  const slidingMullionKitPrice =
+    system?.profile?.slidingMullionAssemblyKitPrice ?? 0;
   const hasBarPricing = profileSystemHasPricing(system);
-  const hasKitPricing = kitPrice > 0 && materials.bouclierCapQty > 0;
-  if (!hasBarPricing && !hasKitPricing) return empty;
+  const hasBouclierCap = materials.bouclierCapQty > 0;
+  const hasMullionKit =
+    materials.mullionHingedQty > 0 || materials.mullionSlidingQty > 0;
+  if (!hasBarPricing && !hasBouclierCap && !hasMullionKit) return empty;
 
   const lines: ProfileCostLine[] = [];
   if (hasBarPricing && system) {
@@ -1667,8 +1729,8 @@ export function calcProfileCostBreakdown(
     }
   }
 
-  // طبة بوكلير = طقم لكل حتة بوكلير (سعر على السيستم، مش بالعود)
-  if (hasKitPricing) {
+  // طبة بوكلير = طقم لكل حتة بوكلير (تظهر بالكمية حتى لو السعر صفر)
+  if (materials.bouclierCapQty > 0) {
     const qty = materials.bouclierCapQty;
     lines.push({
       category: "bouclier-cap",
@@ -1679,9 +1741,44 @@ export function calcProfileCostBreakdown(
       barPrice: 0,
       barLengthM: 0,
       pricePerM: 0,
-      unitPrice: kitPrice,
-      totalCost: roundM(qty * kitPrice),
+      unitPrice: kitPrice > 0 ? kitPrice : 0,
+      totalCost: kitPrice > 0 ? roundM(qty * kitPrice) : 0,
       productName: "طقم لكل حتة بوكلير",
+    });
+  }
+
+  if (materials.mullionHingedQty > 0) {
+    const qty = materials.mullionHingedQty;
+    lines.push({
+      category: "mullion-assembly-kit",
+      label: "طقم تجميع سقاس مفصلي",
+      billing: "kit",
+      lengthM: 0,
+      qty,
+      barPrice: 0,
+      barLengthM: 0,
+      pricePerM: 0,
+      unitPrice: mullionKitPrice > 0 ? mullionKitPrice : 0,
+      totalCost: mullionKitPrice > 0 ? roundM(qty * mullionKitPrice) : 0,
+      productName: "طقم لكل سقاس مفصلي",
+    });
+  }
+
+  if (materials.mullionSlidingQty > 0) {
+    const qty = materials.mullionSlidingQty;
+    lines.push({
+      category: "sliding-mullion-assembly-kit",
+      label: "طقم تجميع سقاس جرار",
+      billing: "kit",
+      lengthM: 0,
+      qty,
+      barPrice: 0,
+      barLengthM: 0,
+      pricePerM: 0,
+      unitPrice: slidingMullionKitPrice > 0 ? slidingMullionKitPrice : 0,
+      totalCost:
+        slidingMullionKitPrice > 0 ? roundM(qty * slidingMullionKitPrice) : 0,
+      productName: "طقم لكل سقاس جرار",
     });
   }
 

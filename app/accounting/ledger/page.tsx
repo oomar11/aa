@@ -1,17 +1,17 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ExpenseForm } from "@/components/accounting/ExpenseForm";
+import { MoneyLedger } from "@/components/accounting/MoneyLedger";
 import { ROUTES } from "@/lib/routes";
 
-export default function NewExpensePage() {
+export default function MoneyLedgerPage() {
   return (
     <AppShell>
       <PageHeader
-        backHref={ROUTES.accounting.expenses}
-        backLabel="المصروفات"
-        title="تسجيل مصروف"
-        description="مصروف ورشة عام أو مربوط بمشروع"
+        backHref={ROUTES.accounting.hub}
+        backLabel="الحسابات"
+        title="سجل الحركة"
+        description="دخول وخروج الفلوس — تحصيل ومصروف"
       />
       <div className="mt-4">
         <Suspense
@@ -21,7 +21,7 @@ export default function NewExpensePage() {
             </div>
           }
         >
-          <ExpenseForm />
+          <MoneyLedger />
         </Suspense>
       </div>
     </AppShell>

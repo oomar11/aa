@@ -9,6 +9,8 @@ import {
   accessoryBrandCategoryLabel,
   defaultEspagnoletteCatalog,
   defaultEspagnoletteLockQty,
+  defaultTiltEspagnoletteRanges,
+  defaultTiltScissorsRanges,
   newAccessoryLockPieceId,
   newEspagnoletteCatalogId,
   type AccessoryBrand,
@@ -16,6 +18,7 @@ import {
   type AccessoryLockPiece,
   type AccessorySystemDetails,
   type EspagnoletteCatalogEntry,
+  type TiltSizeRange,
 } from "@/lib/material-systems";
 
 type LockKind = "hinged" | "bouclier" | "bouclier-bolt" | "sliding";
@@ -41,7 +44,10 @@ type Props = {
 
 function isEspagnoletteCategory(category: AccessoryBrandCategory): boolean {
   return (
-    category === "hinged-espagnolette" || category === "sliding-espagnolette"
+    category === "hinged-espagnolette" ||
+    category === "sliding-espagnolette" ||
+    category === "tilt-espagnolette" ||
+    category === "tilt-scissors"
   );
 }
 
@@ -97,7 +103,8 @@ export function AccessoryDetailsForm({
     onChange({ ...details, ...patch });
   }
 
-  const show = (id: AccessoryFormTab) => compact || tab === id;
+  /** تبويب واحد فقط — حتى في compact (وضع المشروع على الموبايل) */
+  const show = (id: AccessoryFormTab) => tab === id;
 
   function ensureBrand(
     category: AccessoryBrandCategory
@@ -201,7 +208,7 @@ export function AccessoryDetailsForm({
   }
 
   function setSizePrice(
-    category: "hinged-espagnolette" | "sliding-espagnolette",
+    category: "hinged-espagnolette" | "sliding-espagnolette" | "tilt-espagnolette" | "tilt-scissors",
     size: number,
     raw: string
   ) {
@@ -258,6 +265,16 @@ export function AccessoryDetailsForm({
     details,
     brandCatalog
   );
+  const tiltEspBrand = resolveBrandForCategory(
+    "tilt-espagnolette",
+    details,
+    brandCatalog
+  );
+  const tiltScissorsBrand = resolveBrandForCategory(
+    "tilt-scissors",
+    details,
+    brandCatalog
+  );
 
   const sablonPricedCount = useMemo(() => {
     let n = 0;
@@ -266,8 +283,22 @@ export function AccessoryDetailsForm({
       if (entry.sliding && (slidingBrand?.sizePrices?.[entry.size] ?? 0) > 0)
         n += 1;
     }
+    for (const r of details.tiltEspagnoletteRanges) {
+      if ((tiltEspBrand?.sizePrices?.[r.maxDimMm] ?? 0) > 0) n += 1;
+    }
+    for (const r of details.tiltScissorsRanges) {
+      if ((tiltScissorsBrand?.sizePrices?.[r.maxDimMm] ?? 0) > 0) n += 1;
+    }
     return n;
-  }, [details.espagnoletteCatalog, hingedBrand, slidingBrand]);
+  }, [
+    details.espagnoletteCatalog,
+    details.tiltEspagnoletteRanges,
+    details.tiltScissorsRanges,
+    hingedBrand,
+    slidingBrand,
+    tiltEspBrand,
+    tiltScissorsBrand,
+  ]);
 
   const gapClass = compact ? "gap-2" : "gap-3";
   const formTabs = compact
@@ -275,7 +306,7 @@ export function AccessoryDetailsForm({
     : ACCESSORY_FORM_TABS;
 
   return (
-    <div className={`flex flex-col ${gapClass}`}>
+    <div className={`flex max-w-full flex-col overflow-x-hidden ${gapClass}`}>
       <MaterialSectionTabs
         tabs={formTabs}
         active={compact && tab === "prices" ? "sablons" : tab}
@@ -289,19 +320,21 @@ export function AccessoryDetailsForm({
           hint="هذه الأسعار تدخل تكلفة البند والبيع مباشرة عند الرسم. أسعار السبلونة من تبويب «السبلونات»."
           compact={compact}
         >
-          {(["hinged", "door", "bouclier", "sliding"] as const).map((group) => {
+          {(["hinged", "tilt", "door", "bouclier", "sliding"] as const).map((group) => {
             const cats = ACCESSORY_BRAND_CATEGORIES.filter(
               (c) => c.group === group && !isEspagnoletteCategory(c.id)
             );
             if (cats.length === 0) return null;
             const groupLabel =
               group === "hinged"
-                ? "مفصلي (شباك)"
-                : group === "door"
-                  ? "باب مفصلي"
-                  : group === "bouclier"
-                    ? "بوكلير"
-                    : "جرار";
+                ? "مفصلي عادي (شباك/باب)"
+                : group === "tilt"
+                  ? "مفصلي قلاب"
+                  : group === "door"
+                    ? "باب مفصلي"
+                    : group === "bouclier"
+                      ? "بوكلير"
+                      : "جرار";
             return (
               <div key={group} className="space-y-2">
                 <p className="text-[11px] font-bold text-foreground">
@@ -352,17 +385,26 @@ export function AccessoryDetailsForm({
           }
           compact={compact}
         >
-          <div className="rounded-xl border border-primary/25 bg-primary-soft/50 px-3 py-2.5 text-[11px] leading-relaxed text-foreground">
-            <p className="font-semibold text-primary">كيف تُحسب السبلونة؟</p>
-            <p className="mt-1 text-muted">
-              طول السبلونة ≈ ارتفاع الضلفة − الفرق أدناه. يُختار أكبر مقاس مفعّل
-              ≤ هذا الطول. كل ضلفة مفصلي لوحدها = سبلونة؛ ضلفتين مقابض في وش بعض
-              (بوكلير) = سبلونة واحدة فقط.
+          {compact ? (
+            <p className="text-[11px] text-muted">
+              طول السبلونة ≈ ارتفاع الضلفة − الفرق أدناه
               {onBrandCatalogChange
-                ? ` · مسجّل: ${sablonPricedCount} سعر مقاس`
+                ? ` · مسجّل: ${sablonPricedCount} سعر`
                 : ""}
             </p>
-          </div>
+          ) : (
+            <div className="rounded-xl border border-primary/25 bg-primary-soft/50 px-3 py-2.5 text-[11px] leading-relaxed text-foreground">
+              <p className="font-semibold text-primary">كيف تُحسب السبلونة؟</p>
+              <p className="mt-1 text-muted">
+                طول السبلونة ≈ ارتفاع الضلفة − الفرق أدناه. يُختار أكبر مقاس مفعّل
+                ≤ هذا الطول. كل ضلفة مفصلي لوحدها = سبلونة؛ ضلفتين مقابض في وش بعض
+                (بوكلير) = سبلونة واحدة فقط.
+                {onBrandCatalogChange
+                  ? ` · مسجّل: ${sablonPricedCount} سعر مقاس`
+                  : ""}
+              </p>
+            </div>
+          )}
 
           <NumberField
             label="فرق السبلونة عن الضلفة (مم)"
@@ -394,12 +436,12 @@ export function AccessoryDetailsForm({
             </div>
           ) : null}
 
-          <div className="overflow-x-auto rounded-xl border border-border bg-background/70 text-[11px]">
+          <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-background/70 text-[11px]">
             <div
-              className={`grid min-w-[520px] border-b border-border bg-card/80 text-center font-semibold text-muted ${
+              className={`grid min-w-[640px] border-b border-border bg-card/80 text-center font-semibold text-muted ${
                 onBrandCatalogChange
-                  ? "grid-cols-[0.7fr_1fr_1fr_0.55fr_0.55fr_0.45fr]"
-                  : "grid-cols-[0.9fr_1fr_0.6fr_0.6fr]"
+                  ? "grid-cols-[0.55fr_0.85fr_0.85fr_0.55fr_0.55fr_0.45fr_0.45fr_0.4fr]"
+                  : "grid-cols-[0.7fr_0.85fr_0.55fr_0.55fr_0.45fr_0.45fr]"
               }`}
             >
               <span className="px-2 py-2">مقاس سم</span>
@@ -411,6 +453,8 @@ export function AccessoryDetailsForm({
               ) : (
                 <span className="px-2 py-2">أقصى ارتفاع مم</span>
               )}
+              <span className="px-2 py-2">سكاك مفصلي</span>
+              <span className="px-2 py-2">سكاك جرار</span>
               <span className="px-2 py-2">مفصلي</span>
               <span className="px-2 py-2">جرار</span>
               {onBrandCatalogChange ? <span className="px-2 py-2" /> : null}
@@ -418,10 +462,10 @@ export function AccessoryDetailsForm({
             {details.espagnoletteCatalog.map((entry, i) => (
               <div
                 key={entry.id}
-                className={`grid min-w-[520px] items-center text-center ${
+                className={`grid min-w-[640px] items-center text-center ${
                   onBrandCatalogChange
-                    ? "grid-cols-[0.7fr_1fr_1fr_0.55fr_0.55fr_0.45fr]"
-                    : "grid-cols-[0.9fr_1fr_0.6fr_0.6fr]"
+                    ? "grid-cols-[0.55fr_0.85fr_0.85fr_0.55fr_0.55fr_0.45fr_0.45fr_0.4fr]"
+                    : "grid-cols-[0.7fr_0.85fr_0.55fr_0.55fr_0.45fr_0.45fr]"
                 } ${i > 0 ? "border-t border-border/70" : ""}`}
               >
                 <div className="p-1.5">
@@ -513,6 +557,38 @@ export function AccessoryDetailsForm({
                     />
                   </div>
                 )}
+                <div className="p-1.5">
+                  <NumericInput
+                    min={0}
+                    max={20}
+                    step={1}
+                    round
+                    fallback={1}
+                    blankZero={false}
+                    value={entry.hingedLockQty ?? 1}
+                    onChange={(hingedLockQty) =>
+                      updateCatalogEntry(entry.id, { hingedLockQty })
+                    }
+                    disabled={!entry.hinged}
+                    className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm outline-none focus:border-primary disabled:opacity-40"
+                  />
+                </div>
+                <div className="p-1.5">
+                  <NumericInput
+                    min={0}
+                    max={20}
+                    step={1}
+                    round
+                    fallback={1}
+                    blankZero={false}
+                    value={entry.slidingLockQty ?? 1}
+                    onChange={(slidingLockQty) =>
+                      updateCatalogEntry(entry.id, { slidingLockQty })
+                    }
+                    disabled={!entry.sliding}
+                    className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm outline-none focus:border-primary disabled:opacity-40"
+                  />
+                </div>
                 <div className="flex justify-center p-1.5">
                   <input
                     type="checkbox"
@@ -554,8 +630,41 @@ export function AccessoryDetailsForm({
             ))}
           </div>
           <p className="text-[10px] text-muted">
-            السعر بالجنيه للمقاس الواحد. الباب المفصلي لا يستخدم سبلونة.
+            عدد السكاك لكل مقاس سبلونة (مفصلي / جرار). الباب المفصلي لا يستخدم
+            سبلونة. سبلونة القلاب في الجدول أدناه.
           </p>
+
+          <p className="pt-2 text-[11px] font-bold text-foreground">
+            مفصلي قلاب — رينجات بريمير
+          </p>
+          <TiltRangePriceTable
+            title="سبلونة مفصلي قلاب"
+            ranges={details.tiltEspagnoletteRanges}
+            brand={tiltEspBrand}
+            canEditPrices={Boolean(onBrandCatalogChange)}
+            onPriceChange={(maxDimMm, raw) =>
+              setSizePrice("tilt-espagnolette", maxDimMm, raw)
+            }
+            onReset={() =>
+              patchDetails({
+                tiltEspagnoletteRanges: defaultTiltEspagnoletteRanges(),
+              })
+            }
+          />
+          <TiltRangePriceTable
+            title="مقص قلاب"
+            ranges={details.tiltScissorsRanges}
+            brand={tiltScissorsBrand}
+            canEditPrices={Boolean(onBrandCatalogChange)}
+            onPriceChange={(maxDimMm, raw) =>
+              setSizePrice("tilt-scissors", maxDimMm, raw)
+            }
+            onReset={() =>
+              patchDetails({
+                tiltScissorsRanges: defaultTiltScissorsRanges(),
+              })
+            }
+          />
         </Section>
       ) : null}
 
@@ -565,7 +674,9 @@ export function AccessoryDetailsForm({
           hint="أرقام بسيطة: كام مفصلة · كام عجل — تدخل كمية الاكسسوار في البند"
           compact={compact}
         >
-          <p className="text-[11px] font-bold text-foreground">مفصلي</p>
+          <p className="text-[11px] font-bold text-foreground">
+            مفصلي عادي — نفس المفصلة للشباك والباب
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <NumberField
               label="مفصلات / ضلفة شباك"
@@ -588,6 +699,70 @@ export function AccessoryDetailsForm({
               onChange={(v) => patchDetails({ protrudingHandlesPerLockset: v })}
             />
           </div>
+
+          <p className="pt-1 text-[11px] font-bold text-foreground">
+            مفصلي قلاب — مجموعة بريمير كاملة لكل ضلفة
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <NumberField
+              label="مفصلة علوية ضلفة"
+              value={details.tiltTopHingesPerSash}
+              onChange={(v) => patchDetails({ tiltTopHingesPerSash: v })}
+            />
+            <NumberField
+              label="مفصلة علوية حلق"
+              value={details.tiltTopFrameHingesPerSash}
+              onChange={(v) => patchDetails({ tiltTopFrameHingesPerSash: v })}
+            />
+            <NumberField
+              label="مفصلة سفلية حلق"
+              value={details.tiltBottomFrameHingesPerSash}
+              onChange={(v) =>
+                patchDetails({ tiltBottomFrameHingesPerSash: v })
+              }
+            />
+            <NumberField
+              label="مفصلة سفلية ضلفة"
+              value={details.tiltBottomSashHingesPerSash}
+              onChange={(v) =>
+                patchDetails({ tiltBottomSashHingesPerSash: v })
+              }
+            />
+            <NumberField
+              label="مقص قلاب / ضلفة"
+              value={details.tiltScissorsPerSash}
+              onChange={(v) => patchDetails({ tiltScissorsPerSash: v })}
+            />
+            <NumberField
+              label="كورنر علوي"
+              value={details.tiltCornersUpperPerSash}
+              onChange={(v) => patchDetails({ tiltCornersUpperPerSash: v })}
+            />
+            <NumberField
+              label="كورنر سفلي"
+              value={details.tiltCornersLowerPerSash}
+              onChange={(v) => patchDetails({ tiltCornersLowerPerSash: v })}
+            />
+            <NumberField
+              label="سكاك كورنر سفلي"
+              value={details.tiltCornerStrikersPerSash}
+              onChange={(v) => patchDetails({ tiltCornerStrikersPerSash: v })}
+            />
+            <NumberField
+              label="بنز مفصلة علوية"
+              value={details.tiltHingePinsPerSash}
+              onChange={(v) => patchDetails({ tiltHingePinsPerSash: v })}
+            />
+            <NumberField
+              label="أغطية مفصلات"
+              value={details.tiltHingeCoversPerSash}
+              onChange={(v) => patchDetails({ tiltHingeCoversPerSash: v })}
+            />
+          </div>
+          <p className="text-[10px] text-muted">
+            قلب علوي وقلب وضلفة بنفس المجموعة. سبلونة القلاب من ارتفاع الضلفة
+            والمقص من عرضها — المقاس يظهر في شريط الخامات.
+          </p>
 
           <p className="pt-1 text-[11px] font-bold text-foreground">
             باب مفصلي — دون سبلونة/سكاك
@@ -629,9 +804,19 @@ export function AccessoryDetailsForm({
                 patchDetails({ recessedHandlesPerRecessedSash: v })
               }
             />
+            <NumberField
+              label="مقبض بارز / ضلفة بارزة"
+              value={
+                details.protrudingHandlesPerProtrudingSash ??
+                details.protrudingHandlesPerLockset
+              }
+              onChange={(v) =>
+                patchDetails({ protrudingHandlesPerProtrudingSash: v })
+              }
+            />
           </div>
           <p className="text-[10px] text-muted">
-            فرق السبلونة عن الضلفة يُعدَّل من تبويب «السبلونات».
+            عدد سكاك الجرار/المفصلي من مقاس السبلونة في تبويب «السبلونات».
           </p>
         </Section>
       ) : null}
@@ -799,6 +984,79 @@ function NumberField({
         className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
       />
     </label>
+  );
+}
+
+function TiltRangePriceTable({
+  title,
+  ranges,
+  brand,
+  canEditPrices,
+  onPriceChange,
+  onReset,
+}: {
+  title: string;
+  ranges: TiltSizeRange[];
+  brand?: AccessoryBrand;
+  canEditPrices: boolean;
+  onPriceChange: (maxDimMm: number, raw: string) => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-muted">{title}</p>
+        {canEditPrices ? (
+          <button
+            type="button"
+            onClick={onReset}
+            className="rounded-lg border border-border px-2 py-0.5 text-[10px] text-muted"
+          >
+            استعادة القياسي
+          </button>
+        ) : null}
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-border bg-background/70 text-[11px]">
+        <div className="grid min-w-[320px] grid-cols-[1fr_0.7fr_0.9fr] border-b border-border bg-card/80 text-center font-semibold text-muted">
+          <span className="px-2 py-2">رينج</span>
+          <span className="px-2 py-2">حد مم</span>
+          <span className="px-2 py-2">سعر</span>
+        </div>
+        {ranges.map((r, i) => (
+          <div
+            key={r.id}
+            className={`grid min-w-[320px] grid-cols-[1fr_0.7fr_0.9fr] items-center text-center ${
+              i > 0 ? "border-t border-border/70" : ""
+            }`}
+          >
+            <span className="px-2 py-2 font-medium text-foreground">
+              {r.label}
+            </span>
+            <span className="px-2 py-2 text-muted" dir="ltr">
+              {r.maxDimMm}
+            </span>
+            <div className="p-1.5">
+              {canEditPrices ? (
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  dir="ltr"
+                  value={brand?.sizePrices?.[r.maxDimMm] ?? ""}
+                  onChange={(e) => onPriceChange(r.maxDimMm, e.target.value)}
+                  placeholder="—"
+                  className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-left text-sm outline-none focus:border-primary"
+                />
+              ) : (
+                <span className="text-muted" dir="ltr">
+                  {brand?.sizePrices?.[r.maxDimMm] ?? "—"}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

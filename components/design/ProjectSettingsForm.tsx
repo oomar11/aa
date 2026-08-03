@@ -170,10 +170,6 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
         <div className="mt-1.5">
           <WorkflowBadge workflow={project.workflow} solid />
         </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted">
-          الحالة تتحدد تلقائياً: دفعة → قائمة الانتظار، ثم أزرار الورشة
-          (بدء / إكمال). لا تُعدَّل من هنا.
-        </p>
       </div>
 
       {project.workflow === "quote" ? (

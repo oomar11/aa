@@ -18,13 +18,19 @@ const PROJECT_CATEGORIES = ["خامات", "أجور", "نقل", "صيانة", "�
 type Props = {
   customerId: string;
   projectId: string;
+  /** فتح مصروف محدد للتعديل عند الدخول */
+  editExpenseId?: string | null;
 };
 
 /**
  * مصروفات المشروع من داخل المشروع فقط:
  * إجمالي → تسجيل/تعديل → سجل قابل للضغط للتعديل.
  */
-export function ProjectExpenses({ customerId, projectId }: Props) {
+export function ProjectExpenses({
+  customerId,
+  projectId,
+  editExpenseId = null,
+}: Props) {
   const project = getProjectById(projectId);
   const formRef = useRef<HTMLElement>(null);
 
@@ -91,6 +97,14 @@ export function ProjectExpenses({ customerId, projectId }: Props) {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
+
+  useEffect(() => {
+    if (!editExpenseId) return;
+    const target = listProjectExpenses(projectId).find(
+      (e) => e.id === editExpenseId
+    );
+    if (target) startEdit(target);
+  }, [editExpenseId, projectId]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();

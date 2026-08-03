@@ -10,8 +10,8 @@ export default function ExpensesPage() {
       <PageHeader
         backHref={ROUTES.accounting.hub}
         backLabel="الحسابات"
-        title="سجل المصروفات"
-        description="عرض مصروفات المشاريع — التسجيل من داخل كل مشروع"
+        title="مصروفات الورشة"
+        description="تسجيل وعرض مصروفات الورشة والمشاريع"
       />
       <div className="mt-4">
         <Suspense

@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { MaterialCategoryShell } from "@/components/materials/MaterialCategoryShell";
 import { MaterialSystemsEditor } from "@/components/materials/MaterialSystemsEditor";
-import { materialsGlassBreadcrumb } from "@/lib/materials-navigation";
 import {
   MATERIAL_CATEGORIES,
   type MaterialCategory,
@@ -20,11 +19,7 @@ export default async function MaterialCategoryPage({ params }: Props) {
   if (!VALID.has(category as MaterialCategory)) notFound();
 
   return (
-    <MaterialCategoryShell
-      title="الزجاج"
-      description="كتالوج الزجاجات بالسعر للمتر — التدبيل والجورجيا أسعار عامة تحت."
-      breadcrumb={materialsGlassBreadcrumb()}
-    >
+    <MaterialCategoryShell title="الزجاج">
       <MaterialSystemsEditor category="glass" />
     </MaterialCategoryShell>
   );

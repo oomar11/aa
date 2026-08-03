@@ -194,10 +194,6 @@ export function DataBackupPanel() {
           <p className="text-sm font-medium text-foreground">
             قاعدة بيانات الورشة المشتركة
           </p>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted">
-            العملاء والمشاريع والحسابات والخامات وبيانات الشركة واحدة لكل الأجهزة
-            على نفس الرابط. الثيم ووحدة القياس تبقى خاصة بكل جهاز.
-          </p>
         </div>
         <div className="flex flex-col gap-2 px-4 py-3.5 text-right">
           <p className="text-xs text-muted">
@@ -209,12 +205,8 @@ export function DataBackupPanel() {
                   ? "متصل"
                   : "يتحمّل…"}
             </span>
-          </p>
-          <p className="text-xs text-muted">
-            التخزين:{" "}
-            <span className="font-medium text-foreground">
-              {backendLabel(sync.backend)}
-            </span>
+            {" · "}
+            {backendLabel(sync.backend)}
           </p>
           {sync.neonConfigured || sync.backend === "neon" ? (
             <p className="rounded-xl border border-[#2F9B7A]/35 bg-[#2F9B7A]/10 px-3 py-2 text-xs leading-relaxed text-foreground">

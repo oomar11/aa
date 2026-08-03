@@ -227,7 +227,8 @@ function addProfileLines(
     { label: "ضلفة مفصلي", meters: materials.sashHingedM },
     { label: "ضلفة باب", meters: materials.sashDoorM },
     { label: "ضلفة جرار", meters: materials.sashSlidingM },
-    { label: "سوقاس", meters: materials.mullionTotalM },
+    { label: "سوقاس مفصلي", meters: materials.mullionHingedM },
+    { label: "سوقاس جرار", meters: materials.mullionSlidingM },
     { label: "بوكلير", meters: materials.bouclierM },
     { label: "كوبلن", meters: materials.couplingM },
     { label: "سكينة", meters: materials.knifeM },
@@ -255,6 +256,24 @@ function addProfileLines(
       section: "profiles",
       label: "طبة بوكلير",
       amount: materials.bouclierCapQty,
+      unit: "طقم",
+      note: joinNotes(systemNote, tint),
+    });
+  }
+  if (materials.mullionHingedQty > 0) {
+    addLine(map, {
+      section: "profiles",
+      label: "طقم تجميع سقاس مفصلي",
+      amount: materials.mullionHingedQty,
+      unit: "طقم",
+      note: joinNotes(systemNote, tint),
+    });
+  }
+  if (materials.mullionSlidingQty > 0) {
+    addLine(map, {
+      section: "profiles",
+      label: "طقم تجميع سقاس جرار",
+      amount: materials.mullionSlidingQty,
       unit: "طقم",
       note: joinNotes(systemNote, tint),
     });
@@ -369,6 +388,88 @@ function addAccessoryLines(
     amount: acc.hingeQty,
     unit: "قطعة",
     note: brandNote("hinge"),
+  });
+
+  for (const line of acc.tiltEspagnolettes) {
+    addLine(map, {
+      section: "accessories",
+      label: `سبلونة مفصلي قلاب ${line.label}`,
+      amount: line.qty,
+      unit: "قطعة",
+      note: joinNotes(brandNote("tilt-espagnolette"), `حد ${line.maxDimMm}مم`),
+    });
+  }
+  for (const line of acc.tiltScissors) {
+    addLine(map, {
+      section: "accessories",
+      label: `مقص قلاب ${line.label}`,
+      amount: line.qty,
+      unit: "قطعة",
+      note: joinNotes(brandNote("tilt-scissors"), `حد ${line.maxDimMm}مم`),
+    });
+  }
+  addLine(map, {
+    section: "accessories",
+    label: "كورنر علوي",
+    amount: acc.tiltCornerUpperQty,
+    unit: "قطعة",
+    note: brandNote("tilt-corner-upper"),
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "كورنر سفلي",
+    amount: acc.tiltCornerLowerQty,
+    unit: "قطعة",
+    note: brandNote("tilt-corner-lower"),
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "مفصلة علوية جزء الضلفة",
+    amount: acc.tiltTopHingeQty,
+    unit: "قطعة",
+    note: brandNote("tilt-top-hinge"),
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "مفصلة علوية جزء الحلق",
+    amount: acc.tiltTopFrameHingeQty,
+    unit: "قطعة",
+    note: brandNote("tilt-top-frame-hinge"),
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "مفصلة سفلية جزء الحلق",
+    amount: acc.tiltBottomFrameHingeQty,
+    unit: "قطعة",
+    note: brandNote("tilt-bottom-frame-hinge"),
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "مفصلة سفلية جزء الضلفة",
+    amount: acc.tiltBottomSashHingeQty,
+    unit: "قطعة",
+    note: brandNote("tilt-bottom-sash-hinge"),
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "مفصلة علوية بنز",
+    amount: acc.tiltHingePinQty,
+    unit: "قطعة",
+    note: brandNote("tilt-hinge-pin"),
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "سكاك كورنر سفلي",
+    amount: acc.tiltCornerStrikerQty,
+    unit: "قطعة",
+    note: brandNote("tilt-corner-striker"),
+  });
+  addLine(map, {
+    section: "accessories",
+    label: "غطاء مفصلة",
+    amount: acc.tiltHingeCoverQty,
+    unit: "قطعة",
+    note: brandNote("tilt-hinge-cover"),
   });
 
   addLine(map, {

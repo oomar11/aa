@@ -8,11 +8,16 @@ import {
   loadPayments,
   type AccountingSummary,
 } from "@/lib/accounting";
+import {
+  isCollectibleRemainingProject,
+  workshopMoneyTotals,
+} from "@/lib/accounting-scope";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import { DEFAULT_COMPANY, loadCompany, type Company } from "@/lib/company";
 import { listAllProjects, type Project } from "@/lib/projects";
 import {
   compareProjectsByWorkflowThenDate,
+  DELIVERY_LABELS,
   WORKFLOW_VISUAL,
 } from "@/lib/workshop";
 import { getProjectMoneySummary } from "@/lib/project-money";
@@ -24,20 +29,20 @@ const links = [
   {
     href: ROUTES.accounting.payments,
     title: "الدفعات",
-    description: "كل ما استلمته من العملاء على المشاريع",
+    description: "كل ما استلمته من العملاء",
     accent: "bg-primary",
   },
   {
     href: ROUTES.accounting.expenses,
-    title: "سجل المصروفات",
-    description: "عرض فقط — التسجيل من داخل حساب المشروع",
+    title: "مصروفات الورشة",
+    description: "تسجيل وعرض مصروفات الورشة والمشاريع",
     accent: "bg-[#E8956F]",
   },
   {
-    href: ROUTES.settingsCompany,
-    title: "بيانات الشركة",
-    description: "الاسم · الهاتف · السجل الضريبي",
-    accent: "bg-[#6B7C93]",
+    href: ROUTES.accounting.ledger,
+    title: "سجل الحركة",
+    description: "دخول وخروج الفلوس بالترتيب",
+    accent: "bg-[#2F9B7A]",
   },
 ] as const;
 
@@ -49,17 +54,6 @@ type ProjectMoneyRow = {
   remaining: number;
   expenses: number;
 };
-
-function workshopMoneyTotals() {
-  let sales = 0;
-  let outstanding = 0;
-  for (const project of listAllProjects()) {
-    const money = getProjectMoneySummary(project.id);
-    sales += money.sale;
-    outstanding += money.remaining;
-  }
-  return { sales, outstanding };
-}
 
 function readSummary(): AccountingSummary {
   if (typeof window === "undefined") {
@@ -85,6 +79,7 @@ function readProjectRows(): ProjectMoneyRow[] {
   for (const c of mergeCustomers()) customerById.set(c.id, c);
 
   return listAllProjects()
+    .filter(isCollectibleRemainingProject)
     .map((project) => {
       const money = getProjectMoneySummary(project.id);
       return {
@@ -133,14 +128,10 @@ export function AccountingHub() {
   return (
     <div className="flex flex-col gap-5">
       <section className="rounded-2xl bg-[#1F6B55] px-4 py-5 text-white shadow-[0_8px_24px_rgba(47,155,122,0.28)]">
-        <p className="text-xs font-medium opacity-85">حسابات الورشة</p>
+        <p className="text-xs font-medium opacity-85">الحسابات</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">
           {company.name}
         </h1>
-        <p className="mt-2 text-sm leading-relaxed opacity-90">
-          ملخص فلوس الورشة كلها. لتفاصيل مشروع معيّن افتح حساب المشروع من
-          الطلبات أو من شريط الحساب داخل المشروع.
-        </p>
         <div className="mt-4">
           <Link
             href={ROUTES.accounting.newPayment}
@@ -175,7 +166,7 @@ export function AccountingHub() {
       <section className="flex flex-col gap-2.5">
         <div className="flex items-baseline justify-between gap-2 px-0.5">
           <h2 className="text-sm font-bold text-foreground">
-            مشاريع عليها باقي
+            شغل مكتمل عليه باقي
           </h2>
           <span className="text-xs font-semibold tabular-nums text-muted">
             {openRemaining.length}
@@ -183,12 +174,13 @@ export function AccountingHub() {
         </div>
         {openRemaining.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
-            مفيش مشاريع عليها باقي حالياً
+            مفيش شغل مكتمل عليه باقي حالياً
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
             {openRemaining.map((row) => {
               const visual = WORKFLOW_VISUAL[row.project.workflow];
+              const delivery = row.project.deliveryStatus;
               return (
                 <li key={row.project.id}>
                   <Link
@@ -211,6 +203,9 @@ export function AccountingHub() {
                         {formatCurrency(row.sale)}
                         {" · مدفوع "}
                         {formatCurrency(row.paid)}
+                        {delivery
+                          ? ` · ${DELIVERY_LABELS[delivery]}`
+                          : ""}
                       </p>
                     </div>
                     <div className="shrink-0 text-end">

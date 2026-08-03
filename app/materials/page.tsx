@@ -2,19 +2,18 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MaterialHubIcon } from "@/components/materials/MaterialHubIcons";
-import { materialsHubBreadcrumb } from "@/lib/materials-navigation";
 import {
   MATERIAL_HUB_GROUPS,
   MATERIAL_HUB_ITEMS,
 } from "@/lib/material-systems";
+import { ROUTES } from "@/lib/routes";
 
 export default function MaterialsPage() {
   return (
     <AppShell mainClassName="flex flex-1 flex-col gap-3 px-4 pb-24 pt-2">
       <PageHeader
-        breadcrumb={materialsHubBreadcrumb()}
+        backHref={ROUTES.more}
         title="الخامات"
-        description="أنظمة وأسعار القطاعات والاكسسوار · التخصيمات · الزجاج والسلك والحديد"
       />
 
       <div className="flex flex-col gap-5">
@@ -22,14 +21,9 @@ export default function MaterialsPage() {
           const items = MATERIAL_HUB_ITEMS.filter((i) => i.group === group.id);
           return (
             <section key={group.id} className="flex flex-col gap-2">
-              <div className="px-1">
-                <h2 className="text-sm font-bold text-foreground">
-                  {group.title}
-                </h2>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-                  {group.hint}
-                </p>
-              </div>
+              <h2 className="px-1 text-sm font-bold text-foreground">
+                {group.title}
+              </h2>
 
               <ul className="overflow-hidden rounded-2xl border border-border bg-card">
                 {items.map((item, i) => (
@@ -48,14 +42,9 @@ export default function MaterialsPage() {
                       >
                         <MaterialHubIcon id={item.id} />
                       </span>
-                      <div className="min-w-0 flex-1 text-right">
-                        <p className="text-sm font-semibold text-foreground">
-                          {item.label}
-                        </p>
-                        <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-                          {item.description}
-                        </p>
-                      </div>
+                      <p className="min-w-0 flex-1 text-sm font-semibold text-foreground">
+                        {item.label}
+                      </p>
                       <span className="shrink-0 text-lg text-muted" aria-hidden>
                         ‹
                       </span>

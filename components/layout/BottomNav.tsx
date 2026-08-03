@@ -4,11 +4,47 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 
+function HomeIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 10.5V20h12v-9.5" />
+    </svg>
+  );
+}
+
+function OrdersIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M8 4h8a2 2 0 0 1 2 2v14l-6-3-6 3V6a2 2 0 0 1 2-2z" />
+      <path d="M10 9h4M10 13h3" />
+    </svg>
+  );
+}
+
 function WorkshopIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-6 w-6"
+      className="h-5 w-5"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -24,29 +60,11 @@ function WorkshopIcon({ active }: { active: boolean }) {
   );
 }
 
-function OrdersIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-6 w-6"
-      fill={active ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M8 4h8a2 2 0 0 1 2 2v14l-6-3-6 3V6a2 2 0 0 1 2-2z" />
-      <path d="M10 9h4M10 13h3" />
-    </svg>
-  );
-}
-
 function AccountingIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-6 w-6"
+      className="h-5 w-5"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -60,11 +78,11 @@ function AccountingIcon({ active }: { active: boolean }) {
   );
 }
 
-function MaterialsIcon({ active }: { active: boolean }) {
+function MoreIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-6 w-6"
+      className="h-5 w-5"
       fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.75"
@@ -72,20 +90,20 @@ function MaterialsIcon({ active }: { active: boolean }) {
       strokeLinejoin="round"
       aria-hidden
     >
-      <rect x="4" y="4" width="6" height="16" rx="1.5" />
-      <rect x="14" y="4" width="6" height="16" rx="1.5" />
-      <path d="M10 8h4M10 12h4M10 16h4" />
+      <circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-/** RTL: أول عنصر يمين → الورشة يمين، الخامات شمال */
+/** RTL: أول عنصر يمين → الرئيسية يمين، المزيد شمال */
 const items = [
   {
     href: ROUTES.home,
-    label: "الورشة",
-    Icon: WorkshopIcon,
-    match: (p: string) => p === "/" || p.startsWith("/workshop"),
+    label: "الرئيسية",
+    Icon: HomeIcon,
+    match: (p: string) => p === "/",
   },
   {
     href: ROUTES.orders,
@@ -94,17 +112,26 @@ const items = [
     match: (p: string) => p.startsWith("/orders") || p.startsWith("/design"),
   },
   {
+    href: ROUTES.workshop,
+    label: "الورشة",
+    Icon: WorkshopIcon,
+    match: (p: string) => p.startsWith("/workshop"),
+  },
+  {
     href: ROUTES.accounting.hub,
     label: "الحسابات",
     Icon: AccountingIcon,
-    match: (p: string) =>
-      p.startsWith("/accounting") || p.startsWith("/settings/company"),
+    match: (p: string) => p.startsWith("/accounting"),
   },
   {
-    href: ROUTES.materials.hub,
-    label: "الخامات",
-    Icon: MaterialsIcon,
-    match: (p: string) => p.startsWith("/materials"),
+    href: ROUTES.more,
+    label: "المزيد",
+    Icon: MoreIcon,
+    match: (p: string) =>
+      p.startsWith("/more") ||
+      p.startsWith("/materials") ||
+      p.startsWith("/settings") ||
+      p.startsWith("/profile"),
   },
 ] as const;
 
@@ -113,15 +140,15 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-20">
-      <div className="mx-auto w-full max-w-md border-t border-border bg-card/95 backdrop-blur-sm">
-        <div className="flex h-14 items-center justify-around px-2">
+      <div className="mx-auto w-full max-w-lg border-t border-border bg-card/95 backdrop-blur-sm lg:max-w-5xl">
+        <div className="flex h-14 items-center justify-around px-1">
           {items.map(({ href, label, Icon, match }) => {
             const active = match(pathname);
             return (
               <Link
                 key={label}
                 href={href}
-                className={`flex min-w-14 flex-col items-center gap-0.5 transition-colors duration-300 ${
+                className={`flex min-w-12 flex-col items-center gap-0.5 transition-colors duration-300 ${
                   active ? "text-primary" : "text-muted"
                 }`}
                 aria-label={label}
