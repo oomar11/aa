@@ -1,36 +1,41 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { WindowLogo } from "@/components/brand/WindowLogo";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-function isIosSafari() {
+function isIosDevice() {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
-  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|Chrome|Android/.test(ua);
-  return isIOS && (isSafari || /iPad|iPhone|iPod/.test(ua));
+  return (
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 function isStandalone() {
   if (typeof window === "undefined") return false;
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
-    // iOS Safari
     ("standalone" in navigator &&
       Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
   );
 }
 
-export function InstallAppButton() {
+type InstallAppCardProps = {
+  className?: string;
+};
+
+export function InstallAppButton({ className = "" }: InstallAppCardProps) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     null
   );
   const [installed, setInstalled] = useState(false);
-  const [showIosHint, setShowIosHint] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
   const [iosDevice, setIosDevice] = useState(false);
 
   useEffect(() => {
@@ -39,7 +44,7 @@ export function InstallAppButton() {
       return;
     }
 
-    setIosDevice(isIosSafari());
+    setIosDevice(isIosDevice());
 
     function onBeforeInstall(e: Event) {
       e.preventDefault();
@@ -49,7 +54,7 @@ export function InstallAppButton() {
     function onInstalled() {
       setInstalled(true);
       setDeferred(null);
-      setShowIosHint(false);
+      setShowSteps(false);
     }
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
@@ -59,17 +64,6 @@ export function InstallAppButton() {
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
-
-  if (installed) {
-    return (
-      <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card px-4 py-3.5">
-        <p className="text-sm font-medium text-foreground">التطبيق مثبّت</p>
-        <p className="mt-1 text-xs text-muted">
-          UPVC Design يعمل كتطبيق على جهازك.
-        </p>
-      </section>
-    );
-  }
 
   async function handleInstall() {
     if (deferred) {
@@ -81,43 +75,73 @@ export function InstallAppButton() {
       setDeferred(null);
       return;
     }
-    if (iosDevice) {
-      setShowIosHint(true);
-    }
+    setShowSteps(true);
   }
 
-  const canPrompt = Boolean(deferred) || iosDevice;
-
-  if (!canPrompt && !showIosHint) {
+  if (installed) {
     return (
-      <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card px-4 py-3.5">
-        <p className="text-sm font-medium text-foreground">تثبيت التطبيق</p>
-        <p className="mt-1 text-xs text-muted">
-          من متصفح Chrome على Android: القائمة ← تثبيت التطبيق. على iPhone:
-          مشاركة ← إضافة إلى الشاشة الرئيسية.
-        </p>
+      <section
+        className={`overflow-hidden rounded-2xl border border-primary/25 bg-primary-soft px-4 py-4 ${className}`}
+      >
+        <div className="flex items-center gap-3">
+          <WindowLogo size="lg" />
+          <div className="min-w-0 text-right">
+            <p className="text-sm font-bold text-foreground">التطبيق مثبّت</p>
+            <p className="mt-0.5 text-xs text-muted">
+              UPVC Design على شاشتك الرئيسية باللوجو الأزرق.
+            </p>
+          </div>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card px-4 py-3.5">
-      <p className="text-sm font-medium text-foreground">تثبيت التطبيق</p>
-      <p className="mt-1 text-xs text-muted">
-        نزّل UPVC Design على الشاشة الرئيسية وافتحه كلوجو التطبيق.
-      </p>
+    <section
+      className={`overflow-hidden rounded-2xl border border-border bg-card px-4 py-4 ${className}`}
+    >
+      <div className="flex items-start gap-3">
+        <img
+          src="/icons/icon-192.png"
+          alt=""
+          width={56}
+          height={56}
+          className="h-14 w-14 shrink-0 rounded-2xl shadow-sm"
+        />
+        <div className="min-w-0 flex-1 text-right">
+          <p className="text-base font-bold text-foreground">نزّل التطبيق</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            ثبّت UPVC Design على التليفون — هيظهر باللوجو الأزرق على الشاشة
+            الرئيسية زي أي تطبيق.
+          </p>
+        </div>
+      </div>
+
       <button
         type="button"
         onClick={handleInstall}
-        className="mt-3 h-11 w-full rounded-xl bg-primary text-sm font-semibold text-white transition-colors hover:opacity-95"
+        className="mt-4 h-12 w-full rounded-xl bg-primary text-sm font-bold text-white transition-opacity hover:opacity-95"
       >
-        تثبيت التطبيق
+        {deferred ? "تثبيت الآن" : "إزاي أثبّت التطبيق؟"}
       </button>
-      {showIosHint ? (
-        <ol className="mt-3 list-decimal space-y-1 pr-4 text-xs text-muted">
-          <li>اضغط زر المشاركة في Safari</li>
-          <li>اختر «إضافة إلى الشاشة الرئيسية»</li>
-          <li>أكد الإضافة — هتظهر أيقونة UPVC</li>
+
+      {showSteps || (!deferred && iosDevice) ? (
+        <ol className="mt-3 list-decimal space-y-1.5 pr-5 text-xs leading-relaxed text-muted">
+          {iosDevice ? (
+            <>
+              <li>افتح الموقع من Safari</li>
+              <li>اضغط زر المشاركة (المربع والسهم)</li>
+              <li>اختَر «إضافة إلى الشاشة الرئيسية»</li>
+              <li>أكد — هتظهر أيقونة النافذة الزرقاء باسم UPVC</li>
+            </>
+          ) : (
+            <>
+              <li>افتح الموقع من Chrome على الموبايل</li>
+              <li>اضغط ⋮ أعلى اليمين</li>
+              <li>اختَر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»</li>
+              <li>أكد — هتظهر أيقونة النافذة الزرقاء باسم UPVC</li>
+            </>
+          )}
         </ol>
       ) : null}
     </section>

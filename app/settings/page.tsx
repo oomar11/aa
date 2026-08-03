@@ -73,7 +73,7 @@ export default function SettingsPage() {
         </Link>
       </section>
 
-      <InstallAppButton />
+      <InstallAppButton className="mt-4" />
 
       <DataBackupPanel />
     </AppShell>

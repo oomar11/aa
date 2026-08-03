@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { MaterialHubIcon } from "@/components/materials/MaterialHubIcons";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import {
   MATERIAL_HUB_GROUPS,
   MATERIAL_HUB_ITEMS,
@@ -29,6 +30,8 @@ export default function MorePage() {
   return (
     <AppShell mainClassName="flex flex-1 flex-col gap-5 px-4 pb-24 pt-1">
       <h1 className="text-xl font-bold text-foreground">المزيد</h1>
+
+      <InstallAppButton />
 
       <section className="flex flex-col gap-2">
         <h2 className="px-1 text-sm font-bold text-foreground">الخامات</h2>
