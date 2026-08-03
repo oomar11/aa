@@ -5,7 +5,7 @@
  * - مفصلات عادية لكل ضلفة (٢ — من الإعداد) — نفس قطعة الباب
  * - سبلونة مفصلي حسب ارتفاع ناحية المقبض
  * - سكاك مفصلي لكل سبلونة (كميات قابلة للتعديل عبر hingedLockQty)
- * - ضلفتين مقابض في وش بعض (بوكلير): سبلونة واحدة مش اثنين، سكاك بوكلير، ترباس + سكاك ترباس، مقبض بارز
+ * - ضلفتين مقابض في وش بعض (بوكلير): سبلونة واحدة مش اثنين، سكاك بوكلير (مش مفصلي)، ترباس + سكاك ترباس، مقبض بارز
  *
  * مفصلي قلاب / قلاب (tilt / tilt-turn) — مجموعة بريمير كاملة لكل ضلفة:
  * - سبلونة مفصلي قلاب (رينج) + مقص قلاب (رينج)
@@ -541,7 +541,10 @@ export function calcItemAccessories(
 
   // ── مفصلي عادي ────────────────────────────────────────────
   let hingeQty = 0;
-  const hingedEspMap = new Map<EspagnoletteSize, number>();
+  /** سبلونات الضلف المنفردة — منها فقط سكاك مفصلي */
+  const soloHingedEspMap = new Map<EspagnoletteSize, number>();
+  /** سبلونات البوكلير (واحدة لكل زوج) — تُعرض مع السبلونة المفصلي، بس سكاكها بوكلير */
+  const bouclierEspMap = new Map<EspagnoletteSize, number>();
   let bouclierLocksetCount = 0;
   let boltQty = 0;
   let protrudingHandleQty = 0;
@@ -576,7 +579,7 @@ export function calcItemAccessories(
       "hinged",
       espGap
     );
-    addEspagnolette(hingedEspMap, size);
+    addEspagnolette(soloHingedEspMap, size);
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
 
@@ -585,7 +588,7 @@ export function calcItemAccessories(
     for (const leaf of [pair.left, pair.right]) {
       hingeQty += details.hingesPerSash;
     }
-    // سبلونة واحدة للزوج — المقاس من أطول ضلفة
+    // سبلونة واحدة للزوج — المقاس من أطول ضلفة — سكاك بوكلير مش مفصلي
     const sashH = Math.max(
       handleSideHeightMm(pair.left),
       handleSideHeightMm(pair.right)
@@ -596,10 +599,16 @@ export function calcItemAccessories(
       "hinged",
       espGap
     );
-    addEspagnolette(hingedEspMap, size);
+    addEspagnolette(bouclierEspMap, size);
     bouclierLocksetCount += 1;
     boltQty += details.boltsPerBouclier;
     protrudingHandleQty += details.protrudingHandlesPerLockset;
+  }
+
+  // عرض السبلونات: منفردة + بوكلير (نفس قطعة السبلونة المفصلي)
+  const hingedEspMap = new Map<EspagnoletteSize, number>(soloHingedEspMap);
+  for (const [size, qty] of bouclierEspMap) {
+    hingedEspMap.set(size, (hingedEspMap.get(size) ?? 0) + qty);
   }
 
   // ── قلاب / مفصلي قلاب — مجموعة بريمير كاملة ────────────────
@@ -643,9 +652,10 @@ export function calcItemAccessories(
       ? FRAME_COLORS[frameColorId].label
       : null;
 
+  // سكاك مفصلي من سبلونات الضلف المنفردة فقط — زوج البوكلير له سكاك بوكلير
   const hingedLockPieces = lockPieceLinesFromEspSizes(
     details.hingedLockPieces,
-    hingedEspMap,
+    soloHingedEspMap,
     details.espagnoletteCatalog,
     "hinged"
   );

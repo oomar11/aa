@@ -246,7 +246,7 @@ export type ProfileSystemDetails = {
   mullionAssemblyKitPrice?: number;
   /**
    * سعر طقم تجميع السقاس الجرار (ج.م/طقم).
-   * طقم واحد لكل سقاس جرار (جوا/بين ضلف الجرار).
+   * طقم واحد لكل سقاس جرار (تقسيم جوا ضلفة الجرار فقط).
    */
   slidingMullionAssemblyKitPrice?: number;
 };

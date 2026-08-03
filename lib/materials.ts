@@ -44,6 +44,7 @@ export type FrameKind = "hinged" | "sliding";
 export type JunctionKind =
   | "mullion"
   | "coupling"
+  | "knife"
   | "bouclier"
   | "none";
 
@@ -66,7 +67,7 @@ export type MaterialsBreakdown = {
   bouclierCapM: number;
   /** سوقاس مفصلي — متر طولي */
   mullionHingedM: number;
-  /** سوقاس جرار — متر طولي (جوا/بين ضلف الجرار) */
+  /** سوقاس جرار — متر طولي (تقسيم جوا ضلفة الجرار فقط) */
   mullionSlidingM: number;
   /** عدد قطع السقاس المفصلي — لطقم التجميع */
   mullionHingedQty: number;
@@ -579,9 +580,11 @@ function edgePaneId(
  * - مقابض في وش بعض → بوكلير (مش سوقاس)
  * - ضلفة بوكلير ثابتة على الحافة → بوكلير
  * - مفصلي×جرار → كوبلن
- * - غير كده → سوقاس
+ * - جرار×جرار → سكينة (تُحسب لكل ضلفة — مش سوقاس عند الخط)
+ * - غير كده → سوقاس (مفصلي لتقسيم الحلق)
  *
  * ملاحظة: السكينة تُحسب لكل ضلفة جرار على حدة (مش عند خط التقسيم).
+ * سوقاس الجرار فقط من التقسيم الداخلي جوا الضلفة.
  */
 export function classifyJunction(
   left: LayoutNode,
@@ -616,6 +619,11 @@ export function classifyJunction(
     (leftKind === "sliding" && rightKind === "hinged")
   ) {
     return "coupling";
+  }
+
+  // بين مناطق جرار: سكينة لكل ضلفة — مش سوقاس جرار على خط التقسيم
+  if (leftKind === "sliding" && rightKind === "sliding") {
+    return "knife";
   }
 
   return "mullion";
@@ -665,17 +673,14 @@ function collectJunctions(
     const span = node.dir === "v" ? h : w;
 
     if (kind === "mullion") {
-      const leftKind = regionKind(child, panes);
-      const rightKind = regionKind(next, panes);
-      const isSliding =
-        leftKind === "sliding" && rightKind === "sliding";
-      if (isSliding) {
-        out.mullionSlidingMm += span;
-        out.mullionSlidingQty += 1;
-      } else {
-        out.mullionHingedMm += span;
-        out.mullionHingedQty += 1;
-      }
+      // تقسيم حلق مفصلي (أو مختلط مش كوبلن) — سوقاس مفصلي
+      // سوقاس الجرار ييجي من التقسيم جوا الضلفة فقط (sashMullionStats)
+      out.mullionHingedMm += span;
+      out.mullionHingedQty += 1;
+      return;
+    }
+    if (kind === "knife") {
+      // بين ضلف الجرار: السكينة محاسبة لكل ضلفة — مفيش سوقاس هنا
       return;
     }
     if (kind === "coupling") {
@@ -694,7 +699,8 @@ function collectJunctions(
   });
 }
 
-/** سوقاس داخل الضلفة من التقسيم الداخلي — طول + عدد حسب مفصلي/جرار */
+/** سوقاس داخل الضلفة من التقسيم الداخلي — طول + عدد حسب مفصلي/جرار.
+ * سوقاس الجرار من هنا فقط (جوا الضلفة) — مش بين ضلف الجرار وبعض. */
 function sashMullionStats(
   boxes: PaneBox[],
   panes: Record<string, PaneConfig> | undefined
@@ -1125,9 +1131,10 @@ function frameLabelFor(
 /**
  * حساب خامات البند (للقطعة الواحدة — بدون ضرب الكمية).
  * الحلق: مفصلي أو جرار، ولو الاتنين موجودين يتحسب كوبلن عند خط الالتقاء.
- * السكينة: قطعة واحدة لكل ضلفة جرار متحركة.
+ * السكينة: قطعة واحدة لكل ضلفة جرار متحركة (بين الضلف — مش سوقاس).
  * مقابض في وش بعض: بوكلير (مش سوقاس).
- * السوقاس: باقي تقسيم الحلق + تقسيم الضلفة.
+ * السوقاس المفصلي: تقسيم الحلق المفصلي + تقسيم جوا الضلفة المفصلي.
+ * السوقاس الجرار: تقسيم جوا ضلفة الجرار فقط.
  *
  * أطوال الحلق/الضلفة/السكينة/التقابل والباكتة والزجاج
  * تُحسب بعد التخصيم الموحد (حلق +١١ · ضلفة −١٣ · باكتة/زجاج).
