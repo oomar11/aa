@@ -1969,60 +1969,89 @@ function withKraftBarLength(pieces: ProfilePiece[], prefix: string): ProfilePiec
   }));
 }
 
+/** قطاعات كرافت الين — مفصلي + جرار في نظام واحد */
+export function kraftAllenProfilePieces(): ProfilePiece[] {
+  const byRole = new Map<ProfilePieceRole, ProfilePiece>();
+  for (const p of [
+    ...standardHingedProfilePieces(),
+    ...standardSlidingProfilePieces(),
+  ]) {
+    if (!byRole.has(p.role)) {
+      byRole.set(p.role, {
+        ...p,
+        id: `kraft-allen-${p.role}`,
+        barLengthM: KRAFT_ALLEN_BAR_LENGTH_M,
+      });
+    }
+  }
+  return [...byRole.values()];
+}
+
+/** نظام كرافت الين الموحّد (مفصلي + جرار) */
+export function defaultKraftAllenSystem(
+  deductions: ProfileDeductions
+): MaterialSystem {
+  return withDefaultProfile({
+    id: "kraft-allen",
+    name: "كرافت الين",
+    notes:
+      "سيستم كرافت الين — مفصلي وجرار · أسعار القطاعات من قائمة كرافت الين (7/4/2026 · أبيض/بيج)",
+    profile: {
+      pieces: kraftAllenProfilePieces(),
+      deductions,
+      rates: kraftAllenProfileBarRates(),
+    },
+  });
+}
+
+/** @deprecated استخدم defaultKraftAllenSystem */
 export function defaultKraftAllenHingedSystem(
   deductions: ProfileDeductions
 ): MaterialSystem {
-  return withDefaultProfile({
-    id: "kraft-hinged",
-    name: "كرافت الين مفصلي",
-    notes:
-      "سيستم مفصلي كرافت الين — أسعار القطاعات من قائمة كرافت الين (7/4/2026 · أبيض/بيج)",
-    profile: {
-      pieces: withKraftBarLength(standardHingedProfilePieces(), "kraft-hinged"),
-      deductions,
-      rates: kraftAllenProfileBarRates(),
-    },
-  });
+  return defaultKraftAllenSystem(deductions);
 }
 
+/** @deprecated استخدم defaultKraftAllenSystem */
 export function defaultKraftAllenSlidingSystem(
   deductions: ProfileDeductions
 ): MaterialSystem {
-  return withDefaultProfile({
-    id: "kraft-sliding",
-    name: "كرافت الين جرار",
-    notes:
-      "سيستم جرار كرافت الين — أسعار القطاعات من قائمة كرافت الين (7/4/2026 · أبيض/بيج)",
-    profile: {
-      pieces: withKraftBarLength(standardSlidingProfilePieces(), "kraft-sliding"),
-      deductions,
-      rates: kraftAllenProfileBarRates(),
-    },
-  });
+  return defaultKraftAllenSystem(deductions);
 }
 
-/** يضيف أنظمة كرافت الين الناقصة للكتالوج المحفوظ */
+const SPLIT_KRAFT_SYSTEM_IDS = new Set(["kraft-hinged", "kraft-sliding"]);
+
+function isSplitKraftAllenSystem(system: MaterialSystem): boolean {
+  if (SPLIT_KRAFT_SYSTEM_IDS.has(system.id)) return true;
+  return (
+    system.name === "كرافت الين مفصلي" ||
+    system.name === "كرافت الين جرار" ||
+    /^كرافت الين\s*(مفصلي|جرار)$/i.test(system.name.trim())
+  );
+}
+
+function isUnifiedKraftAllenSystem(system: MaterialSystem): boolean {
+  return (
+    system.id === "kraft-allen" ||
+    system.name === "كرافت الين" ||
+    (/كرافت|kraft\s*allen|kraftline/i.test(system.name) &&
+      !isSplitKraftAllenSystem(system))
+  );
+}
+
+/**
+ * نظام كرافت الين واحد فقط:
+ * - يشيل تقسيم مفصلي/جرار لو كان موجود
+ * - يضيف النظام الموحّد لو ناقص
+ */
 export function ensureKraftAllenProfileSystems(
   systems: MaterialSystem[],
   deductions: ProfileDeductions
 ): MaterialSystem[] {
-  const hasHinged = systems.some(
-    (s) =>
-      s.id === "kraft-hinged" ||
-      s.name === "كرافت الين مفصلي" ||
-      /كرافت.*مفصلي/i.test(s.name)
-  );
-  const hasSliding = systems.some(
-    (s) =>
-      s.id === "kraft-sliding" ||
-      s.name === "كرافت الين جرار" ||
-      /كرافت.*جرار/i.test(s.name)
-  );
-
-  const next = [...systems];
-  if (!hasHinged) next.push(defaultKraftAllenHingedSystem(deductions));
-  if (!hasSliding) next.push(defaultKraftAllenSlidingSystem(deductions));
-  return next;
+  const withoutSplit = systems.filter((s) => !isSplitKraftAllenSystem(s));
+  if (withoutSplit.some(isUnifiedKraftAllenSystem)) {
+    return withoutSplit;
+  }
+  return [...withoutSplit, defaultKraftAllenSystem(deductions)];
 }
 
 export function normalizeProfileBrandPrices(
@@ -2588,8 +2617,7 @@ export function getDefaultCatalog(): MaterialCatalog {
           rates: cityPremierProfileBarRates(),
         },
       }),
-      defaultKraftAllenHingedSystem(syncedDeductions),
-      defaultKraftAllenSlidingSystem(syncedDeductions),
+      defaultKraftAllenSystem(syncedDeductions),
       withDefaultProfile({
         id: "pvc3",
         name: "نظام PVC مخصص 3",
@@ -3840,7 +3868,8 @@ function foldProfileBrandRatesIntoSystems(
 
     if (
       !profileRatesHasPricing(rates) &&
-      (s.id === "kraft-hinged" ||
+      (s.id === "kraft-allen" ||
+        s.id === "kraft-hinged" ||
         s.id === "kraft-sliding" ||
         /كرافت|kraft\s*allen|kraftline/i.test(`${s.name} ${s.notes ?? ""}`))
     ) {
