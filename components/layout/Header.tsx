@@ -2,24 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { WindowLogo } from "@/components/brand/WindowLogo";
 import { loadCompany } from "@/lib/company";
 import { ROUTES } from "@/lib/routes";
-
-function WindowLogo() {
-  return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm">
-      <svg
-        viewBox="0 0 24 24"
-        className="h-5 w-5 text-primary-foreground"
-        fill="none"
-        aria-hidden
-      >
-        <rect x="4" y="3" width="7" height="18" rx="1.5" fill="currentColor" />
-        <rect x="13" y="3" width="7" height="18" rx="1.5" fill="currentColor" />
-      </svg>
-    </div>
-  );
-}
 
 export function Header() {
   const [companyName, setCompanyName] = useState(() =>

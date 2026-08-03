@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import { DataBackupPanel } from "@/components/settings/DataBackupPanel";
 import { useUnit } from "@/components/settings/UnitProvider";
 import { ROUTES } from "@/lib/routes";
@@ -71,6 +72,8 @@ export default function SettingsPage() {
           </span>
         </Link>
       </section>
+
+      <InstallAppButton />
 
       <DataBackupPanel />
     </AppShell>
