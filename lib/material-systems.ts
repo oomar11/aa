@@ -1961,14 +1961,6 @@ export function migrateKraftAllenProfileBrandPrices(
   return list;
 }
 
-function withKraftBarLength(pieces: ProfilePiece[], prefix: string): ProfilePiece[] {
-  return pieces.map((p) => ({
-    ...p,
-    id: `${prefix}-${p.role}`,
-    barLengthM: KRAFT_ALLEN_BAR_LENGTH_M,
-  }));
-}
-
 /** قطاعات كرافت الين — مفصلي + جرار في نظام واحد */
 export function kraftAllenProfilePieces(): ProfilePiece[] {
   const byRole = new Map<ProfilePieceRole, ProfilePiece>();
