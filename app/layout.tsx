@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
 import { RegisterSW } from "@/components/pwa/RegisterSW";
-import { LockPortraitOrientation } from "@/components/pwa/LockPortraitOrientation";
 import { UnitProvider } from "@/components/settings/UnitProvider";
 import { CleanStartGate } from "@/components/settings/CleanStartGate";
 import { SharedDataProvider } from "@/components/settings/SharedDataProvider";
@@ -56,7 +55,6 @@ export default function RootLayout({
     >
       <body className="min-h-full font-sans text-foreground bg-background">
         <RegisterSW />
-        <LockPortraitOrientation />
         <UnitProvider>
           <SharedDataProvider>
             <CleanStartGate>{children}</CleanStartGate>

@@ -1,5 +1,5 @@
 /* UPVC Design — minimal service worker for installability */
-const CACHE = "upvc-shell-v2";
+const CACHE = "upvc-shell-v3";
 const PRECACHE = ["/", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -32,11 +32,28 @@ self.addEventListener("fetch", (event) => {
   // Never cache API / store — always network
   if (url.pathname.startsWith("/api/")) return;
 
+  // Don't cache CSS/JS/HTML app shells long-term — always prefer network
+  // so orientation/UI fixes aren't stuck behind old PWA cache.
+  const isAsset =
+    url.pathname.startsWith("/_next/") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".map");
+
+  if (isAsset || request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => response)
+        .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(request)
       .then((response) => {
         const copy = response.clone();
-        if (response.ok && (request.mode === "navigate" || url.pathname.startsWith("/icons/"))) {
+        if (response.ok && url.pathname.startsWith("/icons/")) {
           caches.open(CACHE).then((cache) => cache.put(request, copy));
         }
         return response;
