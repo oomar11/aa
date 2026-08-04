@@ -7,10 +7,10 @@
  * - سكاك مفصلي لكل سبلونة (كميات قابلة للتعديل عبر hingedLockQty)
  * - ضلفتين مقابض في وش بعض (بوكلير): سبلونة واحدة مش اثنين، سكاك بوكلير (مش مفصلي)، ترباس + سكاك ترباس، مقبض بارز
  *
- * مفصلي قلاب / قلاب (tilt / tilt-turn) — مجموعة بريمير كاملة لكل ضلفة:
- * - سبلونة مفصلي قلاب (رينج) + مقص قلاب (رينج)
+ * مفصلي قلاب / قلاب (tilt / tilt-turn) لكل ضلفة:
+ * - سبلونة مفصلي عادي (نفس جدول المفصلي حسب الارتفاع) + سكاك مفصلي
+ * - ذراع قلاب (رينج حسب العرض)
  * - كورنر علوي/سفلي + سكاك كورنر سفلي
- * - سكاك مفصلي حسب مقاس السبلونة (نفس جدول المفصلي — مش مقبض بس)
  * - مفصلات علوية/سفلية (حلق + ضلفة) + بنز + أغطية + مقبض بارز
  *
  * باب مفصلي:
@@ -101,9 +101,12 @@ export type AccessoriesBreakdown = {
   /** لون مقبض الباب (= لون الإطار) */
   doorHandleColorLabel: string | null;
 
-  // ── قلاب / مفصلي قلاب — مجموعة بريمير ────────────────
-  tiltEspagnolettes: TiltRangeLine[];
+  /** ذراع قلاب — رينج حسب عرض الضلفة */
   tiltScissors: TiltRangeLine[];
+  /**
+   * @deprecated القلاب يستخدم سبلونة مفصلي عادي — الحقل فاضي للتوافق الخلفي
+   */
+  tiltEspagnolettes: TiltRangeLine[];
   tiltTopHingeQty: number;
   tiltTopFrameHingeQty: number;
   tiltBottomFrameHingeQty: number;
@@ -606,43 +609,26 @@ export function calcItemAccessories(
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
 
-  // عرض السبلونات: منفردة + بوكلير (نفس قطعة السبلونة المفصلي)
-  const hingedEspMap = new Map<EspagnoletteSize, number>(soloHingedEspMap);
-  for (const [size, qty] of bouclierEspMap) {
-    hingedEspMap.set(size, (hingedEspMap.get(size) ?? 0) + qty);
-  }
-
-  // ── قلاب / مفصلي قلاب — مجموعة بريمير كاملة ────────────────
-  const tiltEspMap = new Map<string, TiltRangeLine>();
-  const tiltScissorsMap = new Map<string, TiltRangeLine>();
-  /** سبلونات القلاب لأغراض سكاك مفصلي (نفس جدول المفصلي) */
-  const tiltHingedLockEspMap = new Map<EspagnoletteSize, number>();
+  // ── قلاب — سبلونة مفصلي عادي + ذراع قلاب + مجموعة القلاب ────
+  const tiltArmMap = new Map<string, TiltRangeLine>();
   const tiltBoxes = boxes.filter(
     (b) => isTiltOpening(b.opening) && !b.isDoor && isOpeningSash(b.opening)
   );
   for (const box of tiltBoxes) {
-    // سبلونة القلاب حسب ارتفاع الضلفة؛ المقص حسب عرض الضلفة
-    const espRange = pickTiltSizeRange(box.h, details.tiltEspagnoletteRanges);
-    if (espRange) {
-      addTiltRange(tiltEspMap, espRange, 1);
-    }
-
-    const scissorsRange = pickTiltSizeRange(
-      box.w,
-      details.tiltScissorsRanges
-    );
-    if (scissorsRange) {
-      addTiltRange(tiltScissorsMap, scissorsRange, details.tiltScissorsPerSash);
-    }
-
-    // سكاك مفصلي من مقاس السبلونة المفصلي لنفس ارتفاع الضلفة
-    const lockEspSize = pickEspagnoletteSize(
+    // سبلونة مفصلي عادي حسب ارتفاع الضلفة (مش سبلونة قلاب مخصوصة)
+    const size = pickEspagnoletteSize(
       handleSideHeightMm(box),
       details.espagnoletteCatalog,
       "hinged",
       espGap
     );
-    addEspagnolette(tiltHingedLockEspMap, lockEspSize);
+    addEspagnolette(soloHingedEspMap, size);
+
+    // ذراع قلاب حسب عرض الضلفة
+    const armRange = pickTiltSizeRange(box.w, details.tiltScissorsRanges);
+    if (armRange) {
+      addTiltRange(tiltArmMap, armRange, details.tiltScissorsPerSash);
+    }
 
     tiltTopHingeQty += details.tiltTopHingesPerSash;
     tiltTopFrameHingeQty += details.tiltTopFrameHingesPerSash;
@@ -656,6 +642,12 @@ export function calcItemAccessories(
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
 
+  // عرض السبلونات: منفردة (شباك مفصلي + قلاب) + بوكلير
+  const hingedEspMap = new Map<EspagnoletteSize, number>(soloHingedEspMap);
+  for (const [size, qty] of bouclierEspMap) {
+    hingedEspMap.set(size, (hingedEspMap.get(size) ?? 0) + qty);
+  }
+
   const frameColorId = normalizeFrameColor(item.frameColor);
   const doorHandleColorLabel =
     doorSignalHandleQty > 0 ||
@@ -664,14 +656,10 @@ export function calcItemAccessories(
       ? FRAME_COLORS[frameColorId].label
       : null;
 
-  // سكاك مفصلي: ضلف مفصلي منفردة + ضلف قلاب — زوج البوكلير له سكاك بوكلير
-  const hingedLockEspMap = new Map<EspagnoletteSize, number>(soloHingedEspMap);
-  for (const [size, qty] of tiltHingedLockEspMap) {
-    hingedLockEspMap.set(size, (hingedLockEspMap.get(size) ?? 0) + qty);
-  }
+  // سكاك مفصلي من سبلونات الضلف المنفردة والقلاب — زوج البوكلير له سكاك بوكلير
   const hingedLockPieces = lockPieceLinesFromEspSizes(
     details.hingedLockPieces,
-    hingedLockEspMap,
+    soloHingedEspMap,
     details.espagnoletteCatalog,
     "hinged"
   );
@@ -733,8 +721,8 @@ export function calcItemAccessories(
   const brushLengthM = roundM(mmToM(brushMm));
 
   const hingedEspagnolettes = espagnoletteLines(hingedEspMap);
-  const tiltEspagnolettes = tiltRangeLines(tiltEspMap);
-  const tiltScissors = tiltRangeLines(tiltScissorsMap);
+  const tiltEspagnolettes: TiltRangeLine[] = [];
+  const tiltScissors = tiltRangeLines(tiltArmMap);
   const slidingEspagnolettes = espagnoletteLines(slidingEspMap);
   const brandLabels = buildBrandLabels(details, cat);
 

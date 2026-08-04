@@ -820,22 +820,11 @@ function buildAccessoryRows(
 
   pushPiece("hinge", "مفصلات", breakdown.hingeQty, "hinge");
 
-  for (const line of breakdown.tiltEspagnolettes) {
-    if (line.qty < 0.5) continue;
-    pushPiece(
-      `tilt-esp-${line.id}`,
-      `سبلونة مفصلي قلاب ${line.label}`,
-      line.qty,
-      "tilt-espagnolette",
-      undefined,
-      line.maxDimMm
-    );
-  }
   for (const line of breakdown.tiltScissors) {
     if (line.qty < 0.5) continue;
     pushPiece(
-      `tilt-scissors-${line.id}`,
-      `مقص قلاب ${line.label}`,
+      `tilt-arm-${line.id}`,
+      `ذراع قلاب ${line.label}`,
       line.qty,
       "tilt-scissors",
       undefined,

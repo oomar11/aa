@@ -390,19 +390,10 @@ function addAccessoryLines(
     note: brandNote("hinge"),
   });
 
-  for (const line of acc.tiltEspagnolettes) {
-    addLine(map, {
-      section: "accessories",
-      label: `سبلونة مفصلي قلاب ${line.label}`,
-      amount: line.qty,
-      unit: "قطعة",
-      note: joinNotes(brandNote("tilt-espagnolette"), `حد ${line.maxDimMm}مم`),
-    });
-  }
   for (const line of acc.tiltScissors) {
     addLine(map, {
       section: "accessories",
-      label: `مقص قلاب ${line.label}`,
+      label: `ذراع قلاب ${line.label}`,
       amount: line.qty,
       unit: "قطعة",
       note: joinNotes(brandNote("tilt-scissors"), `حد ${line.maxDimMm}مم`),

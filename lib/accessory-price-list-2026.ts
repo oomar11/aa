@@ -32,7 +32,7 @@ export const VORNE_TILT_ESPAGNOLETTE_PRICES: Record<number, number> = {
   2200: 205.6,
 };
 
-/** أسعار مقص قلاب — رينج maxDimMm (بريمير 2026) */
+/** أسعار ذراع قلاب — رينج maxDimMm (بريمير 2026) */
 export const VORNE_TILT_SCISSORS_PRICES: Record<number, number> = {
   600: 138.9,
   650: 144.5,
@@ -106,20 +106,12 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "مفصلة عادية للشباك والباب — نفس القطعة؛ العدد ٢ شباك / ٣–٤ باب"
     ),
     brand(
-      "brand-vorne-tilt-esp",
-      "سبلونة مفصلي قلاب",
-      "tilt-espagnolette",
-      undefined,
-      { ...VORNE_TILT_ESPAGNOLETTE_PRICES },
-      "مجموعة المفصلي القلاب T&T — بريمير/فورنا 2026"
-    ),
-    brand(
       "brand-vorne-tilt-scissors",
-      "مقص قلاب",
+      "ذراع قلاب",
       "tilt-scissors",
       undefined,
       { ...VORNE_TILT_SCISSORS_PRICES },
-      "مجموعة المفصلي القلاب T&T — بريمير/فورنا 2026"
+      "ذراع القلاب حسب عرض الضلفة — بريمير/فورنا 2026"
     ),
     brand(
       "brand-vorne-tilt-top-hinge",

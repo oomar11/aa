@@ -427,8 +427,8 @@ export const ACCESSORY_BRAND_CATEGORIES: {
   { id: "hinged-espagnolette", label: "سبلونة مفصلي", group: "hinged" },
   { id: "hinged-lock", label: "سكاك مفصلي", group: "hinged" },
   { id: "protruding-handle", label: "مقبض بارز", group: "hinged" },
-  { id: "tilt-espagnolette", label: "سبلونة مفصلي قلاب", group: "tilt" },
-  { id: "tilt-scissors", label: "مقص قلاب", group: "tilt" },
+  { id: "tilt-espagnolette", label: "سبلونة مفصلي قلاب (قديم)", group: "tilt" },
+  { id: "tilt-scissors", label: "ذراع قلاب", group: "tilt" },
   {
     id: "tilt-top-hinge",
     label: "مفصلة علوية جزء الضلفة",
@@ -505,7 +505,7 @@ export type AccessorySystemDetails = {
   tiltBottomFrameHingesPerSash: number;
   /** مفصلة سفلية جزء الضلفة لكل ضلفة قلاب */
   tiltBottomSashHingesPerSash: number;
-  /** مقص قلاب لكل ضلفة قلاب */
+  /** ذراع قلاب لكل ضلفة قلاب */
   tiltScissorsPerSash: number;
   /** كورنر علوي لكل ضلفة قلاب */
   tiltCornersUpperPerSash: number;

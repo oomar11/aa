@@ -250,28 +250,13 @@ function addAccessoryCostLines(
 
   pushPiece("مفصلات", acc.hingeQty, "hinge");
 
-  if (acc.tiltEspagnolettes.length) {
-    for (const line of acc.tiltEspagnolettes) {
-      const brand = brandFor(brands, labels, "tilt-espagnolette");
-      const unit = accessoryBrandResolvedPrice(brand, line.maxDimMm);
-      addCostLine(map, {
-        section: "accessories",
-        label: `سبلونة مفصلي قلاب ${line.label}`,
-        amount: line.qty,
-        unit: "قطعة",
-        cost: unit != null ? roundMoney(line.qty * unit) : null,
-        note: joinNotes(brandNote("tilt-espagnolette"), `حد ${line.maxDimMm}مم`),
-      });
-    }
-  }
-
   if (acc.tiltScissors.length) {
     for (const line of acc.tiltScissors) {
       const brand = brandFor(brands, labels, "tilt-scissors");
       const unit = accessoryBrandResolvedPrice(brand, line.maxDimMm);
       addCostLine(map, {
         section: "accessories",
-        label: `مقص قلاب ${line.label}`,
+        label: `ذراع قلاب ${line.label}`,
         amount: line.qty,
         unit: "قطعة",
         cost: unit != null ? roundMoney(line.qty * unit) : null,

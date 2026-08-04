@@ -9,7 +9,6 @@ import {
   accessoryBrandCategoryLabel,
   defaultEspagnoletteCatalog,
   defaultEspagnoletteLockQty,
-  defaultTiltEspagnoletteRanges,
   defaultTiltScissorsRanges,
   newAccessoryLockPieceId,
   newEspagnoletteCatalogId,
@@ -265,11 +264,6 @@ export function AccessoryDetailsForm({
     details,
     brandCatalog
   );
-  const tiltEspBrand = resolveBrandForCategory(
-    "tilt-espagnolette",
-    details,
-    brandCatalog
-  );
   const tiltScissorsBrand = resolveBrandForCategory(
     "tilt-scissors",
     details,
@@ -283,20 +277,15 @@ export function AccessoryDetailsForm({
       if (entry.sliding && (slidingBrand?.sizePrices?.[entry.size] ?? 0) > 0)
         n += 1;
     }
-    for (const r of details.tiltEspagnoletteRanges) {
-      if ((tiltEspBrand?.sizePrices?.[r.maxDimMm] ?? 0) > 0) n += 1;
-    }
     for (const r of details.tiltScissorsRanges) {
       if ((tiltScissorsBrand?.sizePrices?.[r.maxDimMm] ?? 0) > 0) n += 1;
     }
     return n;
   }, [
     details.espagnoletteCatalog,
-    details.tiltEspagnoletteRanges,
     details.tiltScissorsRanges,
     hingedBrand,
     slidingBrand,
-    tiltEspBrand,
     tiltScissorsBrand,
   ]);
 
@@ -322,14 +311,17 @@ export function AccessoryDetailsForm({
         >
           {(["hinged", "tilt", "door", "bouclier", "sliding"] as const).map((group) => {
             const cats = ACCESSORY_BRAND_CATEGORIES.filter(
-              (c) => c.group === group && !isEspagnoletteCategory(c.id)
+              (c) =>
+                c.group === group &&
+                !isEspagnoletteCategory(c.id) &&
+                c.id !== "tilt-espagnolette"
             );
             if (cats.length === 0) return null;
             const groupLabel =
               group === "hinged"
                 ? "مفصلي عادي (شباك/باب)"
                 : group === "tilt"
-                  ? "مفصلي قلاب"
+                  ? "قلاب"
                   : group === "door"
                     ? "باب مفصلي"
                     : group === "bouclier"
@@ -631,28 +623,15 @@ export function AccessoryDetailsForm({
           </div>
           <p className="text-[10px] text-muted">
             عدد السكاك لكل مقاس سبلونة (مفصلي / جرار). الباب المفصلي لا يستخدم
-            سبلونة. سبلونة القلاب في الجدول أدناه.
+            سبلونة. ضلفة القلاب تستخدم نفس سبلونة المفصلي العادي + ذراع قلاب من
+            الجدول أدناه.
           </p>
 
           <p className="pt-2 text-[11px] font-bold text-foreground">
-            مفصلي قلاب — رينجات بريمير
+            ذراع قلاب — رينجات حسب عرض الضلفة
           </p>
           <TiltRangePriceTable
-            title="سبلونة مفصلي قلاب"
-            ranges={details.tiltEspagnoletteRanges}
-            brand={tiltEspBrand}
-            canEditPrices={Boolean(onBrandCatalogChange)}
-            onPriceChange={(maxDimMm, raw) =>
-              setSizePrice("tilt-espagnolette", maxDimMm, raw)
-            }
-            onReset={() =>
-              patchDetails({
-                tiltEspagnoletteRanges: defaultTiltEspagnoletteRanges(),
-              })
-            }
-          />
-          <TiltRangePriceTable
-            title="مقص قلاب"
+            title="ذراع قلاب"
             ranges={details.tiltScissorsRanges}
             brand={tiltScissorsBrand}
             canEditPrices={Boolean(onBrandCatalogChange)}
@@ -701,7 +680,7 @@ export function AccessoryDetailsForm({
           </div>
 
           <p className="pt-1 text-[11px] font-bold text-foreground">
-            مفصلي قلاب — مجموعة بريمير كاملة لكل ضلفة
+            قلاب — سبلونة مفصلي عادي + ذراع قلاب + مجموعة القلاب
           </p>
           <div className="grid grid-cols-2 gap-2">
             <NumberField
@@ -729,7 +708,7 @@ export function AccessoryDetailsForm({
               }
             />
             <NumberField
-              label="مقص قلاب / ضلفة"
+              label="ذراع قلاب / ضلفة"
               value={details.tiltScissorsPerSash}
               onChange={(v) => patchDetails({ tiltScissorsPerSash: v })}
             />
@@ -760,9 +739,8 @@ export function AccessoryDetailsForm({
             />
           </div>
           <p className="text-[10px] text-muted">
-            قلب علوي وقلب وضلفة بنفس المجموعة. سبلونة القلاب من ارتفاع الضلفة
-            والمقص من عرضها — المقاس يظهر في شريط الخامات. ضلفة القلاب تأخذ أيضاً
-            سكاك مفصلي من جدول السبلونات (حسب الارتفاع) مع المقبض البارز.
+            السبلونة والسكاك من جدول المفصلي العادي حسب ارتفاع الضلفة. ذراع
+            القلاب من عرض الضلفة — المقاس يظهر في شريط الخامات مع المقبض البارز.
           </p>
 
           <p className="pt-1 text-[11px] font-bold text-foreground">
