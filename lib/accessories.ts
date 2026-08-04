@@ -10,6 +10,7 @@
  * مفصلي قلاب / قلاب (tilt / tilt-turn) — مجموعة بريمير كاملة لكل ضلفة:
  * - سبلونة مفصلي قلاب (رينج) + مقص قلاب (رينج)
  * - كورنر علوي/سفلي + سكاك كورنر سفلي
+ * - سكاك مفصلي حسب مقاس السبلونة (نفس جدول المفصلي — مش مقبض بس)
  * - مفصلات علوية/سفلية (حلق + ضلفة) + بنز + أغطية + مقبض بارز
  *
  * باب مفصلي:
@@ -614,6 +615,8 @@ export function calcItemAccessories(
   // ── قلاب / مفصلي قلاب — مجموعة بريمير كاملة ────────────────
   const tiltEspMap = new Map<string, TiltRangeLine>();
   const tiltScissorsMap = new Map<string, TiltRangeLine>();
+  /** سبلونات القلاب لأغراض سكاك مفصلي (نفس جدول المفصلي) */
+  const tiltHingedLockEspMap = new Map<EspagnoletteSize, number>();
   const tiltBoxes = boxes.filter(
     (b) => isTiltOpening(b.opening) && !b.isDoor && isOpeningSash(b.opening)
   );
@@ -631,6 +634,15 @@ export function calcItemAccessories(
     if (scissorsRange) {
       addTiltRange(tiltScissorsMap, scissorsRange, details.tiltScissorsPerSash);
     }
+
+    // سكاك مفصلي من مقاس السبلونة المفصلي لنفس ارتفاع الضلفة
+    const lockEspSize = pickEspagnoletteSize(
+      handleSideHeightMm(box),
+      details.espagnoletteCatalog,
+      "hinged",
+      espGap
+    );
+    addEspagnolette(tiltHingedLockEspMap, lockEspSize);
 
     tiltTopHingeQty += details.tiltTopHingesPerSash;
     tiltTopFrameHingeQty += details.tiltTopFrameHingesPerSash;
@@ -652,10 +664,14 @@ export function calcItemAccessories(
       ? FRAME_COLORS[frameColorId].label
       : null;
 
-  // سكاك مفصلي من سبلونات الضلف المنفردة فقط — زوج البوكلير له سكاك بوكلير
+  // سكاك مفصلي: ضلف مفصلي منفردة + ضلف قلاب — زوج البوكلير له سكاك بوكلير
+  const hingedLockEspMap = new Map<EspagnoletteSize, number>(soloHingedEspMap);
+  for (const [size, qty] of tiltHingedLockEspMap) {
+    hingedLockEspMap.set(size, (hingedLockEspMap.get(size) ?? 0) + qty);
+  }
   const hingedLockPieces = lockPieceLinesFromEspSizes(
     details.hingedLockPieces,
-    soloHingedEspMap,
+    hingedLockEspMap,
     details.espagnoletteCatalog,
     "hinged"
   );

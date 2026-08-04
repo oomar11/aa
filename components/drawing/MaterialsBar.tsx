@@ -820,6 +820,83 @@ function buildAccessoryRows(
 
   pushPiece("hinge", "مفصلات", breakdown.hingeQty, "hinge");
 
+  for (const line of breakdown.tiltEspagnolettes) {
+    if (line.qty < 0.5) continue;
+    pushPiece(
+      `tilt-esp-${line.id}`,
+      `سبلونة مفصلي قلاب ${line.label}`,
+      line.qty,
+      "tilt-espagnolette",
+      undefined,
+      line.maxDimMm
+    );
+  }
+  for (const line of breakdown.tiltScissors) {
+    if (line.qty < 0.5) continue;
+    pushPiece(
+      `tilt-scissors-${line.id}`,
+      `مقص قلاب ${line.label}`,
+      line.qty,
+      "tilt-scissors",
+      undefined,
+      line.maxDimMm
+    );
+  }
+  pushPiece(
+    "tilt-corner-upper",
+    "كورنر علوي",
+    breakdown.tiltCornerUpperQty,
+    "tilt-corner-upper"
+  );
+  pushPiece(
+    "tilt-corner-lower",
+    "كورنر سفلي",
+    breakdown.tiltCornerLowerQty,
+    "tilt-corner-lower"
+  );
+  pushPiece(
+    "tilt-top-hinge",
+    "مفصلة علوية جزء الضلفة",
+    breakdown.tiltTopHingeQty,
+    "tilt-top-hinge"
+  );
+  pushPiece(
+    "tilt-top-frame-hinge",
+    "مفصلة علوية جزء الحلق",
+    breakdown.tiltTopFrameHingeQty,
+    "tilt-top-frame-hinge"
+  );
+  pushPiece(
+    "tilt-bottom-frame-hinge",
+    "مفصلة سفلية جزء الحلق",
+    breakdown.tiltBottomFrameHingeQty,
+    "tilt-bottom-frame-hinge"
+  );
+  pushPiece(
+    "tilt-bottom-sash-hinge",
+    "مفصلة سفلية جزء الضلفة",
+    breakdown.tiltBottomSashHingeQty,
+    "tilt-bottom-sash-hinge"
+  );
+  pushPiece(
+    "tilt-hinge-pin",
+    "مفصلة علوية بنز",
+    breakdown.tiltHingePinQty,
+    "tilt-hinge-pin"
+  );
+  pushPiece(
+    "tilt-corner-striker",
+    "سكاك كورنر سفلي",
+    breakdown.tiltCornerStrikerQty,
+    "tilt-corner-striker"
+  );
+  pushPiece(
+    "tilt-hinge-cover",
+    "غطاء مفصلة",
+    breakdown.tiltHingeCoverQty,
+    "tilt-hinge-cover"
+  );
+
   pushPiece("door-cylinder", "كالون", breakdown.doorCylinderQty, "door-cylinder");
   if (breakdown.doorSignalHandleQty > 0.5) {
     pushPiece(
