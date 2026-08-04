@@ -107,10 +107,11 @@ const SECTION_TITLE: Record<PurchaseSectionId, string> = {
 /**
  * ميزانية أسطر الصفحة الأولى أصغر بسبب هيدر العميل/المشروع.
  * عناوين الأقسام بتاخد وحدات إضافية في التقسيم.
+ * الميزانية متوسّعة عشان الصفحات متبقاش شبه فاضية.
  */
-export const PURCHASE_LINES_FIRST_PAGE = 9;
-export const PURCHASE_LINES_PER_PAGE = 15;
-export const PURCHASE_SECTION_COST = 2;
+export const PURCHASE_LINES_FIRST_PAGE = 14;
+export const PURCHASE_LINES_PER_PAGE = 24;
+export const PURCHASE_SECTION_COST = 1;
 
 function roundAmount(n: number, unit: PurchaseUnit): number {
   if (unit === "قطعة" || unit === "طقم") return Math.round(n * 100) / 100;
@@ -127,8 +128,11 @@ function joinNotes(...parts: Array<string | null | undefined>): string | undefin
   return text || undefined;
 }
 
-function colorNote(colorLabel: string | null | undefined): string | undefined {
-  return colorLabel ? `لون: ${colorLabel}` : undefined;
+/** يضيف اللون لاسم الصنف عشان التجميع يفرّق الألوان من غير ما يفرط في الصفحات */
+function coloredLabel(label: string, frameColor?: string | null): string {
+  const base = (label || "").trim() || "صنف";
+  const color = frameColor?.trim();
+  return color ? `${base} · ${color}` : base;
 }
 
 function addLine(
@@ -136,18 +140,21 @@ function addLine(
   partial: Omit<PurchaseLine, "key"> & { key?: string }
 ) {
   if (partial.amount < 0.0005) return;
+  const label = (partial.label || "").trim() || "صنف";
+  // مفتاح ثابت من الهوية فقط — الملاحظات متتفرّعش الأسطر لنسخ شبه فاضية
   const key =
     partial.key ??
-    `${partial.section}|${partial.label}|${partial.unit}|${partial.barLengthM ?? ""}|${partial.note ?? ""}`;
+    `${partial.section}|${label}|${partial.unit}|${partial.barLengthM ?? ""}`;
   const prev = map.get(key);
   if (prev) {
     prev.amount = roundAmount(prev.amount + partial.amount, partial.unit);
+    if (!prev.note && partial.note) prev.note = partial.note;
     return;
   }
   map.set(key, {
     key,
     section: partial.section,
-    label: partial.label,
+    label,
     amount: roundAmount(partial.amount, partial.unit),
     unit: partial.unit,
     barLengthM: partial.barLengthM,
@@ -188,31 +195,29 @@ function addProfileLines(
   frameColor?: string
 ) {
   const q = Math.max(1, qty || 1);
-  const tint = colorNote(frameColor);
   if (cost?.lines.length) {
     for (const line of cost.lines) {
       if (line.billing === "kit") {
         addLine(map, {
           section: "profiles",
-          label: line.label,
+          label: coloredLabel(line.label, frameColor),
           amount: (line.qty ?? 0) * q,
           unit: "طقم",
-          note: joinNotes(systemNote, line.productName, tint),
+          note: joinNotes(systemNote, line.productName),
         });
       } else {
         const barLen =
           line.barLengthM > 0 ? line.barLengthM : DEFAULT_BAR_LENGTH_M;
         addLine(map, {
           section: "profiles",
-          label: line.label,
+          label: coloredLabel(line.label, frameColor),
           amount: line.lengthM * q,
           unit: "م",
           barLengthM: barLen,
           note: joinNotes(
             systemNote,
             line.productName,
-            `طول العود ${barLen}م`,
-            tint
+            `طول العود ${barLen}م`
           ),
         });
       }
@@ -244,38 +249,38 @@ function addProfileLines(
   for (const row of fallback) {
     addLine(map, {
       section: "profiles",
-      label: row.label,
+      label: coloredLabel(row.label, frameColor),
       amount: row.meters,
       unit: "م",
       barLengthM: DEFAULT_BAR_LENGTH_M,
-      note: joinNotes(systemNote, `طول العود ${DEFAULT_BAR_LENGTH_M}م`, tint),
+      note: joinNotes(systemNote, `طول العود ${DEFAULT_BAR_LENGTH_M}م`),
     });
   }
   if (materials.bouclierCapQty > 0) {
     addLine(map, {
       section: "profiles",
-      label: "طبة بوكلير",
+      label: coloredLabel("طبة بوكلير", frameColor),
       amount: materials.bouclierCapQty,
       unit: "طقم",
-      note: joinNotes(systemNote, tint),
+      note: systemNote,
     });
   }
   if (materials.mullionHingedQty > 0) {
     addLine(map, {
       section: "profiles",
-      label: "طقم تجميع سقاس مفصلي",
+      label: coloredLabel("طقم تجميع سقاس مفصلي", frameColor),
       amount: materials.mullionHingedQty,
       unit: "طقم",
-      note: joinNotes(systemNote, tint),
+      note: systemNote,
     });
   }
   if (materials.mullionSlidingQty > 0) {
     addLine(map, {
       section: "profiles",
-      label: "طقم تجميع سقاس جرار",
+      label: coloredLabel("طقم تجميع سقاس جرار", frameColor),
       amount: materials.mullionSlidingQty,
       unit: "طقم",
-      note: joinNotes(systemNote, tint),
+      note: systemNote,
     });
   }
 }
@@ -379,8 +384,7 @@ function addAccessoryLines(
   const brandNote = (cat: keyof AccessoriesBreakdown["brandLabels"]) =>
     acc.brandLabels[cat] || acc.systemName || undefined;
   /** لون المقابض ووش التسكيك = لون الإطار/الباب */
-  const handleTint =
-    colorNote(acc.doorHandleColorLabel) ?? colorNote(frameColor);
+  const handleColor = acc.doorHandleColorLabel || frameColor;
 
   addLine(map, {
     section: "accessories",
@@ -481,17 +485,17 @@ function addAccessoryLines(
   });
   addLine(map, {
     section: "accessories",
-    label: "مقبض إشارة",
+    label: coloredLabel("مقبض إشارة", handleColor),
     amount: acc.doorSignalHandleQty,
     unit: "قطعة",
-    note: joinNotes(brandNote("door-signal-handle"), handleTint),
+    note: brandNote("door-signal-handle"),
   });
   addLine(map, {
     section: "accessories",
-    label: "وش تسكيك",
+    label: coloredLabel("وش تسكيك", handleColor),
     amount: acc.doorEscutcheonQty,
     unit: "قطعة",
-    note: joinNotes(brandNote("door-escutcheon"), handleTint),
+    note: brandNote("door-escutcheon"),
   });
 
   for (const line of acc.hingedEspagnolettes) {
@@ -506,7 +510,7 @@ function addAccessoryLines(
   for (const piece of acc.hingedLockPieces) {
     addLine(map, {
       section: "accessories",
-      label: piece.name,
+      label: piece.name?.trim() || "سكاك مفصلي",
       amount: piece.qty,
       unit: "قطعة",
       note: brandNote("hinged-lock"),
@@ -515,7 +519,7 @@ function addAccessoryLines(
   for (const piece of acc.bouclierLockPieces) {
     addLine(map, {
       section: "accessories",
-      label: piece.name,
+      label: piece.name?.trim() || "سكاك بوكلير",
       amount: piece.qty,
       unit: "قطعة",
       note: brandNote("bouclier-lock"),
@@ -531,7 +535,7 @@ function addAccessoryLines(
   for (const piece of acc.bouclierBoltLockPieces) {
     addLine(map, {
       section: "accessories",
-      label: piece.name,
+      label: piece.name?.trim() || "سكاك ترباس",
       amount: piece.qty,
       unit: "قطعة",
       note: brandNote("bouclier-bolt-lock"),
@@ -539,10 +543,10 @@ function addAccessoryLines(
   }
   addLine(map, {
     section: "accessories",
-    label: "مقبض بارز",
+    label: coloredLabel("مقبض بارز", handleColor),
     amount: acc.protrudingHandleQty,
     unit: "قطعة",
-    note: joinNotes(brandNote("protruding-handle"), colorNote(frameColor)),
+    note: brandNote("protruding-handle"),
   });
   addLine(map, {
     section: "accessories",
@@ -570,7 +574,7 @@ function addAccessoryLines(
   for (const piece of acc.slidingLockPieces) {
     addLine(map, {
       section: "accessories",
-      label: piece.name,
+      label: piece.name?.trim() || "سكاك جرار",
       amount: piece.qty,
       unit: "قطعة",
       note: brandNote("sliding-lock"),
@@ -578,10 +582,10 @@ function addAccessoryLines(
   }
   addLine(map, {
     section: "accessories",
-    label: "مقبض غاطس",
+    label: coloredLabel("مقبض غاطس", handleColor),
     amount: acc.recessedHandleQty,
     unit: "قطعة",
-    note: joinNotes(brandNote("recessed-handle"), colorNote(frameColor)),
+    note: brandNote("recessed-handle"),
   });
 }
 
@@ -600,7 +604,7 @@ function addIronLines(map: Map<string, PurchaseLine>, iron: IronBreakdown | null
     if (line.lengthM > 0.0005) {
       addLine(map, {
         section: "iron",
-        label: line.label,
+        label: line.label?.trim() || line.pieceName || "حديد",
         amount: line.lengthM,
         unit: "م",
         barLengthM: barLen,
@@ -609,7 +613,7 @@ function addIronLines(map: Map<string, PurchaseLine>, iron: IronBreakdown | null
     } else if (line.qty != null && line.qty > 0) {
       addLine(map, {
         section: "iron",
-        label: line.label,
+        label: line.label?.trim() || line.pieceName || "حديد",
         amount: line.qty,
         unit: "قطعة",
         note,

@@ -131,11 +131,11 @@ const SECTION_TITLE: Record<CostSectionId, string> = {
   iron: "الحديد",
 };
 
-export const COST_ITEMS_FIRST_PAGE = 6;
-export const COST_ITEMS_PER_PAGE = 12;
-export const COST_LINES_FIRST_PAGE = 10;
-export const COST_LINES_PER_PAGE = 15;
-export const COST_SECTION_COST = 2;
+export const COST_ITEMS_FIRST_PAGE = 8;
+export const COST_ITEMS_PER_PAGE = 16;
+/** صفحات تفاصيل التكلفة مفيهاش هيدر كبير */
+export const COST_LINES_PER_PAGE = 24;
+export const COST_SECTION_COST = 1;
 
 function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
@@ -168,9 +168,11 @@ function addCostLine(
   partial: Omit<EstimatedCostLine, "key"> & { key?: string }
 ) {
   if (partial.amount < 0.0005) return;
+  const label = (partial.label || "").trim() || "صنف";
+  // مفتاح ثابت — الملاحظات متتفرّعش الأسطر لصفحات شبه فاضية
   const key =
     partial.key ??
-    `${partial.section}|${partial.label}|${partial.unit}|${partial.barLengthM ?? ""}|${partial.note ?? ""}|${
+    `${partial.section}|${label}|${partial.unit}|${partial.barLengthM ?? ""}|${
       partial.cost == null ? "u" : "p"
     }`;
   const prev = map.get(key);
@@ -179,12 +181,13 @@ function addCostLine(
     if (partial.cost != null) {
       prev.cost = roundMoney((prev.cost ?? 0) + partial.cost);
     }
+    if (!prev.note && partial.note) prev.note = partial.note;
     return;
   }
   map.set(key, {
     key,
     section: partial.section,
-    label: partial.label,
+    label,
     amount: roundAmount(partial.amount, partial.unit),
     unit: partial.unit,
     barLengthM: partial.barLengthM,
@@ -229,7 +232,8 @@ function addAccessoryCostLines(
   const labels = acc.brandLabels;
   const brandNote = (cat: AccessoryBrandCategory) =>
     labels[cat] || acc.systemName || undefined;
-  const tint = frameColor ? `لون: ${frameColor}` : undefined;
+  const handleLabel = (name: string) =>
+    frameColor ? `${name} · ${frameColor}` : name;
 
   const pushPiece = (
     label: string,
@@ -238,9 +242,10 @@ function addAccessoryCostLines(
     noteExtra?: string
   ) => {
     if (qty < 0.5) return;
+    const named = (label || "").trim() || "قطعة";
     addCostLine(map, {
       section: "accessories",
-      label,
+      label: named,
       amount: qty,
       unit: "قطعة",
       cost: pieceCost(brands, labels, category, qty),
@@ -307,8 +312,8 @@ function addAccessoryCostLines(
   pushPiece("غطاء مفصلة", acc.tiltHingeCoverQty, "tilt-hinge-cover");
 
   pushPiece("كالون", acc.doorCylinderQty, "door-cylinder");
-  pushPiece("مقبض إشارة", acc.doorSignalHandleQty, "door-signal-handle", tint);
-  pushPiece("وش تسكيك", acc.doorEscutcheonQty, "door-escutcheon", tint);
+  pushPiece(handleLabel("مقبض إشارة"), acc.doorSignalHandleQty, "door-signal-handle");
+  pushPiece(handleLabel("وش تسكيك"), acc.doorEscutcheonQty, "door-escutcheon");
 
   if (acc.hingedEspagnolettes.length) {
     const brand = brandFor(brands, labels, "hinged-espagnolette");
@@ -337,17 +342,17 @@ function addAccessoryCostLines(
   }
 
   for (const piece of acc.hingedLockPieces) {
-    pushPiece(piece.name, piece.qty, "hinged-lock");
+    pushPiece(piece.name?.trim() || "سكاك مفصلي", piece.qty, "hinged-lock");
   }
 
   for (const piece of acc.bouclierLockPieces) {
-    pushPiece(piece.name, piece.qty, "bouclier-lock");
+    pushPiece(piece.name?.trim() || "سكاك بوكلير", piece.qty, "bouclier-lock");
   }
   pushPiece("ترباس", acc.boltQty, "bouclier-bolt");
   for (const piece of acc.bouclierBoltLockPieces) {
-    pushPiece(piece.name, piece.qty, "bouclier-bolt-lock");
+    pushPiece(piece.name?.trim() || "سكاك ترباس", piece.qty, "bouclier-bolt-lock");
   }
-  pushPiece("مقبض بارز", acc.protrudingHandleQty, "protruding-handle", tint);
+  pushPiece(handleLabel("مقبض بارز"), acc.protrudingHandleQty, "protruding-handle");
   pushPiece("عجل جرار", acc.rollerQty, "roller");
 
   if (acc.brushLengthM > 0.0005) {
@@ -388,9 +393,9 @@ function addAccessoryCostLines(
   }
 
   for (const piece of acc.slidingLockPieces) {
-    pushPiece(piece.name, piece.qty, "sliding-lock");
+    pushPiece(piece.name?.trim() || "سكاك جرار", piece.qty, "sliding-lock");
   }
-  pushPiece("مقبض غاطس", acc.recessedHandleQty, "recessed-handle", tint);
+  pushPiece(handleLabel("مقبض غاطس"), acc.recessedHandleQty, "recessed-handle");
 }
 
 function accessorySectionTotal(
@@ -429,21 +434,24 @@ function contributeItem(
   if (profile.hasPricing) {
     profiles = profile.totalCost;
     for (const line of profile.lines) {
+      const label = frameColor
+        ? `${line.label} · ${frameColor}`
+        : line.label;
       if (line.billing === "kit") {
         addCostLine(lineMap, {
           section: "profiles",
-          label: line.label,
+          label,
           amount: (line.qty ?? 0) * qty,
           unit: "طقم",
           cost: roundMoney(line.totalCost * qty),
-          note: joinNotes(systemNote, line.productName, `لون: ${frameColor}`),
+          note: joinNotes(systemNote, line.productName),
         });
       } else {
         const barLen =
           line.barLengthM > 0 ? line.barLengthM : DEFAULT_BAR_LENGTH_M;
         addCostLine(lineMap, {
           section: "profiles",
-          label: line.label,
+          label,
           amount: line.lengthM * qty,
           unit: "م",
           barLengthM: barLen,
@@ -451,8 +459,7 @@ function contributeItem(
           note: joinNotes(
             systemNote,
             line.productName,
-            `طول العود ${barLen}م`,
-            `لون: ${frameColor}`
+            `طول العود ${barLen}م`
           ),
         });
       }
@@ -512,7 +519,7 @@ function contributeItem(
       if (line.lengthM > 0.0005) {
         addCostLine(lineMap, {
           section: "iron",
-          label: line.label,
+          label: line.label?.trim() || line.pieceName || "حديد",
           amount: line.lengthM,
           unit: "م",
           barLengthM: barLen,
@@ -529,7 +536,7 @@ function contributeItem(
       } else if (line.qty != null && line.qty > 0) {
         addCostLine(lineMap, {
           section: "iron",
-          label: line.label,
+          label: line.label?.trim() || line.pieceName || "حديد",
           amount: line.qty,
           unit: "قطعة",
           cost:
@@ -737,8 +744,9 @@ export function buildProjectEstimatedCost(
       firstPageBudget: COST_ITEMS_FIRST_PAGE,
       nextPageBudget: COST_ITEMS_PER_PAGE,
     }),
+    // صفحات التفاصيل مفيهاش هيدر كبير — نفس الميزانية لكل الصفحات
     linePages: chunkItemsByBudget(flatLines, {
-      firstPageBudget: COST_LINES_FIRST_PAGE,
+      firstPageBudget: COST_LINES_PER_PAGE,
       nextPageBudget: COST_LINES_PER_PAGE,
       sectionCost: COST_SECTION_COST,
       getSection: (line) => line.section,

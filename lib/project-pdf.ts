@@ -22,7 +22,7 @@ export function projectPdfFileName(projectName?: string): string {
 export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
   const pages = Array.from(
     element.querySelectorAll<HTMLElement>(".report-page")
-  );
+  ).filter((page) => page.closest(".report-sheet") != null);
   if (pages.length === 0) {
     throw new Error("لا توجد صفحات تقرير للتصدير");
   }
@@ -46,30 +46,64 @@ export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
     }
   }
 
-  for (let i = 0; i < pages.length; i++) {
-    const page = pages[i]!;
-    // ثبّت المقاس قبل التصوير عشان مفيش ضغط/تداخل للنص
-    page.style.width = `${REPORT_PAGE_WIDTH_PX}px`;
-    page.style.height = `${REPORT_PAGE_HEIGHT_PX}px`;
-    page.style.boxSizing = "border-box";
-    page.style.overflow = "hidden";
+  // المضيف بيتشاف بشفافية شبه صفرية عشان مقاس الخط العربي يتظبط —
+  // وقت التصوير لازم يبقى ظاهر بالكامل وإلا الصفحات تطلع بيضا/فاضية.
+  const fadeHosts: Array<{ el: HTMLElement; opacity: string }> = [];
+  let host: HTMLElement | null = element;
+  while (host) {
+    const opacity = host.style.opacity;
+    if (opacity && opacity !== "1") {
+      fadeHosts.push({ el: host, opacity });
+      host.style.opacity = "1";
+    }
+    host = host.parentElement;
+  }
 
-    const canvas = await domToCanvas(page, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      width: REPORT_PAGE_WIDTH_PX,
-      height: REPORT_PAGE_HEIGHT_PX,
-      style: {
-        fontFamily:
-          'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif',
-        letterSpacing: "0px",
-        wordSpacing: "0px",
-      },
-    });
+  try {
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i]!;
+      // ثبّت المقاس قبل التصوير عشان مفيش ضغط/تداخل للنص
+      page.style.width = `${REPORT_PAGE_WIDTH_PX}px`;
+      page.style.height = `${REPORT_PAGE_HEIGHT_PX}px`;
+      page.style.boxSizing = "border-box";
+      page.style.overflow = "hidden";
+      page.style.opacity = "1";
+      page.style.color = "#152033";
+      page.style.backgroundColor = "#ffffff";
 
-    const imgData = canvas.toDataURL("image/jpeg", 0.94);
-    if (i > 0) pdf.addPage();
-    pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+      const canvas = await domToCanvas(page, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        width: REPORT_PAGE_WIDTH_PX,
+        height: REPORT_PAGE_HEIGHT_PX,
+        style: {
+          fontFamily:
+            'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif',
+          letterSpacing: "0px",
+          wordSpacing: "0px",
+          opacity: "1",
+          color: "#152033",
+          backgroundColor: "#ffffff",
+        },
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.94);
+      if (i > 0) pdf.addPage();
+      pdf.addImage(
+        imgData,
+        "JPEG",
+        0,
+        0,
+        pageWidth,
+        pageHeight,
+        undefined,
+        "FAST"
+      );
+    }
+  } finally {
+    for (const { el, opacity } of fadeHosts) {
+      el.style.opacity = opacity;
+    }
   }
 
   return pdf.output("blob");
@@ -174,7 +208,8 @@ export function chunkReportItems<T>(items: T[], size = REPORT_ITEMS_PER_PAGE): T
 
 /**
  * تقسيم أسطر الجداول على صفحات A4 مع ميزانية أصغر للصفحة الأولى
- * (هيدر كبير) واحتساب تكلفة عناوين الأقسام — عشان المحتوى متتقصّش.
+ * (هيدر كبير) واحتساب تكلفة عناوين الأقسام — عشان المحتوى متتقصّش
+ * من غير ما نولّد صفحات شبه فاضية.
  */
 export function chunkItemsByBudget<T>(
   items: T[],
@@ -207,7 +242,13 @@ export function chunkItemsByBudget<T>(
       used = 0;
       lastSection = null;
       budget = Math.max(1, options.nextPageBudget);
+      // بعد القطع: عنوان القسم بيتعاد في الصفحة الجديدة فقط
       cost = 1 + (getSection ? sectionCost : 0);
+    }
+
+    // لو السطر لوحده أكبر من الميزانية — خليه في صفحة لوحده بدل ما يتساب
+    if (current.length === 0 && cost > budget) {
+      cost = Math.min(cost, budget);
     }
 
     current.push(item);
@@ -216,5 +257,6 @@ export function chunkItemsByBudget<T>(
   }
 
   if (current.length > 0) pages.push(current);
-  return pages;
+  // شيل أي صفحة فاضية بالغلط
+  return pages.filter((page) => page.length > 0);
 }

@@ -624,11 +624,25 @@ function LinesPage({
                   </thead>
                   <tbody>
                     {group.lines.map((line) => (
-                      <tr key={line.key}>
-                        <td style={{ ...tdStyle(), fontWeight: 600 }}>
-                          {line.label}
+                      <tr key={line.key} style={{ height: 30 }}>
+                        <td
+                          style={{
+                            ...tdStyle(),
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: 260,
+                          }}
+                        >
+                          {line.label || "صنف"}
                         </td>
-                        <td style={tdStyle("center")}>
+                        <td
+                          style={{
+                            ...tdStyle("center"),
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {costQtyLabel(line)}
                         </td>
                         <td
