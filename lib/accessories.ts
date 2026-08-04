@@ -8,10 +8,10 @@
  * - ضلفتين مقابض في وش بعض (بوكلير): سبلونة واحدة مش اثنين، سكاك بوكلير (مش مفصلي)، ترباس + سكاك ترباس، مقبض بارز
  *
  * مفصلي قلاب / قلاب (tilt / tilt-turn) لكل ضلفة:
- * - سبلونة مفصلي عادي (نفس جدول المفصلي حسب الارتفاع) + سكاك مفصلي
- * - ذراع قلاب (رينج حسب العرض)
- * - كورنر علوي/سفلي + سكاك كورنر سفلي
- * - مفصلات علوية/سفلية (حلق + ضلفة) + بنز + أغطية + مقبض بارز
+ * - سبلونة مفصلي عادي (نفس جدول المفصلي حسب الارتفاع)
+ * - سكاكين مفصلي (٢ ثابت)
+ * - مقبض بارز
+ * - بدون مجموعة المفصلي القلاب (ذراع/كورنر/مفصلات قلاب)
  *
  * باب مفصلي:
  * - نفس المفصلة العادية بعدد أكبر (٣–٤) + كالون + مقبض إشارة + وش تسكيك
@@ -50,7 +50,6 @@ import {
   getDefaultSystemId,
   loadMaterialCatalog,
   pickEspagnoletteSize,
-  pickTiltSizeRange,
   resolveCategoryBrandName,
   type AccessoryBrandCategory,
   type AccessoryLockPiece,
@@ -296,6 +295,24 @@ function lockPieceLines(
     }));
 }
 
+function mergeLockPieceLines(
+  a: LockPieceLine[],
+  b: LockPieceLine[]
+): LockPieceLine[] {
+  const map = new Map<string, LockPieceLine>();
+  for (const line of [...a, ...b]) {
+    if (line.qty <= 0) continue;
+    const key = line.id || line.name;
+    const prev = map.get(key);
+    if (prev) {
+      prev.qty += line.qty;
+    } else {
+      map.set(key, { ...line });
+    }
+  }
+  return [...map.values()].filter((l) => l.qty > 0);
+}
+
 type BouclierPair = {
   left: PaneBox;
   right: PaneBox;
@@ -324,30 +341,6 @@ function lockPieceLinesFromEspSizes(
     lockCount += Math.max(0, perEsp) * espQty;
   }
   return lockPieceLines(pieces, lockCount);
-}
-
-function addTiltRange(
-  map: Map<string, TiltRangeLine>,
-  range: { id: string; label: string; maxDimMm: number },
-  qty = 1
-) {
-  const prev = map.get(range.id);
-  if (prev) {
-    prev.qty += qty;
-    return;
-  }
-  map.set(range.id, {
-    id: range.id,
-    label: range.label,
-    maxDimMm: range.maxDimMm,
-    qty,
-  });
-}
-
-function tiltRangeLines(map: Map<string, TiltRangeLine>): TiltRangeLine[] {
-  return [...map.values()]
-    .filter((l) => l.qty > 0)
-    .sort((a, b) => a.maxDimMm - b.maxDimMm);
 }
 
 /**
@@ -609,41 +602,28 @@ export function calcItemAccessories(
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
 
-  // ── قلاب — سبلونة مفصلي عادي + ذراع قلاب + مجموعة القلاب ────
-  const tiltArmMap = new Map<string, TiltRangeLine>();
+  // ── قلاب — سبلونة مفصلي + سكاكين + مقبض بارز فقط ───────────
+  /** سبلونات القلاب للعرض مع السبلونة المفصلي — السكاك ثابتة ٢/ضلفة */
+  const tiltEspMap = new Map<EspagnoletteSize, number>();
   const tiltBoxes = boxes.filter(
     (b) => isTiltOpening(b.opening) && !b.isDoor && isOpeningSash(b.opening)
   );
   for (const box of tiltBoxes) {
-    // سبلونة مفصلي عادي حسب ارتفاع الضلفة (مش سبلونة قلاب مخصوصة)
     const size = pickEspagnoletteSize(
       handleSideHeightMm(box),
       details.espagnoletteCatalog,
       "hinged",
       espGap
     );
-    addEspagnolette(soloHingedEspMap, size);
-
-    // ذراع قلاب حسب عرض الضلفة
-    const armRange = pickTiltSizeRange(box.w, details.tiltScissorsRanges);
-    if (armRange) {
-      addTiltRange(tiltArmMap, armRange, details.tiltScissorsPerSash);
-    }
-
-    tiltTopHingeQty += details.tiltTopHingesPerSash;
-    tiltTopFrameHingeQty += details.tiltTopFrameHingesPerSash;
-    tiltBottomFrameHingeQty += details.tiltBottomFrameHingesPerSash;
-    tiltBottomSashHingeQty += details.tiltBottomSashHingesPerSash;
-    tiltCornerUpperQty += details.tiltCornersUpperPerSash;
-    tiltCornerLowerQty += details.tiltCornersLowerPerSash;
-    tiltCornerStrikerQty += details.tiltCornerStrikersPerSash;
-    tiltHingePinQty += details.tiltHingePinsPerSash;
-    tiltHingeCoverQty += details.tiltHingeCoversPerSash;
+    addEspagnolette(tiltEspMap, size);
     protrudingHandleQty += details.protrudingHandlesPerLockset;
   }
 
-  // عرض السبلونات: منفردة (شباك مفصلي + قلاب) + بوكلير
+  // عرض السبلونات: مفصلي منفرد + قلاب + بوكلير
   const hingedEspMap = new Map<EspagnoletteSize, number>(soloHingedEspMap);
+  for (const [size, qty] of tiltEspMap) {
+    hingedEspMap.set(size, (hingedEspMap.get(size) ?? 0) + qty);
+  }
   for (const [size, qty] of bouclierEspMap) {
     hingedEspMap.set(size, (hingedEspMap.get(size) ?? 0) + qty);
   }
@@ -656,12 +636,23 @@ export function calcItemAccessories(
       ? FRAME_COLORS[frameColorId].label
       : null;
 
-  // سكاك مفصلي من سبلونات الضلف المنفردة والقلاب — زوج البوكلير له سكاك بوكلير
-  const hingedLockPieces = lockPieceLinesFromEspSizes(
-    details.hingedLockPieces,
-    soloHingedEspMap,
-    details.espagnoletteCatalog,
-    "hinged"
+  // سكاك مفصلي: منفردة حسب مقاس السبلونة + سكاكين ثابتة لكل ضلفة قلاب
+  const hingedLockPieces = mergeLockPieceLines(
+    lockPieceLinesFromEspSizes(
+      details.hingedLockPieces,
+      soloHingedEspMap,
+      details.espagnoletteCatalog,
+      "hinged"
+    ),
+    tiltBoxes.length > 0
+      ? details.hingedLockPieces
+          .filter((p) => p.qtyPerLockset > 0)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            qty: 2 * tiltBoxes.length,
+          }))
+      : []
   );
   const bouclierLockPieces = lockPieceLines(
     details.bouclierLockPieces,
@@ -722,7 +713,7 @@ export function calcItemAccessories(
 
   const hingedEspagnolettes = espagnoletteLines(hingedEspMap);
   const tiltEspagnolettes: TiltRangeLine[] = [];
-  const tiltScissors = tiltRangeLines(tiltArmMap);
+  const tiltScissors: TiltRangeLine[] = [];
   const slidingEspagnolettes = espagnoletteLines(slidingEspMap);
   const brandLabels = buildBrandLabels(details, cat);
 
