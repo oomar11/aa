@@ -225,6 +225,14 @@ export function perSqmSaleBreakdown(
   };
 }
 
+/** هل للبند سعر متر مخصص صالح؟ */
+export function hasCustomSalePricePerSqm(item: {
+  customSalePricePerSqm?: number | null;
+}): boolean {
+  const v = item.customSalePricePerSqm;
+  return v != null && Number.isFinite(v) && v > 0;
+}
+
 /** قراءة سعر بيع المتر لنظام قطاع مع رجوع لسعر البند */
 export function resolveProfileSalePricePerSqm(
   systemId: string | undefined | null,
@@ -249,4 +257,25 @@ export function resolveProfileSalePricePerSqm(
     // رجوع لسعر البند
   }
   return Math.max(0, fallbackPricePerSqm);
+}
+
+/**
+ * سعر متر البيع للبند:
+ * ١) سعر متر مخصص على الشباك إن وُجد
+ * ٢) سعر نظام القطاع الموحد
+ * ٣) رجوع لـ pricePerSqm على البند
+ */
+export function resolveItemSalePricePerSqm(
+  item: {
+    customSalePricePerSqm?: number | null;
+    pricePerSqm?: number;
+    systemId?: string | null;
+  },
+  projectSystemId?: string | null
+): number {
+  if (hasCustomSalePricePerSqm(item)) {
+    return Math.max(0, item.customSalePricePerSqm as number);
+  }
+  const systemId = item.systemId ?? projectSystemId;
+  return resolveProfileSalePricePerSqm(systemId, item.pricePerSqm ?? 0);
 }

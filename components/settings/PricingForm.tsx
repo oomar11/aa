@@ -110,7 +110,8 @@ export function PricingForm() {
       <p className="rounded-2xl border border-primary/20 bg-primary-soft/40 px-3.5 py-3 text-xs leading-relaxed text-foreground">
         {modeMeta.description}
         {" "}
-        السعر الخاص على أي بند يلغي التسعير التلقائي في كل الأوضاع.
+        السعر الخاص على أي بند يلغي التسعير التلقائي في كل الأوضاع. يمكن أيضاً
+        وضع سعر متر مخصص لكل شباك من تفاصيل البند (بدل السعر الموحد).
       </p>
 
       <fieldset className="flex flex-col gap-2">

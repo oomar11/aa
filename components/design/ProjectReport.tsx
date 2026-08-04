@@ -14,6 +14,10 @@ import {
 import { suggestItemName } from "@/lib/item-naming";
 import { loadMaterialCatalog } from "@/lib/material-systems";
 import {
+  hasCustomSalePricePerSqm,
+  resolveItemSalePricePerSqm,
+} from "@/lib/pricing";
+import {
   REPORT_PAGE_HEIGHT_PX,
   REPORT_PAGE_WIDTH_PX,
   chunkReportItems,
@@ -400,6 +404,19 @@ function ReportItemCard({
   const area = itemAreaSqm(item);
   const price = itemTotalPrice(item);
   const materials = reportMaterialRows(item, project, catalog).slice(0, 3);
+  const hasSpecial =
+    item.specialPrice != null &&
+    Number.isFinite(item.specialPrice) &&
+    item.specialPrice > 0;
+  const salePerSqm = resolveItemSalePricePerSqm(item, project?.systemId);
+  const meterLabel = hasSpecial
+    ? "سعر خاص"
+    : hasCustomSalePricePerSqm(item)
+      ? "سعر متر مخصص"
+      : "سعر المتر";
+  const meterValue = hasSpecial
+    ? `${formatCurrency(Math.round(item.specialPrice as number))} ج.م`
+    : `${formatCurrency(Math.round(salePerSqm))} ج.م`;
 
   const materialRows = Math.max(materials.length, 1);
   const materialsBlockH = 16 + materialRows * 28;
@@ -475,8 +492,8 @@ function ReportItemCard({
         <Meta label="العدد" value={String(item.qty)} />
         <Meta label="المساحة" value={`${area.toFixed(2)} م²`} ltr />
         <Meta
-          label="سعر المتر"
-          value={`${formatCurrency(Math.round(item.pricePerSqm))} ج.م`}
+          label={meterLabel}
+          value={meterValue}
           ltr
         />
       </div>

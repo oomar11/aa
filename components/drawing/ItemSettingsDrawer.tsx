@@ -36,6 +36,8 @@ export type ItemSettingsPatch = {
   nameIsCustom: boolean;
   qty: number;
   notes: string;
+  /** سعر متر مخصص للبند — null = سعر النظام الموحد */
+  customSalePricePerSqm: number | null;
   specialPrice: number | null;
   discountId: DiscountId;
   systemId: string;
@@ -73,6 +75,12 @@ function toDraft(
     nameIsCustom: Boolean(item.nameIsCustom),
     qty: Math.max(1, item.qty || 1),
     notes: item.notes ?? "",
+    customSalePricePerSqm:
+      item.customSalePricePerSqm != null &&
+      Number.isFinite(item.customSalePricePerSqm) &&
+      item.customSalePricePerSqm > 0
+        ? item.customSalePricePerSqm
+        : null,
     specialPrice:
       item.specialPrice != null && Number.isFinite(item.specialPrice)
         ? item.specialPrice
@@ -105,6 +113,11 @@ export function ItemSettingsDrawer({
   const [draft, setDraft] = useState<ItemSettingsPatch>(() =>
     toDraft(item, projectDefaults)
   );
+  const [customMeterText, setCustomMeterText] = useState(
+    item.customSalePricePerSqm != null && item.customSalePricePerSqm > 0
+      ? String(item.customSalePricePerSqm)
+      : ""
+  );
   const [specialText, setSpecialText] = useState(
     item.specialPrice != null && item.specialPrice > 0
       ? String(item.specialPrice)
@@ -120,6 +133,11 @@ export function ItemSettingsDrawer({
     if (!open) return;
     const next = toDraft(item, projectDefaults);
     setDraft(next);
+    setCustomMeterText(
+      next.customSalePricePerSqm != null && next.customSalePricePerSqm > 0
+        ? String(next.customSalePricePerSqm)
+        : ""
+    );
     setSpecialText(
       next.specialPrice != null && next.specialPrice > 0
         ? String(next.specialPrice)
@@ -160,14 +178,25 @@ export function ItemSettingsDrawer({
     : accessoryOpts;
 
   function commit() {
-    const parsed = specialText.trim() === "" ? null : Number(specialText);
+    const parsedMeter =
+      customMeterText.trim() === "" ? null : Number(customMeterText);
+    const parsedSpecial =
+      specialText.trim() === "" ? null : Number(specialText);
     const trimmed = draft.name.trim();
     onConfirm({
       ...draft,
       name: trimmed || suggestItemName(item),
       nameIsCustom: trimmed ? draft.nameIsCustom : false,
+      customSalePricePerSqm:
+        parsedMeter != null && Number.isFinite(parsedMeter) && parsedMeter > 0
+          ? parsedMeter
+          : null,
       specialPrice:
-        parsed != null && Number.isFinite(parsed) && parsed > 0 ? parsed : null,
+        parsedSpecial != null &&
+        Number.isFinite(parsedSpecial) &&
+        parsedSpecial > 0
+          ? parsedSpecial
+          : null,
       ironId: getIronSystemId(),
     });
   }
@@ -194,7 +223,7 @@ export function ItemSettingsDrawer({
           <div className="min-w-0 text-right">
             <h2 className="text-base font-bold text-foreground">تفاصيل البند</h2>
             <p className="text-[11px] text-muted">
-              الاسم · العدد · القطاعات · الزجاج
+              الاسم · العدد · سعر المتر · القطاعات · الزجاج
             </p>
           </div>
           <button
@@ -229,6 +258,10 @@ export function ItemSettingsDrawer({
                   const smart = suggestItemName({
                     ...item,
                     ...draft,
+                    customSalePricePerSqm:
+                      customMeterText.trim() === ""
+                        ? null
+                        : Number(customMeterText) || null,
                     specialPrice:
                       specialText.trim() === ""
                         ? null
@@ -304,6 +337,23 @@ export function ItemSettingsDrawer({
             />
           </Section>
 
+          <Section title="سعر المتر المخصص">
+            <input
+              type="number"
+              min={0}
+              inputMode="decimal"
+              value={customMeterText}
+              onChange={(e) => setCustomMeterText(e.target.value)}
+              placeholder="فارغ = سعر نظام القطاع الموحد"
+              className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary focus:bg-card"
+              dir="ltr"
+            />
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+              سعر متر لهذا الشباك فقط (ج.م/م²). فارغ = السعر الموحد من نظام
+              القطاع. أقل من متر يُحسب متر كامل.
+            </p>
+          </Section>
+
           <Section title="السعر الخاص">
             <input
               type="number"
@@ -311,12 +361,13 @@ export function ItemSettingsDrawer({
               inputMode="decimal"
               value={specialText}
               onChange={(e) => setSpecialText(e.target.value)}
-              placeholder="اتركه فارغاً للتسعير التلقائي"
+              placeholder="اتركه فارغاً للتسعير بالمتر"
               className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary focus:bg-card"
+              dir="ltr"
             />
             <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
-              فارغ = حسب نظام التسعير المختار من الإعدادات (هجين أو بالمتر). أي
-              قيمة هنا تلغي التسعير التلقائي لهذا البند في كل الأوضاع.
+              سعر ثابت للقطعة الواحدة بالجنيه. أي قيمة هنا تلغي حساب المتر
+              والتسعير التلقائي لهذا البند.
             </p>
           </Section>
 

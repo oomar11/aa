@@ -92,6 +92,7 @@ type HistorySnap = {
   panes: NonNullable<DesignItem["panes"]>;
   qty: number;
   notes: string;
+  customSalePricePerSqm: number | null;
   specialPrice: number | null;
   discountId: string;
   systemId: string;
@@ -115,6 +116,7 @@ function snapshot(item: DesignItem): HistorySnap {
     panes: structuredClone(item.panes ?? {}),
     qty: item.qty,
     notes: item.notes ?? "",
+    customSalePricePerSqm: item.customSalePricePerSqm ?? null,
     specialPrice: item.specialPrice ?? null,
     discountId: item.discountId ?? "none",
     systemId: item.systemId ?? "none",
@@ -138,6 +140,7 @@ function applySnap(item: DesignItem, snap: HistorySnap): DesignItem {
     panes: snap.panes,
     qty: snap.qty,
     notes: snap.notes,
+    customSalePricePerSqm: snap.customSalePricePerSqm,
     specialPrice: snap.specialPrice,
     discountId: snap.discountId,
     systemId: snap.systemId,
@@ -353,6 +356,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       nameIsCustom: patch.nameIsCustom,
       qty: patch.qty,
       notes: patch.notes,
+      customSalePricePerSqm: patch.customSalePricePerSqm,
       specialPrice: patch.specialPrice,
       discountId: patch.discountId,
       systemId:
@@ -569,6 +573,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
             discountId={item.discountId}
             isDoubleGlazing={itemIsDoubleGlazing(item)}
             fallbackPricePerSqm={item.pricePerSqm}
+            customSalePricePerSqm={item.customSalePricePerSqm}
           />
         ) : null}
       </main>

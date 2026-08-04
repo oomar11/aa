@@ -372,11 +372,17 @@ export type DesignItem = {
   /** الارتفاع بالمليمتر */
   heightMm: number;
   qty: number;
-  /** سعر المتر المربع */
+  /** سعر المتر المربع — رجوع قديم لو مفيش سعر نظام/مخصص */
   pricePerSqm: number;
+  /**
+   * سعر متر مخصص لهذا الشباك فقط (ج.م/م²).
+   * فارغ/null = استخدم سعر نظام القطاع الموحد.
+   * أقل من متر يُحسب متر في وضع التسعير بالمتر.
+   */
+  customSalePricePerSqm?: number | null;
   /** مذكرة / ملاحظات البند */
   notes?: string;
-  /** سعر خاص للقطعة الواحدة (بدل حساب المتر) */
+  /** سعر خاص للقطعة الواحدة (بدل حساب المتر أو سعر المتر) */
   specialPrice?: number | null;
   /** مخطط مالي / خصم */
   discountId?: string;
@@ -424,19 +430,19 @@ export function itemTotalPrice(
         hybridUnitSalePrice,
         perSqmUnitSalePrice,
         itemIsDoubleGlazing,
-        resolveProfileSalePricePerSqm,
+        resolveItemSalePricePerSqm,
+        billableSaleAreaSqm,
+        hasCustomSalePricePerSqm,
       } = require("@/lib/pricing") as typeof import("@/lib/pricing");
       const settings = loadPricingSettings();
       const unitArea = itemUnitAreaSqm(item);
+      const projectSystemId = (
+        project as ProjectMaterialDefaults | null | undefined
+      )?.systemId;
 
-      if (settings.mode === "per_sqm") {
-        const systemId =
-          item.systemId ??
-          (project as ProjectMaterialDefaults | null | undefined)?.systemId;
-        const salePerSqm = resolveProfileSalePricePerSqm(
-          systemId,
-          item.pricePerSqm
-        );
+      // سعر متر مخصص على الشباك يفعّل التسعير بالمتر لهذا البند
+      if (settings.mode === "per_sqm" || hasCustomSalePricePerSqm(item)) {
+        const salePerSqm = resolveItemSalePricePerSqm(item, projectSystemId);
         const unitSale = perSqmUnitSalePrice(
           salePerSqm,
           unitArea,
@@ -460,12 +466,20 @@ export function itemTotalPrice(
           return applyDiscountAmount(unitSale * qty, item.discountId);
         }
       }
+
+      // رجوع: سعر متر البند × حد أدنى متر
+      const salePerSqm = resolveItemSalePricePerSqm(item, projectSystemId);
+      const base =
+        billableSaleAreaSqm(unitArea) * salePerSqm * qty;
+      return applyDiscountAmount(base, item.discountId);
     } catch {
       // الرجوع لسعر المتر على البند
     }
   }
 
-  const base = itemUnitAreaSqm(item) * item.pricePerSqm * qty;
+  const unitArea = itemUnitAreaSqm(item);
+  const area = unitArea > 0 ? Math.max(1, unitArea) : 1;
+  const base = area * item.pricePerSqm * qty;
   return applyDiscountAmount(base, item.discountId);
 }
 
@@ -481,19 +495,17 @@ export function itemSuggestedUnitSale(
       hybridUnitSalePrice,
       perSqmUnitSalePrice,
       itemIsDoubleGlazing,
-      resolveProfileSalePricePerSqm,
+      resolveItemSalePricePerSqm,
+      hasCustomSalePricePerSqm,
     } = require("@/lib/pricing") as typeof import("@/lib/pricing");
     const settings = loadPricingSettings();
     const unitArea = itemUnitAreaSqm(item);
+    const projectSystemId = (
+      project as ProjectMaterialDefaults | null | undefined
+    )?.systemId;
 
-    if (settings.mode === "per_sqm") {
-      const systemId =
-        item.systemId ??
-        (project as ProjectMaterialDefaults | null | undefined)?.systemId;
-      const salePerSqm = resolveProfileSalePricePerSqm(
-        systemId,
-        item.pricePerSqm
-      );
+    if (settings.mode === "per_sqm" || hasCustomSalePricePerSqm(item)) {
+      const salePerSqm = resolveItemSalePricePerSqm(item, projectSystemId);
       return perSqmUnitSalePrice(
         salePerSqm,
         unitArea,
@@ -546,6 +558,7 @@ export function createItemFromTemplate(
     heightMm: size.heightMm,
     qty: 1,
     pricePerSqm: 2600,
+    customSalePricePerSqm: null,
     notes: "",
     specialPrice: null,
     discountId: "none",

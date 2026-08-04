@@ -35,7 +35,7 @@ import {
   loadPricingSettings,
   perSqmSaleBreakdown,
   PRICING_UPDATED_EVENT,
-  resolveProfileSalePricePerSqm,
+  resolveItemSalePricePerSqm,
 } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
 
@@ -56,6 +56,8 @@ type Props = {
   isDoubleGlazing?: boolean;
   /** رجوع لسعر المتر على البند لو النظام بدون سعر بيع */
   fallbackPricePerSqm?: number;
+  /** سعر متر مخصص لهذا الشباك — يلغي السعر الموحد */
+  customSalePricePerSqm?: number | null;
 };
 
 type MaterialRow = {
@@ -81,6 +83,7 @@ export function MaterialsBar({
   discountId,
   isDoubleGlazing = false,
   fallbackPricePerSqm = 0,
+  customSalePricePerSqm = null,
 }: Props) {
   const [profileSystem, setProfileSystem] = useState<MaterialSystem | null>(
     null
@@ -201,11 +204,19 @@ export function MaterialsBar({
     const doubleFromGlass =
       glassBreakdown?.lines.some((l) => l.glazing === "double") ?? false;
     const isDouble = isDoubleGlazing || doubleFromGlass;
+    const hasCustom =
+      customSalePricePerSqm != null &&
+      Number.isFinite(customSalePricePerSqm) &&
+      customSalePricePerSqm > 0;
 
-    if (settings.mode === "per_sqm") {
-      const salePerSqm = resolveProfileSalePricePerSqm(
-        systemId,
-        fallbackPricePerSqm
+    if (settings.mode === "per_sqm" || hasCustom) {
+      const salePerSqm = resolveItemSalePricePerSqm(
+        {
+          customSalePricePerSqm,
+          pricePerSqm: fallbackPricePerSqm,
+          systemId,
+        },
+        systemId
       );
       if (salePerSqm <= 0) return null;
       return perSqmSaleBreakdown(salePerSqm, unitArea, isDouble, settings);
@@ -222,6 +233,7 @@ export function MaterialsBar({
     systemId,
     isDoubleGlazing,
     fallbackPricePerSqm,
+    customSalePricePerSqm,
     glassBreakdown,
   ]);
 
@@ -323,6 +335,11 @@ export function MaterialsBar({
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[10px] text-muted">
+                  {customSalePricePerSqm != null &&
+                  Number.isFinite(customSalePricePerSqm) &&
+                  customSalePricePerSqm > 0
+                    ? "مخصص "
+                    : ""}
                   {saleHint.salePricePerSqm} ج.م/م² ×{" "}
                   {saleHint.billableArea.toFixed(
                     saleHint.billableArea === 1 ? 0 : 2
