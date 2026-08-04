@@ -60,13 +60,15 @@ export function PurchaseOrderReport({ customerId, projectId }: Props) {
       }}
     >
       <div className="report-sheet">
-        {data.linePages.map((lines, pageIndex) => (
+        {data.linePages
+          .filter((lines) => lines.length > 0 || data.linePages.length === 1)
+          .map((lines, pageIndex, pages) => (
           <PurchasePage
             key={`po-${pageIndex}`}
             data={data}
             lines={lines}
             pageIndex={pageIndex}
-            pageCount={data.linePages.length}
+            pageCount={pages.length}
           />
         ))}
       </div>
@@ -323,7 +325,7 @@ function PurchasePage({
                   </thead>
                   <tbody>
                     {group.lines.map((line) => (
-                      <tr key={line.key}>
+                      <tr key={line.key} style={{ height: 30 }}>
                         <td
                           style={{
                             padding: "7px 8px",
@@ -331,9 +333,13 @@ function PurchasePage({
                             fontWeight: 600,
                             color: "#152033",
                             lineHeight: "16px",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: 280,
                           }}
                         >
-                          {line.label}
+                          {line.label || "صنف"}
                         </td>
                         <td
                           style={{
