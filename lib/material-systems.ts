@@ -2185,11 +2185,6 @@ export function ensureKompanProfileSystems(
   return systems.map((s, i) => {
     if (i !== idx) return s;
     const profile = s.profile ?? defaultProfileDetails();
-    const rename =
-      s.id === "aksa-egypt" ||
-      s.name === "أكسا إيجيبت" ||
-      s.name === "أكسا" ||
-      /aksa|أكسا/i.test(s.name);
     return {
       ...s,
       id: "kompan",
