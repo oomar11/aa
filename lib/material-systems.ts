@@ -11,6 +11,11 @@ import {
   ironOfficialRateForRole,
 } from "@/lib/iron-price-list-2026";
 import {
+  AKSA_EGYPT_BAR_LENGTH_M,
+  AKSA_EGYPT_PRICE_LIST_NOTES,
+  aksaEgyptProfileBarRates,
+} from "@/lib/aksa-egypt-price-list-2026";
+import {
   KRAFT_ALLEN_BAR_LENGTH_M,
   KRAFT_ALLEN_PRICE_LIST_NOTES,
   kraftAllenProfileBarRates,
@@ -1891,6 +1896,12 @@ export function defaultProfileBrands(): ProfileBrand[] {
       rates: kraftAllenProfileBarRates(),
     },
     {
+      id: "brand-aksa-egypt",
+      name: "أكسا إيجيبت",
+      notes: AKSA_EGYPT_PRICE_LIST_NOTES,
+      rates: aksaEgyptProfileBarRates(),
+    },
+    {
       id: "brand-premier",
       name: "بريمير",
       notes: "قائمة أسعار بريمير — تسعير بالعود · لأي سيستم مربوط ببراند بريمير",
@@ -2044,6 +2055,108 @@ export function ensureKraftAllenProfileSystems(
     return withoutSplit;
   }
   return [...withoutSplit, defaultKraftAllenSystem(deductions)];
+}
+
+/** يثبّت براند أكسا إيجيبت من قائمة المصنع (7/4/2026) */
+export function migrateAksaEgyptProfileBrandPrices(
+  brands: ProfileBrand[]
+): ProfileBrand[] {
+  const official = aksaEgyptProfileBarRates();
+  let list = brands.map((brand) => {
+    const isAksa =
+      brand.id === "brand-aksa-egypt" ||
+      brand.name === "أكسا إيجيبت" ||
+      brand.name === "أكسا" ||
+      /aksa/i.test(brand.name);
+
+    if (!isAksa) return brand;
+
+    return {
+      ...brand,
+      id: "brand-aksa-egypt",
+      name: "أكسا إيجيبت",
+      notes: AKSA_EGYPT_PRICE_LIST_NOTES,
+      rates: { ...official },
+    };
+  });
+
+  if (
+    !list.some(
+      (b) =>
+        b.id === "brand-aksa-egypt" ||
+        b.name === "أكسا إيجيبت" ||
+        /aksa/i.test(b.name)
+    )
+  ) {
+    list = [
+      ...list,
+      {
+        id: "brand-aksa-egypt",
+        name: "أكسا إيجيبت",
+        notes: AKSA_EGYPT_PRICE_LIST_NOTES,
+        rates: { ...official },
+      },
+    ];
+  }
+
+  return list;
+}
+
+/** قطاعات أكسا إيجيبت — مفصلي + جرار في نظام واحد */
+export function aksaEgyptProfilePieces(): ProfilePiece[] {
+  const byRole = new Map<ProfilePieceRole, ProfilePiece>();
+  for (const p of [
+    ...standardHingedProfilePieces(),
+    ...standardSlidingProfilePieces(),
+  ]) {
+    if (!byRole.has(p.role)) {
+      byRole.set(p.role, {
+        ...p,
+        id: `aksa-egypt-${p.role}`,
+        barLengthM: AKSA_EGYPT_BAR_LENGTH_M,
+        // بانل أكسا ١٠ سم (مش ١٥)
+        ...(p.role === "panel"
+          ? { sectionWidthMm: 100, name: "بنل ١٠ سم" }
+          : {}),
+      });
+    }
+  }
+  return [...byRole.values()];
+}
+
+/** نظام أكسا إيجيبت الموحّد (مفصلي + جرار) */
+export function defaultAksaEgyptSystem(
+  deductions: ProfileDeductions
+): MaterialSystem {
+  return withDefaultProfile({
+    id: "aksa-egypt",
+    name: "أكسا إيجيبت",
+    notes:
+      "سيستم أكسا إيجيبت — مفصلي وجرار · أسعار القطاعات من قائمة أكسا (7/4/2026 · بيج/أبيض) · بانل ١٠ سم",
+    profile: {
+      pieces: aksaEgyptProfilePieces(),
+      deductions,
+      rates: aksaEgyptProfileBarRates(),
+    },
+  });
+}
+
+function isAksaEgyptSystem(system: MaterialSystem): boolean {
+  return (
+    system.id === "aksa-egypt" ||
+    system.name === "أكسا إيجيبت" ||
+    system.name === "أكسا" ||
+    /aksa|أكسا/i.test(`${system.name} ${system.notes ?? ""}`)
+  );
+}
+
+/** يضمن وجود نظام أكسا إيجيبت في الكتالوج */
+export function ensureAksaEgyptProfileSystems(
+  systems: MaterialSystem[],
+  deductions: ProfileDeductions
+): MaterialSystem[] {
+  if (systems.some(isAksaEgyptSystem)) return systems;
+  return [...systems, defaultAksaEgyptSystem(deductions)];
 }
 
 /** قطاعات بريمير — مفصلي + جرار في نظام واحد */
@@ -2691,6 +2804,7 @@ export function getDefaultCatalog(): MaterialCatalog {
     profiles: [
       defaultPremierSystem(syncedDeductions),
       defaultKraftAllenSystem(syncedDeductions),
+      defaultAksaEgyptSystem(syncedDeductions),
       withDefaultProfile({
         id: "pvc3",
         name: "نظام PVC مخصص 3",
@@ -3906,6 +4020,14 @@ function foldProfileBrandRatesIntoSystems(
         b.name === "كرافت" ||
         /kraft\s*allen|kraftline/i.test(b.name)
     );
+  const aksaBrand =
+    brandById.get("brand-aksa-egypt") ??
+    brands.find(
+      (b) =>
+        b.name === "أكسا إيجيبت" ||
+        b.name === "أكسا" ||
+        /aksa/i.test(b.name)
+    );
 
   return systems.map((s) => {
     const profile = s.profile ?? defaultProfileDetails();
@@ -3944,6 +4066,16 @@ function foldProfileBrandRatesIntoSystems(
       };
     }
 
+    if (
+      !profileRatesHasPricing(rates) &&
+      (s.id === "aksa-egypt" ||
+        /aksa|أكسا/i.test(`${s.name} ${s.notes ?? ""}`))
+    ) {
+      rates = {
+        ...(aksaBrand?.rates ?? aksaEgyptProfileBarRates()),
+      };
+    }
+
     return {
       ...s,
       profileBrandId: undefined,
@@ -3965,11 +4097,13 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       : normalizeAccessoryBrands(raw.accessoryBrands)
   );
 
-  const profileBrands = migrateKraftAllenProfileBrandPrices(
-    migrateCityPremierProfileBrandPrices(
-      raw.profileBrands === undefined
-        ? defaults.profileBrands ?? defaultProfileBrands()
-        : normalizeProfileBrands(raw.profileBrands)
+  const profileBrands = migrateAksaEgyptProfileBrandPrices(
+    migrateKraftAllenProfileBrandPrices(
+      migrateCityPremierProfileBrandPrices(
+        raw.profileBrands === undefined
+          ? defaults.profileBrands ?? defaultProfileBrands()
+          : normalizeProfileBrands(raw.profileBrands)
+      )
     )
   );
 
@@ -4032,6 +4166,7 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
         );
         merged = ensurePremierProfileSystems(merged, profileDeductions);
         merged = ensureKraftAllenProfileSystems(merged, profileDeductions);
+        merged = ensureAksaEgyptProfileSystems(merged, profileDeductions);
       }
 
       if (cat.id === "iron") {
