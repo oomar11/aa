@@ -28,6 +28,24 @@ import { StoreInboxBanner } from "@/components/accounting/StoreInboxBanner";
 
 const links = [
   {
+    href: ROUTES.accounting.receivables,
+    title: "فلوس لِيا برا",
+    description: "عليه فلوس · اتسلّم · الشغل اتسلّم ولا لأ",
+    accent: "bg-[#E85A8A]",
+  },
+  {
+    href: ROUTES.accounting.activity,
+    title: "المتابعات",
+    description: "دا قال إيه · دا عمل إيه · وعود الدفع",
+    accent: "bg-[#4A7C9B]",
+  },
+  {
+    href: ROUTES.accounting.reports,
+    title: "تقارير الربح",
+    description: "بتكسب ولا لأ — حسب الشهر والشغل",
+    accent: "bg-[#C47A12]",
+  },
+  {
     href: ROUTES.accounting.storeInbox,
     title: "فواتير المحل",
     description: "تعيين فواتير المحل على شغلانات الورشة",
@@ -177,9 +195,12 @@ export function AccountingHub() {
           <h2 className="text-sm font-bold text-foreground">
             شغل مكتمل عليه باقي
           </h2>
-          <span className="text-xs font-semibold tabular-nums text-muted">
-            {openRemaining.length}
-          </span>
+          <Link
+            href={ROUTES.accounting.receivables}
+            className="text-xs font-bold text-primary"
+          >
+            كل الفلوس البرا
+          </Link>
         </div>
         {openRemaining.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">

@@ -67,6 +67,12 @@ export const ROUTES = {
     storeInbox: "/accounting/store-inbox",
     /** سجل حركة الفلوس (تحصيل + مصروف) */
     ledger: "/accounting/ledger",
+    /** فلوس ليا برا — شغل عليه باقي / تسليم */
+    receivables: "/accounting/receivables",
+    /** حوارات ومتابعة: قال إيه / عمل إيه */
+    activity: "/accounting/activity",
+    /** تقارير ربحية */
+    reports: "/accounting/reports",
   },
 
   materials: {
@@ -112,7 +118,7 @@ export const APP_SECTIONS = [
   {
     id: "accounting",
     label: "الحسابات",
-    description: "دفعات · مصروفات · حركة",
+    description: "دفعات · فلوس برا · تقارير",
     href: ROUTES.accounting.hub,
     color: "#2F9B7A",
   },

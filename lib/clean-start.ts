@@ -16,6 +16,7 @@ const BUSINESS_KEYS = [
   STORAGE_KEYS.invoices,
   STORAGE_KEYS.payments,
   STORAGE_KEYS.expenses,
+  STORAGE_KEYS.activityNotes,
   DELETED_CUSTOMERS_KEY,
 ] as const;
 

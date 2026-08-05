@@ -19,6 +19,7 @@ import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { WORKFLOW_LABELS, WORKFLOW_VISUAL } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
+import { ActivityNotesPanel } from "@/components/accounting/ActivityNotesPanel";
 
 type Props = {
   customerId: string;
@@ -235,6 +236,12 @@ export function ProjectAccount({
           );
         })}
       </LedgerSection>
+
+      <ActivityNotesPanel
+        customerId={customerId}
+        projectId={projectId}
+        title="المتابعة — قال / عمل"
+      />
 
       {!embedded ? (
         <Link
