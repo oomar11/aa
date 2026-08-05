@@ -12,20 +12,23 @@ import {
 } from "@/lib/store-bridge";
 import { formatCurrency } from "@/lib/utils";
 
+/** إعدادات المتجر الافتراضية لشركة واحدة — المفتاح مضبوط في قاعدة المتجر */
+const DEFAULT_STORE_URL = "https://store-system-rho.vercel.app";
+const DEFAULT_BRIDGE_SECRET = "windoor-workshop-bridge-2026-rho";
+
 /**
  * ربط الورشة بخزنة المتجر — المتجر هو مصدر الحقيقة للنقد.
  */
 export function StoreBridgePanel() {
   const [config, setConfig] = useState<StoreBridgeConfig | null>(null);
-  const [baseUrl, setBaseUrl] = useState(
-    "https://store-system-rho.vercel.app"
-  );
-  const [secret, setSecret] = useState("");
+  const [baseUrl, setBaseUrl] = useState(DEFAULT_STORE_URL);
+  const [secret, setSecret] = useState(DEFAULT_BRIDGE_SECRET);
   const [safeId, setSafeId] = useState("");
   const [safes, setSafes] = useState<StoreSafeRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [advanced, setAdvanced] = useState(false);
 
   useEffect(() => {
     const current = loadStoreBridgeConfig();
@@ -37,52 +40,28 @@ export function StoreBridgePanel() {
     }
   }, []);
 
-  async function handleLoadSafes() {
+  async function connectNow(preferredSafeId?: string) {
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      const rows = await fetchStoreSafes({
-        baseUrl: baseUrl.trim(),
-        secret: secret.trim(),
-      });
-      setSafes(rows);
-      if (rows.length === 0) {
-        setError("مفيش خزائن نشطة في المتجر");
-      } else {
-        setMessage(`تم تحميل ${rows.length} خزنة`);
-        if (!safeId || !rows.some((s) => s.id === safeId)) {
-          setSafeId(rows[0]!.id);
-        }
+      const url = (baseUrl || DEFAULT_STORE_URL).trim();
+      const key = (secret || DEFAULT_BRIDGE_SECRET).trim();
+      if (!url || !key) {
+        throw new Error("رابط المتجر أو المفتاح ناقص");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تحميل الخزن");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleSave() {
-    setBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      if (!baseUrl.trim() || !secret.trim()) {
-        throw new Error("أدخل رابط المتجر ومفتاح الربط");
-      }
-      const rows = await fetchStoreSafes({
-        baseUrl: baseUrl.trim(),
-        secret: secret.trim(),
-      });
+      const rows = await fetchStoreSafes({ baseUrl: url, secret: key });
       setSafes(rows);
       const chosen =
-        rows.find((s) => s.id === safeId) || rows[0] || undefined;
+        rows.find((s) => s.id === (preferredSafeId || safeId)) ||
+        rows[0] ||
+        undefined;
       if (!chosen) {
-        throw new Error("مفيش خزنة نشطة — أنشئ خزنة في المتجر أولاً");
+        throw new Error("مفيش خزنة نشطة في المتجر — أنشئ خزنة من المتجر أولاً");
       }
       const next: StoreBridgeConfig = {
-        baseUrl: baseUrl.trim(),
-        secret: secret.trim(),
+        baseUrl: url,
+        secret: key,
         safeId: chosen.id,
         safeName: chosen.name,
         enabled: true,
@@ -91,11 +70,13 @@ export function StoreBridgePanel() {
       saveStoreBridgeConfig(next);
       setConfig(next);
       setSafeId(chosen.id);
+      setBaseUrl(url);
+      setSecret(key);
       setMessage(
-        `تم الربط — الخزنة الأساسية: ${chosen.name} (${formatCurrency(Number(chosen.balance) || 0)})`
+        `تم الربط ✓ الخزنة: ${chosen.name} — الرصيد ${formatCurrency(Number(chosen.balance) || 0)}`
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر الحفظ");
+      setError(err instanceof Error ? err.message : "تعذر الربط");
     } finally {
       setBusy(false);
     }
@@ -111,10 +92,11 @@ export function StoreBridgePanel() {
     }
     clearStoreBridgeConfig();
     setConfig(null);
-    setSecret("");
     setSafeId("");
     setSafes([]);
-    setMessage("تم فصل الربط من هذا الجهاز / بيانات الورشة المشتركة");
+    setSecret(DEFAULT_BRIDGE_SECRET);
+    setBaseUrl(DEFAULT_STORE_URL);
+    setMessage("تم فصل الربط");
     setError("");
   }
 
@@ -125,74 +107,39 @@ export function StoreBridgePanel() {
       <div className="border-b border-border px-4 py-3.5">
         <p className="text-sm font-bold text-foreground">خزنة المتجر (الأساس)</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          المتجر وخزنته هما مصدر الحقيقة للنقد. كل دفعة من الورشة = إيداع، وكل
-          مصروف = سحب. تراجع الحسابات من شاشة الخزنة في المتجر.
+          اضغط «ربط الآن» مرة واحدة. بعدها كل دفعة من الورشة تدخل خزنة المتجر، وكل
+          مصروف يتسحب منها. تراجع الحسابات من المتجر.
         </p>
       </div>
 
       <div className="flex flex-col gap-3 px-4 py-4">
         {active ? (
           <div className="rounded-xl border border-[#2F9B7A]/30 bg-[#2F9B7A]/10 px-3 py-2.5 text-xs text-foreground">
-            مربوط · الخزنة:{" "}
+            مربوط ✓ · الخزنة:{" "}
             <span className="font-bold">{config?.safeName || config?.safeId}</span>
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs text-muted">
-            غير مربوط — سجّل الدفعات محلياً فقط لحد ما تربط خزنة المتجر.
+            لسه مش مربوط — اضغط الزر تحت.
           </div>
         )}
 
-        <label className="flex flex-col gap-1.5 text-right">
-          <span className="text-xs font-medium text-muted">رابط المتجر</span>
-          <input
-            type="url"
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder="https://store-system-rho.vercel.app"
-            className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-            dir="ltr"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5 text-right">
-          <span className="text-xs font-medium text-muted">
-            مفتاح الربط (WORKSHOP_BRIDGE_SECRET)
-          </span>
-          <input
-            type="password"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            placeholder="نفس المفتاح على Vercel للمتجر"
-            className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-            dir="ltr"
-            autoComplete="off"
-          />
-        </label>
-
-        {(safes.length > 0 || config?.safeId) && (
+        {safes.length > 1 || (active && safes.length > 0) ? (
           <label className="flex flex-col gap-1.5 text-right">
-            <span className="text-xs font-medium text-muted">الخزنة الافتراضية</span>
+            <span className="text-xs font-medium text-muted">الخزنة</span>
             <select
               value={safeId}
               onChange={(e) => setSafeId(e.target.value)}
               className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary"
             >
-              {safes.length > 0
-                ? safes.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} — {formatCurrency(Number(s.balance) || 0)}
-                    </option>
-                  ))
-                : config?.safeId
-                  ? (
-                      <option value={config.safeId}>
-                        {config.safeName || config.safeId}
-                      </option>
-                    )
-                  : null}
+              {safes.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} — {formatCurrency(Number(s.balance) || 0)}
+                </option>
+              ))}
             </select>
           </label>
-        )}
+        ) : null}
 
         {error ? (
           <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
@@ -201,24 +148,14 @@ export function StoreBridgePanel() {
           <p className="text-sm font-medium text-[#2F9B7A]">{message}</p>
         ) : null}
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void handleLoadSafes()}
-            className="flex h-11 flex-1 items-center justify-center rounded-xl border border-border text-sm font-semibold disabled:opacity-60"
-          >
-            {busy ? "…" : "تحميل الخزن"}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void handleSave()}
-            className="flex h-11 flex-1 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {busy ? "جاري الحفظ…" : "حفظ الربط"}
-          </button>
-        </div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void connectNow()}
+          className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-bold text-white disabled:opacity-60"
+        >
+          {busy ? "جاري الربط…" : active ? "إعادة الربط / تحديث الخزنة" : "ربط الآن"}
+        </button>
 
         {active ? (
           <button
@@ -228,6 +165,40 @@ export function StoreBridgePanel() {
           >
             فصل الربط
           </button>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => setAdvanced((v) => !v)}
+          className="text-xs font-semibold text-muted"
+        >
+          {advanced ? "إخفاء الإعدادات المتقدمة" : "إعدادات متقدمة"}
+        </button>
+
+        {advanced ? (
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-background p-3">
+            <label className="flex flex-col gap-1.5 text-right">
+              <span className="text-xs font-medium text-muted">رابط المتجر</span>
+              <input
+                type="url"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
+                dir="ltr"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-right">
+              <span className="text-xs font-medium text-muted">مفتاح الربط</span>
+              <input
+                type="password"
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
+                dir="ltr"
+                autoComplete="off"
+              />
+            </label>
+          </div>
         ) : null}
       </div>
     </section>
