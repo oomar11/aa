@@ -20,6 +20,11 @@ import {
   KRAFT_ALLEN_PRICE_LIST_NOTES,
   kraftAllenProfileBarRates,
 } from "@/lib/kraft-allen-price-list-2026";
+import {
+  NEWLINE_BAR_LENGTH_M,
+  NEWLINE_PRICE_LIST_NOTES,
+  newlineProfileBarRates,
+} from "@/lib/newline-price-list-2026";
 import type { MeshKind } from "@/lib/design-items";
 import {
   deductToFormula,
@@ -1902,6 +1907,12 @@ export function defaultProfileBrands(): ProfileBrand[] {
       rates: kompanProfileBarRates(),
     },
     {
+      id: "brand-newline",
+      name: "نيولاين",
+      notes: NEWLINE_PRICE_LIST_NOTES,
+      rates: newlineProfileBarRates(),
+    },
+    {
       id: "brand-premier",
       name: "بريمير",
       notes: "قائمة أسعار بريمير — تسعير بالعود · لأي سيستم مربوط ببراند بريمير",
@@ -2218,6 +2229,130 @@ export function ensureAksaEgyptProfileSystems(
   deductions: ProfileDeductions
 ): MaterialSystem[] {
   return ensureKompanProfileSystems(systems, deductions);
+}
+
+/** يثبّت براند نيولاين من قائمة المصنع (7/4/2026) */
+export function migrateNewlineProfileBrandPrices(
+  brands: ProfileBrand[]
+): ProfileBrand[] {
+  const official = newlineProfileBarRates();
+  let list = brands.map((brand) => {
+    const isNewline =
+      brand.id === "brand-newline" ||
+      brand.name === "نيولاين" ||
+      /newline|new\s*line/i.test(brand.name);
+
+    if (!isNewline) return brand;
+
+    return {
+      ...brand,
+      id: "brand-newline",
+      name: "نيولاين",
+      notes: NEWLINE_PRICE_LIST_NOTES,
+      rates: { ...official },
+    };
+  });
+
+  if (
+    !list.some(
+      (b) =>
+        b.id === "brand-newline" ||
+        b.name === "نيولاين" ||
+        /newline|new\s*line/i.test(b.name)
+    )
+  ) {
+    list = [
+      ...list,
+      {
+        id: "brand-newline",
+        name: "نيولاين",
+        notes: NEWLINE_PRICE_LIST_NOTES,
+        rates: { ...official },
+      },
+    ];
+  }
+
+  return list;
+}
+
+/** قطاعات نيولاين — مفصلي + جرار في نظام واحد */
+export function newlineProfilePieces(): ProfilePiece[] {
+  const byRole = new Map<ProfilePieceRole, ProfilePiece>();
+  for (const p of [
+    ...standardHingedProfilePieces(),
+    ...standardSlidingProfilePieces(),
+  ]) {
+    if (!byRole.has(p.role)) {
+      byRole.set(p.role, {
+        ...p,
+        id: `newline-${p.role}`,
+        barLengthM: NEWLINE_BAR_LENGTH_M,
+      });
+    }
+  }
+  return [...byRole.values()];
+}
+
+/** نظام نيولاين الموحّد (مفصلي + جرار) */
+export function defaultNewlineSystem(
+  deductions: ProfileDeductions
+): MaterialSystem {
+  return withDefaultProfile({
+    id: "newline",
+    name: "نيولاين",
+    notes:
+      "سيستم نيولاين — مفصلي وجرار · أسعار القطاعات من قائمة نيولاين (7/4/2026 · أبيض/بيج)",
+    profile: {
+      pieces: newlineProfilePieces(),
+      deductions,
+      rates: newlineProfileBarRates(),
+    },
+  });
+}
+
+function isNewlineSystem(system: MaterialSystem): boolean {
+  return (
+    system.id === "newline" ||
+    system.name === "نيولاين" ||
+    /newline|new\s*line|نيولاين/i.test(`${system.name} ${system.notes ?? ""}`)
+  );
+}
+
+/**
+ * يضمن وجود نظام نيولاين:
+ * - يضيف النظام لو ناقص
+ */
+export function ensureNewlineProfileSystems(
+  systems: MaterialSystem[],
+  deductions: ProfileDeductions
+): MaterialSystem[] {
+  const idx = systems.findIndex(isNewlineSystem);
+  if (idx < 0) {
+    return [...systems, defaultNewlineSystem(deductions)];
+  }
+
+  return systems.map((s, i) => {
+    if (i !== idx) return s;
+    const profile = s.profile ?? defaultProfileDetails();
+    return {
+      ...s,
+      id: "newline",
+      name: "نيولاين",
+      notes:
+        !s.notes?.trim()
+          ? "سيستم نيولاين — مفصلي وجرار · أسعار القطاعات من قائمة نيولاين (7/4/2026 · أبيض/بيج)"
+          : s.notes,
+      profile: {
+        ...profile,
+        pieces:
+          profile.pieces?.length > 0 ? profile.pieces : newlineProfilePieces(),
+        rates: profileRatesHasPricing(profile.rates)
+          ? profile.rates
+          : newlineProfileBarRates(),
+        deductions,
+      },
+    };
+  });
 }
 
 /** قطاعات بريمير — مفصلي + جرار في نظام واحد */
@@ -2866,6 +3001,7 @@ export function getDefaultCatalog(): MaterialCatalog {
       defaultPremierSystem(syncedDeductions),
       defaultKraftAllenSystem(syncedDeductions),
       defaultKompanSystem(syncedDeductions),
+      defaultNewlineSystem(syncedDeductions),
       withDefaultProfile({
         id: "pvc3",
         name: "نظام PVC مخصص 3",
@@ -4091,6 +4227,12 @@ function foldProfileBrandRatesIntoSystems(
         b.name === "أكسا" ||
         /kompan|aksa/i.test(b.name)
     );
+  const newlineBrand =
+    brandById.get("brand-newline") ??
+    brands.find(
+      (b) =>
+        b.name === "نيولاين" || /newline|new\s*line/i.test(b.name)
+    );
 
   return systems.map((s) => {
     const profile = s.profile ?? defaultProfileDetails();
@@ -4140,6 +4282,16 @@ function foldProfileBrandRatesIntoSystems(
       };
     }
 
+    if (
+      !profileRatesHasPricing(rates) &&
+      (s.id === "newline" ||
+        /newline|new\s*line|نيولاين/i.test(`${s.name} ${s.notes ?? ""}`))
+    ) {
+      rates = {
+        ...(newlineBrand?.rates ?? newlineProfileBarRates()),
+      };
+    }
+
     return {
       ...s,
       profileBrandId: undefined,
@@ -4161,12 +4313,14 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
       : normalizeAccessoryBrands(raw.accessoryBrands)
   );
 
-  const profileBrands = migrateKompanProfileBrandPrices(
-    migrateKraftAllenProfileBrandPrices(
-      migrateCityPremierProfileBrandPrices(
-        raw.profileBrands === undefined
-          ? defaults.profileBrands ?? defaultProfileBrands()
-          : normalizeProfileBrands(raw.profileBrands)
+  const profileBrands = migrateNewlineProfileBrandPrices(
+    migrateKompanProfileBrandPrices(
+      migrateKraftAllenProfileBrandPrices(
+        migrateCityPremierProfileBrandPrices(
+          raw.profileBrands === undefined
+            ? defaults.profileBrands ?? defaultProfileBrands()
+            : normalizeProfileBrands(raw.profileBrands)
+        )
       )
     )
   );
@@ -4231,6 +4385,7 @@ function normalizeCatalog(raw: MaterialCatalog): MaterialCatalog {
         merged = ensurePremierProfileSystems(merged, profileDeductions);
         merged = ensureKraftAllenProfileSystems(merged, profileDeductions);
         merged = ensureKompanProfileSystems(merged, profileDeductions);
+        merged = ensureNewlineProfileSystems(merged, profileDeductions);
       }
 
       if (cat.id === "iron") {
