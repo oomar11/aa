@@ -85,6 +85,13 @@ export function isStoreBridgeActive(
   );
 }
 
+/** يكفي لجلب صندوق فواتير المحل (مش شرط خزنة) */
+export function hasStoreBridgeCredentials(
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): boolean {
+  return Boolean(config?.enabled && config.baseUrl && config.secret);
+}
+
 async function bridgeFetch(
   config: StoreBridgeConfig,
   path: string,
@@ -202,4 +209,78 @@ export function withStoreBridgeMeta(
     syncedAt: new Date().toISOString(),
     referenceId,
   };
+}
+
+export type StoreInvoiceInboxItem = {
+  id: string;
+  invoice_id: string;
+  invoice_number: string;
+  total: number;
+  invoice_date: string;
+  notes?: string | null;
+  items_summary: Array<{
+    product_id?: string;
+    name?: string;
+    quantity?: number;
+    unit_price?: number;
+    total?: number;
+  }>;
+  status: "pending" | "assigned" | "dismissed" | string;
+  assigned_project_key?: string | null;
+  assigned_project_name?: string | null;
+  assigned_at?: string | null;
+  created_at?: string;
+};
+
+export async function fetchWorkshopInvoiceInbox(
+  status: "pending" | "assigned" | "dismissed" | "all" = "pending",
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<StoreInvoiceInboxItem[]> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const res = await bridgeFetch(
+    config,
+    `/api/workshop/invoices?status=${encodeURIComponent(status)}`
+  );
+  const json = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    invoices?: StoreInvoiceInboxItem[];
+  };
+  if (!res.ok) {
+    throw new Error(json.error || `فشل تحميل صندوق الفواتير (${res.status})`);
+  }
+  return json.invoices || [];
+}
+
+export async function resolveWorkshopInvoice(
+  input: {
+    invoiceId: string;
+    action: "assign" | "dismiss";
+    projectKey?: string;
+    projectName?: string;
+  },
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<{ ok: true; status: string }> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const res = await bridgeFetch(config, "/api/workshop/invoices", {
+    method: "POST",
+    body: JSON.stringify({
+      invoice_id: input.invoiceId,
+      action: input.action,
+      project_key: input.projectKey || null,
+      project_name: input.projectName || null,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+    status?: string;
+  };
+  if (!res.ok || !json.ok) {
+    throw new Error(json.error || `فشل تحديث الفاتورة (${res.status})`);
+  }
+  return { ok: true, status: String(json.status || input.action) };
 }

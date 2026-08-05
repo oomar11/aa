@@ -451,6 +451,14 @@ export function listQueuedProjects(options?: {
     .sort(sortByQueue);
 }
 
+/** شغلانات نشطة لتعيين فواتير المحل: انتظار + تنفيذ */
+export function listActiveJobsForStoreInvoice(): Project[] {
+  return [
+    ...listWorkshopProjects({ includeHeld: true }),
+    ...listQueuedProjects({ includeHeld: true }),
+  ].sort(compareProjectsByWorkflowThenDate);
+}
+
 /** مشاريع متوقفة (انتظار أو تنفيذ) */
 export function listHeldProjects(): Project[] {
   return listAllProjects()

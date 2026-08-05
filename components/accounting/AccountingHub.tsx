@@ -24,8 +24,15 @@ import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency } from "@/lib/utils";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
+import { StoreInboxBanner } from "@/components/accounting/StoreInboxBanner";
 
 const links = [
+  {
+    href: ROUTES.accounting.storeInbox,
+    title: "فواتير المحل",
+    description: "تعيين فواتير المحل على شغلانات الورشة",
+    accent: "bg-[#6B5B95]",
+  },
   {
     href: ROUTES.accounting.payments,
     title: "الدفعات",
@@ -127,6 +134,8 @@ export function AccountingHub() {
 
   return (
     <div className="flex flex-col gap-5">
+      <StoreInboxBanner />
+
       <section className="rounded-2xl bg-[#1F6B55] px-4 py-5 text-white shadow-[0_8px_24px_rgba(47,155,122,0.28)]">
         <p className="text-xs font-medium opacity-85">الحسابات</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">

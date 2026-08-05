@@ -46,6 +46,9 @@ export type Expense = {
   createdAt: string;
   /** مزامنة الخزنة في المتجر (إن وُجد الربط) */
   storeBridge?: StoreBridgeMeta;
+  /** فاتورة متجر مرتبطة (صندوق وارد) — بدون سحب خزنة مكرر */
+  storeInvoiceId?: string;
+  storeInvoiceNumber?: string;
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {

@@ -22,6 +22,7 @@ import {
   WORKFLOW_VISUAL,
 } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
+import { StoreInboxBanner } from "@/components/accounting/StoreInboxBanner";
 
 function customerName(
   map: Map<string, Customer>,
@@ -76,6 +77,8 @@ export function HomeDashboard() {
 
   return (
     <div className="flex flex-col gap-5">
+      <StoreInboxBanner />
+
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <StatTile
           label="قيد التنفيذ"
