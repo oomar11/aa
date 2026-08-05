@@ -5,6 +5,14 @@ export type PaymentMethod = "cash" | "transfer" | "cheque" | "other";
 
 export type PaymentKind = "payment" | "deposit";
 
+/** حالة مزامنة الحركة مع خزنة المتجر */
+export type StoreBridgeMeta = {
+  safeId: string;
+  syncedAmount: number;
+  syncedAt: string;
+  referenceId?: string;
+};
+
 export type Payment = {
   id: string;
   customerId: string;
@@ -22,6 +30,8 @@ export type Payment = {
   method: PaymentMethod;
   note?: string;
   createdAt: string;
+  /** مزامنة الخزنة في المتجر (إن وُجد الربط) */
+  storeBridge?: StoreBridgeMeta;
 };
 
 export type Expense = {
@@ -34,6 +44,8 @@ export type Expense = {
   projectId?: string;
   note?: string;
   createdAt: string;
+  /** مزامنة الخزنة في المتجر (إن وُجد الربط) */
+  storeBridge?: StoreBridgeMeta;
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {

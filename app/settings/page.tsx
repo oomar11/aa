@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import { DataBackupPanel } from "@/components/settings/DataBackupPanel";
+import { StoreBridgePanel } from "@/components/settings/StoreBridgePanel";
 import { useUnit } from "@/components/settings/UnitProvider";
 import { ROUTES } from "@/lib/routes";
 import type { LengthUnit } from "@/lib/units";
@@ -42,6 +43,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      <StoreBridgePanel />
 
       <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
         <Link

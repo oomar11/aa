@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   EXPENSE_CATEGORIES,
   todayIsoDate,
@@ -10,13 +10,19 @@ import {
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import { listAllProjects, type Project } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
+import {
+  isStoreBridgeActive,
+  loadStoreBridgeConfig,
+  syncMoneyToStore,
+  withStoreBridgeMeta,
+} from "@/lib/store-bridge";
 import { smartSearchMatch } from "@/lib/utils";
 import { WORKFLOW_LABELS } from "@/lib/workshop";
 import { NumericInput } from "@/components/ui/NumericInput";
 
 /**
- * تسجيل مصروف ورشة من الحسابات:
- * عام (بدون مشروع) أو مربوط بمشروع اختياري.
+ * تسجيل مصروف ورشة من الحسابات.
+ * مع ربط المتجر: يُسحب من خزنة المتجر (مصدر الحقيقة).
  */
 export function ExpenseForm() {
   const router = useRouter();
@@ -31,6 +37,14 @@ export function ExpenseForm() {
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [bridgeOn, setBridgeOn] = useState(false);
+  const [bridgeSafeName, setBridgeSafeName] = useState("");
+
+  useEffect(() => {
+    const cfg = loadStoreBridgeConfig();
+    setBridgeOn(isStoreBridgeActive(cfg));
+    setBridgeSafeName(cfg?.safeName || "");
+  }, []);
 
   const customers = useMemo(() => mergeCustomers(), []);
   const customerById = useMemo(() => {
@@ -75,7 +89,7 @@ export function ExpenseForm() {
     setShowProjectPicker(false);
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (amount <= 0) {
       setError("أدخل المبلغ");
@@ -86,28 +100,79 @@ export function ExpenseForm() {
       return;
     }
 
+    const id = `exp-${Date.now()}`;
+    const cfg = loadStoreBridgeConfig();
+    const bridgeActive = isStoreBridgeActive(cfg);
+
     setSaving(true);
-    upsertExpense({
-      id: `exp-${Date.now()}`,
-      category,
-      description: description.trim(),
-      amount,
-      date,
-      projectId: projectId || undefined,
-      note: note.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    });
-    setSaving(false);
-    router.replace(ROUTES.accounting.expenses);
+    setError("");
+    try {
+      let storeBridge = undefined as
+        | ReturnType<typeof withStoreBridgeMeta>
+        | undefined;
+      if (bridgeActive && cfg) {
+        const sync = await syncMoneyToStore(
+          {
+            kind: "expense",
+            externalKey: id,
+            amount,
+            description: [
+              "ورشة · مصروف",
+              category,
+              description.trim(),
+              selectedProject?.name,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            notes: note.trim() || undefined,
+            occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+            safeId: cfg.safeId,
+          },
+          cfg
+        );
+        storeBridge = withStoreBridgeMeta(
+          amount,
+          sync.safe_id || cfg.safeId,
+          sync.reference_id
+        );
+      }
+
+      upsertExpense({
+        id,
+        category,
+        description: description.trim(),
+        amount,
+        date,
+        projectId: projectId || undefined,
+        note: note.trim() || undefined,
+        createdAt: new Date().toISOString(),
+        storeBridge,
+      });
+      router.replace(ROUTES.accounting.expenses);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "تعذر حفظ المصروف أو مزامنة خزنة المتجر"
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   const fieldClass =
     "w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-[#E8956F] focus:ring-2 focus:ring-[#E8956F]/20";
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+    <form
+      onSubmit={(e) => void handleSubmit(e)}
+      className="flex w-full flex-col gap-4"
+    >
       <p className="rounded-2xl border border-[#E8956F]/30 bg-[#E8956F]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
         سجّل مصروف ورشة عام، أو اربطه بمشروع لو عايز يتظهر في حساب المشروع.
+        {bridgeOn
+          ? ` · يُسحب من خزنة المتجر${bridgeSafeName ? ` (${bridgeSafeName})` : ""}.`
+          : " · خزنة المتجر غير مربوطة (إعدادات)."}
       </p>
 
       <label className="flex flex-col gap-1.5 text-right">

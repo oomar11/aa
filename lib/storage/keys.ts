@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   invoices: "upvc-invoices",
   payments: "upvc-payments",
   expenses: "upvc-expenses",
+  /** ربط خزنة المتجر (مشترك بين أجهزة الورشة) */
+  storeBridge: "upvc-store-bridge",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
@@ -36,6 +38,7 @@ export const SHARED_STORAGE_KEYS = [
   STORAGE_KEYS.invoices,
   STORAGE_KEYS.payments,
   STORAGE_KEYS.expenses,
+  STORAGE_KEYS.storeBridge,
 ] as const;
 
 export type SharedStorageKey = (typeof SHARED_STORAGE_KEYS)[number];
@@ -64,6 +67,7 @@ export const SHARED_KEY_EVENTS: Record<SharedStorageKey, string[]> = {
   [STORAGE_KEYS.invoices]: ["upvc-accounting-updated"],
   [STORAGE_KEYS.payments]: ["upvc-accounting-updated"],
   [STORAGE_KEYS.expenses]: ["upvc-accounting-updated"],
+  [STORAGE_KEYS.storeBridge]: ["upvc-store-bridge-updated"],
 };
 
 /** أحداث مزامنة الكتالوج بين الشاشات */

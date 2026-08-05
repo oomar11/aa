@@ -11,16 +11,23 @@ import {
   type Payment,
   type PaymentMethod,
 } from "@/lib/accounting";
+import { getCustomerById } from "@/lib/customers";
 import { getProjectById } from "@/lib/projects";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
+import {
+  isStoreBridgeActive,
+  loadStoreBridgeConfig,
+  syncMoneyToStore,
+  withStoreBridgeMeta,
+} from "@/lib/store-bridge";
 import { formatCurrency } from "@/lib/utils";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { PaymentProjectPicker } from "@/components/accounting/PaymentProjectPicker";
 
 /**
  * استلام أو تعديل دفعة على مشروع.
- * أي مبلغ على مقايسة يدخل قائمة انتظار الورشة (عبر upsertPayment → sync).
+ * مع ربط المتجر: تُسجَّل كإيداع في خزنة المتجر (مصدر الحقيقة).
  */
 export function PaymentForm() {
   const router = useRouter();
@@ -41,8 +48,17 @@ export function PaymentForm() {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [projectError, setProjectError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [bridgeOn, setBridgeOn] = useState(false);
+  const [bridgeSafeName, setBridgeSafeName] = useState("");
 
   const isEditing = Boolean(existing);
+
+  useEffect(() => {
+    const cfg = loadStoreBridgeConfig();
+    setBridgeOn(isStoreBridgeActive(cfg));
+    setBridgeSafeName(cfg?.safeName || "");
+  }, []);
 
   useEffect(() => {
     if (editPaymentId) {
@@ -84,7 +100,7 @@ export function PaymentForm() {
   const selected = projectId ? getProjectById(projectId) : undefined;
   const money = projectId ? getProjectMoneySummary(projectId) : null;
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     const selectedProject = projectId ? getProjectById(projectId) : undefined;
@@ -99,35 +115,104 @@ export function PaymentForm() {
       return;
     }
 
-    upsertPayment({
-      id: paymentId || `pay-${Date.now()}`,
-      customerId: selectedProject.customerId,
-      projectId: selectedProject.id,
-      amount,
-      date,
-      method,
-      note: note.trim() || undefined,
-      createdAt: createdAt || new Date().toISOString(),
-    });
+    const id = paymentId || `pay-${Date.now()}`;
+    const customer = getCustomerById(selectedProject.customerId);
+    const cfg = loadStoreBridgeConfig();
+    const bridgeActive = isStoreBridgeActive(cfg);
 
-    if (isEditing) {
-      router.replace(
-        ROUTES.design.account(selectedProject.customerId, selectedProject.id)
+    setSaving(true);
+    setError("");
+    try {
+      let storeBridge = existing?.storeBridge;
+      if (bridgeActive && cfg) {
+        const sync = await syncMoneyToStore(
+          {
+            kind: "payment",
+            externalKey: id,
+            amount,
+            description: [
+              "ورشة · دفعة",
+              customer?.name,
+              selectedProject.name,
+              PAYMENT_METHOD_LABELS[method],
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            notes: note.trim() || undefined,
+            occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+            safeId: cfg.safeId,
+          },
+          cfg
+        );
+        storeBridge = withStoreBridgeMeta(
+          amount,
+          sync.safe_id || cfg.safeId,
+          sync.reference_id
+        );
+      }
+
+      upsertPayment({
+        id,
+        customerId: selectedProject.customerId,
+        projectId: selectedProject.id,
+        amount,
+        date,
+        method,
+        note: note.trim() || undefined,
+        createdAt: createdAt || new Date().toISOString(),
+        storeBridge,
+      });
+
+      if (isEditing) {
+        router.replace(
+          ROUTES.design.account(selectedProject.customerId, selectedProject.id)
+        );
+        return;
+      }
+      router.replace(ROUTES.workshop);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "تعذر حفظ الدفعة أو مزامنة خزنة المتجر"
       );
-      return;
+    } finally {
+      setSaving(false);
     }
-    router.replace(ROUTES.workshop);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!paymentId) return;
     if (!window.confirm("حذف هذه الدفعة؟")) return;
     const project = projectId ? getProjectById(projectId) : undefined;
-    deletePayment(paymentId);
-    if (project) {
-      router.replace(ROUTES.design.account(project.customerId, project.id));
-    } else {
-      router.replace(ROUTES.accounting.payments);
+    const cfg = loadStoreBridgeConfig();
+    setSaving(true);
+    setError("");
+    try {
+      if (isStoreBridgeActive(cfg) && (existing?.storeBridge || cfg)) {
+        await syncMoneyToStore(
+          {
+            kind: "payment",
+            externalKey: paymentId,
+            amount: 0,
+            description: "ورشة · حذف دفعة",
+            safeId: existing?.storeBridge?.safeId || cfg?.safeId,
+          },
+          cfg
+        );
+      }
+      deletePayment(paymentId);
+      if (project) {
+        router.replace(ROUTES.design.account(project.customerId, project.id));
+      } else {
+        router.replace(ROUTES.accounting.payments);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "تعذر حذف الدفعة من خزنة المتجر"
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -151,11 +236,14 @@ export function PaymentForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+    <form onSubmit={(e) => void handleSubmit(e)} className="flex w-full flex-col gap-4">
       <p className="rounded-2xl border border-primary/20 bg-primary-soft/40 px-3.5 py-3 text-xs leading-relaxed text-foreground">
         {isEditing
           ? "عدّل المبلغ أو التاريخ أو طريقة الدفع. التغيير يحدّث حساب المشروع فوراً."
           : "سجّل المبلغ على المشروع. أي دفعة على مقايسة تدخل قائمة انتظار الورشة."}
+        {bridgeOn
+          ? ` · تتحمل على خزنة المتجر${bridgeSafeName ? ` (${bridgeSafeName})` : ""}.`
+          : " · خزنة المتجر غير مربوطة (إعدادات)."}
       </p>
 
       <PaymentProjectPicker
@@ -261,16 +349,22 @@ export function PaymentForm() {
 
       <button
         type="submit"
-        className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
+        disabled={saving}
+        className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
       >
-        {isEditing ? "حفظ التعديل" : "حفظ الدفعة"}
+        {saving
+          ? "جاري الحفظ…"
+          : isEditing
+            ? "حفظ التعديل"
+            : "حفظ الدفعة"}
       </button>
 
       {isEditing ? (
         <button
           type="button"
-          onClick={handleDelete}
-          className="flex h-11 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/35 text-sm font-semibold text-[#E85A8A]"
+          disabled={saving}
+          onClick={() => void handleDelete()}
+          className="flex h-11 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/35 text-sm font-semibold text-[#E85A8A] disabled:opacity-60"
         >
           حذف الدفعة
         </button>
