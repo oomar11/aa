@@ -7,7 +7,10 @@ import {
   countPendingStoreInvoices,
 } from "@/components/accounting/StoreInvoiceInboxPanel";
 import { ROUTES } from "@/lib/routes";
-import { hasStoreBridgeCredentials } from "@/lib/store-bridge";
+import {
+  hasStoreBridgeCredentials,
+  syncAssignedStoreInvoiceExpenses,
+} from "@/lib/store-bridge";
 
 /** بانر يظهر عند وجود فواتير محل معلّقة */
 export function StoreInboxBanner() {
@@ -20,6 +23,7 @@ export function StoreInboxBanner() {
         if (!cancelled) setCount(0);
         return;
       }
+      await syncAssignedStoreInvoiceExpenses().catch(() => 0);
       const n = await countPendingStoreInvoices();
       if (!cancelled) setCount(n);
     }

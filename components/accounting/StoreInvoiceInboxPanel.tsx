@@ -15,6 +15,7 @@ import {
   hasStoreBridgeCredentials,
   loadStoreBridgeConfig,
   resolveWorkshopInvoice,
+  syncAssignedStoreInvoiceExpenses,
   type StoreInvoiceInboxItem,
 } from "@/lib/store-bridge";
 import { formatCurrency, smartSearchMatch } from "@/lib/utils";
@@ -76,6 +77,8 @@ export function StoreInvoiceInboxPanel() {
         setError("اربط المتجر من الإعدادات عشان يوصل صندوق الفواتير");
         return;
       }
+      // Pull latest totals for already-assigned store invoices (POS edits)
+      await syncAssignedStoreInvoiceExpenses().catch(() => 0);
       const rows = await fetchWorkshopInvoiceInbox("pending");
       setItems(rows);
       window.dispatchEvent(new Event(STORE_INBOX_UPDATED_EVENT));

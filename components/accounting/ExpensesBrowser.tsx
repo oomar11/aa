@@ -10,6 +10,10 @@ import {
 import { getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
+import {
+  hasStoreBridgeCredentials,
+  syncAssignedStoreInvoiceExpenses,
+} from "@/lib/store-bridge";
 
 /**
  * سجل مصروفات الورشة — عرض وحذف + رابط لتسجيل مصروف جديد.
@@ -25,6 +29,11 @@ export function ExpensesBrowser() {
       setExpenses(loadExpenses());
     }
     window.addEventListener("upvc-accounting-updated", refresh);
+    if (hasStoreBridgeCredentials()) {
+      void syncAssignedStoreInvoiceExpenses()
+        .then(() => refresh())
+        .catch(() => undefined);
+    }
     return () => window.removeEventListener("upvc-accounting-updated", refresh);
   }, []);
 

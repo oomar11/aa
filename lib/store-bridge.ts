@@ -230,6 +230,7 @@ export type StoreInvoiceInboxItem = {
   assigned_project_name?: string | null;
   assigned_at?: string | null;
   created_at?: string;
+  updated_at?: string | null;
 };
 
 export async function fetchWorkshopInvoiceInbox(
@@ -251,6 +252,69 @@ export async function fetchWorkshopInvoiceInbox(
     throw new Error(json.error || `فشل تحميل صندوق الفواتير (${res.status})`);
   }
   return json.invoices || [];
+}
+
+/** Refresh local project expenses linked to store invoices after POS edits. */
+export async function syncAssignedStoreInvoiceExpenses(
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<number> {
+  if (!hasStoreBridgeCredentials(config) || !config) return 0;
+  if (typeof window === "undefined") return 0;
+
+  const { loadExpenses, upsertExpense } = await import("@/lib/accounting");
+  const rows = await fetchWorkshopInvoiceInbox("assigned", config);
+  const expenses = loadExpenses().filter((e) => e.storeInvoiceId);
+  if (!expenses.length || !rows.length) return 0;
+
+  const byInvoice = new Map(rows.map((r) => [r.invoice_id, r]));
+  let updated = 0;
+
+  for (const expense of expenses) {
+    const invoiceId = expense.storeInvoiceId;
+    if (!invoiceId) continue;
+    const row = byInvoice.get(invoiceId);
+    if (!row) continue;
+
+    const amount = Number(row.total) || 0;
+    const date = row.invoice_date
+      ? row.invoice_date.slice(0, 10)
+      : expense.date;
+    const lines = (row.items_summary || [])
+      .slice(0, 4)
+      .map((l) => l.name || "صنف")
+      .filter(Boolean);
+    const note = [
+      lines.length ? lines.join(" · ") : undefined,
+      row.notes?.trim() || undefined,
+    ]
+      .filter(Boolean)
+      .join(" — ");
+
+    const nextDescription = `فاتورة محل ${row.invoice_number}`;
+    const changed =
+      Math.abs((Number(expense.amount) || 0) - amount) > 0.001 ||
+      expense.storeInvoiceNumber !== row.invoice_number ||
+      expense.description !== nextDescription ||
+      (expense.note || "") !== note ||
+      expense.date !== date;
+
+    if (!changed) continue;
+
+    upsertExpense({
+      ...expense,
+      amount,
+      date,
+      description: nextDescription,
+      note: note || undefined,
+      storeInvoiceNumber: row.invoice_number,
+    });
+    updated += 1;
+  }
+
+  if (updated > 0) {
+    window.dispatchEvent(new Event("upvc-accounting-updated"));
+  }
+  return updated;
 }
 
 export async function resolveWorkshopInvoice(
