@@ -180,7 +180,8 @@ export function StoreInvoiceInboxPanel() {
     <div className="flex w-full flex-col gap-4">
       <p className="rounded-2xl border border-primary/20 bg-primary-soft/40 px-3.5 py-3 text-xs leading-relaxed text-foreground">
         فواتير المحل المعلّمة «للورشة». عيّن كل فاتورة على شغلانة شغّالة، أو سيّبها
-        وارجع لها بعدين. التعيين يسجّل مصروف مشروع بدون سحب تاني من الخزنة.
+        وارجع لها بعدين. التعيين يسجّل مصروف مشروع — فاتورة المحل صرف داخلي بدون
+        حركة خزنة.
       </p>
 
       {!bridgeOk ? (
