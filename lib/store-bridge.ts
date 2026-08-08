@@ -408,6 +408,301 @@ export type StoreWorkshopIssueResult = {
   status: string;
 };
 
+export type StorePartyRow = {
+  id: string;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  balance: number;
+  is_active?: boolean;
+  created_at?: string;
+};
+
+export async function searchStoreCustomers(
+  query: string,
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<StorePartyRow[]> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const q = query.trim();
+  const path = q
+    ? `/api/workshop/parties/customers?q=${encodeURIComponent(q)}`
+    : "/api/workshop/parties/customers";
+  const res = await bridgeFetch(config, path);
+  const json = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    customers?: StorePartyRow[];
+  };
+  if (!res.ok) {
+    throw new Error(json.error || `فشل بحث العملاء (${res.status})`);
+  }
+  return json.customers || [];
+}
+
+export async function upsertStoreCustomer(
+  input: {
+    localPartyId: string;
+    name: string;
+    phone?: string;
+    address?: string;
+    notes?: string;
+  },
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<{ storeCustomerId: string; created: boolean }> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const res = await bridgeFetch(config, "/api/workshop/parties/customers", {
+    method: "POST",
+    body: JSON.stringify({
+      source_system: "aa",
+      local_party_id: input.localPartyId,
+      name: input.name,
+      phone: input.phone || null,
+      address: input.address || null,
+      notes: input.notes || null,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+    store_customer_id?: string;
+    created?: boolean;
+  };
+  if (!res.ok || !json.ok || !json.store_customer_id) {
+    throw new Error(json.error || `فشل مزامنة العميل (${res.status})`);
+  }
+  return {
+    storeCustomerId: String(json.store_customer_id),
+    created: Boolean(json.created),
+  };
+}
+
+export async function searchStoreSuppliers(
+  query: string,
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<StorePartyRow[]> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const q = query.trim();
+  const path = q
+    ? `/api/workshop/parties/suppliers?q=${encodeURIComponent(q)}`
+    : "/api/workshop/parties/suppliers";
+  const res = await bridgeFetch(config, path);
+  const json = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    suppliers?: StorePartyRow[];
+  };
+  if (!res.ok) {
+    throw new Error(json.error || `فشل بحث الموردين (${res.status})`);
+  }
+  return json.suppliers || [];
+}
+
+export async function upsertStoreSupplier(
+  input: {
+    localPartyId?: string;
+    name: string;
+    phone?: string;
+    address?: string;
+    notes?: string;
+  },
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<{ storeSupplierId: string; created: boolean; supplier: StorePartyRow }> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const res = await bridgeFetch(config, "/api/workshop/parties/suppliers", {
+    method: "POST",
+    body: JSON.stringify({
+      source_system: "aa",
+      local_party_id: input.localPartyId || null,
+      name: input.name,
+      phone: input.phone || null,
+      address: input.address || null,
+      notes: input.notes || null,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+    store_supplier_id?: string;
+    created?: boolean;
+    supplier?: StorePartyRow;
+  };
+  if (!res.ok || !json.ok || !json.store_supplier_id || !json.supplier) {
+    throw new Error(json.error || `فشل حفظ المورد (${res.status})`);
+  }
+  return {
+    storeSupplierId: String(json.store_supplier_id),
+    created: Boolean(json.created),
+    supplier: json.supplier,
+  };
+}
+
+export async function postStorePartyLedger(
+  input: {
+    storeCustomerId: string;
+    sourceRef: string;
+    entryType:
+      | "workshop_sale"
+      | "workshop_collection"
+      | "workshop_adjustment"
+      | "workshop_void";
+    amount: number;
+    direction: "debit" | "credit";
+    occurredAt?: string;
+    notes?: string;
+    projectLabel?: string;
+  },
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<{ ok: true; voided?: boolean }> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const res = await bridgeFetch(config, "/api/workshop/parties/ledger", {
+    method: "POST",
+    body: JSON.stringify({
+      source_system: "aa",
+      source_ref: input.sourceRef,
+      party_type: "customer",
+      store_customer_id: input.storeCustomerId,
+      entry_type: input.entryType,
+      amount: input.amount,
+      direction: input.direction,
+      occurred_at: input.occurredAt || null,
+      notes: input.notes || null,
+      project_label: input.projectLabel || null,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+    voided?: boolean;
+  };
+  if (!res.ok || !json.ok) {
+    throw new Error(json.error || `فشل تسجيل حساب العميل (${res.status})`);
+  }
+  return { ok: true, voided: json.voided };
+}
+
+export type StoreExternalPurchaseLine = {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+};
+
+export async function createStoreExternalPurchase(
+  input: {
+    supplierId: string;
+    items: StoreExternalPurchaseLine[];
+    subtotal: number;
+    total: number;
+    paidAmount?: number;
+    safeId?: string | null;
+    notes?: string;
+    createdAt?: string;
+    sourceRef: string;
+  },
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<{ invoiceId: string; invoiceNumber: string }> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const res = await bridgeFetch(config, "/api/workshop/purchases", {
+    method: "POST",
+    body: JSON.stringify({
+      source_system: "aa",
+      source_ref: input.sourceRef,
+      supplier_id: input.supplierId,
+      items: input.items,
+      subtotal: input.subtotal,
+      total: input.total,
+      paid_amount: input.paidAmount ?? 0,
+      safe_id: input.safeId || null,
+      notes: input.notes || null,
+      created_at: input.createdAt || null,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+    id?: string;
+    invoice_number?: string;
+  };
+  if (!res.ok || !json.ok || !json.id || !json.invoice_number) {
+    throw new Error(json.error || `فشل تسجيل التوريد (${res.status})`);
+  }
+  return {
+    invoiceId: String(json.id),
+    invoiceNumber: String(json.invoice_number),
+  };
+}
+
+/** Ensure customer exists in store and return store id (updates local record). */
+export async function ensureCustomerLinkedToStore(
+  customer: {
+    id: string;
+    name: string;
+    phone: string;
+    address?: string;
+    note?: string;
+    storeCustomerId?: string;
+  },
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<string | null> {
+  if (!hasStoreBridgeCredentials(config) || !config) return null;
+  if (customer.storeCustomerId) return customer.storeCustomerId;
+  const { storeCustomerId } = await upsertStoreCustomer(
+    {
+      localPartyId: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      address: customer.address,
+      notes: customer.note,
+    },
+    config
+  );
+  const { upsertCustomer, getCustomerById } = await import("@/lib/customers");
+  const current = getCustomerById(customer.id);
+  if (current) {
+    upsertCustomer({ ...current, storeCustomerId });
+  }
+  return storeCustomerId;
+}
+
+/** Sync project sale total onto store customer ledger (idempotent by project id). */
+export async function syncProjectSaleToStore(
+  input: {
+    storeCustomerId: string;
+    projectId: string;
+    projectName: string;
+    saleAmount: number;
+    occurredAt?: string;
+  },
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<void> {
+  if (!hasStoreBridgeCredentials(config) || !config) return;
+  const amount = Math.max(0, Number(input.saleAmount) || 0);
+  await postStorePartyLedger(
+    {
+      storeCustomerId: input.storeCustomerId,
+      sourceRef: `sale:${input.projectId}`,
+      entryType: amount > 0 ? "workshop_sale" : "workshop_void",
+      amount,
+      direction: "debit",
+      occurredAt: input.occurredAt,
+      notes: `مقايسة مشروع ${input.projectName}`,
+      projectLabel: input.projectName,
+    },
+    config
+  );
+}
+
 /** Create for-workshop sale and assign to project in one step. */
 export async function createStoreWorkshopIssue(
   input: {

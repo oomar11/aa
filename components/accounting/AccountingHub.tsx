@@ -64,6 +64,12 @@ const links = [
     accent: "bg-[#E8956F]",
   },
   {
+    href: ROUTES.accounting.newSupply,
+    title: "توريد خارجي",
+    description: "تسجيل شراء من برّا على مورد المحل + إضافة مورد سريع",
+    accent: "bg-[#8B5E3C]",
+  },
+  {
     href: ROUTES.accounting.ledger,
     title: "سجل الحركة",
     description: "دخول وخروج الفلوس بالترتيب",

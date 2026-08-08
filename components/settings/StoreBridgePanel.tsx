@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import {
   clearStoreBridgeConfig,
   fetchStoreSafes,
+  hasStoreBridgeCredentials,
   isStoreBridgeActive,
   loadStoreBridgeConfig,
   saveStoreBridgeConfig,
+  upsertStoreCustomer,
   type StoreBridgeConfig,
   type StoreSafeRow,
 } from "@/lib/store-bridge";
+import { mergeCustomers, upsertCustomer } from "@/lib/customers";
 import { formatCurrency } from "@/lib/utils";
 
 /** إعدادات المتجر الافتراضية لشركة واحدة — المفتاح مضبوط في قاعدة المتجر */
@@ -100,6 +103,45 @@ export function StoreBridgePanel() {
     setError("");
   }
 
+  async function syncAllCustomers() {
+    const cfg = loadStoreBridgeConfig();
+    if (!hasStoreBridgeCredentials(cfg) || !cfg) {
+      setError("اربط المتجر أولاً");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const locals = mergeCustomers();
+      let linked = 0;
+      for (const customer of locals) {
+        const result = await upsertStoreCustomer(
+          {
+            localPartyId: customer.id,
+            name: customer.name,
+            phone: customer.phone,
+            address: customer.address,
+            notes: customer.note,
+          },
+          cfg
+        );
+        if (customer.storeCustomerId !== result.storeCustomerId) {
+          upsertCustomer({
+            ...customer,
+            storeCustomerId: result.storeCustomerId,
+          });
+        }
+        linked += 1;
+      }
+      setMessage(`تمت مزامنة ${linked} عميل مع المحل`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر مزامنة العملاء");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const active = isStoreBridgeActive(config);
 
   return (
@@ -107,8 +149,8 @@ export function StoreBridgePanel() {
       <div className="border-b border-border px-4 py-3.5">
         <p className="text-sm font-bold text-foreground">خزنة المتجر (الأساس)</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          اضغط «ربط الآن» مرة واحدة. بعدها كل دفعة من الورشة تدخل خزنة المتجر، وكل
-          مصروف يتسحب منها. تراجع الحسابات من المتجر.
+          اضغط «ربط الآن» مرة واحدة. بعدها الدفعات تدخل خزنة المتجر، العملاء
+          يتزامنون مع المحل، وتوريد الخامات الخارجية يتسجل على موردين المحل.
         </p>
       </div>
 
@@ -158,13 +200,23 @@ export function StoreBridgePanel() {
         </button>
 
         {active ? (
-          <button
-            type="button"
-            onClick={handleDisconnect}
-            className="h-10 rounded-xl text-sm font-semibold text-[#E85A8A]"
-          >
-            فصل الربط
-          </button>
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void syncAllCustomers()}
+              className="flex h-11 w-full items-center justify-center rounded-2xl border border-border bg-background text-sm font-bold disabled:opacity-60"
+            >
+              مزامنة العملاء الحاليين مع المحل
+            </button>
+            <button
+              type="button"
+              onClick={handleDisconnect}
+              className="h-10 rounded-xl text-sm font-semibold text-[#E85A8A]"
+            >
+              فصل الربط
+            </button>
+          </>
         ) : null}
 
         <button

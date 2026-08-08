@@ -11,6 +11,11 @@ import {
   type Customer,
 } from "@/lib/customers";
 import { ROUTES } from "@/lib/routes";
+import {
+  hasStoreBridgeCredentials,
+  loadStoreBridgeConfig,
+  upsertStoreCustomer,
+} from "@/lib/store-bridge";
 
 type Props = {
   customerId: string;
@@ -26,6 +31,7 @@ export function EditCustomerForm({ customerId }: Props) {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const found = getCustomerById(customerId);
@@ -59,7 +65,7 @@ export function EditCustomerForm({ customerId }: Props) {
     }
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!customer) return;
     const trimmedName = name.trim();
@@ -73,18 +79,45 @@ export function EditCustomerForm({ customerId }: Props) {
       return;
     }
 
-    upsertCustomer({
-      ...customer,
-      name: trimmedName,
-      phone: trimmedPhone,
-      address: address.trim() || undefined,
-      note: note.trim() || undefined,
-    });
-    setSaved(true);
+    setSaving(true);
     setError("");
-    window.setTimeout(() => {
-      router.replace(ROUTES.design.projects(customerId));
-    }, 350);
+    try {
+      let storeCustomerId = customer.storeCustomerId;
+      const cfg = loadStoreBridgeConfig();
+      if (hasStoreBridgeCredentials(cfg)) {
+        const synced = await upsertStoreCustomer(
+          {
+            localPartyId: customer.id,
+            name: trimmedName,
+            phone: trimmedPhone,
+            address: address.trim() || undefined,
+            notes: note.trim() || undefined,
+          },
+          cfg
+        );
+        storeCustomerId = synced.storeCustomerId;
+      }
+      upsertCustomer({
+        ...customer,
+        name: trimmedName,
+        phone: trimmedPhone,
+        address: address.trim() || undefined,
+        note: note.trim() || undefined,
+        storeCustomerId,
+      });
+      setSaved(true);
+      window.setTimeout(() => {
+        router.replace(ROUTES.design.projects(customerId));
+      }, 350);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "تعذر حفظ العميل أو مزامنته مع المحل"
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDelete() {

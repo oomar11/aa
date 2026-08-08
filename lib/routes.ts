@@ -63,6 +63,9 @@ export const ROUTES = {
     /** مصروفات الورشة — تسجيل وعرض */
     expenses: "/accounting/expenses",
     newExpense: "/accounting/expenses/new",
+    /** توريد خارجي على مورد المحل */
+    supply: "/accounting/supply",
+    newSupply: "/accounting/supply/new",
     /** فواتير المحل بانتظار التعيين على شغلانة */
     storeInbox: "/accounting/store-inbox",
     /** سجل حركة الفلوس (تحصيل + مصروف) */

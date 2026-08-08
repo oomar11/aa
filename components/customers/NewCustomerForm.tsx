@@ -5,6 +5,11 @@ import { FormEvent, useState } from "react";
 import { ContactPickerButton } from "@/components/customers/ContactPickerButton";
 import { pickContactFromDevice } from "@/lib/contact-picker";
 import { upsertCustomer, type Customer } from "@/lib/customers";
+import {
+  hasStoreBridgeCredentials,
+  loadStoreBridgeConfig,
+  upsertStoreCustomer,
+} from "@/lib/store-bridge";
 
 export function NewCustomerForm() {
   const router = useRouter();
@@ -14,6 +19,7 @@ export function NewCustomerForm() {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [picking, setPicking] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   async function handlePickContact() {
     setError("");
@@ -36,7 +42,7 @@ export function NewCustomerForm() {
     }
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmedName = name.trim();
     const trimmedPhone = phone.trim();
@@ -61,8 +67,34 @@ export function NewCustomerForm() {
       projectsCount: 0,
     };
 
-    upsertCustomer(customer);
-    router.replace(`/design/projects/new?customer=${customer.id}`);
+    setSaving(true);
+    setError("");
+    try {
+      const cfg = loadStoreBridgeConfig();
+      if (hasStoreBridgeCredentials(cfg)) {
+        const synced = await upsertStoreCustomer(
+          {
+            localPartyId: customer.id,
+            name: customer.name,
+            phone: customer.phone,
+            address: customer.address,
+            notes: customer.note,
+          },
+          cfg
+        );
+        customer.storeCustomerId = synced.storeCustomerId;
+      }
+      upsertCustomer(customer);
+      router.replace(`/design/projects/new?customer=${customer.id}`);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "تعذر حفظ العميل أو مزامنته مع المحل"
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   const fieldClass =
@@ -146,9 +178,10 @@ export function NewCustomerForm() {
 
       <button
         type="submit"
-        className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98]"
+        disabled={saving}
+        className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
       >
-        حفظ ومتابعة لإنشاء مشروع
+        {saving ? "جاري الحفظ..." : "حفظ ومتابعة لإنشاء مشروع"}
       </button>
     </form>
   );

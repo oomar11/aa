@@ -14,6 +14,8 @@ export type Customer = {
   balance: number;
   lastDealAt: string;
   projectsCount: number;
+  /** معرف العميل في المحل (مصدر الحقيقة المحاسبي) */
+  storeCustomerId?: string;
 };
 
 /** @deprecated استخدم STORAGE_KEYS.customers */

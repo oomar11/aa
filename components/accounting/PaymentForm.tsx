@@ -16,9 +16,13 @@ import { getProjectById } from "@/lib/projects";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
 import {
+  ensureCustomerLinkedToStore,
+  hasStoreBridgeCredentials,
   isStoreBridgeActive,
   loadStoreBridgeConfig,
+  postStorePartyLedger,
   syncMoneyToStore,
+  syncProjectSaleToStore,
   withStoreBridgeMeta,
 } from "@/lib/store-bridge";
 import { formatCurrency } from "@/lib/utils";
@@ -151,6 +155,40 @@ export function PaymentForm() {
         );
       }
 
+      // حساب العميل في المحل: بيع المشروع + تحصيل الدفعة
+      if (hasStoreBridgeCredentials(cfg) && customer && cfg) {
+        const storeCustomerId = await ensureCustomerLinkedToStore(
+          customer,
+          cfg
+        );
+        if (storeCustomerId) {
+          const sale = getProjectMoneySummary(selectedProject.id).sale;
+          await syncProjectSaleToStore(
+            {
+              storeCustomerId,
+              projectId: selectedProject.id,
+              projectName: selectedProject.name,
+              saleAmount: sale,
+              occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+            },
+            cfg
+          );
+          await postStorePartyLedger(
+            {
+              storeCustomerId,
+              sourceRef: `pay:${id}`,
+              entryType: "workshop_collection",
+              amount,
+              direction: "credit",
+              occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+              notes: note.trim() || PAYMENT_METHOD_LABELS[method],
+              projectLabel: selectedProject.name,
+            },
+            cfg
+          );
+        }
+      }
+
       upsertPayment({
         id,
         customerId: selectedProject.customerId,
@@ -200,6 +238,25 @@ export function PaymentForm() {
           },
           cfg
         );
+      }
+      if (hasStoreBridgeCredentials(cfg) && existing && cfg) {
+        const cust = getCustomerById(existing.customerId);
+        const storeCustomerId = cust
+          ? await ensureCustomerLinkedToStore(cust, cfg)
+          : null;
+        if (storeCustomerId) {
+          await postStorePartyLedger(
+            {
+              storeCustomerId,
+              sourceRef: `pay:${paymentId}`,
+              entryType: "workshop_void",
+              amount: 0,
+              direction: "credit",
+              notes: "حذف دفعة ورشة",
+            },
+            cfg
+          );
+        }
       }
       deletePayment(paymentId);
       if (project) {

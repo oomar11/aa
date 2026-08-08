@@ -16,6 +16,12 @@ import {
 } from "@/lib/project-money";
 import { getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
+import {
+  ensureCustomerLinkedToStore,
+  hasStoreBridgeCredentials,
+  loadStoreBridgeConfig,
+  syncProjectSaleToStore,
+} from "@/lib/store-bridge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { WORKFLOW_LABELS, WORKFLOW_VISUAL } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
