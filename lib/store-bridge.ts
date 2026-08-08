@@ -348,3 +348,110 @@ export async function resolveWorkshopInvoice(
   }
   return { ok: true, status: String(json.status || input.action) };
 }
+
+export type StoreProductRow = {
+  id: string;
+  name: string;
+  sku: string;
+  unit: string;
+  stock: number;
+  sale_price: number;
+  cost: number;
+  category_name?: string | null;
+};
+
+/** Search store catalog via workshop bridge (phone material issue). */
+export async function searchStoreProducts(
+  query: string,
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<StoreProductRow[]> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const q = query.trim();
+  const path = q
+    ? `/api/workshop/products?q=${encodeURIComponent(q)}`
+    : "/api/workshop/products";
+  const res = await bridgeFetch(config, path);
+  const json = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    products?: StoreProductRow[];
+  };
+  if (!res.ok) {
+    throw new Error(json.error || `فشل بحث الأصناف (${res.status})`);
+  }
+  return json.products || [];
+}
+
+export type StoreWorkshopIssueLine = {
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  discount?: number;
+};
+
+export type StoreWorkshopIssueResult = {
+  invoice_id: string;
+  invoice_number: string;
+  subtotal: number;
+  discount_amount: number;
+  total: number;
+  items_summary: Array<{
+    product_id?: string;
+    name?: string;
+    quantity?: number;
+    unit_price?: number;
+    total?: number;
+  }>;
+  project_key: string;
+  project_name?: string | null;
+  status: string;
+};
+
+/** Create for-workshop sale and assign to project in one step. */
+export async function createStoreWorkshopIssue(
+  input: {
+    items: StoreWorkshopIssueLine[];
+    discountAmount?: number;
+    discountType?: "amount" | "percent";
+    projectKey: string;
+    projectName?: string;
+    notes?: string;
+    clientOpId?: string;
+  },
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<StoreWorkshopIssueResult> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+  const res = await bridgeFetch(config, "/api/workshop/issue", {
+    method: "POST",
+    body: JSON.stringify({
+      items: input.items,
+      discount_amount: input.discountAmount ?? 0,
+      discount_type: input.discountType ?? "amount",
+      project_key: input.projectKey,
+      project_name: input.projectName || null,
+      notes: input.notes || null,
+      client_op_id: input.clientOpId || null,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as Partial<StoreWorkshopIssueResult> & {
+    ok?: boolean;
+    error?: string;
+  };
+  if (!res.ok || !json.ok || !json.invoice_id || !json.invoice_number) {
+    throw new Error(json.error || `فشل صرف الخامات (${res.status})`);
+  }
+  return {
+    invoice_id: String(json.invoice_id),
+    invoice_number: String(json.invoice_number),
+    subtotal: Number(json.subtotal) || 0,
+    discount_amount: Number(json.discount_amount) || 0,
+    total: Number(json.total) || 0,
+    items_summary: json.items_summary || [],
+    project_key: String(json.project_key || input.projectKey),
+    project_name: json.project_name ?? input.projectName ?? null,
+    status: String(json.status || "assigned"),
+  };
+}

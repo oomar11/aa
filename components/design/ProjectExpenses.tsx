@@ -9,8 +9,10 @@ import {
 } from "@/lib/accounting";
 import { listProjectExpenses, projectExpenseTotal } from "@/lib/project-money";
 import { getProjectById } from "@/lib/projects";
+import { hasStoreBridgeCredentials } from "@/lib/store-bridge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { NumericInput } from "@/components/ui/NumericInput";
+import { ProjectStoreIssue } from "@/components/design/ProjectStoreIssue";
 
 /** التصنيفات الأكثر استخداماً لمصروف المشروع */
 const PROJECT_CATEGORIES = ["خامات", "أجور", "نقل", "صيانة", "مصروفات عامة"] as const;
@@ -52,8 +54,20 @@ export function ProjectExpenses({
   const [showExtra, setShowExtra] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [storeIssueOpen, setStoreIssueOpen] = useState(false);
+  const [bridgeOk, setBridgeOk] = useState(false);
 
   const isEditing = editingId !== null;
+
+  useEffect(() => {
+    function refreshBridge() {
+      setBridgeOk(hasStoreBridgeCredentials());
+    }
+    refreshBridge();
+    window.addEventListener("upvc-store-bridge-updated", refreshBridge);
+    return () =>
+      window.removeEventListener("upvc-store-bridge-updated", refreshBridge);
+  }, []);
 
   useEffect(() => {
     function refresh() {
@@ -84,6 +98,7 @@ export function ProjectExpenses({
   }
 
   function startEdit(expense: Expense) {
+    setStoreIssueOpen(false);
     setEditingId(expense.id);
     setCreatedAt(expense.createdAt);
     setAmount(expense.amount);
@@ -164,6 +179,39 @@ export function ProjectExpenses({
       </section>
 
       <section ref={formRef} className="flex flex-col gap-3 scroll-mt-4">
+        {!storeIssueOpen && bridgeOk && !isEditing ? (
+          <button
+            type="button"
+            onClick={() => {
+              resetForm();
+              setStoreIssueOpen(true);
+              setError("");
+            }}
+            className="rounded-2xl border border-[#E8956F]/40 bg-[#E8956F]/10 px-4 py-3 text-sm font-bold text-[#C45C26] transition-transform active:scale-[0.98]"
+          >
+            صرف من المحل
+            <span className="mt-0.5 block text-[11px] font-medium text-[#C45C26]/80">
+              اختر صنف · عدّل السعر أو الخصم · يتسجّل كمصروف
+            </span>
+          </button>
+        ) : null}
+
+        {storeIssueOpen ? (
+          <div className="rounded-2xl border border-[#E8956F] bg-card p-4">
+            <ProjectStoreIssue
+              projectId={projectId}
+              projectName={project.name}
+              onCancel={() => setStoreIssueOpen(false)}
+              onDone={(expenseId) => {
+                setStoreIssueOpen(false);
+                setJustSavedId(expenseId);
+              }}
+            />
+          </div>
+        ) : null}
+
+        {!storeIssueOpen ? (
+          <>
         <div className="flex items-center justify-between gap-2 px-0.5">
           <h2 className="text-sm font-bold text-foreground">
             {isEditing ? "تعديل المصروف" : "تسجيل مصروف جديد"}
@@ -311,6 +359,8 @@ export function ProjectExpenses({
             ) : null}
           </div>
         </form>
+          </>
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-3">
