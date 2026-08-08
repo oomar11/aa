@@ -22,6 +22,8 @@ import {
 } from "@/lib/workshop";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
+import { ensureStoreBridgeBootstrapped } from "@/lib/store-bridge-bootstrap";
+import { syncAllWorkshopLedgerToStore } from "@/lib/store-ledger-sync";
 import { formatCurrency } from "@/lib/utils";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 import { StoreInboxBanner } from "@/components/accounting/StoreInboxBanner";
@@ -132,6 +134,8 @@ export function AccountingHub() {
   const [company, setCompany] = useState(readCompany);
   const [summary, setSummary] = useState(readSummary);
   const [projectRows, setProjectRows] = useState(readProjectRows);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
 
   useEffect(() => {
     function refresh() {
@@ -151,6 +155,31 @@ export function AccountingHub() {
     };
   }, []);
 
+  useEffect(() => {
+    void ensureStoreBridgeBootstrapped();
+  }, []);
+
+  async function handleSyncToStore() {
+    setSyncBusy(true);
+    setSyncMsg("");
+    try {
+      await ensureStoreBridgeBootstrapped();
+      const result = await syncAllWorkshopLedgerToStore();
+      if (result.errors.length && result.customers === 0) {
+        setSyncMsg(result.errors[0] || "تعذر المزامنة");
+      } else {
+        setSyncMsg(
+          `اتزامن مع المحل: ${result.customers} عميل · ${result.sales} بيع · ${result.collections} تحصيل` +
+            (result.errors.length ? ` (${result.errors.length} تحذير)` : "")
+        );
+      }
+    } catch (err) {
+      setSyncMsg(err instanceof Error ? err.message : "تعذر المزامنة");
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
   const openRemaining = useMemo(
     () => projectRows.filter((row) => row.remaining > 0).slice(0, 12),
     [projectRows]
@@ -159,6 +188,33 @@ export function AccountingHub() {
   return (
     <div className="flex flex-col gap-5">
       <StoreInboxBanner />
+
+      <section className="rounded-2xl border border-[#8B5E3C]/35 bg-[#FFF7F0] px-4 py-4">
+        <p className="text-sm font-bold text-[#5C3A22]">كشف الحساب الموحّد في المحل</p>
+        <p className="mt-1 text-xs leading-relaxed text-[#7A5236]">
+          اضغط المزامنة مرة عشان مبيعات ودفعات الورشة تظهر في كشف العميل في المحل.
+          التوريد من برّا يتسجل على مورد من زر «توريد خارجي».
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            disabled={syncBusy}
+            onClick={() => void handleSyncToStore()}
+            className="flex h-11 items-center justify-center rounded-xl bg-[#8B5E3C] text-sm font-bold text-white disabled:opacity-60"
+          >
+            {syncBusy ? "جاري المزامنة…" : "مزامنة الحسابات مع المحل"}
+          </button>
+          <Link
+            href={ROUTES.accounting.newSupply}
+            className="flex h-11 items-center justify-center rounded-xl border border-[#8B5E3C] bg-white text-sm font-bold text-[#8B5E3C]"
+          >
+            توريد خارجي على مورد
+          </Link>
+        </div>
+        {syncMsg ? (
+          <p className="mt-2 text-xs font-semibold text-[#5C3A22]">{syncMsg}</p>
+        ) : null}
+      </section>
 
       <section className="rounded-2xl bg-[#1F6B55] px-4 py-5 text-white shadow-[0_8px_24px_rgba(47,155,122,0.28)]">
         <p className="text-xs font-medium opacity-85">الحسابات</p>

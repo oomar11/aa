@@ -3,21 +3,18 @@
 import { useEffect, useState } from "react";
 import {
   clearStoreBridgeConfig,
+  DEFAULT_BRIDGE_SECRET,
+  DEFAULT_STORE_URL,
   fetchStoreSafes,
   hasStoreBridgeCredentials,
   isStoreBridgeActive,
   loadStoreBridgeConfig,
   saveStoreBridgeConfig,
-  upsertStoreCustomer,
   type StoreBridgeConfig,
   type StoreSafeRow,
 } from "@/lib/store-bridge";
-import { mergeCustomers, upsertCustomer } from "@/lib/customers";
+import { syncAllWorkshopLedgerToStore } from "@/lib/store-ledger-sync";
 import { formatCurrency } from "@/lib/utils";
-
-/** إعدادات المتجر الافتراضية لشركة واحدة — المفتاح مضبوط في قاعدة المتجر */
-const DEFAULT_STORE_URL = "https://store-system-rho.vercel.app";
-const DEFAULT_BRIDGE_SECRET = "windoor-workshop-bridge-2026-rho";
 
 /**
  * ربط الورشة بخزنة المتجر — المتجر هو مصدر الحقيقة للنقد.
@@ -113,28 +110,14 @@ export function StoreBridgePanel() {
     setError("");
     setMessage("");
     try {
-      const locals = mergeCustomers();
-      let linked = 0;
-      for (const customer of locals) {
-        const result = await upsertStoreCustomer(
-          {
-            localPartyId: customer.id,
-            name: customer.name,
-            phone: customer.phone,
-            address: customer.address,
-            notes: customer.note,
-          },
-          cfg
-        );
-        if (customer.storeCustomerId !== result.storeCustomerId) {
-          upsertCustomer({
-            ...customer,
-            storeCustomerId: result.storeCustomerId,
-          });
-        }
-        linked += 1;
+      const result = await syncAllWorkshopLedgerToStore(cfg);
+      setMessage(
+        `تمت المزامنة: ${result.customers} عميل · ${result.sales} بيع · ${result.collections} تحصيل` +
+          (result.errors.length ? ` — ${result.errors.length} تحذير` : "")
+      );
+      if (result.errors[0] && result.customers === 0) {
+        setError(result.errors[0]);
       }
-      setMessage(`تمت مزامنة ${linked} عميل مع المحل`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "تعذر مزامنة العملاء");
     } finally {
@@ -207,7 +190,7 @@ export function StoreBridgePanel() {
               onClick={() => void syncAllCustomers()}
               className="flex h-11 w-full items-center justify-center rounded-2xl border border-border bg-background text-sm font-bold disabled:opacity-60"
             >
-              مزامنة العملاء الحاليين مع المحل
+              مزامنة العملاء + المبيعات + التحصيلات مع المحل
             </button>
             <button
               type="button"

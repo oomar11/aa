@@ -9,6 +9,10 @@ import type { StoreBridgeMeta } from "@/lib/accounting";
 
 export const STORE_BRIDGE_STORAGE_KEY = STORAGE_KEYS.storeBridge;
 
+/** إعدادات المتجر الافتراضية لشركة واحدة — المفتاح مضبوط في قاعدة المتجر */
+export const DEFAULT_STORE_URL = "https://store-system-rho.vercel.app";
+export const DEFAULT_BRIDGE_SECRET = "windoor-workshop-bridge-2026-rho";
+
 export type StoreBridgeConfig = {
   /** مثال: https://store-system-rho.vercel.app */
   baseUrl: string;
