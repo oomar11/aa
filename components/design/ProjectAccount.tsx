@@ -74,22 +74,25 @@ export function ProjectAccount({
 
   // مرآة بيع المقايسة على حساب العميل في المحل (idempotent)
   useEffect(() => {
-    if (!customer || !project || !money) return;
+    if (!money) return;
+    const liveCustomer = getCustomerById(customerId);
+    const liveProject = getProjectById(projectId);
+    if (!liveCustomer || !liveProject) return;
     const cfg = loadStoreBridgeConfig();
     if (!hasStoreBridgeCredentials(cfg) || !cfg) return;
     let cancelled = false;
     void (async () => {
       try {
         const storeCustomerId = await ensureCustomerLinkedToStore(
-          customer,
+          liveCustomer,
           cfg
         );
         if (cancelled || !storeCustomerId) return;
         await syncProjectSaleToStore(
           {
             storeCustomerId,
-            projectId: project.id,
-            projectName: project.name,
+            projectId: liveProject.id,
+            projectName: liveProject.name,
             saleAmount: money.sale,
           },
           cfg
@@ -101,7 +104,7 @@ export function ProjectAccount({
     return () => {
       cancelled = true;
     };
-  }, [customer, project, money]);
+  }, [customerId, projectId, money?.sale]);
   const visual = project ? WORKFLOW_VISUAL[project.workflow] : null;
   const profit = money != null ? money.paid - money.expenses : 0;
 
