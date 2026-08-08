@@ -71,6 +71,37 @@ export function ProjectAccount({
 
   const project = getProjectById(projectId);
   const customer = getCustomerById(customerId);
+
+  // مرآة بيع المقايسة على حساب العميل في المحل (idempotent)
+  useEffect(() => {
+    if (!customer || !project || !money) return;
+    const cfg = loadStoreBridgeConfig();
+    if (!hasStoreBridgeCredentials(cfg) || !cfg) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const storeCustomerId = await ensureCustomerLinkedToStore(
+          customer,
+          cfg
+        );
+        if (cancelled || !storeCustomerId) return;
+        await syncProjectSaleToStore(
+          {
+            storeCustomerId,
+            projectId: project.id,
+            projectName: project.name,
+            saleAmount: money.sale,
+          },
+          cfg
+        );
+      } catch {
+        /* silent — الربط اختياري وقت العرض */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [customer, project, money]);
   const visual = project ? WORKFLOW_VISUAL[project.workflow] : null;
   const profit = money != null ? money.paid - money.expenses : 0;
 
