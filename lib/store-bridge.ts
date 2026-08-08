@@ -433,7 +433,7 @@ export async function createStoreWorkshopIssue(
       project_key: input.projectKey,
       project_name: input.projectName || null,
       notes: input.notes || null,
-      client_op_id: input.clientOpId || null,
+      client_op_id: input.clientOpId || crypto.randomUUID(),
     }),
   });
   const json = (await res.json().catch(() => ({}))) as Partial<StoreWorkshopIssueResult> & {

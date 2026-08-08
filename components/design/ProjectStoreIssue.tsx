@@ -198,7 +198,8 @@ export function ProjectStoreIssue({
         projectKey: projectId,
         projectName,
         notes: note.trim() || undefined,
-        clientOpId: `workshop-issue-${projectId}-${Date.now()}`,
+        // store-system client_operations.client_op_id is UUID
+        clientOpId: crypto.randomUUID(),
       });
 
       const lines = (result.items_summary || [])
