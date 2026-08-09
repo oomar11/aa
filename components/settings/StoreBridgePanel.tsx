@@ -6,14 +6,12 @@ import {
   DEFAULT_BRIDGE_SECRET,
   DEFAULT_STORE_URL,
   fetchStoreSafes,
-  hasStoreBridgeCredentials,
   isStoreBridgeActive,
   loadStoreBridgeConfig,
   saveStoreBridgeConfig,
   type StoreBridgeConfig,
   type StoreSafeRow,
 } from "@/lib/store-bridge";
-import { syncAllWorkshopLedgerToStore } from "@/lib/store-ledger-sync";
 import { formatCurrency } from "@/lib/utils";
 
 /**
@@ -100,31 +98,6 @@ export function StoreBridgePanel() {
     setError("");
   }
 
-  async function syncAllCustomers() {
-    const cfg = loadStoreBridgeConfig();
-    if (!hasStoreBridgeCredentials(cfg) || !cfg) {
-      setError("اربط المتجر أولاً");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      const result = await syncAllWorkshopLedgerToStore(cfg);
-      setMessage(
-        `تمت المزامنة: ${result.customers} عميل · ${result.sales} بيع · ${result.collections} تحصيل` +
-          (result.errors.length ? ` — ${result.errors.length} تحذير` : "")
-      );
-      if (result.errors[0] && result.customers === 0) {
-        setError(result.errors[0]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر مزامنة العملاء");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const active = isStoreBridgeActive(config);
 
   return (
@@ -132,8 +105,8 @@ export function StoreBridgePanel() {
       <div className="border-b border-border px-4 py-3.5">
         <p className="text-sm font-bold text-foreground">خزنة المتجر (الأساس)</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          اضغط «ربط الآن» مرة واحدة. بعدها الدفعات تدخل خزنة المتجر، العملاء
-          يتزامنون مع المحل، وتوريد الخامات الخارجية يتسجل على موردين المحل.
+          اضغط «ربط الآن» مرة واحدة. بعدها الدفعات تدخل خزنة المتجر، والعملاء
+          والتوريدات تتسجل تلقائياً مع المحل بدون أزرار مزامنة.
         </p>
       </div>
 
@@ -183,23 +156,13 @@ export function StoreBridgePanel() {
         </button>
 
         {active ? (
-          <>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void syncAllCustomers()}
-              className="flex h-11 w-full items-center justify-center rounded-2xl border border-border bg-background text-sm font-bold disabled:opacity-60"
-            >
-              مزامنة العملاء + المبيعات + التحصيلات مع المحل
-            </button>
-            <button
-              type="button"
-              onClick={handleDisconnect}
-              className="h-10 rounded-xl text-sm font-semibold text-[#E85A8A]"
-            >
-              فصل الربط
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={handleDisconnect}
+            className="h-10 rounded-xl text-sm font-semibold text-[#E85A8A]"
+          >
+            فصل الربط
+          </button>
         ) : null}
 
         <button
