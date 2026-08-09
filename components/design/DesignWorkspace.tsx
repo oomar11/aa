@@ -1193,7 +1193,7 @@ function ItemCardBody({
           </p>
           <p
             className="mt-0.5 truncate text-[11px] font-medium text-foreground"
-            dir="ltr"
+            dir="rtl"
           >
             {formatSizePair(item.widthMm, item.heightMm, unit)}
           </p>

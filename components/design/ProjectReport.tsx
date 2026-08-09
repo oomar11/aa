@@ -487,7 +487,6 @@ function ReportItemCard({
         <Meta
           label="المقاس"
           value={formatSizePair(item.widthMm, item.heightMm, unit)}
-          ltr
         />
         <Meta label="العدد" value={String(item.qty)} />
         <Meta label="المساحة" value={`${area.toFixed(2)} م²`} ltr />
@@ -579,7 +578,8 @@ function Meta({
           overflow: "hidden",
           textOverflow: "ellipsis",
         }}
-        dir={ltr ? "ltr" : undefined}
+        // المقاس وغيره من النصوص العربية: rtl افتراضي؛ الأرقام/العملة فقط ltr
+        dir={ltr ? "ltr" : "rtl"}
       >
         {value}
       </div>

@@ -49,10 +49,17 @@ export function minLengthInUnit(unit: LengthUnit): number {
   return unit === "cm" ? 5 : 50;
 }
 
+/**
+ * مقاس الشباك: عرض × ارتفاع.
+ * يبدأ بعلامة RTL (\u200F) عشان القراءة من اليمين لليسار
+ * تظهر العرض أولاً ثم الارتفاع (مش العكس مع dir=ltr).
+ */
 export function formatSizePair(
   widthMm: number,
   heightMm: number,
   unit: LengthUnit
 ): string {
-  return `${formatLength(widthMm, unit)} × ${formatLength(heightMm, unit)} ${unitLabel(unit)}`;
+  const width = formatLength(widthMm, unit);
+  const height = formatLength(heightMm, unit);
+  return `\u200F${width} × ${height} ${unitLabel(unit)}`;
 }
