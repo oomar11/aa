@@ -19,6 +19,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { ProjectStoreIssue } from "@/components/design/ProjectStoreIssue";
+import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
 
 /** التصنيفات الأكثر استخداماً لمصروف المشروع */
 const PROJECT_CATEGORIES = ["خامات", "أجور", "نقل", "صيانة", "مصروفات عامة"] as const;
@@ -62,18 +63,21 @@ export function ProjectExpenses({
   const [saving, setSaving] = useState(false);
   const [storeIssueOpen, setStoreIssueOpen] = useState(false);
   const [bridgeOk, setBridgeOk] = useState(false);
+  const [safeId, setSafeId] = useState("");
 
   const isEditing = editingId !== null;
 
   useEffect(() => {
     function refreshBridge() {
-      setBridgeOk(hasStoreBridgeCredentials());
+      const cfg = loadStoreBridgeConfig();
+      setBridgeOk(hasStoreBridgeCredentials(cfg));
+      if (!safeId) setSafeId(cfg?.safeId || "");
     }
     refreshBridge();
     window.addEventListener("upvc-store-bridge-updated", refreshBridge);
     return () =>
       window.removeEventListener("upvc-store-bridge-updated", refreshBridge);
-  }, []);
+  }, [safeId]);
 
   useEffect(() => {
     function refresh() {
@@ -112,6 +116,7 @@ export function ProjectExpenses({
     setCategory(expense.category);
     setDate(expense.date);
     setNote(expense.note ?? "");
+    setSafeId(expense.storeBridge?.safeId || safeId);
     setShowExtra(Boolean(expense.note) || expense.date !== todayIsoDate());
     setError("");
     window.requestAnimationFrame(() => {
@@ -170,6 +175,17 @@ export function ProjectExpenses({
 
     const cfg = loadStoreBridgeConfig();
     if (!skipSafeSync && isStoreBridgeActive(cfg) && cfg) {
+      const chosenSafeId = (
+        safeId ||
+        existing?.storeBridge?.safeId ||
+        cfg.safeId ||
+        ""
+      ).trim();
+      if (!chosenSafeId) {
+        setError("اختر خزنة المتجر");
+        setSaving(false);
+        return;
+      }
       try {
         const sync = await syncMoneyToStore(
           {
@@ -186,7 +202,7 @@ export function ProjectExpenses({
               .join(" · "),
             notes: note.trim() || undefined,
             occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-            safeId: existing?.storeBridge?.safeId || cfg.safeId,
+            safeId: chosenSafeId,
           },
           cfg
         );
@@ -194,7 +210,7 @@ export function ProjectExpenses({
           ...base,
           storeBridge: withStoreBridgeMeta(
             amount,
-            sync.safe_id || cfg.safeId,
+            sync.safe_id || chosenSafeId,
             sync.reference_id
           ),
         });
@@ -351,6 +367,20 @@ export function ProjectExpenses({
               inputMode="decimal"
             />
           </label>
+
+          {bridgeOk &&
+          !(
+            isEditing &&
+            expenses.find((e) => e.id === editingId)?.storeInvoiceId
+          ) ? (
+            <StoreSafePicker
+              value={safeId}
+              preferredSafeId={
+                expenses.find((e) => e.id === editingId)?.storeBridge?.safeId
+              }
+              onChange={(id) => setSafeId(id)}
+            />
+          ) : null}
 
           <label className="flex flex-col gap-1.5 text-right">
             <span className="text-xs font-medium text-muted">الوصف</span>

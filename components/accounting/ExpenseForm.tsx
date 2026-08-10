@@ -19,6 +19,7 @@ import {
 import { smartSearchMatch } from "@/lib/utils";
 import { WORKFLOW_LABELS } from "@/lib/workshop";
 import { NumericInput } from "@/components/ui/NumericInput";
+import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
 
 /**
  * تسجيل مصروف ورشة من الحسابات.
@@ -38,13 +39,23 @@ export function ExpenseForm() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [bridgeOn, setBridgeOn] = useState(false);
+  const [safeId, setSafeId] = useState("");
   const [bridgeSafeName, setBridgeSafeName] = useState("");
 
   useEffect(() => {
-    const cfg = loadStoreBridgeConfig();
-    setBridgeOn(isStoreBridgeActive(cfg));
-    setBridgeSafeName(cfg?.safeName || "");
-  }, []);
+    function refreshBridge() {
+      const cfg = loadStoreBridgeConfig();
+      setBridgeOn(isStoreBridgeActive(cfg));
+      if (!safeId) {
+        setSafeId(cfg?.safeId || "");
+        setBridgeSafeName(cfg?.safeName || "");
+      }
+    }
+    refreshBridge();
+    window.addEventListener("upvc-store-bridge-updated", refreshBridge);
+    return () =>
+      window.removeEventListener("upvc-store-bridge-updated", refreshBridge);
+  }, [safeId]);
 
   const customers = useMemo(() => mergeCustomers(), []);
   const customerById = useMemo(() => {
@@ -104,6 +115,11 @@ export function ExpenseForm() {
     const cfg = loadStoreBridgeConfig();
     const bridgeActive = isStoreBridgeActive(cfg);
     const createdAt = new Date().toISOString();
+    const chosenSafeId = (safeId || cfg?.safeId || "").trim();
+    if (bridgeActive && !chosenSafeId) {
+      setError("اختر خزنة المتجر");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -136,7 +152,7 @@ export function ExpenseForm() {
                 .join(" · "),
               notes: note.trim() || undefined,
               occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-              safeId: cfg.safeId,
+              safeId: chosenSafeId,
             },
             cfg
           );
@@ -151,7 +167,7 @@ export function ExpenseForm() {
             createdAt,
             storeBridge: withStoreBridgeMeta(
               amount,
-              sync.safe_id || cfg.safeId,
+              sync.safe_id || chosenSafeId,
               sync.reference_id
             ),
           });
@@ -188,9 +204,19 @@ export function ExpenseForm() {
       <p className="rounded-2xl border border-[#E8956F]/30 bg-[#E8956F]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
         سجّل مصروف ورشة عام، أو اربطه بمشروع لو عايز يتظهر في حساب المشروع.
         {bridgeOn
-          ? ` · يُسحب من خزنة المتجر${bridgeSafeName ? ` (${bridgeSafeName})` : ""}.`
+          ? " · هيتسحب من خزنة المتجر اللي هتختارها تحت."
           : " · خزنة المتجر غير مربوطة (إعدادات)."}
       </p>
+
+      {bridgeOn ? (
+        <StoreSafePicker
+          value={safeId}
+          onChange={(id, safe) => {
+            setSafeId(id);
+            setBridgeSafeName(safe?.name || "");
+          }}
+        />
+      ) : null}
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-xs font-medium text-muted">المبلغ (ج.م)</span>

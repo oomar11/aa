@@ -15,6 +15,7 @@ import { listAllProjects } from "@/lib/projects";
 import { upsertExpense } from "@/lib/accounting";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency } from "@/lib/utils";
+import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
 
 type Line = {
   description: string;
@@ -44,13 +45,21 @@ export function ExternalSupplyForm() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [safeId, setSafeId] = useState("");
 
   const projects = useMemo(() => listAllProjects(), []);
 
   useEffect(() => {
-    const cfg = loadStoreBridgeConfig();
-    setBridgeOk(hasStoreBridgeCredentials(cfg));
-  }, []);
+    function refresh() {
+      const cfg = loadStoreBridgeConfig();
+      setBridgeOk(hasStoreBridgeCredentials(cfg));
+      if (!safeId) setSafeId(cfg?.safeId || "");
+    }
+    refresh();
+    window.addEventListener("upvc-store-bridge-updated", refresh);
+    return () =>
+      window.removeEventListener("upvc-store-bridge-updated", refresh);
+  }, [safeId]);
 
   useEffect(() => {
     if (!bridgeOk) return;
@@ -142,6 +151,10 @@ export function ExternalSupplyForm() {
       setError("المدفوع أكبر من الإجمالي");
       return;
     }
+    if (paidAmount > 0 && !safeId.trim()) {
+      setError("اختر الخزنة عند الدفع النقدي");
+      return;
+    }
 
     const cfg = loadStoreBridgeConfig();
     const sourceRef = `supply-${Date.now()}`;
@@ -155,7 +168,7 @@ export function ExternalSupplyForm() {
           total,
           paidAmount: Math.max(0, paidAmount),
           safeId:
-            paidAmount > 0 && isStoreBridgeActive(cfg) ? cfg?.safeId : null,
+            paidAmount > 0 && isStoreBridgeActive(cfg) ? safeId.trim() : null,
           notes: notes.trim() || undefined,
           createdAt: date ? `${date}T12:00:00.000Z` : undefined,
           sourceRef,
@@ -365,6 +378,14 @@ export function ExternalSupplyForm() {
           اتركه صفر للشراء الآجل (مديونية على المورد)
         </span>
       </label>
+
+      {paidAmount > 0 ? (
+        <StoreSafePicker
+          value={safeId}
+          label="الخزنة المسحوب منها"
+          onChange={(id) => setSafeId(id)}
+        />
+      ) : null}
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">ربط بمشروع (اختياري)</span>

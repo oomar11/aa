@@ -28,6 +28,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { PaymentProjectPicker } from "@/components/accounting/PaymentProjectPicker";
+import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
 
 /**
  * استلام أو تعديل دفعة على مشروع.
@@ -54,15 +55,27 @@ export function PaymentForm() {
   const [projectError, setProjectError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bridgeOn, setBridgeOn] = useState(false);
+  const [safeId, setSafeId] = useState("");
   const [bridgeSafeName, setBridgeSafeName] = useState("");
 
   const isEditing = Boolean(existing);
 
   useEffect(() => {
-    const cfg = loadStoreBridgeConfig();
-    setBridgeOn(isStoreBridgeActive(cfg));
-    setBridgeSafeName(cfg?.safeName || "");
-  }, []);
+    function refreshBridge() {
+      const cfg = loadStoreBridgeConfig();
+      setBridgeOn(isStoreBridgeActive(cfg));
+      if (!safeId) {
+        setSafeId(
+          existing?.storeBridge?.safeId || cfg?.safeId || ""
+        );
+        setBridgeSafeName(cfg?.safeName || "");
+      }
+    }
+    refreshBridge();
+    window.addEventListener("upvc-store-bridge-updated", refreshBridge);
+    return () =>
+      window.removeEventListener("upvc-store-bridge-updated", refreshBridge);
+  }, [existing?.storeBridge?.safeId, safeId]);
 
   useEffect(() => {
     if (editPaymentId) {
@@ -123,6 +136,17 @@ export function PaymentForm() {
     const customer = getCustomerById(selectedProject.customerId);
     const cfg = loadStoreBridgeConfig();
     const bridgeActive = isStoreBridgeActive(cfg);
+    const chosenSafeId = (
+      safeId ||
+      existing?.storeBridge?.safeId ||
+      cfg?.safeId ||
+      ""
+    ).trim();
+
+    if (bridgeActive && !chosenSafeId) {
+      setError("اختر خزنة المتجر");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -160,13 +184,13 @@ export function PaymentForm() {
                 .join(" · "),
               notes: note.trim() || undefined,
               occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-              safeId: cfg.safeId,
+              safeId: chosenSafeId,
             },
             cfg
           );
           storeBridge = withStoreBridgeMeta(
             amount,
-            sync.safe_id || cfg.safeId,
+            sync.safe_id || chosenSafeId,
             sync.reference_id
           );
           safeSynced = true;
@@ -338,9 +362,20 @@ export function PaymentForm() {
           ? "عدّل المبلغ أو التاريخ أو طريقة الدفع. التغيير يحدّث حساب المشروع فوراً."
           : "سجّل المبلغ على المشروع. أي دفعة على مقايسة تدخل قائمة انتظار الورشة."}
         {bridgeOn
-          ? ` · تتحمل على خزنة المتجر${bridgeSafeName ? ` (${bridgeSafeName})` : ""}.`
+          ? " · هتتسجل إيداع في خزنة المتجر اللي هتختارها تحت."
           : " · خزنة المتجر غير مربوطة (إعدادات)."}
       </p>
+
+      {bridgeOn ? (
+        <StoreSafePicker
+          value={safeId}
+          preferredSafeId={existing?.storeBridge?.safeId}
+          onChange={(id, safe) => {
+            setSafeId(id);
+            setBridgeSafeName(safe?.name || "");
+          }}
+        />
+      ) : null}
 
       <PaymentProjectPicker
         value={projectId}
