@@ -8,11 +8,17 @@ import type { StoreBridgeMeta } from "@/lib/accounting";
 
 export const STORE_BRIDGE_STORAGE_KEY = STORAGE_KEYS.storeBridge;
 
-/** إعدادات المتجر الافتراضية لشركة واحدة — المفتاح يُدخل يدوياً (لا افتراضي مسرب) */
+/** إعدادات المتجر الافتراضية لشركة واحدة */
 export const DEFAULT_STORE_URL = "https://store-system-rho.vercel.app";
 
 /** @deprecated لا تستخدمه — المفتاح القديم مُبطَل لأسباب أمنية */
 export const DEFAULT_BRIDGE_SECRET = "";
+
+/**
+ * Marker for server-managed bridge (secret lives only in API routes).
+ * Never a real store secret — client calls /api/store-bridge/* instead.
+ */
+export const MANAGED_BRIDGE_SECRET = "__server_managed__";
 
 const REVOKED_BRIDGE_SECRETS = new Set([
   "windoor-workshop-bridge-2026-rho",
@@ -21,14 +27,28 @@ const REVOKED_BRIDGE_SECRETS = new Set([
 export type StoreBridgeConfig = {
   /** مثال: https://store-system-rho.vercel.app */
   baseUrl: string;
-  /** نفس WORKSHOP_BRIDGE_SECRET على المتجر */
+  /** مفتاح يدوي، أو MANAGED_BRIDGE_SECRET عند الربط من السيرفر */
   secret: string;
   /** خزنة افتراضية للدفعات/المصروفات */
   safeId: string;
   safeName?: string;
   enabled: boolean;
   updatedAt: string;
+  /** true = المفتاح على سيرفر الورشة، مش في المتصفح */
+  managed?: boolean;
 };
+
+export type StoreBridgeStatus = {
+  ok?: boolean;
+  configured: boolean;
+  mode?: "server" | "manual";
+  storeUrl?: string;
+  source?: string;
+};
+
+export function isManagedBridgeSecret(secret: string): boolean {
+  return secret.trim() === MANAGED_BRIDGE_SECRET;
+}
 
 export type StoreSafeRow = {
   id: string;
@@ -44,6 +64,7 @@ function normalizeBaseUrl(raw: string): string {
 function sanitizeSecret(raw: string): string {
   const secret = raw.trim();
   if (!secret || REVOKED_BRIDGE_SECRETS.has(secret)) return "";
+  if (isManagedBridgeSecret(secret)) return MANAGED_BRIDGE_SECRET;
   return secret;
 }
 
@@ -64,6 +85,8 @@ export function loadStoreBridgeConfig(): StoreBridgeConfig | null {
     const parsed = JSON.parse(raw) as Partial<StoreBridgeConfig>;
     const secret = sanitizeSecret(String(parsed.secret || ""));
     if (!parsed.baseUrl || !secret) return null;
+    const managed =
+      Boolean(parsed.managed) || isManagedBridgeSecret(secret);
     return {
       baseUrl: normalizeBaseUrl(String(parsed.baseUrl)),
       secret,
@@ -71,6 +94,7 @@ export function loadStoreBridgeConfig(): StoreBridgeConfig | null {
       safeName: parsed.safeName ? String(parsed.safeName) : undefined,
       enabled: parsed.enabled !== false,
       updatedAt: String(parsed.updatedAt || new Date().toISOString()),
+      managed,
     };
   } catch {
     return null;
@@ -83,16 +107,35 @@ export function saveStoreBridgeConfig(config: StoreBridgeConfig) {
   if (!secret) {
     throw new Error("مفتاح الجسر غير صالح — أدخل المفتاح من إعدادات المتجر");
   }
+  const managed =
+    Boolean(config.managed) || isManagedBridgeSecret(secret);
   const next: StoreBridgeConfig = {
     ...config,
     baseUrl: normalizeBaseUrl(config.baseUrl),
-    secret,
+    secret: managed ? MANAGED_BRIDGE_SECRET : secret,
     safeId: config.safeId.trim(),
     enabled: config.enabled !== false,
     updatedAt: new Date().toISOString(),
+    managed,
   };
   localStorage.setItem(STORE_BRIDGE_STORAGE_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event("upvc-store-bridge-updated"));
+}
+
+/** حالة الربط من سيرفر الورشة (بدون مفتاح في المتصفح). */
+export async function fetchStoreBridgeStatus(): Promise<StoreBridgeStatus> {
+  const res = await fetch("/api/store-bridge/status", { cache: "no-store" });
+  const json = (await res.json().catch(() => ({}))) as StoreBridgeStatus;
+  if (!res.ok) {
+    return { configured: false, mode: "manual" };
+  }
+  return {
+    ok: json.ok,
+    configured: Boolean(json.configured),
+    mode: json.mode === "server" ? "server" : "manual",
+    storeUrl: json.storeUrl,
+    source: json.source,
+  };
 }
 
 export function clearStoreBridgeConfig() {
@@ -125,6 +168,21 @@ async function bridgeFetch(
   path: string,
   init?: RequestInit
 ): Promise<Response> {
+  const managed =
+    Boolean(config.managed) || isManagedBridgeSecret(config.secret);
+
+  if (managed) {
+    // /api/workshop/safes → /api/store-bridge/workshop/safes
+    const proxyPath = path.replace(/^\/api\//, "/api/store-bridge/");
+    return fetch(proxyPath, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers || {}),
+      },
+    });
+  }
+
   const url = `${normalizeBaseUrl(config.baseUrl)}${path}`;
   return fetch(url, {
     ...init,

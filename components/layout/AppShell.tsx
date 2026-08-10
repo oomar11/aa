@@ -1,5 +1,6 @@
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Header } from "@/components/layout/Header";
+import { StoreBridgeAutoConnect } from "@/components/settings/StoreBridgeAutoConnect";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -30,6 +31,7 @@ export function AppShell({
     <div
       className={`mx-auto flex ${heightClass} w-full max-w-lg flex-col bg-background lg:max-w-5xl`}
     >
+      <StoreBridgeAutoConnect />
       {showHeader && <Header />}
       <main className={mainClassName}>{children}</main>
       {showBottomNav && <BottomNav />}

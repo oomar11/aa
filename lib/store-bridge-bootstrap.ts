@@ -1,19 +1,50 @@
 import {
   DEFAULT_STORE_URL,
+  fetchStoreBridgeStatus,
   fetchStoreSafes,
   hasStoreBridgeCredentials,
   loadStoreBridgeConfig,
+  MANAGED_BRIDGE_SECRET,
+  saveStoreBridgeConfig,
   type StoreBridgeConfig,
 } from "@/lib/store-bridge";
 
 /**
- * Ensure workshop has store credentials in localStorage.
- * Does NOT invent a secret — only fills missing safeId when already linked.
+ * Auto-link to store when the workshop server has WORKSHOP_BRIDGE_SECRET
+ * (or production fallback). Also fills missing safeId.
  */
 export async function ensureStoreBridgeBootstrapped(): Promise<StoreBridgeConfig | null> {
   if (typeof window === "undefined") return null;
 
-  const existing = loadStoreBridgeConfig();
+  let existing = loadStoreBridgeConfig();
+
+  try {
+    const status = await fetchStoreBridgeStatus();
+    if (status.configured) {
+      const storeUrl = status.storeUrl || DEFAULT_STORE_URL;
+      if (
+        !existing ||
+        !existing.managed ||
+        existing.secret !== MANAGED_BRIDGE_SECRET ||
+        existing.baseUrl !== storeUrl
+      ) {
+        const next: StoreBridgeConfig = {
+          baseUrl: storeUrl,
+          secret: MANAGED_BRIDGE_SECRET,
+          safeId: existing?.safeId || "",
+          safeName: existing?.safeName,
+          enabled: true,
+          updatedAt: new Date().toISOString(),
+          managed: true,
+        };
+        saveStoreBridgeConfig(next);
+        existing = next;
+      }
+    }
+  } catch {
+    /* status unavailable — keep local config */
+  }
+
   if (!hasStoreBridgeCredentials(existing) || !existing) {
     return null;
   }
@@ -24,7 +55,6 @@ export async function ensureStoreBridgeBootstrapped(): Promise<StoreBridgeConfig
     const safes = await fetchStoreSafes(existing);
     const chosen = safes[0];
     if (!chosen) return existing;
-    const { saveStoreBridgeConfig } = await import("@/lib/store-bridge");
     const next: StoreBridgeConfig = {
       ...existing,
       safeId: chosen.id,
@@ -38,7 +68,7 @@ export async function ensureStoreBridgeBootstrapped(): Promise<StoreBridgeConfig
   }
 }
 
-/** @deprecated Kept for call-site compatibility — no longer auto-connects. */
+/** @deprecated Kept for call-site compatibility. */
 export function defaultStoreBridgeUrl(): string {
   return DEFAULT_STORE_URL;
 }
