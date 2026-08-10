@@ -142,6 +142,7 @@ export function PaymentForm() {
 
       let storeBridge = existing?.storeBridge;
       let syncWarning = "";
+      let safeSynced = false;
       if (bridgeActive && cfg) {
         try {
           const sync = await syncMoneyToStore(
@@ -168,40 +169,7 @@ export function PaymentForm() {
             sync.safe_id || cfg.safeId,
             sync.reference_id
           );
-
-          if (hasStoreBridgeCredentials(cfg) && customer) {
-            const storeCustomerId = await ensureCustomerLinkedToStore(
-              customer,
-              cfg
-            );
-            if (storeCustomerId) {
-              const sale = getProjectMoneySummary(selectedProject.id).sale;
-              await syncProjectSaleToStore(
-                {
-                  storeCustomerId,
-                  projectId: selectedProject.id,
-                  projectName: selectedProject.name,
-                  saleAmount: sale,
-                  occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-                },
-                cfg
-              );
-              await postStorePartyLedger(
-                {
-                  storeCustomerId,
-                  sourceRef: `pay:${id}`,
-                  entryType: "workshop_collection",
-                  amount,
-                  direction: "credit",
-                  occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-                  notes: note.trim() || PAYMENT_METHOD_LABELS[method],
-                  projectLabel: selectedProject.name,
-                },
-                cfg
-              );
-            }
-          }
-
+          safeSynced = true;
           upsertPayment({
             id,
             customerId: selectedProject.customerId,
@@ -213,11 +181,56 @@ export function PaymentForm() {
             createdAt: createdAt || new Date().toISOString(),
             storeBridge,
           });
+
+          if (hasStoreBridgeCredentials(cfg) && customer) {
+            try {
+              const storeCustomerId = await ensureCustomerLinkedToStore(
+                customer,
+                cfg
+              );
+              if (storeCustomerId) {
+                const sale = getProjectMoneySummary(selectedProject.id).sale;
+                await syncProjectSaleToStore(
+                  {
+                    storeCustomerId,
+                    projectId: selectedProject.id,
+                    projectName: selectedProject.name,
+                    saleAmount: sale,
+                    occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+                  },
+                  cfg
+                );
+                await postStorePartyLedger(
+                  {
+                    storeCustomerId,
+                    sourceRef: `pay:${id}`,
+                    entryType: "workshop_collection",
+                    amount,
+                    direction: "credit",
+                    occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+                    notes: note.trim() || PAYMENT_METHOD_LABELS[method],
+                    projectLabel: selectedProject.name,
+                  },
+                  cfg
+                );
+              }
+            } catch (ledgerErr) {
+              syncWarning =
+                `الخزنة اتسجّلت في المتجر، لكن فشل كشف الحساب: ${
+                  ledgerErr instanceof Error
+                    ? ledgerErr.message
+                    : "خطأ غير معروف"
+                }. استخدم «إعادة مزامنة المتجر» من الإعدادات.`;
+            }
+          }
         } catch (err) {
           syncWarning =
             err instanceof Error
               ? err.message
               : "فشلت مزامنة خزنة المتجر";
+          if (safeSynced) {
+            syncWarning = `الخزنة اتسجّلت — ${syncWarning}. استخدم إعادة المزامنة من الإعدادات.`;
+          }
         }
       }
 

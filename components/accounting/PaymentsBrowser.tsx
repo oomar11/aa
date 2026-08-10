@@ -8,12 +8,19 @@ import {
   PAYMENT_METHOD_LABELS,
   type Payment,
 } from "@/lib/accounting";
-import { mergeCustomers, type Customer } from "@/lib/customers";
+import { getCustomerById, mergeCustomers, type Customer } from "@/lib/customers";
 import { getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
 import { syncProjectMoneyFromPayments } from "@/lib/workshop";
-
+import {
+  ensureCustomerLinkedToStore,
+  hasStoreBridgeCredentials,
+  isStoreBridgeActive,
+  loadStoreBridgeConfig,
+  postStorePartyLedger,
+  syncMoneyToStore,
+} from "@/lib/store-bridge";
 
 export function PaymentsBrowser() {
   const [payments, setPayments] = useState<Payment[]>(() =>
@@ -22,6 +29,8 @@ export function PaymentsBrowser() {
   const [allCustomers, setAllCustomers] = useState(mergeCustomers);
   const [query, setQuery] = useState("");
   const [tick, setTick] = useState(0);
+  const [actionError, setActionError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     function refresh() {
@@ -60,6 +69,60 @@ export function PaymentsBrowser() {
       );
   }, [payments, customerById, query, tick]);
 
+  async function handleDelete(payment: Payment) {
+    if (!window.confirm("هل تريد حذف هذه الدفعة؟")) return;
+    setActionError("");
+    setBusyId(payment.id);
+    const cfg = loadStoreBridgeConfig();
+    try {
+      if (isStoreBridgeActive(cfg) && (payment.storeBridge || cfg)) {
+        await syncMoneyToStore(
+          {
+            kind: "payment",
+            externalKey: payment.id,
+            amount: 0,
+            description: "ورشة · حذف دفعة",
+            safeId: payment.storeBridge?.safeId || cfg?.safeId,
+          },
+          cfg
+        );
+      }
+      if (hasStoreBridgeCredentials(cfg) && cfg) {
+        const cust =
+          getCustomerById(payment.customerId) ||
+          customerById.get(payment.customerId);
+        const storeCustomerId = cust
+          ? await ensureCustomerLinkedToStore(cust, cfg)
+          : null;
+        if (storeCustomerId) {
+          await postStorePartyLedger(
+            {
+              storeCustomerId,
+              sourceRef: `pay:${payment.id}`,
+              entryType: "workshop_void",
+              amount: 0,
+              direction: "credit",
+              notes: "حذف دفعة ورشة",
+            },
+            cfg
+          );
+        }
+      }
+      const projectId = payment.projectId;
+      deletePayment(payment.id);
+      if (projectId) syncProjectMoneyFromPayments(projectId);
+      setPayments(loadPayments());
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? `فشل إلغاء الدفعة في المتجر: ${err.message}`
+          : "فشل إلغاء الدفعة في المتجر"
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
@@ -77,6 +140,12 @@ export function PaymentsBrowser() {
           دفعة
         </Link>
       </div>
+
+      {actionError ? (
+        <p className="rounded-xl border border-[#E85A8A]/35 bg-[#E85A8A]/10 px-3 py-2 text-xs font-medium text-[#E85A8A]">
+          {actionError}
+        </p>
+      ) : null}
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
@@ -120,17 +189,11 @@ export function PaymentsBrowser() {
                       </Link>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (!window.confirm("هل تريد حذف هذه الدفعة؟")) return;
-                          const projectId = payment.projectId;
-                          deletePayment(payment.id);
-                          if (projectId) {
-                            syncProjectMoneyFromPayments(projectId);
-                          }
-                        }}
-                        className="text-xs font-semibold text-[#E85A8A]"
+                        disabled={busyId === payment.id}
+                        onClick={() => void handleDelete(payment)}
+                        className="text-xs font-semibold text-[#E85A8A] disabled:opacity-50"
                       >
-                        حذف
+                        {busyId === payment.id ? "…" : "حذف"}
                       </button>
                     </div>
                   </div>

@@ -778,3 +778,161 @@ export async function createStoreWorkshopIssue(
     status: String(json.status || "assigned"),
   };
 }
+
+/**
+ * Re-push local payments / expenses / project sales to the store.
+ * Safe movements are idempotent by external_key; ledger by source_ref.
+ */
+export async function resyncAllWorkshopMoneyToStore(
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<{ payments: number; expenses: number; sales: number; errors: string[] }> {
+  if (!hasStoreBridgeCredentials(config) || !config) {
+    throw new Error("اربط المتجر من الإعدادات أولاً");
+  }
+
+  const { loadPayments, loadExpenses, upsertPayment, upsertExpense, PAYMENT_METHOD_LABELS } =
+    await import("@/lib/accounting");
+  const { listAllProjects } = await import("@/lib/projects");
+  const { getCustomerById } = await import("@/lib/customers");
+  const { getProjectMoneySummary } = await import("@/lib/project-money");
+
+  const errors: string[] = [];
+  let payments = 0;
+  let expenses = 0;
+  let sales = 0;
+
+  for (const pay of loadPayments()) {
+    try {
+      const project = pay.projectId
+        ? listAllProjects().find((p) => p.id === pay.projectId)
+        : undefined;
+      const customer = getCustomerById(pay.customerId);
+      const sync = await syncMoneyToStore(
+        {
+          kind: "payment",
+          externalKey: pay.id,
+          amount: pay.amount,
+          description: [
+            "ورشة · دفعة",
+            customer?.name,
+            project?.name,
+            PAYMENT_METHOD_LABELS[pay.method],
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          notes: pay.note,
+          occurredAt: pay.date ? `${pay.date}T12:00:00.000Z` : undefined,
+          safeId: pay.storeBridge?.safeId || config.safeId,
+        },
+        config
+      );
+      upsertPayment({
+        ...pay,
+        storeBridge: withStoreBridgeMeta(
+          pay.amount,
+          sync.safe_id || config.safeId,
+          sync.reference_id
+        ),
+      });
+
+      if (customer) {
+        const storeCustomerId = await ensureCustomerLinkedToStore(customer, config);
+        if (storeCustomerId) {
+          if (project) {
+            const sale = getProjectMoneySummary(project.id).sale;
+            await syncProjectSaleToStore(
+              {
+                storeCustomerId,
+                projectId: project.id,
+                projectName: project.name,
+                saleAmount: sale,
+                occurredAt: pay.date ? `${pay.date}T12:00:00.000Z` : undefined,
+              },
+              config
+            );
+          }
+          await postStorePartyLedger(
+            {
+              storeCustomerId,
+              sourceRef: `pay:${pay.id}`,
+              entryType: "workshop_collection",
+              amount: pay.amount,
+              direction: "credit",
+              occurredAt: pay.date ? `${pay.date}T12:00:00.000Z` : undefined,
+              notes: pay.note || PAYMENT_METHOD_LABELS[pay.method],
+              projectLabel: project?.name,
+            },
+            config
+          );
+        }
+      }
+      payments += 1;
+    } catch (err) {
+      errors.push(
+        `دفعة ${pay.id}: ${err instanceof Error ? err.message : "فشل"}`
+      );
+    }
+  }
+
+  for (const exp of loadExpenses()) {
+    if (exp.storeInvoiceId) continue; // stock issue — no safe withdrawal
+    try {
+      const sync = await syncMoneyToStore(
+        {
+          kind: "expense",
+          externalKey: exp.id,
+          amount: exp.amount,
+          description: ["ورشة · مصروف", exp.category, exp.description]
+            .filter(Boolean)
+            .join(" · "),
+          notes: exp.note,
+          occurredAt: exp.date ? `${exp.date}T12:00:00.000Z` : undefined,
+          safeId: exp.storeBridge?.safeId || config.safeId,
+        },
+        config
+      );
+      upsertExpense({
+        ...exp,
+        storeBridge: withStoreBridgeMeta(
+          exp.amount,
+          sync.safe_id || config.safeId,
+          sync.reference_id
+        ),
+      });
+      expenses += 1;
+    } catch (err) {
+      errors.push(
+        `مصروف ${exp.id}: ${err instanceof Error ? err.message : "فشل"}`
+      );
+    }
+  }
+
+  // Project sales not yet covered by a payment path
+  for (const project of listAllProjects()) {
+    try {
+      const sale = getProjectMoneySummary(project.id).sale;
+      if (sale <= 0) continue;
+      const customer = getCustomerById(project.customerId);
+      if (!customer) continue;
+      const storeCustomerId = await ensureCustomerLinkedToStore(customer, config);
+      if (!storeCustomerId) continue;
+      await syncProjectSaleToStore(
+        {
+          storeCustomerId,
+          projectId: project.id,
+          projectName: project.name,
+          saleAmount: sale,
+        },
+        config
+      );
+      sales += 1;
+    } catch (err) {
+      errors.push(
+        `بيع ${project.id}: ${err instanceof Error ? err.message : "فشل"}`
+      );
+    }
+  }
+
+  return { payments, expenses, sales, errors };
+}
+

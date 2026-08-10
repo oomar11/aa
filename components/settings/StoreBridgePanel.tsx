@@ -7,6 +7,7 @@ import {
   fetchStoreSafes,
   isStoreBridgeActive,
   loadStoreBridgeConfig,
+  resyncAllWorkshopMoneyToStore,
   saveStoreBridgeConfig,
   type StoreBridgeConfig,
   type StoreSafeRow,
@@ -97,6 +98,34 @@ export function StoreBridgePanel() {
     setError("");
   }
 
+  async function resyncNow() {
+    const cfg = loadStoreBridgeConfig();
+    if (!isStoreBridgeActive(cfg) || !cfg) {
+      setError("اربط المتجر أولاً");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await resyncAllWorkshopMoneyToStore(cfg);
+      const errHint =
+        result.errors.length > 0
+          ? ` · ${result.errors.length} خطأ (أولها: ${result.errors[0]})`
+          : "";
+      setMessage(
+        `اتزامنت ${result.payments} دفعة و ${result.expenses} مصروف و ${result.sales} بيع مشروع${errHint}`
+      );
+      if (result.errors.length > 0) {
+        setError(result.errors.slice(0, 3).join(" · "));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر إعادة المزامنة");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const active = isStoreBridgeActive(config);
 
   return (
@@ -104,8 +133,9 @@ export function StoreBridgePanel() {
       <div className="border-b border-border px-4 py-3.5">
         <p className="text-sm font-bold text-foreground">خزنة المتجر (الأساس)</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          أدخل رابط المتجر ومفتاح WORKSHOP_BRIDGE_SECRET ثم «ربط الآن». بعدها
-          الدفعات تدخل خزنة المتجر، والعملاء والتوريدات تتسجل تلقائياً.
+          خُد المفتاح من المتجر ← الإعدادات ← الضريبة والخزن ← «جسر الورش»،
+          بعدين الصقه هنا واضغط «ربط الآن». الدفعات والمصروفات هتتسجل في خزنة
+          المتجر تلقائياً.
         </p>
       </div>
 
@@ -155,13 +185,23 @@ export function StoreBridgePanel() {
         </button>
 
         {active ? (
-          <button
-            type="button"
-            onClick={handleDisconnect}
-            className="h-10 rounded-xl text-sm font-semibold text-[#E85A8A]"
-          >
-            فصل الربط
-          </button>
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void resyncNow()}
+              className="flex h-11 w-full items-center justify-center rounded-2xl border border-border bg-background text-sm font-bold text-foreground disabled:opacity-60"
+            >
+              {busy ? "جاري المزامنة…" : "إعادة مزامنة المتجر (دفعات + مصروفات)"}
+            </button>
+            <button
+              type="button"
+              onClick={handleDisconnect}
+              className="h-10 rounded-xl text-sm font-semibold text-[#E85A8A]"
+            >
+              فصل الربط
+            </button>
+          </>
         ) : null}
 
         <button
