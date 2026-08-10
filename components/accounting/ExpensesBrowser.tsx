@@ -12,7 +12,10 @@ import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
 import {
   hasStoreBridgeCredentials,
+  isStoreBridgeActive,
+  loadStoreBridgeConfig,
   syncAssignedStoreInvoiceExpenses,
+  syncMoneyToStore,
 } from "@/lib/store-bridge";
 
 /**
@@ -23,6 +26,7 @@ export function ExpensesBrowser() {
     typeof window === "undefined" ? [] : loadExpenses()
   );
   const [query, setQuery] = useState("");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     function refresh() {
@@ -57,6 +61,40 @@ export function ExpensesBrowser() {
 
   const total = filtered.reduce((sum, e) => sum + e.amount, 0);
 
+  async function handleDelete(expense: Expense) {
+    if (!window.confirm("هل تريد حذف هذا المصروف؟")) return;
+    setActionError("");
+    const cfg = loadStoreBridgeConfig();
+    if (
+      expense.storeBridge &&
+      !expense.storeInvoiceId &&
+      isStoreBridgeActive(cfg) &&
+      cfg
+    ) {
+      try {
+        await syncMoneyToStore(
+          {
+            kind: "expense",
+            externalKey: expense.id,
+            amount: 0,
+            description: "ورشة · حذف مصروف",
+            safeId: expense.storeBridge.safeId || cfg.safeId,
+          },
+          cfg
+        );
+      } catch (err) {
+        setActionError(
+          err instanceof Error
+            ? `فشل إلغاء المصروف في خزنة المتجر: ${err.message}`
+            : "فشل إلغاء المصروف في خزنة المتجر"
+        );
+        return;
+      }
+    }
+    deleteExpense(expense.id);
+    setExpenses(loadExpenses());
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <Link
@@ -73,6 +111,12 @@ export function ExpensesBrowser() {
         placeholder="بحث بالوصف أو المشروع…"
         className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
       />
+
+      {actionError ? (
+        <p className="rounded-xl border border-[#E85A8A]/35 bg-[#E85A8A]/10 px-3 py-2 text-xs font-medium text-[#E85A8A]">
+          {actionError}
+        </p>
+      ) : null}
 
       <div className="rounded-2xl border border-border bg-card px-4 py-3">
         <p className="text-xs text-muted">إجمالي المعروض</p>
@@ -130,10 +174,7 @@ export function ExpensesBrowser() {
                     </p>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!window.confirm("هل تريد حذف هذا المصروف؟")) return;
-                        deleteExpense(expense.id);
-                      }}
+                      onClick={() => void handleDelete(expense)}
                       className="text-xs font-semibold text-[#E85A8A]"
                     >
                       حذف

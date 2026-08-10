@@ -15,7 +15,7 @@ export const STORAGE_KEYS = {
   expenses: "upvc-expenses",
   /** ملاحظات المتابعة: قال / عمل / وعد */
   activityNotes: "upvc-activity-notes",
-  /** ربط خزنة المتجر (مشترك بين أجهزة الورشة) */
+  /** ربط خزنة المتجر (محلي للجهاز — لا يُرفع لـ Neon لتجنب تسريب المفتاح) */
   storeBridge: "upvc-store-bridge",
 } as const;
 
@@ -27,6 +27,7 @@ export const DELETED_CUSTOMERS_KEY = "upvc-deleted-customers";
 /**
  * بيانات الورشة المشتركة — نفس القيم لكل الأجهزة على نفس السيرفر.
  * وحدة القياس وترتيب التمبلتات تبقى محلية لكل جهاز.
+ * إعدادات جسر المتجر محلية فقط (فيها السر).
  */
 export const SHARED_STORAGE_KEYS = [
   STORAGE_KEYS.customers,
@@ -41,7 +42,6 @@ export const SHARED_STORAGE_KEYS = [
   STORAGE_KEYS.payments,
   STORAGE_KEYS.expenses,
   STORAGE_KEYS.activityNotes,
-  STORAGE_KEYS.storeBridge,
 ] as const;
 
 export type SharedStorageKey = (typeof SHARED_STORAGE_KEYS)[number];
@@ -71,7 +71,6 @@ export const SHARED_KEY_EVENTS: Record<SharedStorageKey, string[]> = {
   [STORAGE_KEYS.payments]: ["upvc-accounting-updated"],
   [STORAGE_KEYS.expenses]: ["upvc-accounting-updated"],
   [STORAGE_KEYS.activityNotes]: ["upvc-activity-updated"],
-  [STORAGE_KEYS.storeBridge]: ["upvc-store-bridge-updated"],
 };
 
 /** أحداث مزامنة الكتالوج بين الشاشات */

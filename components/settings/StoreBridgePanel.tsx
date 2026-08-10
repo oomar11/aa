@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   clearStoreBridgeConfig,
-  DEFAULT_BRIDGE_SECRET,
   DEFAULT_STORE_URL,
   fetchStoreSafes,
   isStoreBridgeActive,
@@ -20,7 +19,7 @@ import { formatCurrency } from "@/lib/utils";
 export function StoreBridgePanel() {
   const [config, setConfig] = useState<StoreBridgeConfig | null>(null);
   const [baseUrl, setBaseUrl] = useState(DEFAULT_STORE_URL);
-  const [secret, setSecret] = useState(DEFAULT_BRIDGE_SECRET);
+  const [secret, setSecret] = useState("");
   const [safeId, setSafeId] = useState("");
   const [safes, setSafes] = useState<StoreSafeRow[]>([]);
   const [busy, setBusy] = useState(false);
@@ -44,9 +43,9 @@ export function StoreBridgePanel() {
     setMessage("");
     try {
       const url = (baseUrl || DEFAULT_STORE_URL).trim();
-      const key = (secret || DEFAULT_BRIDGE_SECRET).trim();
+      const key = secret.trim();
       if (!url || !key) {
-        throw new Error("رابط المتجر أو المفتاح ناقص");
+        throw new Error("رابط المتجر والمفتاح مطلوبان");
       }
       const rows = await fetchStoreSafes({ baseUrl: url, secret: key });
       setSafes(rows);
@@ -92,7 +91,7 @@ export function StoreBridgePanel() {
     setConfig(null);
     setSafeId("");
     setSafes([]);
-    setSecret(DEFAULT_BRIDGE_SECRET);
+    setSecret("");
     setBaseUrl(DEFAULT_STORE_URL);
     setMessage("تم فصل الربط");
     setError("");
@@ -105,8 +104,8 @@ export function StoreBridgePanel() {
       <div className="border-b border-border px-4 py-3.5">
         <p className="text-sm font-bold text-foreground">خزنة المتجر (الأساس)</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          اضغط «ربط الآن» مرة واحدة. بعدها الدفعات تدخل خزنة المتجر، والعملاء
-          والتوريدات تتسجل تلقائياً مع المحل بدون أزرار مزامنة.
+          أدخل رابط المتجر ومفتاح WORKSHOP_BRIDGE_SECRET ثم «ربط الآن». بعدها
+          الدفعات تدخل خزنة المتجر، والعملاء والتوريدات تتسجل تلقائياً.
         </p>
       </div>
 

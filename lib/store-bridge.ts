@@ -1,5 +1,4 @@
 import { STORAGE_KEYS } from "@/lib/storage/keys";
-import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
 import type { StoreBridgeMeta } from "@/lib/accounting";
 
 /**
@@ -9,9 +8,15 @@ import type { StoreBridgeMeta } from "@/lib/accounting";
 
 export const STORE_BRIDGE_STORAGE_KEY = STORAGE_KEYS.storeBridge;
 
-/** إعدادات المتجر الافتراضية لشركة واحدة — المفتاح مضبوط في قاعدة المتجر */
+/** إعدادات المتجر الافتراضية لشركة واحدة — المفتاح يُدخل يدوياً (لا افتراضي مسرب) */
 export const DEFAULT_STORE_URL = "https://store-system-rho.vercel.app";
-export const DEFAULT_BRIDGE_SECRET = "windoor-workshop-bridge-2026-rho";
+
+/** @deprecated لا تستخدمه — المفتاح القديم مُبطَل لأسباب أمنية */
+export const DEFAULT_BRIDGE_SECRET = "";
+
+const REVOKED_BRIDGE_SECRETS = new Set([
+  "windoor-workshop-bridge-2026-rho",
+]);
 
 export type StoreBridgeConfig = {
   /** مثال: https://store-system-rho.vercel.app */
@@ -36,16 +41,32 @@ function normalizeBaseUrl(raw: string): string {
   return raw.trim().replace(/\/+$/, "");
 }
 
+function sanitizeSecret(raw: string): string {
+  const secret = raw.trim();
+  if (!secret || REVOKED_BRIDGE_SECRETS.has(secret)) return "";
+  return secret;
+}
+
+function readLocalBridgeRaw(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(STORE_BRIDGE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function loadStoreBridgeConfig(): StoreBridgeConfig | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sharedGetItem(STORE_BRIDGE_STORAGE_KEY);
+    const raw = readLocalBridgeRaw();
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<StoreBridgeConfig>;
-    if (!parsed.baseUrl || !parsed.secret) return null;
+    const secret = sanitizeSecret(String(parsed.secret || ""));
+    if (!parsed.baseUrl || !secret) return null;
     return {
       baseUrl: normalizeBaseUrl(String(parsed.baseUrl)),
-      secret: String(parsed.secret),
+      secret,
       safeId: String(parsed.safeId || ""),
       safeName: parsed.safeName ? String(parsed.safeName) : undefined,
       enabled: parsed.enabled !== false,
@@ -58,21 +79,24 @@ export function loadStoreBridgeConfig(): StoreBridgeConfig | null {
 
 export function saveStoreBridgeConfig(config: StoreBridgeConfig) {
   if (typeof window === "undefined") return;
+  const secret = sanitizeSecret(config.secret);
+  if (!secret) {
+    throw new Error("مفتاح الجسر غير صالح — أدخل المفتاح من إعدادات المتجر");
+  }
   const next: StoreBridgeConfig = {
     ...config,
     baseUrl: normalizeBaseUrl(config.baseUrl),
-    secret: config.secret.trim(),
+    secret,
     safeId: config.safeId.trim(),
     enabled: config.enabled !== false,
     updatedAt: new Date().toISOString(),
   };
-  sharedSetItem(STORE_BRIDGE_STORAGE_KEY, JSON.stringify(next));
+  localStorage.setItem(STORE_BRIDGE_STORAGE_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event("upvc-store-bridge-updated"));
 }
 
 export function clearStoreBridgeConfig() {
   if (typeof window === "undefined") return;
-  sharedSetItem(STORE_BRIDGE_STORAGE_KEY, "");
   try {
     localStorage.removeItem(STORE_BRIDGE_STORAGE_KEY);
   } catch {

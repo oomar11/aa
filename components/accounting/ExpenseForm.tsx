@@ -103,40 +103,11 @@ export function ExpenseForm() {
     const id = `exp-${Date.now()}`;
     const cfg = loadStoreBridgeConfig();
     const bridgeActive = isStoreBridgeActive(cfg);
+    const createdAt = new Date().toISOString();
 
     setSaving(true);
     setError("");
     try {
-      let storeBridge = undefined as
-        | ReturnType<typeof withStoreBridgeMeta>
-        | undefined;
-      if (bridgeActive && cfg) {
-        const sync = await syncMoneyToStore(
-          {
-            kind: "expense",
-            externalKey: id,
-            amount,
-            description: [
-              "ورشة · مصروف",
-              category,
-              description.trim(),
-              selectedProject?.name,
-            ]
-              .filter(Boolean)
-              .join(" · "),
-            notes: note.trim() || undefined,
-            occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-            safeId: cfg.safeId,
-          },
-          cfg
-        );
-        storeBridge = withStoreBridgeMeta(
-          amount,
-          sync.safe_id || cfg.safeId,
-          sync.reference_id
-        );
-      }
-
       upsertExpense({
         id,
         category,
@@ -145,15 +116,61 @@ export function ExpenseForm() {
         date,
         projectId: projectId || undefined,
         note: note.trim() || undefined,
-        createdAt: new Date().toISOString(),
-        storeBridge,
+        createdAt,
       });
+
+      if (bridgeActive && cfg) {
+        try {
+          const sync = await syncMoneyToStore(
+            {
+              kind: "expense",
+              externalKey: id,
+              amount,
+              description: [
+                "ورشة · مصروف",
+                category,
+                description.trim(),
+                selectedProject?.name,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+              notes: note.trim() || undefined,
+              occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+              safeId: cfg.safeId,
+            },
+            cfg
+          );
+          upsertExpense({
+            id,
+            category,
+            description: description.trim(),
+            amount,
+            date,
+            projectId: projectId || undefined,
+            note: note.trim() || undefined,
+            createdAt,
+            storeBridge: withStoreBridgeMeta(
+              amount,
+              sync.safe_id || cfg.safeId,
+              sync.reference_id
+            ),
+          });
+        } catch (err) {
+          setError(
+            `تم الحفظ محلياً — ${
+              err instanceof Error ? err.message : "فشلت مزامنة خزنة المتجر"
+            }`
+          );
+          setSaving(false);
+          return;
+        }
+      }
       router.replace(ROUTES.accounting.expenses);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "تعذر حفظ المصروف أو مزامنة خزنة المتجر"
+          : "تعذر حفظ المصروف"
       );
     } finally {
       setSaving(false);

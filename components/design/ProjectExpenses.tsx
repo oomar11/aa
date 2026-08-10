@@ -9,7 +9,13 @@ import {
 } from "@/lib/accounting";
 import { listProjectExpenses, projectExpenseTotal } from "@/lib/project-money";
 import { getProjectById } from "@/lib/projects";
-import { hasStoreBridgeCredentials } from "@/lib/store-bridge";
+import {
+  hasStoreBridgeCredentials,
+  isStoreBridgeActive,
+  loadStoreBridgeConfig,
+  syncMoneyToStore,
+  withStoreBridgeMeta,
+} from "@/lib/store-bridge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { ProjectStoreIssue } from "@/components/design/ProjectStoreIssue";
@@ -121,7 +127,7 @@ export function ProjectExpenses({
     if (target) startEdit(target);
   }, [editExpenseId, projectId]);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!project) {
       setError("المشروع غير موجود");
@@ -137,8 +143,17 @@ export function ProjectExpenses({
     }
 
     setSaving(true);
+    setError("");
     const id = editingId ?? `exp-${Date.now()}`;
-    upsertExpense({
+    const existing = editingId
+      ? expenses.find((exp) => exp.id === editingId)
+      : undefined;
+    // Preserve store invoice linkage; never wipe on edit
+    const preservedInvoiceId = existing?.storeInvoiceId;
+    const preservedInvoiceNumber = existing?.storeInvoiceNumber;
+    const skipSafeSync = Boolean(preservedInvoiceId);
+
+    const base: Expense = {
       id,
       category,
       description: description.trim(),
@@ -147,10 +162,97 @@ export function ProjectExpenses({
       projectId,
       note: note.trim() || undefined,
       createdAt: createdAt || new Date().toISOString(),
-    });
+      storeBridge: existing?.storeBridge,
+      storeInvoiceId: preservedInvoiceId,
+      storeInvoiceNumber: preservedInvoiceNumber,
+    };
+    upsertExpense(base);
+
+    const cfg = loadStoreBridgeConfig();
+    if (!skipSafeSync && isStoreBridgeActive(cfg) && cfg) {
+      try {
+        const sync = await syncMoneyToStore(
+          {
+            kind: "expense",
+            externalKey: id,
+            amount,
+            description: [
+              "ورشة · مصروف مشروع",
+              category,
+              description.trim(),
+              project.name,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            notes: note.trim() || undefined,
+            occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+            safeId: existing?.storeBridge?.safeId || cfg.safeId,
+          },
+          cfg
+        );
+        upsertExpense({
+          ...base,
+          storeBridge: withStoreBridgeMeta(
+            amount,
+            sync.safe_id || cfg.safeId,
+            sync.reference_id
+          ),
+        });
+      } catch (err) {
+        setError(
+          `تم الحفظ محلياً — ${
+            err instanceof Error ? err.message : "فشلت مزامنة خزنة المتجر"
+          }`
+        );
+        setJustSavedId(id);
+        setSaving(false);
+        setExpenses(listProjectExpenses(projectId));
+        setTotal(projectExpenseTotal(projectId));
+        return;
+      }
+    }
+
     resetForm();
     setJustSavedId(id);
     setSaving(false);
+    setExpenses(listProjectExpenses(projectId));
+    setTotal(projectExpenseTotal(projectId));
+  }
+
+  async function handleDeleteExpense(expenseId: string) {
+    if (!window.confirm("حذف هذا المصروف؟")) return;
+    const target = expenses.find((exp) => exp.id === expenseId);
+    const cfg = loadStoreBridgeConfig();
+    if (
+      target?.storeBridge &&
+      !target.storeInvoiceId &&
+      isStoreBridgeActive(cfg) &&
+      cfg
+    ) {
+      try {
+        await syncMoneyToStore(
+          {
+            kind: "expense",
+            externalKey: expenseId,
+            amount: 0,
+            description: "ورشة · حذف مصروف",
+            safeId: target.storeBridge.safeId || cfg.safeId,
+          },
+          cfg
+        );
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? `فشل إلغاء المصروف في خزنة المتجر: ${err.message}`
+            : "فشل إلغاء المصروف في خزنة المتجر"
+        );
+        return;
+      }
+    }
+    deleteExpense(expenseId);
+    resetForm();
+    setExpenses(listProjectExpenses(projectId));
+    setTotal(projectExpenseTotal(projectId));
   }
 
   if (!project || project.customerId !== customerId) {
@@ -228,7 +330,7 @@ export function ProjectExpenses({
         </div>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={(e) => void handleSubmit(e)}
           className={`flex flex-col gap-3.5 rounded-2xl border bg-card p-4 transition-colors ${
             isEditing ? "border-[#E8956F]" : "border-border"
           }`}
@@ -348,9 +450,7 @@ export function ProjectExpenses({
                 type="button"
                 onClick={() => {
                   if (!editingId) return;
-                  if (!window.confirm("حذف هذا المصروف؟")) return;
-                  deleteExpense(editingId);
-                  resetForm();
+                  void handleDeleteExpense(editingId);
                 }}
                 className="flex h-11 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/35 text-sm font-semibold text-[#E85A8A]"
               >

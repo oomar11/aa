@@ -127,68 +127,7 @@ export function PaymentForm() {
     setSaving(true);
     setError("");
     try {
-      let storeBridge = existing?.storeBridge;
-      if (bridgeActive && cfg) {
-        const sync = await syncMoneyToStore(
-          {
-            kind: "payment",
-            externalKey: id,
-            amount,
-            description: [
-              "ورشة · دفعة",
-              customer?.name,
-              selectedProject.name,
-              PAYMENT_METHOD_LABELS[method],
-            ]
-              .filter(Boolean)
-              .join(" · "),
-            notes: note.trim() || undefined,
-            occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-            safeId: cfg.safeId,
-          },
-          cfg
-        );
-        storeBridge = withStoreBridgeMeta(
-          amount,
-          sync.safe_id || cfg.safeId,
-          sync.reference_id
-        );
-      }
-
-      // حساب العميل في المحل: بيع المشروع + تحصيل الدفعة
-      if (hasStoreBridgeCredentials(cfg) && customer && cfg) {
-        const storeCustomerId = await ensureCustomerLinkedToStore(
-          customer,
-          cfg
-        );
-        if (storeCustomerId) {
-          const sale = getProjectMoneySummary(selectedProject.id).sale;
-          await syncProjectSaleToStore(
-            {
-              storeCustomerId,
-              projectId: selectedProject.id,
-              projectName: selectedProject.name,
-              saleAmount: sale,
-              occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-            },
-            cfg
-          );
-          await postStorePartyLedger(
-            {
-              storeCustomerId,
-              sourceRef: `pay:${id}`,
-              entryType: "workshop_collection",
-              amount,
-              direction: "credit",
-              occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-              notes: note.trim() || PAYMENT_METHOD_LABELS[method],
-              projectLabel: selectedProject.name,
-            },
-            cfg
-          );
-        }
-      }
-
+      // Local-first: avoid orphan store cash if local save never runs
       upsertPayment({
         id,
         customerId: selectedProject.customerId,
@@ -198,8 +137,95 @@ export function PaymentForm() {
         method,
         note: note.trim() || undefined,
         createdAt: createdAt || new Date().toISOString(),
-        storeBridge,
+        storeBridge: existing?.storeBridge,
       });
+
+      let storeBridge = existing?.storeBridge;
+      let syncWarning = "";
+      if (bridgeActive && cfg) {
+        try {
+          const sync = await syncMoneyToStore(
+            {
+              kind: "payment",
+              externalKey: id,
+              amount,
+              description: [
+                "ورشة · دفعة",
+                customer?.name,
+                selectedProject.name,
+                PAYMENT_METHOD_LABELS[method],
+              ]
+                .filter(Boolean)
+                .join(" · "),
+              notes: note.trim() || undefined,
+              occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+              safeId: cfg.safeId,
+            },
+            cfg
+          );
+          storeBridge = withStoreBridgeMeta(
+            amount,
+            sync.safe_id || cfg.safeId,
+            sync.reference_id
+          );
+
+          if (hasStoreBridgeCredentials(cfg) && customer) {
+            const storeCustomerId = await ensureCustomerLinkedToStore(
+              customer,
+              cfg
+            );
+            if (storeCustomerId) {
+              const sale = getProjectMoneySummary(selectedProject.id).sale;
+              await syncProjectSaleToStore(
+                {
+                  storeCustomerId,
+                  projectId: selectedProject.id,
+                  projectName: selectedProject.name,
+                  saleAmount: sale,
+                  occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+                },
+                cfg
+              );
+              await postStorePartyLedger(
+                {
+                  storeCustomerId,
+                  sourceRef: `pay:${id}`,
+                  entryType: "workshop_collection",
+                  amount,
+                  direction: "credit",
+                  occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+                  notes: note.trim() || PAYMENT_METHOD_LABELS[method],
+                  projectLabel: selectedProject.name,
+                },
+                cfg
+              );
+            }
+          }
+
+          upsertPayment({
+            id,
+            customerId: selectedProject.customerId,
+            projectId: selectedProject.id,
+            amount,
+            date,
+            method,
+            note: note.trim() || undefined,
+            createdAt: createdAt || new Date().toISOString(),
+            storeBridge,
+          });
+        } catch (err) {
+          syncWarning =
+            err instanceof Error
+              ? err.message
+              : "فشلت مزامنة خزنة المتجر";
+        }
+      }
+
+      if (syncWarning) {
+        setError(`تم الحفظ محلياً — ${syncWarning}`);
+        setSaving(false);
+        return;
+      }
 
       if (isEditing) {
         router.replace(
@@ -212,7 +238,7 @@ export function PaymentForm() {
       setError(
         err instanceof Error
           ? err.message
-          : "تعذر حفظ الدفعة أو مزامنة خزنة المتجر"
+          : "تعذر حفظ الدفعة"
       );
     } finally {
       setSaving(false);
