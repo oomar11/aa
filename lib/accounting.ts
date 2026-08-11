@@ -34,6 +34,9 @@ export type Payment = {
   storeBridge?: StoreBridgeMeta;
 };
 
+/** تسوية المصروف: نقدي من الخزنة أو آجل على مورد المحل */
+export type ExpenseSettlement = "cash" | "credit";
+
 export type Expense = {
   id: string;
   category: string;
@@ -44,11 +47,21 @@ export type Expense = {
   projectId?: string;
   note?: string;
   createdAt: string;
+  /** نقدي (افتراضي) أو آجل على مورد */
+  settlement?: ExpenseSettlement;
+  /** مورد المحل عند التسوية الآجلة */
+  storeSupplierId?: string;
+  storeSupplierName?: string;
   /** مزامنة الخزنة في المتجر (إن وُجد الربط) */
   storeBridge?: StoreBridgeMeta;
-  /** فاتورة متجر مرتبطة (صندوق وارد) — بدون سحب خزنة مكرر */
+  /** فاتورة متجر مرتبطة (صندوق وارد / توريد آجل) — بدون سحب خزنة مكرر */
   storeInvoiceId?: string;
   storeInvoiceNumber?: string;
+};
+
+export const EXPENSE_SETTLEMENT_LABELS: Record<ExpenseSettlement, string> = {
+  cash: "نقدي",
+  credit: "آجل",
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {

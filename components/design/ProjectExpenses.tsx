@@ -6,20 +6,24 @@ import {
   todayIsoDate,
   upsertExpense,
   type Expense,
+  type ExpenseSettlement,
 } from "@/lib/accounting";
 import { listProjectExpenses, projectExpenseTotal } from "@/lib/project-money";
 import { getProjectById } from "@/lib/projects";
 import {
+  createStoreExternalPurchase,
   hasStoreBridgeCredentials,
   isStoreBridgeActive,
   loadStoreBridgeConfig,
   syncMoneyToStore,
   withStoreBridgeMeta,
+  type StorePartyRow,
 } from "@/lib/store-bridge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { ProjectStoreIssue } from "@/components/design/ProjectStoreIssue";
 import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
+import { StoreSupplierPicker } from "@/components/accounting/StoreSupplierPicker";
 
 /** التصنيفات الأكثر استخداماً لمصروف المشروع */
 const PROJECT_CATEGORIES = ["خامات", "أجور", "نقل", "صيانة", "مصروفات عامة"] as const;
@@ -64,8 +68,15 @@ export function ProjectExpenses({
   const [storeIssueOpen, setStoreIssueOpen] = useState(false);
   const [bridgeOk, setBridgeOk] = useState(false);
   const [safeId, setSafeId] = useState("");
+  const [settlement, setSettlement] = useState<ExpenseSettlement>("cash");
+  const [supplierId, setSupplierId] = useState("");
+  const [supplierName, setSupplierName] = useState("");
 
   const isEditing = editingId !== null;
+  const editingExpense = isEditing
+    ? expenses.find((e) => e.id === editingId)
+    : undefined;
+  const lockedToInvoice = Boolean(editingExpense?.storeInvoiceId);
 
   useEffect(() => {
     function refreshBridge() {
@@ -104,6 +115,15 @@ export function ProjectExpenses({
     setDate(todayIsoDate());
     setCategory(PROJECT_CATEGORIES[0]);
     setShowExtra(false);
+    setSettlement("cash");
+    setSupplierId("");
+    setSupplierName("");
+    setError("");
+  }
+
+  function pickSupplier(id: string, supplier?: StorePartyRow) {
+    setSupplierId(id);
+    setSupplierName(supplier?.name || "");
     setError("");
   }
 
@@ -117,6 +137,9 @@ export function ProjectExpenses({
     setDate(expense.date);
     setNote(expense.note ?? "");
     setSafeId(expense.storeBridge?.safeId || safeId);
+    setSettlement(expense.settlement || (expense.storeInvoiceId ? "credit" : "cash"));
+    setSupplierId(expense.storeSupplierId || "");
+    setSupplierName(expense.storeSupplierName || "");
     setShowExtra(Boolean(expense.note) || expense.date !== todayIsoDate());
     setError("");
     window.requestAnimationFrame(() => {
@@ -147,8 +170,6 @@ export function ProjectExpenses({
       return;
     }
 
-    setSaving(true);
-    setError("");
     const id = editingId ?? `exp-${Date.now()}`;
     const existing = editingId
       ? expenses.find((exp) => exp.id === editingId)
@@ -157,82 +178,161 @@ export function ProjectExpenses({
     const preservedInvoiceId = existing?.storeInvoiceId;
     const preservedInvoiceNumber = existing?.storeInvoiceNumber;
     const skipSafeSync = Boolean(preservedInvoiceId);
-
-    const base: Expense = {
-      id,
-      category,
-      description: description.trim(),
-      amount,
-      date,
-      projectId,
-      note: note.trim() || undefined,
-      createdAt: createdAt || new Date().toISOString(),
-      storeBridge: existing?.storeBridge,
-      storeInvoiceId: preservedInvoiceId,
-      storeInvoiceNumber: preservedInvoiceNumber,
-    };
-    upsertExpense(base);
+    const effectiveSettlement: ExpenseSettlement =
+      preservedInvoiceId
+        ? existing?.settlement || "credit"
+        : settlement;
 
     const cfg = loadStoreBridgeConfig();
-    if (!skipSafeSync && isStoreBridgeActive(cfg) && cfg) {
-      const chosenSafeId = (
-        safeId ||
-        existing?.storeBridge?.safeId ||
-        cfg.safeId ||
-        ""
-      ).trim();
-      if (!chosenSafeId) {
-        setError("اختر خزنة المتجر");
-        setSaving(false);
+
+    if (!skipSafeSync && effectiveSettlement === "credit") {
+      if (!hasStoreBridgeCredentials(cfg) || !cfg) {
+        setError("اربط المتجر من الإعدادات لتسجيل مصروف آجل على مورد");
         return;
       }
-      try {
-        const sync = await syncMoneyToStore(
-          {
-            kind: "expense",
-            externalKey: id,
-            amount,
-            description: [
-              "ورشة · مصروف مشروع",
-              category,
-              description.trim(),
-              project.name,
-            ]
-              .filter(Boolean)
-              .join(" · "),
-            notes: note.trim() || undefined,
-            occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-            safeId: chosenSafeId,
-          },
-          cfg
-        );
-        upsertExpense({
-          ...base,
-          storeBridge: withStoreBridgeMeta(
-            amount,
-            sync.safe_id || chosenSafeId,
-            sync.reference_id
-          ),
-        });
-      } catch (err) {
-        setError(
-          `تم الحفظ محلياً — ${
-            err instanceof Error ? err.message : "فشلت مزامنة خزنة المتجر"
-          }`
-        );
-        setJustSavedId(id);
-        setSaving(false);
-        setExpenses(listProjectExpenses(projectId));
-        setTotal(projectExpenseTotal(projectId));
+      if (!supplierId) {
+        setError("اختر مورداً أو أضفه سريعاً");
         return;
       }
     }
 
-    resetForm();
-    setJustSavedId(id);
-    setSaving(false);
-    setExpenses(listProjectExpenses(projectId));
-    setTotal(projectExpenseTotal(projectId));
+    setSaving(true);
+    setError("");
+    try {
+      if (!skipSafeSync && effectiveSettlement === "credit" && cfg) {
+        const result = await createStoreExternalPurchase(
+          {
+            supplierId,
+            items: [
+              {
+                description: description.trim(),
+                quantity: 1,
+                unit_price: amount,
+                total: amount,
+              },
+            ],
+            subtotal: amount,
+            total: amount,
+            paidAmount: 0,
+            safeId: null,
+            notes: [category, note.trim(), project.name]
+              .filter(Boolean)
+              .join(" · ") || undefined,
+            createdAt: date ? `${date}T12:00:00.000Z` : undefined,
+            sourceRef: id,
+          },
+          cfg
+        );
+
+        upsertExpense({
+          id,
+          category,
+          description: description.trim(),
+          amount,
+          date,
+          projectId,
+          note: note.trim() || undefined,
+          createdAt: createdAt || new Date().toISOString(),
+          settlement: "credit",
+          storeSupplierId: supplierId,
+          storeSupplierName: supplierName || undefined,
+          storeInvoiceId: result.invoiceId,
+          storeInvoiceNumber: result.invoiceNumber,
+        });
+      } else {
+        const base: Expense = {
+          id,
+          category,
+          description: description.trim(),
+          amount,
+          date,
+          projectId,
+          note: note.trim() || undefined,
+          createdAt: createdAt || new Date().toISOString(),
+          settlement: effectiveSettlement,
+          storeSupplierId:
+            existing?.storeSupplierId ||
+            (effectiveSettlement === "credit" ? supplierId : undefined),
+          storeSupplierName:
+            existing?.storeSupplierName ||
+            (effectiveSettlement === "credit"
+              ? supplierName || undefined
+              : undefined),
+          storeBridge: existing?.storeBridge,
+          storeInvoiceId: preservedInvoiceId,
+          storeInvoiceNumber: preservedInvoiceNumber,
+        };
+        upsertExpense(base);
+
+        if (
+          !skipSafeSync &&
+          effectiveSettlement === "cash" &&
+          isStoreBridgeActive(cfg) &&
+          cfg
+        ) {
+          const chosenSafeId = (
+            safeId ||
+            existing?.storeBridge?.safeId ||
+            cfg.safeId ||
+            ""
+          ).trim();
+          if (!chosenSafeId) {
+            setError("اختر خزنة المتجر");
+            setSaving(false);
+            return;
+          }
+          try {
+            const sync = await syncMoneyToStore(
+              {
+                kind: "expense",
+                externalKey: id,
+                amount,
+                description: [
+                  "ورشة · مصروف مشروع",
+                  category,
+                  description.trim(),
+                  project.name,
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+                notes: note.trim() || undefined,
+                occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+                safeId: chosenSafeId,
+              },
+              cfg
+            );
+            upsertExpense({
+              ...base,
+              storeBridge: withStoreBridgeMeta(
+                amount,
+                sync.safe_id || chosenSafeId,
+                sync.reference_id
+              ),
+            });
+          } catch (err) {
+            setError(
+              `تم الحفظ محلياً — ${
+                err instanceof Error ? err.message : "فشلت مزامنة خزنة المتجر"
+              }`
+            );
+            setJustSavedId(id);
+            setSaving(false);
+            setExpenses(listProjectExpenses(projectId));
+            setTotal(projectExpenseTotal(projectId));
+            return;
+          }
+        }
+      }
+
+      resetForm();
+      setJustSavedId(id);
+      setExpenses(listProjectExpenses(projectId));
+      setTotal(projectExpenseTotal(projectId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر حفظ المصروف");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleDeleteExpense(expenseId: string) {
@@ -368,11 +468,50 @@ export function ProjectExpenses({
             />
           </label>
 
-          {bridgeOk &&
-          !(
-            isEditing &&
-            expenses.find((e) => e.id === editingId)?.storeInvoiceId
-          ) ? (
+          {!lockedToInvoice ? (
+            <div className="flex flex-col gap-1.5 text-right">
+              <span className="text-xs font-medium text-muted">التعامل</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSettlement("cash")}
+                  className={`rounded-2xl px-3 py-2.5 text-sm font-bold transition-all active:scale-[0.98] ${
+                    settlement === "cash"
+                      ? "bg-[#C45C26] text-white"
+                      : "border border-border bg-background text-foreground"
+                  }`}
+                >
+                  نقدي
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettlement("credit")}
+                  className={`rounded-2xl px-3 py-2.5 text-sm font-bold transition-all active:scale-[0.98] ${
+                    settlement === "credit"
+                      ? "bg-[#C45C26] text-white"
+                      : "border border-border bg-background text-foreground"
+                  }`}
+                >
+                  آجل
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-muted">
+              مصروف مربوط بفاتورة محل
+              {editingExpense?.settlement === "credit" ||
+              editingExpense?.storeSupplierName
+                ? ` · آجل${
+                    editingExpense.storeSupplierName
+                      ? ` · ${editingExpense.storeSupplierName}`
+                      : ""
+                  }`
+                : ""}
+              — التعديل محلي فقط.
+            </p>
+          )}
+
+          {!lockedToInvoice && settlement === "cash" && bridgeOk ? (
             <StoreSafePicker
               value={safeId}
               preferredSafeId={
@@ -380,6 +519,20 @@ export function ProjectExpenses({
               }
               onChange={(id) => setSafeId(id)}
             />
+          ) : null}
+
+          {!lockedToInvoice && settlement === "credit" ? (
+            bridgeOk ? (
+              <StoreSupplierPicker
+                value={supplierId}
+                onChange={pickSupplier}
+                disabled={saving}
+              />
+            ) : (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                اربط المتجر من الإعدادات لتسجيل مصروف آجل على مورد.
+              </p>
+            )
           ) : null}
 
           <label className="flex flex-col gap-1.5 text-right">
@@ -533,6 +686,14 @@ export function ProjectExpenses({
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           <span className="rounded-lg bg-[#E8956F]/15 px-2 py-0.5 text-[10px] font-semibold text-[#C45C26]">
                             {expense.category}
+                          </span>
+                          <span className="rounded-lg bg-background px-2 py-0.5 text-[10px] font-semibold text-muted">
+                            {expense.settlement === "credit" ||
+                            expense.storeInvoiceId
+                              ? expense.storeSupplierName
+                                ? `آجل · ${expense.storeSupplierName}`
+                                : "آجل"
+                              : "نقدي"}
                           </span>
                           <span className="text-[11px] text-muted">
                             {formatDate(expense.date)}

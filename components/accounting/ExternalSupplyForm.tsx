@@ -7,8 +7,6 @@ import {
   hasStoreBridgeCredentials,
   isStoreBridgeActive,
   loadStoreBridgeConfig,
-  searchStoreSuppliers,
-  upsertStoreSupplier,
   type StorePartyRow,
 } from "@/lib/store-bridge";
 import { listAllProjects } from "@/lib/projects";
@@ -16,6 +14,7 @@ import { upsertExpense } from "@/lib/accounting";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency } from "@/lib/utils";
 import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
+import { StoreSupplierPicker } from "@/components/accounting/StoreSupplierPicker";
 
 type Line = {
   description: string;
@@ -23,28 +22,25 @@ type Line = {
   unit_price: number;
 };
 
+type SettlementMode = "cash" | "credit";
+
 /**
  * توريد خارجي لورشة PVC → فاتورة شراء على مورد في المحل.
  */
 export function ExternalSupplyForm() {
   const router = useRouter();
   const [bridgeOk, setBridgeOk] = useState(false);
-  const [supplierQuery, setSupplierQuery] = useState("");
-  const [suppliers, setSuppliers] = useState<StorePartyRow[]>([]);
   const [supplierId, setSupplierId] = useState("");
-  const [quickName, setQuickName] = useState("");
-  const [quickPhone, setQuickPhone] = useState("");
-  const [showQuick, setShowQuick] = useState(false);
+  const [supplierName, setSupplierName] = useState("");
   const [lines, setLines] = useState<Line[]>([
     { description: "", quantity: 1, unit_price: 0 },
   ]);
-  const [paidAmount, setPaidAmount] = useState(0);
+  const [settlement, setSettlement] = useState<SettlementMode>("credit");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
   const [projectId, setProjectId] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [searching, setSearching] = useState(false);
   const [safeId, setSafeId] = useState("");
 
   const projects = useMemo(() => listAllProjects(), []);
@@ -61,61 +57,16 @@ export function ExternalSupplyForm() {
       window.removeEventListener("upvc-store-bridge-updated", refresh);
   }, [safeId]);
 
-  useEffect(() => {
-    if (!bridgeOk) return;
-    let cancelled = false;
-    const t = window.setTimeout(async () => {
-      setSearching(true);
-      try {
-        const rows = await searchStoreSuppliers(supplierQuery);
-        if (!cancelled) setSuppliers(rows);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "تعذر بحث الموردين");
-        }
-      } finally {
-        if (!cancelled) setSearching(false);
-      }
-    }, 250);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-    };
-  }, [bridgeOk, supplierQuery]);
-
   const total = lines.reduce(
     (sum, line) =>
       sum + Math.max(0, line.quantity) * Math.max(0, line.unit_price),
     0
   );
 
-  async function handleQuickSupplier() {
+  function pickSupplier(id: string, supplier?: StorePartyRow) {
+    setSupplierId(id);
+    setSupplierName(supplier?.name || "");
     setError("");
-    const name = quickName.trim();
-    if (!name) {
-      setError("اسم المورد مطلوب");
-      return;
-    }
-    setSaving(true);
-    try {
-      const result = await upsertStoreSupplier({
-        localPartyId: `aa-sup-${Date.now()}`,
-        name,
-        phone: quickPhone.trim() || undefined,
-      });
-      setSupplierId(result.storeSupplierId);
-      setSuppliers((prev) => {
-        const others = prev.filter((s) => s.id !== result.storeSupplierId);
-        return [result.supplier, ...others];
-      });
-      setShowQuick(false);
-      setQuickName("");
-      setQuickPhone("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر إضافة المورد");
-    } finally {
-      setSaving(false);
-    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -147,26 +98,26 @@ export function ExternalSupplyForm() {
       setError("أضف بند توريد بمبلغ أكبر من صفر");
       return;
     }
-    if (paidAmount > total + 0.001) {
-      setError("المدفوع أكبر من الإجمالي");
-      return;
-    }
+
+    const paidAmount = settlement === "cash" ? total : 0;
     if (paidAmount > 0 && !safeId.trim()) {
       setError("اختر الخزنة عند الدفع النقدي");
       return;
     }
 
     const cfg = loadStoreBridgeConfig();
-    const sourceRef = `supply-${Date.now()}`;
     setSaving(true);
     try {
+      // Unique purchase key for store idempotency (event handler, not render).
+      // eslint-disable-next-line react-hooks/purity -- Date.now only used on submit
+      const sourceRef = `supply-${Date.now()}`;
       const result = await createStoreExternalPurchase(
         {
           supplierId,
           items,
           subtotal: total,
           total,
-          paidAmount: Math.max(0, paidAmount),
+          paidAmount,
           safeId:
             paidAmount > 0 && isStoreBridgeActive(cfg) ? safeId.trim() : null,
           notes: notes.trim() || undefined,
@@ -189,6 +140,9 @@ export function ExternalSupplyForm() {
             .map((i) => i.description)
             .join(" · "),
           projectId,
+          settlement,
+          storeSupplierId: supplierId,
+          storeSupplierName: supplierName || undefined,
           storeInvoiceId: result.invoiceId,
           storeInvoiceNumber: result.invoiceNumber,
           createdAt: new Date().toISOString(),
@@ -217,74 +171,12 @@ export function ExternalSupplyForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-bold">المورد</h2>
-          <button
-            type="button"
-            onClick={() => setShowQuick((v) => !v)}
-            className="rounded-xl bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary"
-          >
-            {showQuick ? "إخفاء" : "إضافة مورد سريع"}
-          </button>
-        </div>
-
-        {showQuick ? (
-          <div className="mb-3 space-y-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3">
-            <input
-              className={fieldClass}
-              placeholder="اسم المورد"
-              value={quickName}
-              onChange={(e) => setQuickName(e.target.value)}
-            />
-            <input
-              className={fieldClass}
-              placeholder="الهاتف (اختياري)"
-              value={quickPhone}
-              onChange={(e) => setQuickPhone(e.target.value)}
-              dir="ltr"
-            />
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void handleQuickSupplier()}
-              className="w-full rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-60"
-            >
-              حفظ المورد واختياره
-            </button>
-          </div>
-        ) : null}
-
-        <input
-          className={fieldClass}
-          placeholder="بحث عن مورد..."
-          value={supplierQuery}
-          onChange={(e) => setSupplierQuery(e.target.value)}
-        />
-        <p className="mt-1 text-[11px] text-muted">
-          {searching ? "جاري البحث..." : `${suppliers.length} مورد`}
-        </p>
-        <div className="mt-2 max-h-48 space-y-1 overflow-y-auto">
-          {suppliers.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setSupplierId(s.id)}
-              className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-right text-sm ${
-                supplierId === s.id
-                  ? "border-primary bg-primary/10 font-bold"
-                  : "border-border bg-background"
-              }`}
-            >
-              <span>{s.name}</span>
-              <span className="text-[11px] text-muted" dir="ltr">
-                {s.phone || "—"}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+    <form onSubmit={(e) => void handleSubmit(e)} className="flex w-full flex-col gap-4">
+      <StoreSupplierPicker
+        value={supplierId}
+        onChange={pickSupplier}
+        disabled={saving}
+      />
 
       <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <h2 className="text-sm font-bold">بنود التوريد</h2>
@@ -364,22 +256,40 @@ export function ExternalSupplyForm() {
         />
       </label>
 
-      <label className="flex flex-col gap-1.5 text-right">
-        <span className="text-sm font-medium">مدفوع نقداً من خزنة المحل</span>
-        <input
-          type="number"
-          min={0}
-          step="any"
-          className={fieldClass}
-          value={paidAmount || ""}
-          onChange={(e) => setPaidAmount(Number(e.target.value) || 0)}
-        />
+      <div className="flex flex-col gap-1.5 text-right">
+        <span className="text-sm font-medium">التعامل</span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setSettlement("cash")}
+            className={`rounded-2xl px-3 py-2.5 text-sm font-bold transition-all active:scale-[0.98] ${
+              settlement === "cash"
+                ? "bg-[#C45C26] text-white"
+                : "border border-border bg-card text-foreground"
+            }`}
+          >
+            نقدي · حاسبت عليها
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettlement("credit")}
+            className={`rounded-2xl px-3 py-2.5 text-sm font-bold transition-all active:scale-[0.98] ${
+              settlement === "credit"
+                ? "bg-[#C45C26] text-white"
+                : "border border-border bg-card text-foreground"
+            }`}
+          >
+            آجل على المورد
+          </button>
+        </div>
         <span className="text-[11px] text-muted">
-          اتركه صفر للشراء الآجل (مديونية على المورد)
+          {settlement === "cash"
+            ? "هيُسحب الإجمالي من خزنة المحل اللي هتختارها."
+            : "مديونية كاملة على المورد بدون سحب من الخزنة."}
         </span>
-      </label>
+      </div>
 
-      {paidAmount > 0 ? (
+      {settlement === "cash" ? (
         <StoreSafePicker
           value={safeId}
           label="الخزنة المسحوب منها"

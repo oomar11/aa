@@ -51,6 +51,7 @@ export function ExpensesBrowser() {
           expense.category,
           expense.description,
           expense.note,
+          expense.storeSupplierName,
           project?.name,
         ]);
       })
@@ -152,6 +153,15 @@ export function ExpensesBrowser() {
                       {project
                         ? ` · ${project.name}`
                         : " · مصروف ورشة عام"}
+                    </p>
+                    <p className="mt-1 text-[11px] font-semibold text-muted">
+                      {expense.settlement === "credit" || expense.storeInvoiceId
+                        ? expense.storeSupplierName
+                          ? `آجل · ${expense.storeSupplierName}`
+                          : expense.storeInvoiceNumber
+                            ? `آجل · فاتورة ${expense.storeInvoiceNumber}`
+                            : "آجل"
+                        : "نقدي"}
                     </p>
                     {expense.note ? (
                       <p className="mt-1 text-xs text-muted">{expense.note}</p>

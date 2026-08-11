@@ -6,24 +6,29 @@ import {
   EXPENSE_CATEGORIES,
   todayIsoDate,
   upsertExpense,
+  type ExpenseSettlement,
 } from "@/lib/accounting";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import { listAllProjects, type Project } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
 import {
+  createStoreExternalPurchase,
+  hasStoreBridgeCredentials,
   isStoreBridgeActive,
   loadStoreBridgeConfig,
   syncMoneyToStore,
   withStoreBridgeMeta,
+  type StorePartyRow,
 } from "@/lib/store-bridge";
 import { smartSearchMatch } from "@/lib/utils";
 import { WORKFLOW_LABELS } from "@/lib/workshop";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
+import { StoreSupplierPicker } from "@/components/accounting/StoreSupplierPicker";
 
 /**
  * تسجيل مصروف ورشة من الحسابات.
- * مع ربط المتجر: يُسحب من خزنة المتجر (مصدر الحقيقة).
+ * نقدي → سحب من خزنة المتجر · آجل → فاتورة شراء على مورد المحل.
  */
 export function ExpenseForm() {
   const router = useRouter();
@@ -36,9 +41,13 @@ export function ExpenseForm() {
   const [projectId, setProjectId] = useState("");
   const [projectQuery, setProjectQuery] = useState("");
   const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [settlement, setSettlement] = useState<ExpenseSettlement>("cash");
+  const [supplierId, setSupplierId] = useState("");
+  const [supplierName, setSupplierName] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [bridgeOn, setBridgeOn] = useState(false);
+  const [bridgeCreds, setBridgeCreds] = useState(false);
   const [safeId, setSafeId] = useState("");
   const [bridgeSafeName, setBridgeSafeName] = useState("");
 
@@ -46,6 +55,7 @@ export function ExpenseForm() {
     function refreshBridge() {
       const cfg = loadStoreBridgeConfig();
       setBridgeOn(isStoreBridgeActive(cfg));
+      setBridgeCreds(hasStoreBridgeCredentials(cfg));
       if (!safeId) {
         setSafeId(cfg?.safeId || "");
         setBridgeSafeName(cfg?.safeName || "");
@@ -100,6 +110,12 @@ export function ExpenseForm() {
     setShowProjectPicker(false);
   }
 
+  function pickSupplier(id: string, supplier?: StorePartyRow) {
+    setSupplierId(id);
+    setSupplierName(supplier?.name || "");
+    setError("");
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (amount <= 0) {
@@ -116,7 +132,17 @@ export function ExpenseForm() {
     const bridgeActive = isStoreBridgeActive(cfg);
     const createdAt = new Date().toISOString();
     const chosenSafeId = (safeId || cfg?.safeId || "").trim();
-    if (bridgeActive && !chosenSafeId) {
+
+    if (settlement === "credit") {
+      if (!hasStoreBridgeCredentials(cfg) || !cfg) {
+        setError("اربط المتجر من الإعدادات لتسجيل مصروف آجل على مورد");
+        return;
+      }
+      if (!supplierId) {
+        setError("اختر مورداً أو أضفه سريعاً");
+        return;
+      }
+    } else if (bridgeActive && !chosenSafeId) {
       setError("اختر خزنة المتجر");
       return;
     }
@@ -124,61 +150,106 @@ export function ExpenseForm() {
     setSaving(true);
     setError("");
     try {
-      upsertExpense({
-        id,
-        category,
-        description: description.trim(),
-        amount,
-        date,
-        projectId: projectId || undefined,
-        note: note.trim() || undefined,
-        createdAt,
-      });
+      if (settlement === "credit" && cfg) {
+        const sourceRef = id;
+        const result = await createStoreExternalPurchase(
+          {
+            supplierId,
+            items: [
+              {
+                description: description.trim(),
+                quantity: 1,
+                unit_price: amount,
+                total: amount,
+              },
+            ],
+            subtotal: amount,
+            total: amount,
+            paidAmount: 0,
+            safeId: null,
+            notes: [category, note.trim(), selectedProject?.name]
+              .filter(Boolean)
+              .join(" · ") || undefined,
+            createdAt: date ? `${date}T12:00:00.000Z` : undefined,
+            sourceRef,
+          },
+          cfg
+        );
 
-      if (bridgeActive && cfg) {
-        try {
-          const sync = await syncMoneyToStore(
-            {
-              kind: "expense",
-              externalKey: id,
+        upsertExpense({
+          id,
+          category,
+          description: description.trim(),
+          amount,
+          date,
+          projectId: projectId || undefined,
+          note: note.trim() || undefined,
+          createdAt,
+          settlement: "credit",
+          storeSupplierId: supplierId,
+          storeSupplierName: supplierName || undefined,
+          storeInvoiceId: result.invoiceId,
+          storeInvoiceNumber: result.invoiceNumber,
+        });
+      } else {
+        upsertExpense({
+          id,
+          category,
+          description: description.trim(),
+          amount,
+          date,
+          projectId: projectId || undefined,
+          note: note.trim() || undefined,
+          createdAt,
+          settlement: "cash",
+        });
+
+        if (bridgeActive && cfg) {
+          try {
+            const sync = await syncMoneyToStore(
+              {
+                kind: "expense",
+                externalKey: id,
+                amount,
+                description: [
+                  "ورشة · مصروف",
+                  category,
+                  description.trim(),
+                  selectedProject?.name,
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+                notes: note.trim() || undefined,
+                occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+                safeId: chosenSafeId,
+              },
+              cfg
+            );
+            upsertExpense({
+              id,
+              category,
+              description: description.trim(),
               amount,
-              description: [
-                "ورشة · مصروف",
-                category,
-                description.trim(),
-                selectedProject?.name,
-              ]
-                .filter(Boolean)
-                .join(" · "),
-              notes: note.trim() || undefined,
-              occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-              safeId: chosenSafeId,
-            },
-            cfg
-          );
-          upsertExpense({
-            id,
-            category,
-            description: description.trim(),
-            amount,
-            date,
-            projectId: projectId || undefined,
-            note: note.trim() || undefined,
-            createdAt,
-            storeBridge: withStoreBridgeMeta(
-              amount,
-              sync.safe_id || chosenSafeId,
-              sync.reference_id
-            ),
-          });
-        } catch (err) {
-          setError(
-            `تم الحفظ محلياً — ${
-              err instanceof Error ? err.message : "فشلت مزامنة خزنة المتجر"
-            }`
-          );
-          setSaving(false);
-          return;
+              date,
+              projectId: projectId || undefined,
+              note: note.trim() || undefined,
+              createdAt,
+              settlement: "cash",
+              storeBridge: withStoreBridgeMeta(
+                amount,
+                sync.safe_id || chosenSafeId,
+                sync.reference_id
+              ),
+            });
+          } catch (err) {
+            setError(
+              `تم الحفظ محلياً — ${
+                err instanceof Error ? err.message : "فشلت مزامنة خزنة المتجر"
+              }`
+            );
+            setSaving(false);
+            return;
+          }
         }
       }
       router.replace(ROUTES.accounting.expenses);
@@ -203,12 +274,38 @@ export function ExpenseForm() {
     >
       <p className="rounded-2xl border border-[#E8956F]/30 bg-[#E8956F]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
         سجّل مصروف ورشة عام، أو اربطه بمشروع لو عايز يتظهر في حساب المشروع.
-        {bridgeOn
-          ? " · هيتسحب من خزنة المتجر اللي هتختارها تحت."
-          : " · خزنة المتجر غير مربوطة (إعدادات)."}
+        نقدي = حاسبت عليها من الخزنة · آجل = مديونية على مورد المحل.
       </p>
 
-      {bridgeOn ? (
+      <div className="flex flex-col gap-1.5 text-right">
+        <span className="text-xs font-medium text-muted">التعامل</span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setSettlement("cash")}
+            className={`rounded-2xl px-3 py-2.5 text-sm font-bold transition-all active:scale-[0.98] ${
+              settlement === "cash"
+                ? "bg-[#C45C26] text-white"
+                : "border border-border bg-card text-foreground"
+            }`}
+          >
+            نقدي · حاسبت عليها
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettlement("credit")}
+            className={`rounded-2xl px-3 py-2.5 text-sm font-bold transition-all active:scale-[0.98] ${
+              settlement === "credit"
+                ? "bg-[#C45C26] text-white"
+                : "border border-border bg-card text-foreground"
+            }`}
+          >
+            آجل · على مورد
+          </button>
+        </div>
+      </div>
+
+      {settlement === "cash" && bridgeOn ? (
         <StoreSafePicker
           value={safeId}
           onChange={(id, safe) => {
@@ -216,6 +313,21 @@ export function ExpenseForm() {
             setBridgeSafeName(safe?.name || "");
           }}
         />
+      ) : null}
+
+      {settlement === "credit" ? (
+        bridgeCreds ? (
+          <StoreSupplierPicker
+            value={supplierId}
+            onChange={pickSupplier}
+            disabled={saving}
+          />
+        ) : (
+          <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-relaxed text-amber-900">
+            اربط المتجر من الإعدادات أولاً عشان تسجّل مصروف آجل على مورد ويسمع
+            في الحسابات.
+          </p>
+        )
       ) : null}
 
       <label className="flex flex-col gap-1.5 text-right">
@@ -381,6 +493,11 @@ export function ExpenseForm() {
       >
         {saving ? "جاري الحفظ…" : "حفظ المصروف"}
       </button>
+      {bridgeSafeName && settlement === "cash" && bridgeOn ? (
+        <p className="text-center text-[11px] text-muted">
+          الخزنة: {bridgeSafeName}
+        </p>
+      ) : null}
     </form>
   );
 }

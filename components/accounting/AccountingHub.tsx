@@ -61,13 +61,13 @@ const links = [
   {
     href: ROUTES.accounting.expenses,
     title: "مصروفات الورشة",
-    description: "تسجيل وعرض مصروفات الورشة والمشاريع",
+    description: "نقدي من الخزنة أو آجل على مورد + إضافة مورد سريع",
     accent: "bg-[#E8956F]",
   },
   {
     href: ROUTES.accounting.newSupply,
     title: "توريد خارجي",
-    description: "تسجيل شراء من برّا على مورد المحل + إضافة مورد سريع",
+    description: "شراء ببنود متعددة على مورد المحل (نقدي أو آجل)",
     accent: "bg-[#8B5E3C]",
   },
   {
