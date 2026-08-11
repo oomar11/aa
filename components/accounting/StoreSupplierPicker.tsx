@@ -187,15 +187,7 @@ export function StoreSupplierPicker({
             {busy ? "جاري الحفظ…" : "حفظ المورد واختياره"}
           </button>
         </div>
-      ) : (
-        <div className="mb-3">
-          <ContactPickerButton
-            label="إضافة مورد من جهات الاتصال"
-            picking={picking}
-            onPick={() => void handlePickContact()}
-          />
-        </div>
-      )}
+      ) : null}
 
       <input
         className={fieldClass}
