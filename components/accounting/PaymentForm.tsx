@@ -221,6 +221,7 @@ export function PaymentForm() {
                     projectName: selectedProject.name,
                     saleAmount: sale,
                     occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+                    includeInCustomerLedger: true,
                   },
                   cfg
                 );

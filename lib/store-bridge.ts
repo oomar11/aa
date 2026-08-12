@@ -801,7 +801,11 @@ export async function ensureCustomerLinkedToStore(
   return storeCustomerId;
 }
 
-/** Sync project sale total onto store customer ledger (idempotent by project id). */
+/**
+ * Sync project sale onto store customer ledger (idempotent by project id).
+ * Quotes without deposit must NOT hit any customer — pass includeInCustomerLedger:false
+ * to delete any previously mistaken posting.
+ */
 export async function syncProjectSaleToStore(
   input: {
     storeCustomerId: string;
@@ -809,11 +813,18 @@ export async function syncProjectSaleToStore(
     projectName: string;
     saleAmount: number;
     occurredAt?: string;
+    /**
+     * false = مقايسة لسه من غير عربون — امسح القيد من حساب العميل.
+     * true = المشروع دخل الحساب (عربون / ورشة / مكتمل).
+     */
+    includeInCustomerLedger: boolean;
   },
   config: StoreBridgeConfig | null = loadStoreBridgeConfig()
 ): Promise<void> {
   if (!hasStoreBridgeCredentials(config) || !config) return;
-  const amount = Math.max(0, Number(input.saleAmount) || 0);
+  const amount = input.includeInCustomerLedger
+    ? Math.max(0, Number(input.saleAmount) || 0)
+    : 0;
   await postStorePartyLedger(
     {
       storeCustomerId: input.storeCustomerId,
@@ -822,7 +833,10 @@ export async function syncProjectSaleToStore(
       amount,
       direction: "debit",
       occurredAt: input.occurredAt,
-      notes: `مقايسة مشروع ${input.projectName}`,
+      notes:
+        amount > 0
+          ? `بيع مشروع ${input.projectName}`
+          : `إلغاء مقايسة ${input.projectName}`,
       projectLabel: input.projectName,
     },
     config
@@ -893,6 +907,7 @@ export async function resyncAllWorkshopMoneyToStore(
   const { listAllProjects } = await import("@/lib/projects");
   const { getCustomerById } = await import("@/lib/customers");
   const { getProjectMoneySummary } = await import("@/lib/project-money");
+  const { isAccountedProject } = await import("@/lib/accounting-scope");
 
   const errors: string[] = [];
   let payments = 0;
@@ -936,7 +951,7 @@ export async function resyncAllWorkshopMoneyToStore(
       if (customer) {
         const storeCustomerId = await ensureCustomerLinkedToStore(customer, config);
         if (storeCustomerId) {
-          if (project) {
+          if (project && isAccountedProject(project)) {
             const sale = getProjectMoneySummary(project.id).sale;
             await syncProjectSaleToStore(
               {
@@ -945,6 +960,7 @@ export async function resyncAllWorkshopMoneyToStore(
                 projectName: project.name,
                 saleAmount: sale,
                 occurredAt: pay.date ? `${pay.date}T12:00:00.000Z` : undefined,
+                includeInCustomerLedger: true,
               },
               config
             );
@@ -1005,21 +1021,36 @@ export async function resyncAllWorkshopMoneyToStore(
     }
   }
 
-  // Project sales not yet covered by a payment path
+  // Project sales: accounted only. Quotes void any mistaken earlier posting.
   for (const project of listAllProjects()) {
     try {
       const sale = getProjectMoneySummary(project.id).sale;
-      if (sale <= 0) continue;
       const customer = getCustomerById(project.customerId);
       if (!customer) continue;
       const storeCustomerId = await ensureCustomerLinkedToStore(customer, config);
       if (!storeCustomerId) continue;
+      const accounted = isAccountedProject(project);
+      if (!accounted) {
+        await syncProjectSaleToStore(
+          {
+            storeCustomerId,
+            projectId: project.id,
+            projectName: project.name,
+            saleAmount: 0,
+            includeInCustomerLedger: false,
+          },
+          config
+        );
+        continue;
+      }
+      if (sale <= 0) continue;
       await syncProjectSaleToStore(
         {
           storeCustomerId,
           projectId: project.id,
           projectName: project.name,
           saleAmount: sale,
+          includeInCustomerLedger: true,
         },
         config
       );
