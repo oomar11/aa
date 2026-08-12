@@ -16,6 +16,7 @@ import {
 } from "@/lib/project-money";
 import { getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
+import { isAccountedProject } from "@/lib/accounting-scope";
 import {
   ensureCustomerLinkedToStore,
   hasStoreBridgeCredentials,
@@ -72,7 +73,8 @@ export function ProjectAccount({
   const project = getProjectById(projectId);
   const customer = getCustomerById(customerId);
 
-  // مرآة بيع المقايسة على حساب العميل في المحل (idempotent)
+  // مرآة البيع على حساب العميل في المحل فقط بعد عربون/دخول الحساب.
+  // المقايسات الخام تُلغى من كشف العميل لو اتسجّلت بالغلط قبل كده.
   useEffect(() => {
     if (!money) return;
     const liveCustomer = getCustomerById(customerId);
@@ -80,6 +82,7 @@ export function ProjectAccount({
     if (!liveCustomer || !liveProject) return;
     const cfg = loadStoreBridgeConfig();
     if (!hasStoreBridgeCredentials(cfg) || !cfg) return;
+    const accounted = isAccountedProject(liveProject);
     let cancelled = false;
     void (async () => {
       try {
@@ -93,7 +96,8 @@ export function ProjectAccount({
             storeCustomerId,
             projectId: liveProject.id,
             projectName: liveProject.name,
-            saleAmount: money.sale,
+            saleAmount: accounted ? money.sale : 0,
+            includeInCustomerLedger: accounted,
           },
           cfg
         );
@@ -104,7 +108,7 @@ export function ProjectAccount({
     return () => {
       cancelled = true;
     };
-  }, [customerId, projectId, money?.sale]);
+  }, [customerId, projectId, money, project?.workflow]);
   const visual = project ? WORKFLOW_VISUAL[project.workflow] : null;
   const profit = money != null ? money.paid - money.expenses : 0;
 
