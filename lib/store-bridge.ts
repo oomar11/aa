@@ -503,6 +503,7 @@ export type StorePartyRow = {
   balance: number;
   is_active?: boolean;
   created_at?: string;
+  business_lines?: Array<"wire" | "store" | "workshop">;
 };
 
 export async function searchStoreCustomers(
@@ -525,6 +526,45 @@ export async function searchStoreCustomers(
     throw new Error(json.error || `فشل بحث العملاء (${res.status})`);
   }
   return json.customers || [];
+}
+
+/** Fetch business-line tags for linked store customer ids. */
+export async function fetchStoreCustomerBusinessLines(
+  storeCustomerIds: string[],
+  config: StoreBridgeConfig | null = loadStoreBridgeConfig()
+): Promise<Record<string, Array<"wire" | "store" | "workshop">>> {
+  if (!hasStoreBridgeCredentials(config) || !config) return {};
+  const ids = Array.from(
+    new Set(storeCustomerIds.map((id) => String(id || "").trim()).filter(Boolean))
+  );
+  if (ids.length === 0) return {};
+
+  const out: Record<string, Array<"wire" | "store" | "workshop">> = {};
+  const chunkSize = 40;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const path = `/api/workshop/parties/customers?ids=${encodeURIComponent(
+      chunk.join(",")
+    )}`;
+    try {
+      const res = await bridgeFetch(config, path);
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        customers?: StorePartyRow[];
+      };
+      if (!res.ok) continue;
+      for (const c of json.customers || []) {
+        const lines = (c.business_lines || []).filter(
+          (v): v is "wire" | "store" | "workshop" =>
+            v === "wire" || v === "store" || v === "workshop"
+        );
+        if (lines.length > 0) out[c.id] = lines;
+      }
+    } catch {
+      // best-effort badges
+    }
+  }
+  return out;
 }
 
 export async function upsertStoreCustomer(
