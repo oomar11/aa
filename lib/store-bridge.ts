@@ -683,6 +683,7 @@ export async function postStorePartyLedger(
     occurredAt?: string;
     notes?: string;
     projectLabel?: string;
+    details?: Record<string, unknown> | null;
   },
   config: StoreBridgeConfig | null = loadStoreBridgeConfig()
 ): Promise<{ ok: true; voided?: boolean }> {
@@ -702,6 +703,11 @@ export async function postStorePartyLedger(
       occurred_at: input.occurredAt || null,
       notes: input.notes || null,
       project_label: input.projectLabel || null,
+      // Always send object so store RPC overload stays unambiguous.
+      details:
+        input.details && typeof input.details === "object"
+          ? input.details
+          : {},
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {
@@ -782,7 +788,7 @@ export async function ensureCustomerLinkedToStore(
   config: StoreBridgeConfig | null = loadStoreBridgeConfig()
 ): Promise<string | null> {
   if (!hasStoreBridgeCredentials(config) || !config) return null;
-  if (customer.storeCustomerId) return customer.storeCustomerId;
+  // Always upsert so workshop_party_map remaps (e.g. split من عمر) take effect.
   const { storeCustomerId } = await upsertStoreCustomer(
     {
       localPartyId: customer.id,
@@ -795,7 +801,9 @@ export async function ensureCustomerLinkedToStore(
   );
   const { upsertCustomer, getCustomerById } = await import("@/lib/customers");
   const current = getCustomerById(customer.id);
-  if (current) {
+  if (current && current.storeCustomerId !== storeCustomerId) {
+    upsertCustomer({ ...current, storeCustomerId });
+  } else if (current && !current.storeCustomerId) {
     upsertCustomer({ ...current, storeCustomerId });
   }
   return storeCustomerId;
@@ -813,6 +821,7 @@ export async function syncProjectSaleToStore(
     projectName: string;
     saleAmount: number;
     occurredAt?: string;
+    localPartyId?: string;
     /**
      * false = مقايسة لسه من غير عربون — امسح القيد من حساب العميل.
      * true = المشروع دخل الحساب (عربون / ورشة / مكتمل).
@@ -838,6 +847,13 @@ export async function syncProjectSaleToStore(
           ? `بيع مشروع ${input.projectName}`
           : `إلغاء مقايسة ${input.projectName}`,
       projectLabel: input.projectName,
+      details: {
+        kind: "aa_project_sale",
+        project_id: input.projectId,
+        project_name: input.projectName,
+        local_party_id: input.localPartyId || null,
+        customer_id: input.localPartyId || null,
+      },
     },
     config
   );
@@ -961,6 +977,7 @@ export async function resyncAllWorkshopMoneyToStore(
                 saleAmount: sale,
                 occurredAt: pay.date ? `${pay.date}T12:00:00.000Z` : undefined,
                 includeInCustomerLedger: true,
+                localPartyId: customer.id,
               },
               config
             );
@@ -975,6 +992,13 @@ export async function resyncAllWorkshopMoneyToStore(
               occurredAt: pay.date ? `${pay.date}T12:00:00.000Z` : undefined,
               notes: pay.note || PAYMENT_METHOD_LABELS[pay.method],
               projectLabel: project?.name,
+              details: {
+                kind: "aa_payment",
+                project_id: pay.projectId || project?.id || null,
+                payment_id: pay.id,
+                local_party_id: customer.id,
+                customer_id: customer.id,
+              },
             },
             config
           );
@@ -1038,6 +1062,7 @@ export async function resyncAllWorkshopMoneyToStore(
             projectName: project.name,
             saleAmount: 0,
             includeInCustomerLedger: false,
+            localPartyId: customer.id,
           },
           config
         );
@@ -1051,6 +1076,7 @@ export async function resyncAllWorkshopMoneyToStore(
           projectName: project.name,
           saleAmount: sale,
           includeInCustomerLedger: true,
+          localPartyId: customer.id,
         },
         config
       );

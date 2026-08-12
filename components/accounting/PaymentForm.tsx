@@ -222,6 +222,7 @@ export function PaymentForm() {
                     saleAmount: sale,
                     occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
                     includeInCustomerLedger: true,
+                    localPartyId: customer.id,
                   },
                   cfg
                 );
@@ -235,6 +236,13 @@ export function PaymentForm() {
                     occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
                     notes: note.trim() || PAYMENT_METHOD_LABELS[method],
                     projectLabel: selectedProject.name,
+                    details: {
+                      kind: "aa_payment",
+                      project_id: selectedProject.id,
+                      payment_id: id,
+                      local_party_id: customer.id,
+                      customer_id: customer.id,
+                    },
                   },
                   cfg
                 );
@@ -317,6 +325,13 @@ export function PaymentForm() {
               amount: 0,
               direction: "credit",
               notes: "حذف دفعة ورشة",
+              details: {
+                kind: "aa_payment",
+                project_id: existing.projectId || null,
+                payment_id: paymentId,
+                local_party_id: existing.customerId,
+                customer_id: existing.customerId,
+              },
             },
             cfg
           );
