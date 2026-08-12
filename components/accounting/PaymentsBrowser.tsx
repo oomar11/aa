@@ -103,6 +103,13 @@ export function PaymentsBrowser() {
               amount: 0,
               direction: "credit",
               notes: "حذف دفعة ورشة",
+              details: {
+                kind: "aa_payment",
+                project_id: payment.projectId || null,
+                payment_id: payment.id,
+                local_party_id: payment.customerId,
+                customer_id: payment.customerId,
+              },
             },
             cfg
           );

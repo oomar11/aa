@@ -98,6 +98,7 @@ export function ProjectAccount({
             projectName: liveProject.name,
             saleAmount: accounted ? money.sale : 0,
             includeInCustomerLedger: accounted,
+            localPartyId: liveCustomer.id,
           },
           cfg
         );
