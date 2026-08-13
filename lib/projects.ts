@@ -34,6 +34,8 @@ export const HOLD_REASON_OPTIONS = [
 
 export type HoldReason = (typeof HOLD_REASON_OPTIONS)[number] | string;
 
+export type ProjectDiscountType = "amount" | "percent";
+
 export type Project = {
   id: string;
   customerId: string;
@@ -60,6 +62,10 @@ export type Project = {
   deliveryStatus?: ProjectDeliveryStatus;
   deliveredAt?: string;
   itemsCount: number;
+  /** خصم على إجمالي المشروع بعد بنود المقايسة */
+  discountType?: ProjectDiscountType;
+  /** قيمة الخصم: مبلغ بالجنيه أو نسبة 0–100 حسب النوع */
+  discountValue?: number;
 } & ProjectMaterialDefaults;
 
 /** تطبيع مشروع قديم/ناقص لحقول الورشة */
@@ -92,6 +98,16 @@ export function normalizeProject(project: Project): Project {
   const holdReason = project.holdReason?.trim() || undefined;
   const holdAt = holdReason ? project.holdAt : undefined;
 
+  const discountType =
+    project.discountType === "percent" || project.discountType === "amount"
+      ? project.discountType
+      : undefined;
+  const discountValueRaw = Number(project.discountValue);
+  const discountValue =
+    Number.isFinite(discountValueRaw) && discountValueRaw > 0
+      ? discountValueRaw
+      : undefined;
+
   return {
     ...project,
     workflow,
@@ -100,6 +116,8 @@ export function normalizeProject(project: Project): Project {
     holdAt,
     deliveryStatus,
     deliveredAt,
+    discountType: discountValue ? discountType ?? "amount" : undefined,
+    discountValue: discountValue ? discountValue : undefined,
   };
 }
 

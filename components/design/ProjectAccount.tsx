@@ -27,6 +27,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { WORKFLOW_LABELS, WORKFLOW_VISUAL } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 import { ActivityNotesPanel } from "@/components/accounting/ActivityNotesPanel";
+import { ProjectDiscountEditor } from "@/components/design/ProjectDiscountEditor";
 
 type Props = {
   customerId: string;
@@ -147,6 +148,20 @@ export function ProjectAccount({
           />
           <MoneyTile label="مصروف" value={money.expenses} tone="expense" />
         </section>
+      ) : null}
+
+      {money && money.discountAmount > 0 ? (
+        <p className="px-1 text-[11px] text-muted">
+          البنود {formatCurrency(money.subtotal)} ج.م − خصم{" "}
+          {money.discountType === "percent"
+            ? `${money.discountValue}% `
+            : ""}
+          {formatCurrency(money.discountAmount)} ج.م
+        </p>
+      ) : null}
+
+      {project && money ? (
+        <ProjectDiscountEditor project={project} money={money} />
       ) : null}
 
       {money ? (

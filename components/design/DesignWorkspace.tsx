@@ -889,6 +889,9 @@ export function DesignWorkspace({
             <p className="mt-0.5 text-[11px] font-bold tabular-nums text-foreground">
               {formatCurrency(money.sale)}
             </p>
+            {money.discountAmount > 0 ? (
+              <p className="text-[8px] text-muted">بعد خصم</p>
+            ) : null}
           </div>
           <div className="text-center">
             <p className="text-[9px] text-muted">مدفوع</p>

@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import { resolveCustomerBalance } from "@/lib/customer-balance";
-import { itemTotalPrice } from "@/lib/design-items";
+import { getProjectMoneySummary } from "@/lib/project-money";
 import {
   deleteProject,
-  getItemsForProject,
   getProjectsForCustomer,
   listAllProjects,
   PROJECTS_UPDATED_EVENT,
@@ -89,10 +88,7 @@ function balanceMap(list: Customer[]): Record<string, number> {
 }
 
 function projectSaleTotal(projectId: string): number {
-  return getItemsForProject(projectId).reduce(
-    (sum, item) => sum + itemTotalPrice(item),
-    0
-  );
+  return getProjectMoneySummary(projectId).sale;
 }
 
 function customerSaleTotal(customerId: string): number {

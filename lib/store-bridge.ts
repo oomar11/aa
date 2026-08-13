@@ -834,6 +834,8 @@ export async function syncProjectSaleToStore(
   const amount = input.includeInCustomerLedger
     ? Math.max(0, Number(input.saleAmount) || 0)
     : 0;
+  const { getProjectMoneySummary } = await import("@/lib/project-money");
+  const money = getProjectMoneySummary(input.projectId);
   await postStorePartyLedger(
     {
       storeCustomerId: input.storeCustomerId,
@@ -844,7 +846,9 @@ export async function syncProjectSaleToStore(
       occurredAt: input.occurredAt,
       notes:
         amount > 0
-          ? `بيع مشروع ${input.projectName}`
+          ? money.discountAmount > 0
+            ? `بيع مشروع ${input.projectName} (خصم ${money.discountAmount})`
+            : `بيع مشروع ${input.projectName}`
           : `إلغاء مقايسة ${input.projectName}`,
       projectLabel: input.projectName,
       details: {
@@ -853,6 +857,11 @@ export async function syncProjectSaleToStore(
         project_name: input.projectName,
         local_party_id: input.localPartyId || null,
         customer_id: input.localPartyId || null,
+        sale_amount: amount,
+        subtotal: money.subtotal,
+        discount_type: money.discountType,
+        discount_value: money.discountValue,
+        discount_amount: money.discountAmount,
       },
     },
     config

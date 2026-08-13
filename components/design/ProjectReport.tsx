@@ -28,6 +28,7 @@ import {
   getProjectById,
   type Project,
 } from "@/lib/projects";
+import { getProjectMoneySummary } from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
 import { formatSizePair, type LengthUnit } from "@/lib/units";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -68,10 +69,10 @@ export function ProjectReport({
 
   const totals = useMemo(() => {
     const area = items.reduce((sum, item) => sum + itemAreaSqm(item), 0);
-    const price = items.reduce((sum, item) => sum + itemTotalPrice(item), 0);
     const qty = items.reduce((sum, item) => sum + item.qty, 0);
-    return { area, price, qty };
-  }, [items]);
+    const money = getProjectMoneySummary(projectId);
+    return { area, qty, money };
+  }, [items, projectId]);
 
   const printedAt = useMemo(
     () =>
@@ -369,8 +370,14 @@ export function ProjectReport({
                     <div className="text-left">
                       <p className="text-[#6b7585]">الإجمالي</p>
                       <p className="mt-0.5 text-[16px] font-bold text-[#2b7de9]">
-                        {formatCurrency(Math.round(totals.price))} ج.م
+                        {formatCurrency(Math.round(totals.money.sale))} ج.م
                       </p>
+                      {totals.money.discountAmount > 0 ? (
+                        <p className="mt-0.5 text-[10px] text-[#6b7585]">
+                          بعد خصم {formatCurrency(totals.money.discountAmount)}{" "}
+                          من {formatCurrency(totals.money.subtotal)}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </footer>
