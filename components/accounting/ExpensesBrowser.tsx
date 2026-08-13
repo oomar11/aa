@@ -20,6 +20,12 @@ import {
   syncAssignedStoreInvoiceExpenses,
   syncMoneyToStore,
 } from "@/lib/store-bridge";
+import { CATALOG_EVENTS } from "@/lib/storage/keys";
+import {
+  expectedExpenseTotals,
+  listExpectedExpenseRows,
+  type ExpectedExpenseRow,
+} from "@/lib/expected-expenses";
 import { ExpenseForm } from "@/components/accounting/ExpenseForm";
 
 type SettlementFilter = "all" | "cash" | "credit";
@@ -38,18 +44,27 @@ export function ExpensesBrowser() {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [actionError, setActionError] = useState("");
+  const [expectedRows, setExpectedRows] = useState<ExpectedExpenseRow[]>([]);
 
   useEffect(() => {
     function refresh() {
       setExpenses(loadExpenses());
+      setExpectedRows(listExpectedExpenseRows());
     }
+    refresh();
     window.addEventListener("upvc-accounting-updated", refresh);
+    window.addEventListener("upvc-projects-updated", refresh);
+    window.addEventListener(CATALOG_EVENTS.catalogUpdated, refresh);
     if (hasStoreBridgeCredentials()) {
       void syncAssignedStoreInvoiceExpenses()
         .then(() => refresh())
         .catch(() => undefined);
     }
-    return () => window.removeEventListener("upvc-accounting-updated", refresh);
+    return () => {
+      window.removeEventListener("upvc-accounting-updated", refresh);
+      window.removeEventListener("upvc-projects-updated", refresh);
+      window.removeEventListener(CATALOG_EVENTS.catalogUpdated, refresh);
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -90,6 +105,11 @@ export function ExpensesBrowser() {
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
   }, [expenses, query, categoryFilter, settlementFilter, periodFilter]);
+
+  const expectedTotals = useMemo(
+    () => expectedExpenseTotals(expectedRows),
+    [expectedRows]
+  );
 
   const totals = useMemo(() => {
     let cash = 0;
@@ -137,6 +157,7 @@ export function ExpensesBrowser() {
 
   function reload() {
     setExpenses(loadExpenses());
+    setExpectedRows(listExpectedExpenseRows());
   }
 
   return (
@@ -233,6 +254,8 @@ export function ExpensesBrowser() {
           {actionError}
         </p>
       ) : null}
+
+      <ExpectedPanel rows={expectedRows} totals={expectedTotals} />
 
       <div className="rounded-2xl border border-border bg-card px-4 py-3 lg:hidden">
         <p className="text-xs text-muted">إجمالي المعروض</p>
@@ -421,6 +444,153 @@ export function ExpensesBrowser() {
         </div>
       </div>
     </div>
+  );
+}
+
+function leftoverTone(value: number): string {
+  if (value > 0.004) return "text-[#2F9B7A]";
+  if (value < -0.004) return "text-[#E85A8A]";
+  return "text-foreground";
+}
+
+function ExpectedPanel({
+  rows,
+  totals,
+}: {
+  rows: ExpectedExpenseRow[];
+  totals: ReturnType<typeof expectedExpenseTotals>;
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-3.5">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-bold text-foreground">
+            المصروفات المتوقعة
+          </h2>
+          <p className="mt-0.5 text-[11px] text-muted">
+            تكلفة خامات الشغل المفتوح من أسعار المقايسة
+          </p>
+        </div>
+        {totals.jobs > 0 ? (
+          <span className="shrink-0 text-[11px] font-semibold text-muted">
+            {totals.jobs} شغلانة
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="rounded-xl bg-background px-2.5 py-2 text-center">
+          <p className="text-[10px] text-muted">متوقع</p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-[#C45C26]">
+            {formatCurrency(totals.expected)}
+          </p>
+        </div>
+        <div className="rounded-xl bg-background px-2.5 py-2 text-center">
+          <p className="text-[10px] text-muted">اتسجّل</p>
+          <p className="mt-0.5 text-sm font-bold tabular-nums text-[#C45C26]">
+            {formatCurrency(totals.actual)}
+          </p>
+        </div>
+        <div className="rounded-xl bg-background px-2.5 py-2 text-center">
+          <p className="text-[10px] text-muted">
+            {totals.leftover < -0.004 ? "زيادة" : "باقي متوقع"}
+          </p>
+          <p
+            className={`mt-0.5 text-sm font-bold tabular-nums ${leftoverTone(
+              totals.leftover
+            )}`}
+          >
+            {formatCurrency(Math.abs(totals.leftover))}
+          </p>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="mt-3 text-center text-xs leading-relaxed text-muted">
+          مفيش شغل مفتوح عليه تكلفة متوقعة. اضبط أسعار الخامات من المقايسة عشان
+          يظهر الرقم.
+        </p>
+      ) : (
+        <>
+          <ul className="mt-3 flex flex-col gap-1.5 lg:hidden">
+            {rows.map((row) => (
+              <li key={row.projectId}>
+                <Link
+                  href={ROUTES.design.expenses(row.customerId, row.projectId)}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-background px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {row.projectName}
+                    </p>
+                    <p className="truncate text-[11px] text-muted">
+                      {row.customerName}
+                      {" · متوقع "}
+                      {formatCurrency(row.expected)}
+                      {" · اتسجّل "}
+                      {formatCurrency(row.actual)}
+                    </p>
+                  </div>
+                  <p
+                    className={`shrink-0 text-xs font-bold tabular-nums ${leftoverTone(
+                      row.leftover
+                    )}`}
+                  >
+                    {row.leftover < -0.004 ? "+" : ""}
+                    {formatCurrency(row.leftover)}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-3 hidden overflow-x-auto rounded-xl border border-border lg:block">
+            <table className="w-full min-w-[560px] text-start text-sm">
+              <thead className="bg-background text-[11px] text-muted">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">المشروع</th>
+                  <th className="px-3 py-2 font-semibold">العميل</th>
+                  <th className="px-3 py-2 text-end font-semibold">متوقع</th>
+                  <th className="px-3 py-2 text-end font-semibold">اتسجّل</th>
+                  <th className="px-3 py-2 text-end font-semibold">الفرق</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.projectId} className="border-t border-border">
+                    <td className="px-3 py-2">
+                      <Link
+                        href={ROUTES.design.expenses(
+                          row.customerId,
+                          row.projectId
+                        )}
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        {row.projectName}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 text-muted">{row.customerName}</td>
+                    <td className="px-3 py-2 text-end tabular-nums">
+                      {row.hasCost ? formatCurrency(row.expected) : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums text-[#C45C26]">
+                      {formatCurrency(row.actual)}
+                    </td>
+                    <td
+                      className={`px-3 py-2 text-end font-bold tabular-nums ${leftoverTone(
+                        row.leftover
+                      )}`}
+                    >
+                      {formatCurrency(row.leftover)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 

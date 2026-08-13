@@ -11,6 +11,7 @@ import {
   type ExpenseSettlement,
 } from "@/lib/accounting";
 import { listProjectExpenses, projectExpenseTotal } from "@/lib/project-money";
+import { projectExpectedExpense } from "@/lib/expected-expenses";
 import { getProjectById } from "@/lib/projects";
 import {
   createStoreExternalPurchase,
@@ -390,6 +391,8 @@ export function ProjectExpenses({
   const creditTotal = expenses
     .filter((e) => isCreditExpense(e))
     .reduce((sum, e) => sum + e.amount, 0);
+  const expected = projectExpectedExpense(projectId);
+  const leftover = Math.round((expected.expected - total) * 100) / 100;
 
   return (
     <div className="flex flex-col gap-5">
@@ -399,7 +402,15 @@ export function ProjectExpenses({
           {formatCurrency(total)}
           <span className="mr-1.5 text-sm font-semibold opacity-85">ج.م</span>
         </p>
-        <p className="mt-2 truncate text-xs opacity-85">
+        <p className="mt-2 text-xs opacity-90">
+          متوقع {formatCurrency(expected.expected)} ج.م
+          {leftover < -0.004
+            ? ` · زيادة ${formatCurrency(Math.abs(leftover))}`
+            : leftover > 0.004
+              ? ` · باقي ${formatCurrency(leftover)}`
+              : ""}
+        </p>
+        <p className="mt-1 truncate text-xs opacity-85">
           {project.name}
           {expenses.length > 0 ? ` · ${expenses.length} قيد` : ""}
         </p>
@@ -407,27 +418,41 @@ export function ProjectExpenses({
 
       <div className="hidden grid-cols-4 gap-3 lg:grid">
         <div className="rounded-2xl border border-border bg-card px-4 py-3">
-          <p className="text-[11px] text-muted">إجمالي المصروف</p>
+          <p className="text-[11px] text-muted">متوقع من المقايسة</p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-[#C45C26]">
+            {expected.hasCost
+              ? `${formatCurrency(expected.expected)} ج.م`
+              : "—"}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+          <p className="text-[11px] text-muted">إجمالي المسجّل</p>
           <p className="mt-1 text-lg font-bold tabular-nums text-[#C45C26]">
             {formatCurrency(total)} ج.م
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card px-4 py-3">
-          <p className="text-[11px] text-muted">نقدي</p>
-          <p className="mt-1 text-lg font-bold tabular-nums text-[#C45C26]">
-            {formatCurrency(cashTotal)} ج.م
+          <p className="text-[11px] text-muted">
+            {leftover < -0.004 ? "زيادة عن المتوقع" : "باقي متوقع"}
+          </p>
+          <p
+            className={`mt-1 text-lg font-bold tabular-nums ${
+              leftover < -0.004
+                ? "text-[#E85A8A]"
+                : leftover > 0.004
+                  ? "text-[#2F9B7A]"
+                  : "text-[#C45C26]"
+            }`}
+          >
+            {formatCurrency(Math.abs(leftover))} ج.م
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card px-4 py-3">
-          <p className="text-[11px] text-muted">آجل</p>
+          <p className="text-[11px] text-muted">نقدي · آجل</p>
           <p className="mt-1 text-lg font-bold tabular-nums text-[#C45C26]">
-            {formatCurrency(creditTotal)} ج.م
-          </p>
-        </div>
-        <div className="rounded-2xl border border-border bg-card px-4 py-3">
-          <p className="text-[11px] text-muted">عدد القيود</p>
-          <p className="mt-1 text-lg font-bold tabular-nums text-[#C45C26]">
-            {expenses.length}
+            {formatCurrency(cashTotal)}
+            <span className="mx-1 text-xs font-semibold text-muted">/</span>
+            {formatCurrency(creditTotal)}
           </p>
         </div>
       </div>
