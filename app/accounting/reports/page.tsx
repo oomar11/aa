@@ -12,6 +12,7 @@ export default function AccountingReportsPage() {
         backLabel="الحسابات"
         title="تقارير الربح"
         description="تعرف بتكسب ولا لأ — حسب الفترة والشغل"
+        className="px-1 print:hidden"
       />
       <div className="mt-4">
         <Suspense

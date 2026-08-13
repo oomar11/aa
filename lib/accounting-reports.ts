@@ -1,6 +1,7 @@
 import {
   loadExpenses,
   loadPayments,
+  todayIsoDate,
   type Expense,
   type Payment,
 } from "@/lib/accounting";
@@ -9,7 +10,12 @@ import { mergeCustomers } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { listAllProjects, type Project } from "@/lib/projects";
 
-export type ReportPeriod = "all" | "month" | "quarter" | "year";
+export type ReportPeriod = "all" | "month" | "quarter" | "year" | "custom";
+
+export type ReportDateRange = {
+  fromDate?: string | null;
+  toDate?: string;
+};
 
 export type ProjectProfitRow = {
   projectId: string;
@@ -45,8 +51,8 @@ export type AccountingReport = {
   expenseCount: number;
 };
 
-function startOfPeriod(period: ReportPeriod, now = new Date()): string | null {
-  if (period === "all") return null;
+export function startOfPeriod(period: ReportPeriod, now = new Date()): string | null {
+  if (period === "all" || period === "custom") return null;
   const y = now.getFullYear();
   const m = now.getMonth();
   if (period === "month") {
@@ -69,7 +75,18 @@ export const REPORT_PERIOD_LABELS: Record<ReportPeriod, string> = {
   month: "هذا الشهر",
   quarter: "هذا الربع",
   year: "هذه السنة",
+  custom: "فترة مخصصة",
 };
+
+export function reportBounds(
+  period: ReportPeriod,
+  now = new Date()
+): { fromDate: string | null; toDate: string } {
+  return {
+    fromDate: startOfPeriod(period, now),
+    toDate: now.toISOString().slice(0, 10),
+  };
+}
 
 /**
  * تقرير ربحية: هل الورشة بتكسب؟
@@ -79,10 +96,15 @@ export function buildAccountingReport(
   period: ReportPeriod = "month",
   payments: Payment[] = loadPayments(),
   expenses: Expense[] = loadExpenses(),
-  projects: Project[] = listAllProjects()
+  projects: Project[] = listAllProjects(),
+  range?: ReportDateRange
 ): AccountingReport {
-  const toDate = new Date().toISOString().slice(0, 10);
-  const fromDate = startOfPeriod(period);
+  const toDate = range?.toDate || todayIsoDate();
+  const fromDate =
+    range && "fromDate" in range
+      ? range.fromDate ?? null
+      : startOfPeriod(period);
+  const allTime = !fromDate;
   const customers = mergeCustomers();
   const customerById = new Map(customers.map((c) => [c.id, c]));
 
@@ -115,7 +137,7 @@ export function buildAccountingReport(
 
     // اعرض المشروع لو فيه حركة في الفترة أو باقي أو مصروف إجمالي
     if (
-      period === "all" ||
+      allTime ||
       periodPaid > 0 ||
       periodExp > 0 ||
       money.remaining > 0
@@ -126,13 +148,12 @@ export function buildAccountingReport(
         projectName: project.name,
         customerName: customerById.get(project.customerId)?.name ?? "عميل",
         sale: money.sale,
-        paid: period === "all" ? money.paid : periodPaid,
+        paid: allTime ? money.paid : periodPaid,
         remaining: money.remaining,
-        expenses: period === "all" ? money.expenses : periodExp,
-        profit:
-          period === "all"
-            ? money.paid - money.expenses
-            : periodPaid - periodExp,
+        expenses: allTime ? money.expenses : periodExp,
+        profit: allTime
+          ? money.paid - money.expenses
+          : periodPaid - periodExp,
         workflow: project.workflow,
       });
     }

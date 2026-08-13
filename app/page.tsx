@@ -5,7 +5,7 @@ import { HomeDashboard } from "@/components/home/HomeDashboard";
 export default function HomePage() {
   return (
     <AppShell mainClassName="flex flex-1 flex-col gap-3 px-4 pb-20 pt-1">
-      <h1 className="text-xl font-bold text-foreground">الرئيسية</h1>
+      <h1 className="text-xl font-bold text-foreground lg:hidden">الرئيسية</h1>
       <HomeDashboard />
     </AppShell>
   );

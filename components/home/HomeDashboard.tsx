@@ -23,6 +23,7 @@ import {
 } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 import { StoreInboxBanner } from "@/components/accounting/StoreInboxBanner";
+import { DesktopHomeBoard } from "@/components/home/DesktopHomeBoard";
 
 function customerName(
   map: Map<string, Customer>,
@@ -78,8 +79,10 @@ export function HomeDashboard() {
   return (
     <div className="flex flex-col gap-5">
       <StoreInboxBanner />
+      <DesktopHomeBoard />
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <div className="flex flex-col gap-5 lg:hidden">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <StatTile
           label="قيد التنفيذ"
           value={inWorkshop.length}
@@ -168,6 +171,7 @@ export function HomeDashboard() {
           </ul>
         )}
       </section>
+      </div>
     </div>
   );
 }

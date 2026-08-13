@@ -436,7 +436,97 @@ export function OrdersBrowser() {
       ) : filteredProjects.length === 0 ? (
         <EmptyState query={deferredQuery} />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <>
+          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card lg:block">
+            <table className="w-full min-w-[720px] text-start text-sm">
+              <thead className="bg-background text-[11px] text-muted">
+                <tr>
+                  <th className="px-4 py-2.5 font-semibold">المشروع</th>
+                  <th className="px-3 py-2.5 font-semibold">العميل</th>
+                  <th className="px-3 py-2.5 font-semibold">الحالة</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">البيع</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">مدفوع</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">باقي</th>
+                  <th className="px-4 py-2.5 font-semibold"> </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProjects.map((project) => {
+                  const customer = customerById.get(project.customerId);
+                  const money = getProjectMoneySummary(project.id);
+                  return (
+                    <tr
+                      key={project.id}
+                      className="border-t border-border hover:bg-primary-soft/40"
+                    >
+                      <td className="px-4 py-2.5">
+                        <Link
+                          href={ROUTES.design.editor(
+                            project.customerId,
+                            project.id
+                          )}
+                          className="font-bold text-foreground"
+                        >
+                          {project.name}
+                        </Link>
+                        {project.location ? (
+                          <p className="mt-0.5 text-[11px] text-muted">
+                            {project.location}
+                          </p>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2.5 text-muted">
+                        {customer?.name ?? "عميل"}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <WorkflowBadge
+                          workflow={project.workflow}
+                          project={project}
+                        />
+                      </td>
+                      <td className="px-3 py-2.5 text-end tabular-nums">
+                        {formatCurrency(money.sale)}
+                      </td>
+                      <td className="px-3 py-2.5 text-end tabular-nums text-[#2F9B7A]">
+                        {formatCurrency(money.paid)}
+                      </td>
+                      <td
+                        className={`px-3 py-2.5 text-end tabular-nums font-semibold ${
+                          money.remaining > 0
+                            ? "text-[#E85A8A]"
+                            : "text-[#2F9B7A]"
+                        }`}
+                      >
+                        {formatCurrency(money.remaining)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center justify-end gap-2">
+                          {project.workflow === "quote" ? (
+                            <Link
+                              href={ROUTES.accounting.depositForProject(
+                                project.customerId,
+                                project.id
+                              )}
+                              className="rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-white"
+                            >
+                              دفعة
+                            </Link>
+                          ) : null}
+                          <RowMenu
+                            onDelete={() => handleDeleteProject(project)}
+                            editCustomerHref={ROUTES.design.editCustomer(
+                              project.customerId
+                            )}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        <ul className="flex flex-col gap-3 lg:hidden">
           {filteredProjects.map((project) => {
             const customer = customerById.get(project.customerId);
             const visual = isProjectOnHold(project)
@@ -495,6 +585,7 @@ export function OrdersBrowser() {
             );
           })}
         </ul>
+        </>
       )}
     </div>
   );

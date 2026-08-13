@@ -110,7 +110,10 @@ export function WorkshopBoard() {
   const queueIds = useMemo(() => queued.map((p) => p.id).join("|"), [queued]);
 
   useLayoutEffect(() => {
-    if (tab !== "queued") return;
+    if (tab !== "queued" && typeof window !== "undefined") {
+      const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+      if (!isDesktop) return;
+    }
     const prefersReduced =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -218,7 +221,7 @@ export function WorkshopBoard() {
       <div
         role="tablist"
         aria-label="حالات الورشة"
-        className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden"
       >
         {tabs.map((t) => {
           const active = tab === t.id;
@@ -245,89 +248,42 @@ export function WorkshopBoard() {
         })}
       </div>
 
-      {tab === "workshop" ? (
-        <ProjectList
-          projects={inWorkshop}
-          empty="لا يوجد مشروع قيد التنفيذ — ابدأ من الانتظار"
-          emptyAction={{ href: undefined, onSelectTab: () => setTab("queued"), label: "قائمة الانتظار" }}
-          renderRow={(project) => (
-            <ProjectRow
-              project={project}
-              tone="workshop"
-              customerLabel={customerName(customerById, project.customerId)}
-              primaryAction={
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (
-                      !window.confirm(
-                        "إكمال التنفيذ؟ سيصبح جاهزاً للتسليم."
-                      )
-                    )
-                      return;
-                    completeWorkshopProject(project.id);
-                    setTick((n) => n + 1);
-                  }}
-                  className="rounded-xl bg-wf-workshop px-3 py-1.5 text-[11px] font-bold text-white"
-                >
-                  إكمال التنفيذ
-                </button>
-              }
-              menuActions={[
-                {
-                  label: "إيقاف",
-                  onClick: () => handleHold(project.id),
-                },
-                {
-                  label: "إعادة للانتظار",
-                  onClick: () => {
-                    returnToQueue(project.id);
-                    setTick((n) => n + 1);
-                  },
-                },
-              ]}
-            />
-          )}
-        />
-      ) : null}
-
-      {tab === "queued" ? (
-        queued.length === 0 ? (
-          <EmptyBox>
-            قائمة الانتظار فارغة.{" "}
-            <Link
-              href={ROUTES.accounting.newPayment}
-              className="font-semibold text-primary"
-            >
-              استلام دفعة
-            </Link>
-          </EmptyBox>
-        ) : (
-          <ul className="flex flex-col gap-2.5">
-            {queued.map((project, index) => (
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-3 lg:items-start xl:grid-cols-5">
+        <WorkshopColumn
+          label="تنفيذ"
+          count={inWorkshop.length}
+          visual={WORKFLOW_VISUAL.workshop}
+          visible={tab === "workshop"}
+        >
+          <ProjectList
+            projects={inWorkshop}
+            empty="لا يوجد مشروع قيد التنفيذ — ابدأ من الانتظار"
+            emptyAction={{
+              href: undefined,
+              onSelectTab: () => setTab("queued"),
+              label: "قائمة الانتظار",
+            }}
+            renderRow={(project) => (
               <ProjectRow
-                key={project.id}
                 project={project}
-                tone="queued"
-                badge={index === 0 ? "التالي" : `#${index + 1}`}
-                highlight={index === 0}
-                moving={movingId === project.id}
-                listRef={(el) => {
-                  if (el) queueItemRefs.current.set(project.id, el);
-                  else queueItemRefs.current.delete(project.id);
-                }}
+                tone="workshop"
                 customerLabel={customerName(customerById, project.customerId)}
                 primaryAction={
                   <button
                     type="button"
                     onClick={() => {
-                      startWorkshopProject(project.id);
+                      if (
+                        !window.confirm(
+                          "إكمال التنفيذ؟ سيصبح جاهزاً للتسليم."
+                        )
+                      )
+                        return;
+                      completeWorkshopProject(project.id);
                       setTick((n) => n + 1);
-                      setTab("workshop");
                     }}
-                    className="rounded-xl bg-wf-queued px-3 py-1.5 text-[11px] font-bold text-white"
+                    className="rounded-xl bg-wf-workshop px-3 py-1.5 text-[11px] font-bold text-white"
                   >
-                    بدء التنفيذ
+                    إكمال التنفيذ
                   </button>
                 }
                 menuActions={[
@@ -336,122 +292,236 @@ export function WorkshopBoard() {
                     onClick: () => handleHold(project.id),
                   },
                   {
-                    label: "تحريك لأعلى",
-                    disabled: index === 0 || movingId !== null,
-                    onClick: () => handleMoveInQueue(project.id, "up"),
-                  },
-                  {
-                    label: "تحريك لأسفل",
-                    disabled:
-                      index === queued.length - 1 || movingId !== null,
-                    onClick: () => handleMoveInQueue(project.id, "down"),
+                    label: "إعادة للانتظار",
+                    onClick: () => {
+                      returnToQueue(project.id);
+                      setTick((n) => n + 1);
+                    },
                   },
                 ]}
               />
-            ))}
-          </ul>
-        )
-      ) : null}
+            )}
+          />
+        </WorkshopColumn>
 
-      {tab === "held" ? (
-        <ProjectList
-          projects={held}
-          empty="مفيش شغل واقف دلوقتي"
-          renderRow={(project) => (
-            <ProjectRow
-              project={project}
-              tone="hold"
-              customerLabel={customerName(customerById, project.customerId)}
-              holdReason={project.holdReason}
-              primaryAction={
-                <button
-                  type="button"
-                  onClick={() => {
-                    resumeProject(project.id);
-                    setTick((n) => n + 1);
+        <WorkshopColumn
+          label="انتظار"
+          count={queued.length}
+          visual={WORKFLOW_VISUAL.queued}
+          visible={tab === "queued"}
+        >
+          {queued.length === 0 ? (
+            <EmptyBox>
+              قائمة الانتظار فارغة.{" "}
+              <Link
+                href={ROUTES.accounting.newPayment}
+                className="font-semibold text-primary"
+              >
+                استلام دفعة
+              </Link>
+            </EmptyBox>
+          ) : (
+            <ul className="flex flex-col gap-2.5">
+              {queued.map((project, index) => (
+                <ProjectRow
+                  key={project.id}
+                  project={project}
+                  tone="queued"
+                  badge={index === 0 ? "التالي" : `#${index + 1}`}
+                  highlight={index === 0}
+                  moving={movingId === project.id}
+                  listRef={(el) => {
+                    if (el) queueItemRefs.current.set(project.id, el);
+                    else queueItemRefs.current.delete(project.id);
                   }}
-                  className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-950"
-                >
-                  {project.workflow === "workshop"
-                    ? "كمّل التنفيذ"
-                    : "رجّع للانتظار"}
-                </button>
-              }
-              menuActions={
-                project.workflow !== "workshop"
-                  ? [
-                      {
-                        label: "ابدأ دلوقتي",
-                        onClick: () => {
-                          startWorkshopProject(project.id);
-                          setTick((n) => n + 1);
-                          setTab("workshop");
+                  customerLabel={customerName(customerById, project.customerId)}
+                  primaryAction={
+                    <button
+                      type="button"
+                      onClick={() => {
+                        startWorkshopProject(project.id);
+                        setTick((n) => n + 1);
+                        setTab("workshop");
+                      }}
+                      className="rounded-xl bg-wf-queued px-3 py-1.5 text-[11px] font-bold text-white"
+                    >
+                      بدء التنفيذ
+                    </button>
+                  }
+                  menuActions={[
+                    {
+                      label: "إيقاف",
+                      onClick: () => handleHold(project.id),
+                    },
+                    {
+                      label: "تحريك لأعلى",
+                      disabled: index === 0 || movingId !== null,
+                      onClick: () => handleMoveInQueue(project.id, "up"),
+                    },
+                    {
+                      label: "تحريك لأسفل",
+                      disabled:
+                        index === queued.length - 1 || movingId !== null,
+                      onClick: () => handleMoveInQueue(project.id, "down"),
+                    },
+                  ]}
+                />
+              ))}
+            </ul>
+          )}
+        </WorkshopColumn>
+
+        <WorkshopColumn
+          label="تسليم"
+          count={awaiting.length}
+          visual={DELIVERY_VISUAL.awaiting}
+          visible={tab === "awaiting"}
+        >
+          <ProjectList
+            projects={awaiting}
+            empty="مفيش شغل مستني التسليم"
+            renderRow={(project) => (
+              <ProjectRow
+                project={project}
+                tone="awaiting"
+                customerLabel={customerName(customerById, project.customerId)}
+                primaryAction={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markProjectDelivered(project.id);
+                      setTick((n) => n + 1);
+                    }}
+                    className="rounded-xl bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white"
+                  >
+                    تم التسليم
+                  </button>
+                }
+                menuActions={[]}
+              />
+            )}
+          />
+        </WorkshopColumn>
+
+        <WorkshopColumn
+          label="متوقف"
+          count={held.length}
+          visual={HOLD_VISUAL}
+          visible={tab === "held"}
+          className="lg:col-span-1"
+        >
+          <ProjectList
+            projects={held}
+            empty="مفيش شغل واقف دلوقتي"
+            renderRow={(project) => (
+              <ProjectRow
+                project={project}
+                tone="hold"
+                customerLabel={customerName(customerById, project.customerId)}
+                holdReason={project.holdReason}
+                primaryAction={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resumeProject(project.id);
+                      setTick((n) => n + 1);
+                    }}
+                    className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-950"
+                  >
+                    {project.workflow === "workshop"
+                      ? "كمّل التنفيذ"
+                      : "رجّع للانتظار"}
+                  </button>
+                }
+                menuActions={
+                  project.workflow !== "workshop"
+                    ? [
+                        {
+                          label: "ابدأ دلوقتي",
+                          onClick: () => {
+                            startWorkshopProject(project.id);
+                            setTick((n) => n + 1);
+                            setTab("workshop");
+                          },
                         },
-                      },
-                    ]
-                  : []
-              }
-            />
-          )}
-        />
-      ) : null}
+                      ]
+                    : []
+                }
+              />
+            )}
+          />
+        </WorkshopColumn>
 
-      {tab === "awaiting" ? (
-        <ProjectList
-          projects={awaiting}
-          empty="مفيش شغل مستني التسليم"
-          renderRow={(project) => (
-            <ProjectRow
-              project={project}
-              tone="awaiting"
-              customerLabel={customerName(customerById, project.customerId)}
-              primaryAction={
-                <button
-                  type="button"
-                  onClick={() => {
-                    markProjectDelivered(project.id);
-                    setTick((n) => n + 1);
-                  }}
-                  className="rounded-xl bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white"
-                >
-                  تم التسليم
-                </button>
-              }
-              menuActions={[]}
-            />
-          )}
-        />
-      ) : null}
-
-      {tab === "delivered" ? (
-        <ProjectList
-          projects={delivered}
-          empty="لسه مفيش تسليم مسجّل"
-          renderRow={(project) => (
-            <ProjectRow
-              project={project}
-              tone="delivered"
-              customerLabel={customerName(customerById, project.customerId)}
-              deliveredAt={project.deliveredAt}
-              primaryAction={
-                <button
-                  type="button"
-                  onClick={() => {
-                    markProjectAwaitingDelivery(project.id);
-                    setTick((n) => n + 1);
-                    setTab("awaiting");
-                  }}
-                  className="rounded-xl border border-border bg-card px-3 py-1.5 text-[11px] font-semibold"
-                >
-                  رجّع لجاهز للتسليم
-                </button>
-              }
-              menuActions={[]}
-            />
-          )}
-        />
-      ) : null}
+        <WorkshopColumn
+          label="تم"
+          count={delivered.length}
+          visual={DELIVERY_VISUAL.delivered}
+          visible={tab === "delivered"}
+        >
+          <ProjectList
+            projects={delivered}
+            empty="لسه مفيش تسليم مسجّل"
+            renderRow={(project) => (
+              <ProjectRow
+                project={project}
+                tone="delivered"
+                customerLabel={customerName(customerById, project.customerId)}
+                deliveredAt={project.deliveredAt}
+                primaryAction={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markProjectAwaitingDelivery(project.id);
+                      setTick((n) => n + 1);
+                      setTab("awaiting");
+                    }}
+                    className="rounded-xl border border-border bg-card px-3 py-1.5 text-[11px] font-semibold"
+                  >
+                    رجّع لجاهز للتسليم
+                  </button>
+                }
+                menuActions={[]}
+              />
+            )}
+          />
+        </WorkshopColumn>
+      </div>
     </div>
+  );
+}
+
+function WorkshopColumn({
+  label,
+  count,
+  visual,
+  visible,
+  className = "",
+  children,
+}: {
+  label: string;
+  count: number;
+  visual: { text: string; soft: string; border: string; dot: string };
+  visible: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className={`${visible ? "flex" : "hidden"} min-w-0 flex-col gap-2 lg:flex ${className}`}
+    >
+      <div
+        className={`hidden items-center justify-between rounded-xl border px-3 py-2 lg:flex ${visual.soft} ${visual.border}`}
+      >
+        <div className="flex items-center gap-2">
+          <span className={`inline-block h-2 w-2 rounded-full ${visual.dot}`} />
+          <h2 className={`text-sm font-bold ${visual.text}`}>{label}</h2>
+        </div>
+        <span className={`text-xs font-bold tabular-nums ${visual.text}`}>
+          {count}
+        </span>
+      </div>
+      {children}
+    </section>
   );
 }
 

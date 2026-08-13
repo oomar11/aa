@@ -22,7 +22,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="flex items-center justify-between px-4 pt-4 pb-2">
+    <header className="flex items-center justify-between px-4 pt-4 pb-2 print:hidden lg:hidden">
       <Link href={ROUTES.home} className="flex min-w-0 items-center gap-2.5">
         <WindowLogo />
         <span className="truncate text-lg font-bold tracking-tight text-foreground">
