@@ -836,11 +836,7 @@ export async function syncProjectSaleToStore(
   );
   const money = getProjectMoneySummary(input.projectId);
   const amount = input.includeInCustomerLedger
-    ? Math.max(
-        0,
-        projectLedgerSaleAmount(input.projectId),
-        Number(input.saleAmount) || 0
-      )
+    ? Math.max(0, projectLedgerSaleAmount(input.projectId))
     : 0;
   await postStorePartyLedger(
     {

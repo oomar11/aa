@@ -16,13 +16,11 @@ import {
 } from "@/lib/project-money";
 import { getProjectById } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
-import { isAccountedProject } from "@/lib/accounting-scope";
 import {
-  ensureCustomerLinkedToStore,
   hasStoreBridgeCredentials,
   loadStoreBridgeConfig,
-  syncProjectSaleToStore,
 } from "@/lib/store-bridge";
+import { scheduleStoreLedgerMirror } from "@/lib/store-ledger-mirror";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { WORKFLOW_LABELS, WORKFLOW_VISUAL } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
@@ -74,42 +72,12 @@ export function ProjectAccount({
   const project = getProjectById(projectId);
   const customer = getCustomerById(customerId);
 
-  // مرآة البيع على حساب العميل في المحل فقط بعد عربون/دخول الحساب.
-  // المقايسات الخام تُلغى من كشف العميل لو اتسجّلت بالغلط قبل كده.
+  // أي تعديل على الحساب يترحل لكشف العميل في المحل (خصم / بنود / دفعات).
   useEffect(() => {
     if (!money) return;
-    const liveCustomer = getCustomerById(customerId);
-    const liveProject = getProjectById(projectId);
-    if (!liveCustomer || !liveProject) return;
     const cfg = loadStoreBridgeConfig();
     if (!hasStoreBridgeCredentials(cfg) || !cfg) return;
-    const accounted = isAccountedProject(liveProject);
-    let cancelled = false;
-    void (async () => {
-      try {
-        const storeCustomerId = await ensureCustomerLinkedToStore(
-          liveCustomer,
-          cfg
-        );
-        if (cancelled || !storeCustomerId) return;
-        await syncProjectSaleToStore(
-          {
-            storeCustomerId,
-            projectId: liveProject.id,
-            projectName: liveProject.name,
-            saleAmount: accounted ? money.sale : 0,
-            includeInCustomerLedger: accounted,
-            localPartyId: liveCustomer.id,
-          },
-          cfg
-        );
-      } catch {
-        /* silent — الربط اختياري وقت العرض */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    scheduleStoreLedgerMirror(400);
   }, [customerId, projectId, money, project?.workflow]);
   const visual = project ? WORKFLOW_VISUAL[project.workflow] : null;
   const profit = money != null ? money.paid - money.expenses : 0;

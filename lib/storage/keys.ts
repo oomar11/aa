@@ -59,7 +59,10 @@ export const SHARED_KEY_EVENTS: Record<SharedStorageKey, string[]> = {
     "upvc-projects-updated",
     "upvc-accounting-updated",
   ],
-  [STORAGE_KEYS.projectItems]: ["upvc-projects-updated"],
+  [STORAGE_KEYS.projectItems]: [
+    "upvc-projects-updated",
+    "upvc-accounting-updated",
+  ],
   [STORAGE_KEYS.materialSystems]: [
     "upvc-material-catalog-updated",
     "upvc-mesh-catalog-updated",

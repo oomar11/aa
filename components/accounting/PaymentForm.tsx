@@ -253,7 +253,11 @@ export function PaymentForm() {
                   ledgerErr instanceof Error
                     ? ledgerErr.message
                     : "خطأ غير معروف"
-                }. استخدم «إعادة مزامنة المتجر» من الإعدادات.`;
+                }. جاري إعادة المحاولة تلقائياً.`;
+              const { scheduleStoreLedgerMirror } = await import(
+                "@/lib/store-ledger-mirror"
+              );
+              scheduleStoreLedgerMirror(600);
             }
           }
         } catch (err) {
