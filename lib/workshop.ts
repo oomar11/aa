@@ -422,6 +422,111 @@ export function markProjectAwaitingDelivery(
   return updated;
 }
 
+/** أعمدة لوحة الورشة */
+export type WorkshopColumnId =
+  | "workshop"
+  | "queued"
+  | "held"
+  | "awaiting"
+  | "delivered";
+
+export const WORKSHOP_COLUMN_LABELS: Record<WorkshopColumnId, string> = {
+  workshop: "تنفيذ",
+  queued: "انتظار",
+  awaiting: "تسليم",
+  held: "متوقف",
+  delivered: "تم",
+};
+
+export function projectWorkshopColumn(project: Project): WorkshopColumnId {
+  if (isProjectOnHold(project)) return "held";
+  if (project.workflow === "workshop") return "workshop";
+  if (project.workflow === "queued") return "queued";
+  if (project.workflow === "done") {
+    return projectDeliveryStatus(project) === "delivered"
+      ? "delivered"
+      : "awaiting";
+  }
+  return "queued";
+}
+
+/**
+ * نقل شغلانة بين أعمدة الورشة (سحب أو قائمة نقل).
+ * التوقف يحتاج سبب؛ باقي النقل يمسح التوقف تلقائياً.
+ */
+export function moveProjectToWorkshopColumn(
+  projectId: string,
+  target: WorkshopColumnId,
+  holdReason?: string
+): Project | undefined {
+  const project = getProjectById(projectId);
+  if (!project) return undefined;
+  if (projectWorkshopColumn(project) === target) return project;
+
+  if (target === "held") {
+    const reason = (holdReason ?? "").trim();
+    if (!reason) return project;
+    const base: Project = {
+      ...project,
+      holdReason: reason,
+      holdAt: todayIsoDate(),
+    };
+    if (project.workflow === "done" || project.workflow === "quote") {
+      if (project.workflow === "quote" && !projectHasPayment(project)) {
+        return project;
+      }
+      base.status = "open";
+      base.workflow = "queued";
+      base.queueOrder = project.queueOrder ?? nextQueueOrder();
+      base.deliveryStatus = undefined;
+      base.deliveredAt = undefined;
+    }
+    upsertProjectOverride(base);
+    return base;
+  }
+
+  if (target === "workshop" && project.workflow === "quote" && !projectHasPayment(project)) {
+    return project;
+  }
+
+  const updated: Project = {
+    ...project,
+    holdReason: undefined,
+    holdAt: undefined,
+  };
+
+  if (target === "workshop") {
+    updated.status = "open";
+    updated.workflow = "workshop";
+    updated.depositAt = project.depositAt ?? todayIsoDate();
+    updated.queueOrder = project.queueOrder ?? nextQueueOrder();
+    updated.deliveryStatus = undefined;
+    updated.deliveredAt = undefined;
+  } else if (target === "queued") {
+    if (project.workflow === "quote" && !projectHasPayment(project)) {
+      return project;
+    }
+    updated.status = "open";
+    updated.workflow = "queued";
+    updated.queueOrder = project.queueOrder ?? nextQueueOrder();
+    updated.deliveryStatus = undefined;
+    updated.deliveredAt = undefined;
+  } else if (target === "awaiting") {
+    updated.status = "done";
+    updated.workflow = "done";
+    updated.deliveryStatus = "awaiting";
+    updated.deliveredAt = undefined;
+  } else {
+    updated.status = "done";
+    updated.workflow = "done";
+    updated.deliveryStatus = "delivered";
+    updated.deliveredAt = project.deliveredAt ?? todayIsoDate();
+  }
+
+  upsertProjectOverride(updated);
+  return updated;
+}
+
 function sortByQueue(a: Project, b: Project): number {
   const ao = a.queueOrder ?? Number.MAX_SAFE_INTEGER;
   const bo = b.queueOrder ?? Number.MAX_SAFE_INTEGER;

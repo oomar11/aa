@@ -8,12 +8,15 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import {
   HOLD_REASON_OPTIONS,
   PROJECTS_UPDATED_EVENT,
+  getProjectById,
   type Project,
   type ProjectWorkflow,
 } from "@/lib/projects";
@@ -31,10 +34,14 @@ import {
   markProjectAwaitingDelivery,
   markProjectDelivered,
   moveInQueue,
+  moveProjectToWorkshopColumn,
+  projectWorkshopColumn,
   resumeProject,
   returnToQueue,
   startWorkshopProject,
   WORKFLOW_VISUAL,
+  WORKSHOP_COLUMN_LABELS,
+  type WorkshopColumnId,
 } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 import { ProjectMoneyLine } from "@/components/projects/ProjectMoneyLine";
@@ -42,7 +49,16 @@ import { ProjectMoneyLine } from "@/components/projects/ProjectMoneyLine";
 const QUEUE_FLIP_MS = 320;
 const QUEUE_FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
-type TabId = "workshop" | "queued" | "held" | "awaiting" | "delivered";
+type TabId = WorkshopColumnId;
+
+const PROJECT_DRAG_TYPE = "application/x-upvc-project";
+const COLUMN_ORDER: WorkshopColumnId[] = [
+  "workshop",
+  "queued",
+  "awaiting",
+  "held",
+  "delivered",
+];
 
 function initialWorkshopTab(): TabId {
   if (typeof window === "undefined") return "workshop";
@@ -78,6 +94,9 @@ export function WorkshopBoard() {
   const [tick, setTick] = useState(0);
   const [tab, setTab] = useState<TabId>(initialWorkshopTab);
   const [movingId, setMovingId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<TabId | null>(null);
+  const justDraggedRef = useRef(false);
   const queueItemRefs = useRef(new Map<string, HTMLLIElement>());
   const pendingFlipFromRef = useRef<Map<string, DOMRect> | null>(null);
   const prevQueueRectsRef = useRef(new Map<string, DOMRect>());
@@ -183,6 +202,68 @@ export function WorkshopBoard() {
     setTick((n) => n + 1);
   }
 
+  function handleMoveToColumn(projectId: string, target: WorkshopColumnId) {
+    const project = getProjectById(projectId);
+    if (!project || projectWorkshopColumn(project) === target) return;
+    if (target === "held") {
+      const reason = askHoldReason();
+      if (reason === null) return;
+      moveProjectToWorkshopColumn(projectId, target, reason);
+    } else {
+      moveProjectToWorkshopColumn(projectId, target);
+    }
+    setTick((n) => n + 1);
+    setTab(target);
+  }
+
+  function onCardDragStart(projectId: string, event: DragEvent) {
+    const fromControl = (event.target as HTMLElement).closest(
+      "button, select, input, label"
+    );
+    if (fromControl) {
+      event.preventDefault();
+      return;
+    }
+    justDraggedRef.current = true;
+    event.dataTransfer.setData(PROJECT_DRAG_TYPE, projectId);
+    event.dataTransfer.setData("text/plain", projectId);
+    event.dataTransfer.effectAllowed = "move";
+    setDraggingId(projectId);
+  }
+
+  function onCardDragEnd() {
+    setDraggingId(null);
+    setDropTarget(null);
+    window.setTimeout(() => {
+      justDraggedRef.current = false;
+    }, 80);
+  }
+
+  function onColumnDragOver(column: WorkshopColumnId, event: DragEvent) {
+    const types = Array.from(event.dataTransfer.types);
+    if (
+      !draggingId &&
+      !types.includes(PROJECT_DRAG_TYPE) &&
+      !types.includes("text/plain")
+    ) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    if (dropTarget !== column) setDropTarget(column);
+  }
+
+  function onColumnDrop(column: WorkshopColumnId, event: DragEvent) {
+    event.preventDefault();
+    const projectId =
+      event.dataTransfer.getData(PROJECT_DRAG_TYPE) ||
+      event.dataTransfer.getData("text/plain");
+    setDraggingId(null);
+    setDropTarget(null);
+    if (!projectId) return;
+    handleMoveToColumn(projectId, column);
+  }
+
   const tabs: {
     id: TabId;
     label: string;
@@ -248,12 +329,24 @@ export function WorkshopBoard() {
         })}
       </div>
 
-      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-3 lg:items-start xl:grid-cols-5">
+      <p className="hidden text-xs text-muted lg:block">
+        اسحب المشروع بين الأعمدة، أو اختار من قائمة «انقل».
+      </p>
+
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-3 lg:items-stretch xl:grid-cols-5">
         <WorkshopColumn
           label="تنفيذ"
           count={inWorkshop.length}
           visual={WORKFLOW_VISUAL.workshop}
           visible={tab === "workshop"}
+          dropActive={dropTarget === "workshop"}
+          onDragOver={(e) => onColumnDragOver("workshop", e)}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setDropTarget((cur) => (cur === "workshop" ? null : cur));
+            }
+          }}
+          onDrop={(e) => onColumnDrop("workshop", e)}
         >
           <ProjectList
             projects={inWorkshop}
@@ -268,6 +361,18 @@ export function WorkshopBoard() {
                 project={project}
                 tone="workshop"
                 customerLabel={customerName(customerById, project.customerId)}
+                dragging={draggingId === project.id}
+                onDragStart={(e) => onCardDragStart(project.id, e)}
+                onDragEnd={onCardDragEnd}
+                onOpenClick={(e) => {
+                  if (justDraggedRef.current) e.preventDefault();
+                }}
+                moveControl={
+                  <MoveToSelect
+                    current="workshop"
+                    onMove={(target) => handleMoveToColumn(project.id, target)}
+                  />
+                }
                 primaryAction={
                   <button
                     type="button"
@@ -309,6 +414,14 @@ export function WorkshopBoard() {
           count={queued.length}
           visual={WORKFLOW_VISUAL.queued}
           visible={tab === "queued"}
+          dropActive={dropTarget === "queued"}
+          onDragOver={(e) => onColumnDragOver("queued", e)}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setDropTarget((cur) => (cur === "queued" ? null : cur));
+            }
+          }}
+          onDrop={(e) => onColumnDrop("queued", e)}
         >
           {queued.length === 0 ? (
             <EmptyBox>
@@ -330,11 +443,23 @@ export function WorkshopBoard() {
                   badge={index === 0 ? "التالي" : `#${index + 1}`}
                   highlight={index === 0}
                   moving={movingId === project.id}
+                  dragging={draggingId === project.id}
                   listRef={(el) => {
                     if (el) queueItemRefs.current.set(project.id, el);
                     else queueItemRefs.current.delete(project.id);
                   }}
                   customerLabel={customerName(customerById, project.customerId)}
+                  onDragStart={(e) => onCardDragStart(project.id, e)}
+                  onDragEnd={onCardDragEnd}
+                  onOpenClick={(e) => {
+                    if (justDraggedRef.current) e.preventDefault();
+                  }}
+                  moveControl={
+                    <MoveToSelect
+                      current="queued"
+                      onMove={(target) => handleMoveToColumn(project.id, target)}
+                    />
+                  }
                   primaryAction={
                     <button
                       type="button"
@@ -376,6 +501,14 @@ export function WorkshopBoard() {
           count={awaiting.length}
           visual={DELIVERY_VISUAL.awaiting}
           visible={tab === "awaiting"}
+          dropActive={dropTarget === "awaiting"}
+          onDragOver={(e) => onColumnDragOver("awaiting", e)}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setDropTarget((cur) => (cur === "awaiting" ? null : cur));
+            }
+          }}
+          onDrop={(e) => onColumnDrop("awaiting", e)}
         >
           <ProjectList
             projects={awaiting}
@@ -385,6 +518,18 @@ export function WorkshopBoard() {
                 project={project}
                 tone="awaiting"
                 customerLabel={customerName(customerById, project.customerId)}
+                dragging={draggingId === project.id}
+                onDragStart={(e) => onCardDragStart(project.id, e)}
+                onDragEnd={onCardDragEnd}
+                onOpenClick={(e) => {
+                  if (justDraggedRef.current) e.preventDefault();
+                }}
+                moveControl={
+                  <MoveToSelect
+                    current="awaiting"
+                    onMove={(target) => handleMoveToColumn(project.id, target)}
+                  />
+                }
                 primaryAction={
                   <button
                     type="button"
@@ -409,6 +554,14 @@ export function WorkshopBoard() {
           visual={HOLD_VISUAL}
           visible={tab === "held"}
           className="lg:col-span-1"
+          dropActive={dropTarget === "held"}
+          onDragOver={(e) => onColumnDragOver("held", e)}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setDropTarget((cur) => (cur === "held" ? null : cur));
+            }
+          }}
+          onDrop={(e) => onColumnDrop("held", e)}
         >
           <ProjectList
             projects={held}
@@ -419,6 +572,18 @@ export function WorkshopBoard() {
                 tone="hold"
                 customerLabel={customerName(customerById, project.customerId)}
                 holdReason={project.holdReason}
+                dragging={draggingId === project.id}
+                onDragStart={(e) => onCardDragStart(project.id, e)}
+                onDragEnd={onCardDragEnd}
+                onOpenClick={(e) => {
+                  if (justDraggedRef.current) e.preventDefault();
+                }}
+                moveControl={
+                  <MoveToSelect
+                    current="held"
+                    onMove={(target) => handleMoveToColumn(project.id, target)}
+                  />
+                }
                 primaryAction={
                   <button
                     type="button"
@@ -457,6 +622,14 @@ export function WorkshopBoard() {
           count={delivered.length}
           visual={DELIVERY_VISUAL.delivered}
           visible={tab === "delivered"}
+          dropActive={dropTarget === "delivered"}
+          onDragOver={(e) => onColumnDragOver("delivered", e)}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setDropTarget((cur) => (cur === "delivered" ? null : cur));
+            }
+          }}
+          onDrop={(e) => onColumnDrop("delivered", e)}
         >
           <ProjectList
             projects={delivered}
@@ -467,6 +640,18 @@ export function WorkshopBoard() {
                 tone="delivered"
                 customerLabel={customerName(customerById, project.customerId)}
                 deliveredAt={project.deliveredAt}
+                dragging={draggingId === project.id}
+                onDragStart={(e) => onCardDragStart(project.id, e)}
+                onDragEnd={onCardDragEnd}
+                onOpenClick={(e) => {
+                  if (justDraggedRef.current) e.preventDefault();
+                }}
+                moveControl={
+                  <MoveToSelect
+                    current="delivered"
+                    onMove={(target) => handleMoveToColumn(project.id, target)}
+                  />
+                }
                 primaryAction={
                   <button
                     type="button"
@@ -496,6 +681,10 @@ function WorkshopColumn({
   visual,
   visible,
   className = "",
+  dropActive = false,
+  onDragOver,
+  onDragLeave,
+  onDrop,
   children,
 }: {
   label: string;
@@ -503,11 +692,20 @@ function WorkshopColumn({
   visual: { text: string; soft: string; border: string; dot: string };
   visible: boolean;
   className?: string;
+  dropActive?: boolean;
+  onDragOver?: (event: DragEvent<HTMLElement>) => void;
+  onDragLeave?: (event: DragEvent<HTMLElement>) => void;
+  onDrop?: (event: DragEvent<HTMLElement>) => void;
   children: ReactNode;
 }) {
   return (
     <section
-      className={`${visible ? "flex" : "hidden"} min-w-0 flex-col gap-2 lg:flex ${className}`}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`${visible ? "flex" : "hidden"} min-h-[12rem] min-w-0 flex-col gap-2 rounded-2xl p-1 transition-colors lg:flex ${
+        dropActive ? "bg-primary-soft/70 ring-2 ring-primary/40" : ""
+      } ${className}`}
     >
       <div
         className={`hidden items-center justify-between rounded-xl border px-3 py-2 lg:flex ${visual.soft} ${visual.border}`}
@@ -520,7 +718,7 @@ function WorkshopColumn({
           {count}
         </span>
       </div>
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
   );
 }
@@ -581,9 +779,35 @@ function ProjectList({
 
 function EmptyBox({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm leading-relaxed text-muted">
+    <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm leading-relaxed text-muted">
       {children}
     </div>
+  );
+}
+
+function MoveToSelect({
+  current,
+  onMove,
+}: {
+  current: WorkshopColumnId;
+  onMove: (target: WorkshopColumnId) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1.5 text-[11px] text-muted">
+      <span>انقل</span>
+      <select
+        value={current}
+        aria-label="نقل المشروع"
+        onChange={(e) => onMove(e.target.value as WorkshopColumnId)}
+        className="h-8 max-w-[7.5rem] rounded-xl border border-border bg-card px-2 text-[11px] font-semibold text-foreground"
+      >
+        {COLUMN_ORDER.map((id) => (
+          <option key={id} value={id}>
+            {WORKSHOP_COLUMN_LABELS[id]}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -602,11 +826,16 @@ function ProjectRow({
   badge,
   highlight,
   moving,
+  dragging,
   listRef,
   holdReason,
   deliveredAt,
   primaryAction,
   menuActions,
+  moveControl,
+  onDragStart,
+  onDragEnd,
+  onOpenClick,
 }: {
   project: Project;
   customerLabel: string;
@@ -614,11 +843,16 @@ function ProjectRow({
   badge?: string;
   highlight?: boolean;
   moving?: boolean;
+  dragging?: boolean;
   listRef?: (el: HTMLLIElement | null) => void;
   holdReason?: string;
   deliveredAt?: string;
   primaryAction: ReactNode;
   menuActions: MenuAction[];
+  moveControl?: ReactNode;
+  onDragStart?: (event: DragEvent<HTMLLIElement>) => void;
+  onDragEnd?: () => void;
+  onOpenClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const editorHref = ROUTES.design.editor(project.customerId, project.id);
@@ -643,7 +877,10 @@ function ProjectRow({
   return (
     <li
       ref={listRef}
-      className={`rounded-2xl border border-s-[3px] bg-card p-3.5 will-change-transform ${visual.rail} ${
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className={`cursor-grab rounded-2xl border border-s-[3px] bg-card p-3.5 will-change-transform active:cursor-grabbing ${visual.rail} ${
         highlight
           ? `${visual.border} shadow-[0_4px_16px_rgba(196,122,18,0.14)]`
           : "border-border"
@@ -651,10 +888,12 @@ function ProjectRow({
         moving
           ? "shadow-[0_8px_24px_rgba(196,122,18,0.18)] ring-1 ring-wf-queued/25"
           : ""
-      }`}
+      } ${dragging ? "opacity-50" : ""}`}
     >
       <Link
         href={editorHref}
+        draggable={false}
+        onClick={onOpenClick}
         className="block active:opacity-80"
         aria-label={`فتح ${project.name}`}
       >
@@ -713,6 +952,7 @@ function ProjectRow({
       </Link>
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         {primaryAction}
+        {moveControl}
         {menuActions.length > 0 ? (
           <div className="relative ms-auto">
             <button
