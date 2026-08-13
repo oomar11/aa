@@ -7,6 +7,7 @@ import { loadCompany } from "@/lib/company";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import {
   FRAME_COLORS,
+  isExtraChargeItem,
   normalizeFrameColor,
   type DesignItem,
 } from "@/lib/design-items";
@@ -594,6 +595,7 @@ export function buildProjectPurchaseOrder(
 
   const map = new Map<string, PurchaseLine>();
   for (const item of items) {
+    if (isExtraChargeItem(item)) continue;
     try {
       contributeItem(map, item, project, catalog);
     } catch (err) {
@@ -626,8 +628,10 @@ export function buildProjectPurchaseOrder(
     projectLocation: project.location,
     printedAt,
     createdAtLabel: formatDate(project.createdAt),
-    itemCount: items.length,
-    totalQty: items.reduce((s, i) => s + (i.qty || 1), 0),
+    itemCount: items.filter((i) => !isExtraChargeItem(i)).length,
+    totalQty: items
+      .filter((i) => !isExtraChargeItem(i))
+      .reduce((s, i) => s + (i.qty || 1), 0),
     sections,
     linePages: chunkItemsByBudget(flat, {
       firstPageBudget: PURCHASE_LINES_FIRST_PAGE,

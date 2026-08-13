@@ -32,9 +32,11 @@ import {
 import { ProjectAccount } from "@/components/design/ProjectAccount";
 import { ProjectExpenses } from "@/components/design/ProjectExpenses";
 import { TemplatePickerModal } from "@/components/design/TemplatePickerModal";
+import { ExtraChargeEditor } from "@/components/design/ExtraChargeEditor";
 import { WindowPreview } from "@/components/design/WindowPreview";
 import {
   createItemFromTemplate,
+  isExtraChargeItem,
   itemAreaSqm,
   itemTotalPrice,
   type DesignItem,
@@ -128,6 +130,8 @@ export function DesignWorkspace({
   const [project, setProject] = useState<Project | undefined>();
   const [items, setItems] = useState<DesignItem[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [extraOpen, setExtraOpen] = useState(false);
+  const [editingExtra, setEditingExtra] = useState<DesignItem | null>(null);
   const [editExpenseId, setEditExpenseId] = useState<string | null>(null);
   const pdfExporterRef = useRef<ProjectPdfExporterHandle>(null);
   const purchaseOrderRef = useRef<PurchaseOrderPdfExporterHandle>(null);
@@ -749,8 +753,22 @@ export function DesignWorkspace({
   }
 
   function openItem(itemId: string) {
+    const item = itemsRef.current.find((i) => i.id === itemId);
+    if (item && isExtraChargeItem(item)) {
+      setEditingExtra(item);
+      setExtraOpen(true);
+      return;
+    }
     const href = drawHref(itemId);
     if (href !== "#") router.push(href);
+  }
+
+  function handleConfirmExtra(next: DesignItem) {
+    const current = itemsRef.current;
+    const exists = current.some((i) => i.id === next.id);
+    persist(exists ? current.map((i) => (i.id === next.id ? next : i)) : [next, ...current]);
+    setExtraOpen(false);
+    setEditingExtra(null);
   }
 
   function handleCardContextMenu(e: ReactMouseEvent) {
@@ -941,6 +959,27 @@ export function DesignWorkspace({
             </div>
           </button>
         </li>
+        <li className="h-full min-h-0">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingExtra(null);
+              setExtraOpen(true);
+            }}
+            className="flex h-full w-full flex-col overflow-hidden rounded-xl border-2 border-dashed border-[#C45C26]/40 bg-card text-[#C45C26] shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C45C26] hover:bg-[#C45C26]/10 active:scale-[0.98]"
+            aria-label="إضافة بند إضافي مثل تركيب"
+          >
+            <div className="flex aspect-square w-full shrink-0 items-center justify-center border-b border-dashed border-[#C45C26]/30 bg-[#C45C26]/10 p-3">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#C45C26] text-3xl font-light leading-none text-white shadow-[0_6px_16px_rgba(196,92,38,0.28)]">
+                ＋
+              </span>
+            </div>
+            <div className="flex h-[92px] flex-col items-center justify-center gap-1 p-2.5">
+              <span className="text-sm font-semibold">بند إضافي</span>
+              <span className="text-[10px] text-muted">تركيب أو زيادة</span>
+            </div>
+          </button>
+        </li>
 
         {items.map((item, index) => {
           const isDragging = draggingId === item.id;
@@ -1081,6 +1120,16 @@ export function DesignWorkspace({
         onConfirm={handleConfirmTemplate}
       />
 
+      <ExtraChargeEditor
+        open={extraOpen}
+        initial={editingExtra}
+        onClose={() => {
+          setExtraOpen(false);
+          setEditingExtra(null);
+        }}
+        onConfirm={handleConfirmExtra}
+      />
+
       {pendingDeleteItem ? (
         <div
           className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center"
@@ -1143,28 +1192,36 @@ function ItemCardBody({
   compact?: boolean;
   emphasizeIndex?: boolean;
 }) {
+  const extra = isExtraChargeItem(item);
   const area = itemAreaSqm(item);
   const price = itemTotalPrice(item);
 
   return (
     <>
       <div
-        className={`flex items-center justify-center border-b border-border bg-primary-soft/50 p-3 ${
-          compact ? "aspect-[4/3]" : "aspect-square shrink-0"
-        }`}
+        className={`flex items-center justify-center border-b border-border p-3 ${
+          extra ? "bg-[#C45C26]/10" : "bg-primary-soft/50"
+        } ${compact ? "aspect-[4/3]" : "aspect-square shrink-0"}`}
       >
-        <WindowPreview
-          style={item.style}
-          templateId={item.templateId}
-          layout={item.layout}
-          panes={item.panes}
-          frameColor={item.frameColor}
-          widthMm={item.widthMm}
-          heightMm={item.heightMm}
-          className={`h-full w-auto max-w-full ${
-            compact ? "max-h-[88px]" : "max-h-[128px]"
-          }`}
-        />
+        {extra ? (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#C45C26]">
+            <span className="text-3xl font-light leading-none">＋</span>
+            <span className="text-[11px] font-bold">إضافة</span>
+          </div>
+        ) : (
+          <WindowPreview
+            style={item.style}
+            templateId={item.templateId}
+            layout={item.layout}
+            panes={item.panes}
+            frameColor={item.frameColor}
+            widthMm={item.widthMm}
+            heightMm={item.heightMm}
+            className={`h-full w-auto max-w-full ${
+              compact ? "max-h-[88px]" : "max-h-[128px]"
+            }`}
+          />
+        )}
       </div>
 
       <div
@@ -1173,7 +1230,7 @@ function ItemCardBody({
         }`}
       >
         <div className="flex min-w-[2.25rem] flex-col items-center justify-center border-l border-border pl-2 text-center">
-          <span className="text-[9px] text-muted">uPVC</span>
+          <span className="text-[9px] text-muted">{extra ? "إضافة" : "uPVC"}</span>
           <span
             className={`text-xl font-bold leading-none transition-colors duration-200 ${
               emphasizeIndex ? "text-primary" : "text-foreground"
@@ -1194,13 +1251,20 @@ function ItemCardBody({
           <p className="truncate text-[11px] font-semibold text-foreground">
             {item.name?.trim() || suggestItemName(item)}
           </p>
-          <p
-            className="mt-0.5 truncate text-[11px] font-medium text-foreground"
-            dir="rtl"
-          >
-            {formatSizePair(item.widthMm, item.heightMm, unit)}
-          </p>
-          {!compact ? (
+          {extra ? (
+            <p className="mt-0.5 truncate text-[11px] font-medium text-foreground">
+              عدد {item.qty}
+              {item.notes?.trim() ? ` · ${item.notes.trim()}` : ""}
+            </p>
+          ) : (
+            <p
+              className="mt-0.5 truncate text-[11px] font-medium text-foreground"
+              dir="rtl"
+            >
+              {formatSizePair(item.widthMm, item.heightMm, unit)}
+            </p>
+          )}
+          {!compact && !extra ? (
             <p className="mt-0.5 truncate text-[10px] text-muted">
               عدد {item.qty} · {area.toFixed(2)} م²
             </p>

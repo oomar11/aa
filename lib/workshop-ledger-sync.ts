@@ -36,6 +36,7 @@ type SnapshotPayment = {
 };
 
 type SnapshotItem = {
+  kind?: string;
   qty?: number;
   specialPrice?: number | null;
   customSalePricePerSqm?: number | null;
@@ -66,6 +67,9 @@ function billedItemTotal(item: SnapshotItem): number {
     discountId === "d1" ? 1 : discountId === "d3" ? 3 : discountId === "d5" ? 5 : 0;
   const apply = (n: number) =>
     percent > 0 ? n * (1 - percent / 100) : n;
+  if (item.kind === "extra") {
+    return apply(Number.isFinite(special) && special > 0 ? special * qty : 0);
+  }
   if (Number.isFinite(special) && special > 0) {
     return apply(special * qty);
   }

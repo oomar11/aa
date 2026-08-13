@@ -1,5 +1,6 @@
 import {
   FRAME_COLORS,
+  isExtraChargeItem,
   normalizeFrameColor,
   type DesignItem,
 } from "@/lib/design-items";
@@ -28,6 +29,7 @@ export function reportMaterialRows(
   project?: ProjectMaterialDefaults | null,
   catalog?: MaterialCatalog
 ): ReportMaterialRow[] {
+  if (isExtraChargeItem(item)) return [];
   const cat = catalog ?? loadMaterialCatalog();
   const mats = effectiveItemMaterials(item, project, cat);
   const rows: ReportMaterialRow[] = [];

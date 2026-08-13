@@ -31,6 +31,7 @@ import {
 } from "@/lib/accessories";
 import {
   createItemFromTemplate,
+  isExtraChargeItem,
   normalizeFrameColor,
   normalizePaneConfig,
   type DesignItem,
@@ -180,7 +181,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   useEffect(() => {
     const items = getItemsForProject(projectId);
     const found = items.find((i) => i.id === itemId);
-    if (!found) {
+    if (!found || isExtraChargeItem(found)) {
       router.replace(backHref);
       return;
     }

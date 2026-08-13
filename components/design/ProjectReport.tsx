@@ -7,6 +7,7 @@ import { useUnit } from "@/components/settings/UnitProvider";
 import { loadCompany } from "@/lib/company";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import {
+  isExtraChargeItem,
   itemAreaSqm,
   itemTotalPrice,
   type DesignItem,
@@ -407,23 +408,32 @@ function ReportItemCard({
   project: Project;
   catalog: MaterialCatalog;
 }) {
+  const extra = isExtraChargeItem(item);
   const name = item.name?.trim() || suggestItemName(item);
   const area = itemAreaSqm(item);
   const price = itemTotalPrice(item);
-  const materials = reportMaterialRows(item, project, catalog).slice(0, 3);
+  const materials = extra
+    ? []
+    : reportMaterialRows(item, project, catalog).slice(0, 3);
   const hasSpecial =
-    item.specialPrice != null &&
-    Number.isFinite(item.specialPrice) &&
-    item.specialPrice > 0;
-  const salePerSqm = resolveItemSalePricePerSqm(item, project?.systemId);
-  const meterLabel = hasSpecial
-    ? "سعر خاص"
+    extra ||
+    (item.specialPrice != null &&
+      Number.isFinite(item.specialPrice) &&
+      item.specialPrice > 0);
+  const salePerSqm = extra
+    ? 0
+    : resolveItemSalePricePerSqm(item, project?.systemId);
+  const meterLabel = extra || hasSpecial
+    ? extra
+      ? "سعر القطعة"
+      : "سعر خاص"
     : hasCustomSalePricePerSqm(item)
       ? "سعر متر مخصص"
       : "سعر المتر";
-  const meterValue = hasSpecial
-    ? `${formatCurrency(Math.round(item.specialPrice as number))} ج.م`
-    : `${formatCurrency(Math.round(salePerSqm))} ج.م`;
+  const meterValue =
+    extra || hasSpecial
+      ? `${formatCurrency(Math.round(Number(item.specialPrice) || 0))} ج.م`
+      : `${formatCurrency(Math.round(salePerSqm))} ج.م`;
 
   const materialRows = Math.max(materials.length, 1);
   const materialsBlockH = 16 + materialRows * 28;
@@ -451,6 +461,7 @@ function ReportItemCard({
             style={{ lineHeight: "14px", margin: 0 }}
           >
             بند {index + 1}
+            {extra ? " · إضافة" : ""}
           </p>
           <h4
             className="truncate text-[13px] font-bold text-[#152033]"
@@ -470,18 +481,39 @@ function ReportItemCard({
       </div>
 
       <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-1.5">
-        <WindowPreview
-          style={item.style}
-          templateId={item.templateId}
-          layout={item.layout}
-          panes={item.panes}
-          frameColor={item.frameColor}
-          widthMm={item.widthMm}
-          heightMm={item.heightMm}
-          showDimensions
-          unit={unit}
-          className="h-full w-auto max-h-full max-w-full"
-        />
+        {extra ? (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#C45C26]">
+            <p style={{ margin: 0, fontSize: 28, fontWeight: 300, lineHeight: 1 }}>＋</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>إضافة على الفاتورة</p>
+            {item.notes?.trim() ? (
+              <p
+                style={{
+                  margin: 0,
+                  marginTop: 4,
+                  fontSize: 11,
+                  color: "#5a6578",
+                  textAlign: "center",
+                  padding: "0 8px",
+                }}
+              >
+                {item.notes.trim()}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <WindowPreview
+            style={item.style}
+            templateId={item.templateId}
+            layout={item.layout}
+            panes={item.panes}
+            frameColor={item.frameColor}
+            widthMm={item.widthMm}
+            heightMm={item.heightMm}
+            showDimensions
+            unit={unit}
+            className="h-full w-auto max-h-full max-w-full"
+          />
+        )}
       </div>
 
       <div
@@ -491,17 +523,32 @@ function ReportItemCard({
           gap: 6,
         }}
       >
-        <Meta
-          label="المقاس"
-          value={formatSizePair(item.widthMm, item.heightMm, unit)}
-        />
-        <Meta label="العدد" value={String(item.qty)} />
-        <Meta label="المساحة" value={`${area.toFixed(2)} م²`} ltr />
-        <Meta
-          label={meterLabel}
-          value={meterValue}
-          ltr
-        />
+        {extra ? (
+          <>
+            <Meta label="النوع" value="إضافة" />
+            <Meta label="العدد" value={String(item.qty)} />
+            <Meta label="سعر القطعة" value={meterValue} ltr />
+            <Meta
+              label="الإجمالي"
+              value={`${formatCurrency(Math.round(price))} ج.م`}
+              ltr
+            />
+          </>
+        ) : (
+          <>
+            <Meta
+              label="المقاس"
+              value={formatSizePair(item.widthMm, item.heightMm, unit)}
+            />
+            <Meta label="العدد" value={String(item.qty)} />
+            <Meta label="المساحة" value={`${area.toFixed(2)} م²`} ltr />
+            <Meta
+              label={meterLabel}
+              value={meterValue}
+              ltr
+            />
+          </>
+        )}
       </div>
 
       {materials.length > 0 ? (

@@ -8,6 +8,7 @@ import { loadCompany } from "@/lib/company";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import {
   FRAME_COLORS,
+  isExtraChargeItem,
   normalizeFrameColor,
   type DesignItem,
 } from "@/lib/design-items";
@@ -616,6 +617,7 @@ export function buildProjectEstimatedCost(
   const itemSummaries: ItemEstimatedCost[] = [];
 
   for (const item of items) {
+    if (isExtraChargeItem(item)) continue;
     try {
       itemSummaries.push(
         contributeItem(lineMap, item, project, catalog, brands)

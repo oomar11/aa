@@ -353,11 +353,26 @@ export function normalizeFrameColor(
   return "white";
 }
 
+/** شباك/باب من الرسم، أو بند حر على الفاتورة (تركيب، زيادة، …) */
+export type DesignItemKind = "window" | "extra";
+
+export const EXTRA_CHARGE_PRESETS = [
+  "تركيب",
+  "نقل",
+  "مصنعية",
+  "حديد زيادة",
+  "إكسسوار زيادة",
+] as const;
+
+export type ExtraChargePreset = (typeof EXTRA_CHARGE_PRESETS)[number];
+
 export type DesignItem = {
   id: string;
   name: string;
   /** المستخدم ثبّت اسم مخصص — متعملش تسمية ذكية تلقائي */
   nameIsCustom?: boolean;
+  /** افتراضي window للتوافق مع البنود القديمة */
+  kind?: DesignItemKind;
   style: WindowStyle;
   /** تمبلت WinStudio المختار */
   templateId?: string;
@@ -398,11 +413,47 @@ export type DesignItem = {
   ironId?: string;
 };
 
+export function isExtraChargeItem(
+  item: Pick<DesignItem, "kind"> | null | undefined
+): boolean {
+  return item?.kind === "extra";
+}
+
+export function createExtraChargeItem(input?: {
+  id?: string;
+  name?: string;
+  qty?: number;
+  unitPrice?: number;
+  notes?: string;
+}): DesignItem {
+  const name = (input?.name || "تركيب").trim() || "تركيب";
+  const qty = Math.max(1, Math.round(Number(input?.qty) || 1));
+  const unitPrice = Number(input?.unitPrice);
+  return {
+    id: input?.id || `d-${Date.now()}`,
+    kind: "extra",
+    name,
+    nameIsCustom: true,
+    style: "fixed",
+    widthMm: 0,
+    heightMm: 0,
+    qty,
+    pricePerSqm: 0,
+    customSalePricePerSqm: null,
+    notes: input?.notes?.trim() || "",
+    specialPrice:
+      Number.isFinite(unitPrice) && unitPrice > 0 ? unitPrice : 0,
+    discountId: "none",
+  };
+}
+
 export function itemAreaSqm(item: DesignItem): number {
+  if (isExtraChargeItem(item)) return 0;
   return (item.widthMm * item.heightMm * item.qty) / 1_000_000;
 }
 
 export function itemUnitAreaSqm(item: DesignItem): number {
+  if (isExtraChargeItem(item)) return 0;
   return (item.widthMm * item.heightMm) / 1_000_000;
 }
 
@@ -411,6 +462,11 @@ export function itemTotalPrice(
   _project?: Project | ProjectMaterialDefaults | null
 ): number {
   const qty = Math.max(1, item.qty || 1);
+  if (isExtraChargeItem(item)) {
+    const unit = Number(item.specialPrice);
+    const base = (Number.isFinite(unit) && unit > 0 ? unit : 0) * qty;
+    return applyDiscountAmount(base, item.discountId);
+  }
   const hasSpecial =
     item.specialPrice != null &&
     Number.isFinite(item.specialPrice) &&
@@ -436,6 +492,10 @@ export function itemSuggestedUnitSale(
   item: DesignItem,
   project?: Project | null
 ): number | null {
+  if (isExtraChargeItem(item)) {
+    const unit = Number(item.specialPrice);
+    return Number.isFinite(unit) && unit > 0 ? unit : 0;
+  }
   if (typeof window === "undefined") return null;
   try {
     const {

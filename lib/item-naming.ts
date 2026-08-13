@@ -1,4 +1,8 @@
-import type { DesignItem, PaneOpening } from "@/lib/design-items";
+import {
+  isExtraChargeItem,
+  type DesignItem,
+  type PaneOpening,
+} from "@/lib/design-items";
 import { listPaneIds, type LayoutNode } from "@/lib/window-layout";
 
 type OpeningFamily =
@@ -93,6 +97,9 @@ function isDoorLike(item: DesignItem): boolean {
 
 /** يولد اسم بند عربي من الرسم (بدون المقاس) */
 export function suggestItemName(item: DesignItem): string {
+  if (isExtraChargeItem(item)) {
+    return item.name?.trim() || "إضافة";
+  }
   const kind = isDoorLike(item) ? "باب" : "شباك";
   const family = dominantFamily(item.layout, item.panes);
   const style = family === "mixed" ? "مختلط" : FAMILY_LABEL[family];
