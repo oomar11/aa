@@ -1,3 +1,4 @@
+import { AppShell } from "@/components/layout/AppShell";
 import { ProjectSettingsForm } from "@/components/design/ProjectSettingsForm";
 import { ScreenBack } from "@/components/layout/ScreenBack";
 import { ROUTES } from "@/lib/routes";
@@ -11,37 +12,40 @@ export default async function ProjectSettingsPage({ searchParams }: Props) {
 
   if (!params.customer || !params.project) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-3 bg-background px-6 py-6">
+      <AppShell
+        showHeader={false}
+        mainClassName="flex flex-1 flex-col gap-3 px-6 py-6"
+      >
         <ScreenBack href={ROUTES.orders}>العودة إلى الطلبات</ScreenBack>
         <p className="text-center font-semibold text-foreground">
           بيانات المشروع ناقصة
         </p>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
-      <header className="px-4 pt-5 pb-3">
-        <ScreenBack
-          href={ROUTES.design.editor(params.customer, params.project)}
-        >
-          رجوع لبنود المشروع
-        </ScreenBack>
-        <div className="mt-3 text-center">
-          <h1 className="text-xl font-bold text-foreground">إعدادات المشروع</h1>
-          <p className="mt-1 text-xs text-muted">
-            عدّل اسم المشروع وعنوانه وحالته
-          </p>
-        </div>
-      </header>
-
-      <main className="flex-1 px-4 pb-16">
+    <AppShell
+      showHeader={false}
+      mainClassName="flex flex-1 flex-col px-4 pb-20 pt-5"
+    >
+      <ScreenBack href={ROUTES.design.editor(params.customer, params.project)}>
+        رجوع لبنود المشروع
+      </ScreenBack>
+      <div className="mt-3 lg:text-start">
+        <h1 className="text-center text-xl font-bold text-foreground lg:text-start">
+          إعدادات المشروع
+        </h1>
+        <p className="mt-1 text-center text-xs text-muted lg:text-start">
+          عدّل اسم المشروع وعنوانه وحالته
+        </p>
+      </div>
+      <div className="mt-4 w-full max-w-md lg:max-w-xl">
         <ProjectSettingsForm
           customerId={params.customer}
           projectId={params.project}
         />
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

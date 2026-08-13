@@ -396,6 +396,7 @@ export function ProjectExpenses({
         </p>
       </section>
 
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start">
       <section ref={formRef} className="flex flex-col gap-3 scroll-mt-4">
         {!storeIssueOpen && bridgeOk && !isEditing ? (
           <button
@@ -721,6 +722,7 @@ export function ProjectExpenses({
           </ul>
         )}
       </section>
+      </div>
     </div>
   );
 }

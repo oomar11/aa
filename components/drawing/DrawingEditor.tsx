@@ -455,7 +455,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background px-3 pb-5 pt-3 sm:px-4">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background px-3 pb-5 pt-3 sm:px-4 lg:min-h-0 lg:max-w-none lg:flex-1 lg:px-4 lg:pb-4">
       <header className="mb-3 flex items-center gap-2 rounded-2xl border border-border bg-card px-2.5 py-2 text-foreground shadow-[0_8px_24px_rgba(15,20,28,0.07)]">
         <ScreenBack
           href={backHref}
@@ -525,59 +525,67 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
         </div>
       </header>
 
-      <ToolPalette activeOpening={activeOpening} onTool={handleTool} />
-
-      <main className="relative mt-3 flex flex-1 flex-col">
-        <section className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-sm">
-          <div className="flex flex-1 items-center justify-center">
-            <DrawingCanvas
-              item={item}
-              selectedPaneId={selectedPaneId}
-              onSelectPane={setSelectedPaneId}
-              onOpenPaneProperties={setPropsPaneId}
-              onRequestDeleteMullion={setDeleteMullion}
-              onRequestEqualize={setEqualizeTarget}
-              onEditDimension={(target) => {
-                if (target.kind === "width") {
-                  setDimEdit({
-                    value: fromMm(item.widthMm, unit),
-                    target,
-                  });
-                } else if (target.kind === "height") {
-                  setDimEdit({
-                    value: fromMm(item.heightMm, unit),
-                    target,
-                  });
-                } else {
-                  setDimEdit({
-                    value: fromMm(target.segment.valueMm, unit),
-                    target,
-                  });
-                }
-              }}
-            />
-          </div>
-        </section>
-
-        {materials ? (
-          <MaterialsBar
-            materials={materials}
-            glassBreakdown={glassBreakdown}
-            meshBreakdown={meshBreakdown}
-            accessoriesBreakdown={accessoriesBreakdown}
-            profileCostBreakdown={profileCostBreakdown}
-            ironBreakdown={ironBreakdown}
-            partLabel={item.name || "شباك"}
-            widthMm={item.widthMm}
-            heightMm={item.heightMm}
-            systemId={calcItem?.systemId ?? item.systemId}
-            discountId={item.discountId}
-            isDoubleGlazing={itemIsDoubleGlazing(item)}
-            fallbackPricePerSqm={item.pricePerSqm}
-            customSalePricePerSqm={item.customSalePricePerSqm}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:items-stretch lg:gap-3">
+        <div className="lg:flex lg:w-64 lg:shrink-0 lg:flex-col">
+          <ToolPalette
+            className="lg:h-full"
+            activeOpening={activeOpening}
+            onTool={handleTool}
           />
-        ) : null}
-      </main>
+        </div>
+
+        <main className="relative mt-3 flex min-h-0 flex-1 flex-col lg:mt-0">
+          <section className="flex min-h-[16rem] flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-sm lg:min-h-[28rem]">
+            <div className="flex flex-1 items-center justify-center">
+              <DrawingCanvas
+                item={item}
+                selectedPaneId={selectedPaneId}
+                onSelectPane={setSelectedPaneId}
+                onOpenPaneProperties={setPropsPaneId}
+                onRequestDeleteMullion={setDeleteMullion}
+                onRequestEqualize={setEqualizeTarget}
+                onEditDimension={(target) => {
+                  if (target.kind === "width") {
+                    setDimEdit({
+                      value: fromMm(item.widthMm, unit),
+                      target,
+                    });
+                  } else if (target.kind === "height") {
+                    setDimEdit({
+                      value: fromMm(item.heightMm, unit),
+                      target,
+                    });
+                  } else {
+                    setDimEdit({
+                      value: fromMm(target.segment.valueMm, unit),
+                      target,
+                    });
+                  }
+                }}
+              />
+            </div>
+          </section>
+
+          {materials ? (
+            <MaterialsBar
+              materials={materials}
+              glassBreakdown={glassBreakdown}
+              meshBreakdown={meshBreakdown}
+              accessoriesBreakdown={accessoriesBreakdown}
+              profileCostBreakdown={profileCostBreakdown}
+              ironBreakdown={ironBreakdown}
+              partLabel={item.name || "شباك"}
+              widthMm={item.widthMm}
+              heightMm={item.heightMm}
+              systemId={calcItem?.systemId ?? item.systemId}
+              discountId={item.discountId}
+              isDoubleGlazing={itemIsDoubleGlazing(item)}
+              fallbackPricePerSqm={item.pricePerSqm}
+              customSalePricePerSqm={item.customSalePricePerSqm}
+            />
+          ) : null}
+        </main>
+      </div>
 
       <DimensionEditDialog
         open={dimEdit != null}

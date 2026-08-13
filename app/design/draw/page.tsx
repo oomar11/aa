@@ -1,3 +1,4 @@
+import { AppShell } from "@/components/layout/AppShell";
 import { ScreenBack } from "@/components/layout/ScreenBack";
 import { DrawingEditor } from "@/components/drawing/DrawingEditor";
 import { ROUTES } from "@/lib/routes";
@@ -15,7 +16,12 @@ export default async function DrawPage({ searchParams }: Props) {
 
   if (!params.customer || !params.project || !params.item) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-3 bg-background px-6 py-6">
+      <AppShell
+        showHeader={false}
+        showBottomNav={false}
+        showSidebar
+        mainClassName="flex flex-1 flex-col gap-3 px-6 py-6"
+      >
         <ScreenBack
           href={
             params.customer && params.project
@@ -25,20 +31,28 @@ export default async function DrawPage({ searchParams }: Props) {
         >
           {params.customer && params.project
             ? "الرجوع لبنود المشروع"
-            : "الالعودة إلى الطلبات"}
+            : "العودة إلى الطلبات"}
         </ScreenBack>
         <p className="text-center font-semibold text-foreground">
           بيانات الرسم غير مكتملة
         </p>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <DrawingEditor
-      customerId={params.customer}
-      projectId={params.project}
-      itemId={params.item}
-    />
+    <AppShell
+      showHeader={false}
+      showBottomNav={false}
+      showSidebar
+      fullHeight
+      mainClassName="flex flex-1 flex-col px-0 pb-0 pt-0 lg:px-0 lg:pb-0"
+    >
+      <DrawingEditor
+        customerId={params.customer}
+        projectId={params.project}
+        itemId={params.item}
+      />
+    </AppShell>
   );
 }

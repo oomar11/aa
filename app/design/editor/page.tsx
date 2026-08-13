@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppShell } from "@/components/layout/AppShell";
 import { DesignWorkspace } from "@/components/design/DesignWorkspace";
 import { ROUTES } from "@/lib/routes";
 
@@ -19,18 +20,24 @@ export default async function EditorPage({ searchParams }: Props) {
 
   if (!params.customer) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col items-center justify-center gap-3 bg-background px-6 text-center lg:max-w-5xl">
+      <AppShell
+        showHeader={false}
+        mainClassName="flex flex-1 flex-col items-center justify-center gap-3 px-6 pb-20 pt-6 text-center"
+      >
         <p className="font-semibold text-foreground">اختر عميلاً أولاً</p>
         <Link href={ROUTES.orders} className="text-sm text-primary">
           فتح الطلبات
         </Link>
-      </div>
+      </AppShell>
     );
   }
 
   if (!params.project) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col items-center justify-center gap-3 bg-background px-6 text-center lg:max-w-5xl">
+      <AppShell
+        showHeader={false}
+        mainClassName="flex flex-1 flex-col items-center justify-center gap-3 px-6 pb-20 pt-6 text-center"
+      >
         <p className="font-semibold text-foreground">اختر مشروعاً أولاً</p>
         <Link
           href={ROUTES.design.projects(params.customer)}
@@ -38,19 +45,21 @@ export default async function EditorPage({ searchParams }: Props) {
         >
           مشاريع العميل
         </Link>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-background lg:max-w-5xl">
-      <main className="flex-1 px-3 pb-6 pt-3">
-        <DesignWorkspace
-          customerId={params.customer}
-          projectId={params.project}
-          initialTab={tab}
-        />
-      </main>
-    </div>
+    <AppShell
+      showHeader={false}
+      fullHeight
+      mainClassName="flex flex-1 flex-col px-3 pb-20 pt-3"
+    >
+      <DesignWorkspace
+        customerId={params.customer}
+        projectId={params.project}
+        initialTab={tab}
+      />
+    </AppShell>
   );
 }

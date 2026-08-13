@@ -903,12 +903,12 @@ export function DesignWorkspace({
         <button
           type="button"
           onClick={() => setTab("account")}
-          className="grid w-full grid-cols-4 gap-1.5 rounded-2xl border border-border bg-card px-2 py-2.5 transition-all hover:border-primary/30 active:scale-[0.99]"
+          className="grid w-full grid-cols-4 gap-1.5 rounded-2xl border border-border bg-card px-2 py-2.5 transition-all hover:border-primary/30 active:scale-[0.99] lg:px-4 lg:py-3.5"
           aria-label="فتح حساب المشروع"
         >
           <div className="text-center">
-            <p className="text-[9px] text-muted">الحساب</p>
-            <p className="mt-0.5 text-[11px] font-bold tabular-nums text-foreground">
+            <p className="text-[9px] text-muted lg:text-xs">الحساب</p>
+            <p className="mt-0.5 text-[11px] font-bold tabular-nums text-foreground lg:text-sm">
               {formatCurrency(money.sale)}
             </p>
             {money.discountAmount > 0 ? (
@@ -916,15 +916,15 @@ export function DesignWorkspace({
             ) : null}
           </div>
           <div className="text-center">
-            <p className="text-[9px] text-muted">مدفوع</p>
-            <p className="mt-0.5 text-[11px] font-bold tabular-nums text-[#2F9B7A]">
+            <p className="text-[9px] text-muted lg:text-xs">مدفوع</p>
+            <p className="mt-0.5 text-[11px] font-bold tabular-nums text-[#2F9B7A] lg:text-sm">
               {formatCurrency(money.paid)}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[9px] text-muted">باقي</p>
+            <p className="text-[9px] text-muted lg:text-xs">باقي</p>
             <p
-              className={`mt-0.5 text-[11px] font-bold tabular-nums ${
+              className={`mt-0.5 text-[11px] font-bold tabular-nums lg:text-sm ${
                 money.remaining > 0 ? "text-[#E85A8A]" : "text-[#2F9B7A]"
               }`}
             >
@@ -932,8 +932,8 @@ export function DesignWorkspace({
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[9px] text-muted">مصروف</p>
-            <p className="mt-0.5 text-[11px] font-bold tabular-nums text-[#C45C26]">
+            <p className="text-[9px] text-muted lg:text-xs">مصروف</p>
+            <p className="mt-0.5 text-[11px] font-bold tabular-nums text-[#C45C26] lg:text-sm">
               {formatCurrency(money.expenses)}
             </p>
           </div>
@@ -941,7 +941,7 @@ export function DesignWorkspace({
       ) : null}
 
       <ul
-        className={`grid grid-cols-2 auto-rows-fr gap-3 ${
+        className={`grid grid-cols-2 auto-rows-fr gap-3 lg:grid-cols-3 xl:grid-cols-4 ${
           draggingId ? "touch-none" : ""
         }`}
       >
@@ -1011,7 +1011,7 @@ export function DesignWorkspace({
             </li>
           );
         })}
-        <li className="col-span-2">
+        <li className="col-span-2 lg:col-span-3 xl:col-span-4">
           <button
             type="button"
             onClick={() => {
@@ -1035,7 +1035,7 @@ export function DesignWorkspace({
       </ul>
 
       <div
-        className={`rounded-2xl border border-border bg-card p-4 transition-opacity ${
+        className={`rounded-2xl border border-border bg-card p-4 transition-opacity lg:grid lg:grid-cols-3 lg:gap-6 ${
           draggingId ? "opacity-40" : ""
         }`}
       >
@@ -1043,11 +1043,11 @@ export function DesignWorkspace({
           <span className="text-muted">إجمالي العدد</span>
           <span className="font-semibold">{totals.qty}</span>
         </div>
-        <div className="mt-2 flex items-center justify-between text-sm">
+        <div className="mt-2 flex items-center justify-between text-sm lg:mt-0">
           <span className="text-muted">إجمالي المساحة</span>
           <span className="font-semibold">{totals.area.toFixed(2)} م²</span>
         </div>
-        <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
+        <div className="mt-2 flex items-center justify-between border-t border-border pt-2 lg:mt-0 lg:border-t-0 lg:pt-0">
           <span className="font-medium text-foreground">الإجمالي</span>
           <span className="text-lg font-bold text-primary">
             {formatCurrency(Math.round(totals.price))} ج.م
@@ -1058,7 +1058,7 @@ export function DesignWorkspace({
       {draggingId ? (
         <div
           ref={trashRef}
-          className={`fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-md items-center justify-center px-4 pb-6 pt-3 transition-all duration-200 ${
+          className={`fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-md items-center justify-center px-4 pb-6 pt-3 transition-all duration-200 lg:max-w-3xl ${
             overTrash ? "translate-y-0" : "translate-y-0"
           }`}
           aria-label="سلة المحذوفات"
@@ -1222,7 +1222,7 @@ function ItemCardBody({
             widthMm={item.widthMm}
             heightMm={item.heightMm}
             className={`h-full w-auto max-w-full ${
-              compact ? "max-h-[88px]" : "max-h-[128px]"
+              compact ? "max-h-[88px]" : "max-h-[128px] lg:max-h-[180px]"
             }`}
           />
         )}

@@ -18,6 +18,7 @@ type ToolDef = {
 type Props = {
   activeOpening?: PaneOpening | null;
   onTool: (id: ToolId) => void;
+  className?: string;
 };
 
 /**
@@ -43,10 +44,10 @@ const TOOL_ROWS: ToolDef[][] = [
   ],
 ];
 
-export function ToolPalette({ activeOpening, onTool }: Props) {
+export function ToolPalette({ activeOpening, onTool, className = "" }: Props) {
   return (
-    <div className="rounded-[24px] border border-border bg-card px-2 py-2 shadow-[0_10px_30px_rgba(15,20,28,0.06)]">
-      <div className="mx-auto flex max-w-sm flex-col gap-1.5">
+    <div className={`rounded-[24px] border border-border bg-card px-2 py-2 shadow-[0_10px_30px_rgba(15,20,28,0.06)] ${className}`}>
+      <div className="mx-auto flex max-w-sm flex-col gap-1.5 lg:max-w-none">
         {TOOL_ROWS.map((row, rowIndex) => (
           <div
             key={rowIndex}

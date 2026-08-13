@@ -83,7 +83,8 @@ export function ProjectAccount({
   const profit = money != null ? money.paid - money.expenses : 0;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
+      <div className="flex flex-col gap-4">
       <section className="rounded-2xl border border-border bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -178,7 +179,9 @@ export function ProjectAccount({
           </Link>
         )}
       </section>
+      </div>
 
+      <div className="flex flex-col gap-4">
       <LedgerSection
         title="الدفعات"
         count={payments.length}
@@ -286,6 +289,7 @@ export function ProjectAccount({
           الرجوع لبنود المشروع
         </Link>
       ) : null}
+      </div>
     </div>
   );
 }
