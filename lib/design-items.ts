@@ -408,7 +408,7 @@ export function itemUnitAreaSqm(item: DesignItem): number {
 
 export function itemTotalPrice(
   item: DesignItem,
-  project?: Project | ProjectMaterialDefaults | null
+  _project?: Project | ProjectMaterialDefaults | null
 ): number {
   const qty = Math.max(1, item.qty || 1);
   const hasSpecial =
@@ -422,64 +422,12 @@ export function itemTotalPrice(
     );
   }
 
-  if (typeof window !== "undefined") {
-    try {
-      // تحميل كسول لتفادي الاعتماد الدائري بين التسعير وحساب الخامات
-      const {
-        loadPricingSettings,
-        hybridUnitSalePrice,
-        perSqmUnitSalePrice,
-        itemIsDoubleGlazing,
-        resolveItemSalePricePerSqm,
-        billableSaleAreaSqm,
-        hasCustomSalePricePerSqm,
-      } = require("@/lib/pricing") as typeof import("@/lib/pricing");
-      const settings = loadPricingSettings();
-      const unitArea = itemUnitAreaSqm(item);
-      const projectSystemId = (
-        project as ProjectMaterialDefaults | null | undefined
-      )?.systemId;
-
-      // سعر متر مخصص على الشباك يفعّل التسعير بالمتر لهذا البند
-      if (settings.mode === "per_sqm" || hasCustomSalePricePerSqm(item)) {
-        const salePerSqm = resolveItemSalePricePerSqm(item, projectSystemId);
-        const unitSale = perSqmUnitSalePrice(
-          salePerSqm,
-          unitArea,
-          itemIsDoubleGlazing(item),
-          settings
-        );
-        return applyDiscountAmount(unitSale * qty, item.discountId);
-      }
-
-      if (settings.mode === "hybrid") {
-        const { calcItemMaterialsCost } =
-          require("@/lib/project-estimated-cost") as typeof import("@/lib/project-estimated-cost");
-        const cost = calcItemMaterialsCost(item, project as Project | null);
-        if (cost.hasCost && cost.beforeDiscount > 0) {
-          const materialsUnit = cost.beforeDiscount / cost.qty;
-          const unitSale = hybridUnitSalePrice(
-            materialsUnit,
-            unitArea,
-            settings
-          );
-          return applyDiscountAmount(unitSale * qty, item.discountId);
-        }
-      }
-
-      // رجوع: سعر متر البند × حد أدنى متر
-      const salePerSqm = resolveItemSalePricePerSqm(item, projectSystemId);
-      const base =
-        billableSaleAreaSqm(unitArea) * salePerSqm * qty;
-      return applyDiscountAmount(base, item.discountId);
-    } catch {
-      // الرجوع لسعر المتر على البند
-    }
-  }
-
   const unitArea = itemUnitAreaSqm(item);
-  const area = unitArea > 0 ? Math.max(1, unitArea) : 1;
-  const base = area * item.pricePerSqm * qty;
+  const billable = unitArea > 0 ? Math.max(1, unitArea) : 1;
+  const custom = Number(item.customSalePricePerSqm);
+  const rate =
+    Number.isFinite(custom) && custom > 0 ? custom : item.pricePerSqm || 0;
+  const base = billable * rate * qty;
   return applyDiscountAmount(base, item.discountId);
 }
 

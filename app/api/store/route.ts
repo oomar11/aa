@@ -9,6 +9,7 @@ import {
   workshopStoreHasData,
 } from "@/lib/storage/server-store";
 import { SHARED_STORAGE_KEYS } from "@/lib/storage/keys";
+import { syncWorkshopSnapshotToStore } from "@/lib/workshop-ledger-sync";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -92,7 +93,17 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
+    const before = await readWorkshopStore();
     const snapshot = await patchWorkshopStore(body.data);
+    try {
+      await syncWorkshopSnapshotToStore(
+        before,
+        snapshot,
+        Object.keys(body.data)
+      );
+    } catch (err) {
+      console.error("[api/store PATCH ledger]", err);
+    }
     return NextResponse.json({
       ok: true,
       revision: snapshot.revision,
@@ -122,7 +133,17 @@ export async function PUT(request: Request) {
         { status: 400 }
       );
     }
+    const before = await readWorkshopStore();
     const snapshot = await replaceWorkshopStore(body.data);
+    try {
+      await syncWorkshopSnapshotToStore(
+        before,
+        snapshot,
+        Object.keys(body.data)
+      );
+    } catch (err) {
+      console.error("[api/store PUT ledger]", err);
+    }
     return NextResponse.json({
       ok: true,
       revision: snapshot.revision,

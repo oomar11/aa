@@ -66,6 +66,11 @@ export type Project = {
   discountType?: ProjectDiscountType;
   /** قيمة الخصم: مبلغ بالجنيه أو نسبة 0–100 حسب النوع */
   discountValue?: number;
+  /**
+   * الحساب المتفق عليه للشغلانة — ده اللي يترحل للمحل.
+   * لو فاضي، الحساب يتحسب من البنود والخصم.
+   */
+  agreedSale?: number;
 } & ProjectMaterialDefaults;
 
 /** تطبيع مشروع قديم/ناقص لحقول الورشة */
@@ -107,6 +112,11 @@ export function normalizeProject(project: Project): Project {
     Number.isFinite(discountValueRaw) && discountValueRaw > 0
       ? discountValueRaw
       : undefined;
+  const agreedRaw = Number(project.agreedSale);
+  const agreedSale =
+    Number.isFinite(agreedRaw) && agreedRaw > 0
+      ? Math.round(agreedRaw * 100) / 100
+      : undefined;
 
   return {
     ...project,
@@ -118,6 +128,7 @@ export function normalizeProject(project: Project): Project {
     deliveredAt,
     discountType: discountValue ? discountType ?? "amount" : undefined,
     discountValue: discountValue ? discountValue : undefined,
+    agreedSale,
   };
 }
 
