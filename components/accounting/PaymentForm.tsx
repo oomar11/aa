@@ -5,11 +5,9 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   deletePayment,
   loadPayments,
-  PAYMENT_METHOD_LABELS,
   todayIsoDate,
   upsertPayment,
   type Payment,
-  type PaymentMethod,
 } from "@/lib/accounting";
 import { getCustomerById } from "@/lib/customers";
 import { getProjectById } from "@/lib/projects";
@@ -49,7 +47,6 @@ export function PaymentForm() {
   const [projectId, setProjectId] = useState(presetProjectId);
   const [amount, setAmount] = useState(0);
   const [date, setDate] = useState(todayIsoDate);
-  const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [projectError, setProjectError] = useState(false);
@@ -92,8 +89,9 @@ export function PaymentForm() {
       setProjectId(found.projectId ?? "");
       setAmount(found.amount);
       setDate(found.date);
-      setMethod(found.method);
       setNote(found.note ?? "");
+      setSafeId(found.storeBridge?.safeId || "");
+      setBridgeSafeName(found.storeBridge?.safeName || "");
       setHydrated(true);
       return;
     }
@@ -103,7 +101,6 @@ export function PaymentForm() {
     setCreatedAt("");
     setProjectId(presetProjectId);
     setDate(todayIsoDate());
-    setMethod("cash");
     setNote("");
     if (presetProjectId) {
       const money = getProjectMoneySummary(presetProjectId);
@@ -142,11 +139,27 @@ export function PaymentForm() {
       cfg?.safeId ||
       ""
     ).trim();
+    const chosenSafeName = (
+      bridgeSafeName ||
+      existing?.storeBridge?.safeName ||
+      cfg?.safeName ||
+      ""
+    ).trim();
 
     if (bridgeActive && !chosenSafeId) {
-      setError("اختر خزنة المتجر");
+      setError("اختر خزنة من خزن النظام");
       return;
     }
+
+    const localBridge = chosenSafeId
+      ? {
+          safeId: chosenSafeId,
+          safeName: chosenSafeName || undefined,
+          syncedAmount: existing?.storeBridge?.syncedAmount ?? 0,
+          syncedAt: existing?.storeBridge?.syncedAt ?? "",
+          referenceId: existing?.storeBridge?.referenceId,
+        }
+      : existing?.storeBridge;
 
     setSaving(true);
     setError("");
@@ -158,10 +171,10 @@ export function PaymentForm() {
         projectId: selectedProject.id,
         amount,
         date,
-        method,
+        method: existing?.method ?? "cash",
         note: note.trim() || undefined,
         createdAt: createdAt || new Date().toISOString(),
-        storeBridge: existing?.storeBridge,
+        storeBridge: localBridge,
       });
 
       let storeBridge = existing?.storeBridge;
@@ -178,7 +191,7 @@ export function PaymentForm() {
                 "ورشة · دفعة",
                 customer?.name,
                 selectedProject.name,
-                PAYMENT_METHOD_LABELS[method],
+                chosenSafeName,
               ]
                 .filter(Boolean)
                 .join(" · "),
@@ -191,7 +204,8 @@ export function PaymentForm() {
           storeBridge = withStoreBridgeMeta(
             amount,
             sync.safe_id || chosenSafeId,
-            sync.reference_id
+            sync.reference_id,
+            chosenSafeName
           );
           safeSynced = true;
           upsertPayment({
@@ -200,7 +214,7 @@ export function PaymentForm() {
             projectId: selectedProject.id,
             amount,
             date,
-            method,
+            method: existing?.method ?? "cash",
             note: note.trim() || undefined,
             createdAt: createdAt || new Date().toISOString(),
             storeBridge,
@@ -234,7 +248,7 @@ export function PaymentForm() {
                     amount,
                     direction: "credit",
                     occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
-                    notes: note.trim() || PAYMENT_METHOD_LABELS[method],
+                    notes: note.trim() || chosenSafeName || undefined,
                     projectLabel: selectedProject.name,
                     details: {
                       kind: "aa_payment",
@@ -379,23 +393,12 @@ export function PaymentForm() {
     <form onSubmit={(e) => void handleSubmit(e)} className="flex w-full flex-col gap-4">
       <p className="rounded-2xl border border-primary/20 bg-primary-soft/40 px-3.5 py-3 text-xs leading-relaxed text-foreground">
         {isEditing
-          ? "عدّل المبلغ أو التاريخ أو طريقة الدفع. التغيير يحدّث حساب المشروع فوراً."
-          : "سجّل المبلغ على المشروع. أي دفعة على مقايسة تدخل قائمة انتظار الورشة."}
+          ? "عدّل المبلغ أو التاريخ أو الخزنة. التغيير يحدّث حساب المشروع فوراً."
+          : "سجّل المبلغ على المشروع واختر الخزنة. أي دفعة على مقايسة تدخل قائمة انتظار الورشة."}
         {bridgeOn
-          ? " · هتتسجل إيداع في خزنة المتجر اللي هتختارها تحت."
-          : " · خزنة المتجر غير مربوطة (إعدادات)."}
+          ? " · هتتسجل إيداع في الخزنة اللي هتختارها."
+          : " · خزن النظام مش مربوطة — من الإعدادات."}
       </p>
-
-      {bridgeOn ? (
-        <StoreSafePicker
-          value={safeId}
-          preferredSafeId={existing?.storeBridge?.safeId}
-          onChange={(id, safe) => {
-            setSafeId(id);
-            setBridgeSafeName(safe?.name || "");
-          }}
-        />
-      ) : null}
 
       <PaymentProjectPicker
         value={projectId}
@@ -464,22 +467,17 @@ export function PaymentForm() {
         />
       </label>
 
-      <label className="flex flex-col gap-1.5 text-right">
-        <span className="text-sm font-medium">طريقة الدفع</span>
-        <select
-          value={method}
-          onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-          className={fieldClass}
-        >
-          {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map(
-            (key) => (
-              <option key={key} value={key}>
-                {PAYMENT_METHOD_LABELS[key]}
-              </option>
-            )
-          )}
-        </select>
-      </label>
+      <StoreSafePicker
+        label="طريقة الدفع"
+        variant="choices"
+        value={safeId}
+        preferredSafeId={existing?.storeBridge?.safeId}
+        onChange={(id, safe) => {
+          setSafeId(id);
+          setBridgeSafeName(safe?.name || "");
+          setError("");
+        }}
+      />
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">

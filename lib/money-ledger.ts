@@ -1,7 +1,7 @@
 import {
   loadExpenses,
   loadPayments,
-  PAYMENT_METHOD_LABELS,
+  paymentChannelLabel,
   type Expense,
   type Payment,
 } from "@/lib/accounting";
@@ -40,7 +40,7 @@ function paymentToMovement(payment: Payment): MoneyMovement {
     ]
       .filter(Boolean)
       .join(" · "),
-    methodLabel: PAYMENT_METHOD_LABELS[payment.method],
+    methodLabel: paymentChannelLabel(payment),
     createdAt: payment.createdAt,
     projectId: payment.projectId,
     customerId: payment.customerId,

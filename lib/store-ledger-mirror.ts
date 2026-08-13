@@ -61,7 +61,7 @@ async function runStoreLedgerMirror(): Promise<void> {
     const config = loadStoreBridgeConfig();
     if (!hasStoreBridgeCredentials(config) || !config) return;
 
-    const { loadPayments, PAYMENT_METHOD_LABELS } = await import(
+    const { loadPayments, paymentChannelLabel } = await import(
       "@/lib/accounting"
     );
 
@@ -97,7 +97,7 @@ async function runStoreLedgerMirror(): Promise<void> {
             amount: pay.amount,
             direction: "credit",
             occurredAt: pay.date ? `${pay.date}T12:00:00.000Z` : undefined,
-            notes: pay.note || PAYMENT_METHOD_LABELS[pay.method],
+            notes: pay.note || paymentChannelLabel(pay),
             projectLabel: project?.name,
             details: {
               kind: "aa_payment",

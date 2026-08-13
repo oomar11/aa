@@ -287,13 +287,16 @@ export type { StoreBridgeMeta };
 export function withStoreBridgeMeta(
   amount: number,
   safeId: string,
-  referenceId?: string
+  referenceId?: string,
+  safeName?: string
 ): StoreBridgeMeta {
+  const name = safeName?.trim();
   return {
     safeId,
     syncedAmount: amount,
     syncedAt: new Date().toISOString(),
     referenceId,
+    ...(name ? { safeName: name } : {}),
   };
 }
 
@@ -939,7 +942,7 @@ export async function resyncAllWorkshopMoneyToStore(
     throw new Error("اربط المتجر من الإعدادات أولاً");
   }
 
-  const { loadPayments, loadExpenses, upsertPayment, upsertExpense, PAYMENT_METHOD_LABELS } =
+  const { loadPayments, loadExpenses, upsertPayment, upsertExpense, paymentChannelLabel } =
     await import("@/lib/accounting");
   const { listAllProjects } = await import("@/lib/projects");
   const { getCustomerById } = await import("@/lib/customers");
@@ -968,7 +971,7 @@ export async function resyncAllWorkshopMoneyToStore(
             "ورشة · دفعة",
             customer?.name,
             project?.name,
-            PAYMENT_METHOD_LABELS[pay.method],
+            paymentChannelLabel(pay),
           ]
             .filter(Boolean)
             .join(" · "),
@@ -983,7 +986,8 @@ export async function resyncAllWorkshopMoneyToStore(
         storeBridge: withStoreBridgeMeta(
           pay.amount,
           sync.safe_id || config.safeId,
-          sync.reference_id
+          sync.reference_id,
+          pay.storeBridge?.safeName
         ),
       });
 
@@ -1013,7 +1017,7 @@ export async function resyncAllWorkshopMoneyToStore(
               amount: pay.amount,
               direction: "credit",
               occurredAt: pay.date ? `${pay.date}T12:00:00.000Z` : undefined,
-              notes: pay.note || PAYMENT_METHOD_LABELS[pay.method],
+              notes: pay.note || paymentChannelLabel(pay),
               projectLabel: project?.name,
               details: {
                 kind: "aa_payment",

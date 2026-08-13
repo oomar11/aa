@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  PAYMENT_METHOD_LABELS,
+  paymentChannelLabel,
   type Expense,
   type Payment,
 } from "@/lib/accounting";
@@ -203,7 +203,7 @@ export function ProjectAccount({
                 <p className="mt-0.5 truncate text-[11px] text-muted">
                   {formatDate(payment.date)}
                   {" · "}
-                  {PAYMENT_METHOD_LABELS[payment.method]}
+                  {paymentChannelLabel(payment)}
                   {payment.note ? ` · ${payment.note}` : ""}
                 </p>
               </div>

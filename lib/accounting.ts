@@ -8,6 +8,8 @@ export type PaymentKind = "payment" | "deposit";
 /** حالة مزامنة الحركة مع خزنة المتجر */
 export type StoreBridgeMeta = {
   safeId: string;
+  /** اسم الخزنة وقت التسجيل — للعرض بدون جلب قائمة الخزن */
+  safeName?: string;
   syncedAmount: number;
   syncedAt: string;
   referenceId?: string;
@@ -70,6 +72,13 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cheque: "شيك",
   other: "أخرى",
 };
+
+/** طريقة الدفع المعروضة: خزنة النظام، أو التسمية القديمة للدفعات السابقة */
+export function paymentChannelLabel(payment: Payment): string {
+  const safeName = payment.storeBridge?.safeName?.trim();
+  if (safeName) return safeName;
+  return PAYMENT_METHOD_LABELS[payment.method];
+}
 
 export const EXPENSE_CATEGORIES = [
   "خامات",

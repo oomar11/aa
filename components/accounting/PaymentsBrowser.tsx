@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   deletePayment,
   loadPayments,
-  PAYMENT_METHOD_LABELS,
+  paymentChannelLabel,
   type Payment,
 } from "@/lib/accounting";
 import { getCustomerById, mergeCustomers, type Customer } from "@/lib/customers";
@@ -61,7 +61,7 @@ export function PaymentsBrowser() {
           customer?.phone,
           project?.name,
           payment.note,
-          PAYMENT_METHOD_LABELS[payment.method],
+          paymentChannelLabel(payment),
         ]);
       })
       .sort(
@@ -182,7 +182,7 @@ export function PaymentsBrowser() {
                       {formatDate(payment.date)}
                     </p>
                     <p className="mt-1 text-xs text-muted">
-                      {PAYMENT_METHOD_LABELS[payment.method]}
+                      {paymentChannelLabel(payment)}
                       {payment.note ? ` · ${payment.note}` : ""}
                     </p>
                   </div>
