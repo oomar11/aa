@@ -11,16 +11,18 @@ export function isAccountedProject(project: Project): boolean {
 
 /**
  * مشروع يدخل «الباقي عند العملاء»:
- * شغل مكتمل تصنيعاً — سواء اتسلّم أو لأ.
+ * أي شغل دخل الحساب (عربون / ورشة / مكتمل) — مش مقايسة خام.
+ * المتبقي لكل مشروع لا ينزل تحت صفر، فالزيادة على شغل مقفول
+ * ما تخصمش من شغل تاني لنفس العميل.
  */
 export function isCollectibleRemainingProject(project: Project): boolean {
-  return project.workflow === "done";
+  return isAccountedProject(project);
 }
 
 export type WorkshopMoneyTotals = {
   /** مجموع بيع المشاريع غير المقايسة */
   sales: number;
-  /** مجموع الباقي على الشغل المكتمل فقط */
+  /** مجموع الباقي على الشغل داخل الحساب (بدون مقايسات) */
   outstanding: number;
 };
 

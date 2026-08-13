@@ -4,8 +4,8 @@ import { listAllProjects } from "@/lib/projects";
 import { getProjectMoneySummary } from "@/lib/project-money";
 
 /**
- * متبقي العميل = مجموع (بيع − مدفوع) للمشاريع المكتملة فقط
- * (سواء اتسلّم الشغل أو لأ).
+ * متبقي العميل = مجموع max(0, بيع − مدفوع) لكل شغل دخل الحساب
+ * (عربون / ورشة / مكتمل). الزيادة على مشروع ما تخصمش من تاني.
  */
 export function customerProjectsRemaining(customerId: string): number {
   return listAllProjects()
@@ -16,7 +16,7 @@ export function customerProjectsRemaining(customerId: string): number {
 }
 
 /**
- * رصيد العميل الظاهر في الواجهة: متبقي الشغل المكتمل.
+ * رصيد العميل الظاهر في الواجهة: متبقي الشغل داخل الحساب.
  * إن لم يكن له مشاريع، نرجع الرصيد المخزّن القديم إن وُجد.
  */
 export function resolveCustomerBalance(customer: Customer): number {

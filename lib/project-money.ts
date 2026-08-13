@@ -3,6 +3,7 @@ import { itemTotalPrice } from "@/lib/design-items";
 import {
   getItemsForProject,
   getProjectById,
+  listAllProjects,
   type Project,
   type ProjectDiscountType,
 } from "@/lib/projects";
@@ -119,6 +120,26 @@ export function getProjectMoneySummary(projectId: string): ProjectMoneySummary {
     remaining: Math.max(0, discounted.sale - paid),
     expenses,
   };
+}
+
+/**
+ * مبلغ البيع اللي يترحل لكشف العميل في المحل.
+ * لو المشروع مدفوع زيادة وفيه شغل تاني عليه باقي، نرفع قيد البيع
+ * لحد المدفوع عشان الزيادة ما تتحولش رصيد دائن يخصم من المشروع التاني.
+ */
+export function projectLedgerSaleAmount(projectId: string): number {
+  const money = getProjectMoneySummary(projectId);
+  const project = getProjectById(projectId);
+  if (!project || money.paid <= money.sale) return money.sale;
+  const hasOtherRemaining = listAllProjects().some((other) => {
+    if (other.id === projectId || other.customerId !== project.customerId) {
+      return false;
+    }
+    if (other.workflow === "quote") return false;
+    return getProjectMoneySummary(other.id).remaining > 0.004;
+  });
+  if (!hasOtherRemaining) return money.sale;
+  return roundMoney(Math.max(money.sale, money.paid));
 }
 
 export function projectDiscountLabel(money: ProjectMoneySummary): string | null {

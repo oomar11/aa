@@ -160,7 +160,14 @@ export function ProjectAccount({
         </p>
       ) : null}
 
-      {project && money ? (
+          {money && money.paid > money.sale + 0.004 ? (
+            <p className="px-1 text-[11px] text-muted">
+              مدفوع زيادة {formatCurrency(money.paid - money.sale)} ج.م على
+              المشروع ده — الزيادة مش رصيد يخصم من شغل تاني لنفس العميل.
+            </p>
+          ) : null}
+
+          {project && money ? (
         <ProjectDiscountEditor project={project} money={money} />
       ) : null}
 

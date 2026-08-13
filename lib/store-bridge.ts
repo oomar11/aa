@@ -831,11 +831,17 @@ export async function syncProjectSaleToStore(
   config: StoreBridgeConfig | null = loadStoreBridgeConfig()
 ): Promise<void> {
   if (!hasStoreBridgeCredentials(config) || !config) return;
-  const amount = input.includeInCustomerLedger
-    ? Math.max(0, Number(input.saleAmount) || 0)
-    : 0;
-  const { getProjectMoneySummary } = await import("@/lib/project-money");
+  const { getProjectMoneySummary, projectLedgerSaleAmount } = await import(
+    "@/lib/project-money"
+  );
   const money = getProjectMoneySummary(input.projectId);
+  const amount = input.includeInCustomerLedger
+    ? Math.max(
+        0,
+        projectLedgerSaleAmount(input.projectId),
+        Number(input.saleAmount) || 0
+      )
+    : 0;
   await postStorePartyLedger(
     {
       storeCustomerId: input.storeCustomerId,
@@ -858,10 +864,13 @@ export async function syncProjectSaleToStore(
         local_party_id: input.localPartyId || null,
         customer_id: input.localPartyId || null,
         sale_amount: amount,
+        computed_sale: money.sale,
+        paid: money.paid,
         subtotal: money.subtotal,
         discount_type: money.discountType,
         discount_value: money.discountValue,
         discount_amount: money.discountAmount,
+        ledger_floor_to_paid: amount > money.sale + 0.004,
       },
     },
     config
@@ -931,7 +940,9 @@ export async function resyncAllWorkshopMoneyToStore(
     await import("@/lib/accounting");
   const { listAllProjects } = await import("@/lib/projects");
   const { getCustomerById } = await import("@/lib/customers");
-  const { getProjectMoneySummary } = await import("@/lib/project-money");
+  const { getProjectMoneySummary, projectLedgerSaleAmount } = await import(
+    "@/lib/project-money"
+  );
   const { isAccountedProject } = await import("@/lib/accounting-scope");
 
   const errors: string[] = [];
@@ -1077,7 +1088,7 @@ export async function resyncAllWorkshopMoneyToStore(
         );
         continue;
       }
-      if (sale <= 0) continue;
+      if (projectLedgerSaleAmount(project.id) <= 0) continue;
       await syncProjectSaleToStore(
         {
           storeCustomerId,
