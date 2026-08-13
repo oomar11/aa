@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   deleteExpense,
+  expenseChannelLabel,
+  isCreditExpense,
   todayIsoDate,
   upsertExpense,
   type Expense,
@@ -382,9 +384,16 @@ export function ProjectExpenses({
   const fieldClass =
     "w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-[#E8956F] focus:ring-2 focus:ring-[#E8956F]/20";
 
+  const cashTotal = expenses
+    .filter((e) => !isCreditExpense(e))
+    .reduce((sum, e) => sum + e.amount, 0);
+  const creditTotal = expenses
+    .filter((e) => isCreditExpense(e))
+    .reduce((sum, e) => sum + e.amount, 0);
+
   return (
     <div className="flex flex-col gap-5">
-      <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#C45C26] to-[#E8956F] px-4 py-5 text-white shadow-[0_8px_24px_rgba(196,92,38,0.28)]">
+      <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#C45C26] to-[#E8956F] px-4 py-5 text-white shadow-[0_8px_24px_rgba(196,92,38,0.28)] lg:hidden">
         <p className="text-xs font-medium opacity-90">إجمالي مصروف المشروع</p>
         <p className="mt-1 text-3xl font-bold tabular-nums tracking-tight">
           {formatCurrency(total)}
@@ -395,6 +404,33 @@ export function ProjectExpenses({
           {expenses.length > 0 ? ` · ${expenses.length} قيد` : ""}
         </p>
       </section>
+
+      <div className="hidden grid-cols-4 gap-3 lg:grid">
+        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+          <p className="text-[11px] text-muted">إجمالي المصروف</p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-[#C45C26]">
+            {formatCurrency(total)} ج.م
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+          <p className="text-[11px] text-muted">نقدي</p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-[#C45C26]">
+            {formatCurrency(cashTotal)} ج.م
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+          <p className="text-[11px] text-muted">آجل</p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-[#C45C26]">
+            {formatCurrency(creditTotal)} ج.م
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+          <p className="text-[11px] text-muted">عدد القيود</p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-[#C45C26]">
+            {expenses.length}
+          </p>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start">
       <section ref={formRef} className="flex flex-col gap-3 scroll-mt-4">
@@ -662,7 +698,63 @@ export function ProjectExpenses({
             سجّل أول مصروف أعلاه.
           </div>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <>
+          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card lg:block">
+            <table className="w-full min-w-[560px] text-start text-sm">
+              <thead className="bg-background text-[11px] text-muted">
+                <tr>
+                  <th className="px-3 py-2.5 font-semibold">التاريخ</th>
+                  <th className="px-3 py-2.5 font-semibold">الوصف</th>
+                  <th className="px-3 py-2.5 font-semibold">التصنيف</th>
+                  <th className="px-3 py-2.5 font-semibold">التعامل</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">المبلغ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenses.map((expense) => {
+                  const highlight = expense.id === justSavedId;
+                  const selected = expense.id === editingId;
+                  return (
+                    <tr
+                      key={expense.id}
+                      onClick={() => startEdit(expense)}
+                      className={`cursor-pointer border-t border-border ${
+                        selected
+                          ? "bg-[#E8956F]/15"
+                          : highlight
+                            ? "bg-[#E8956F]/10"
+                            : "hover:bg-[#E8956F]/10"
+                      }`}
+                    >
+                      <td className="whitespace-nowrap px-3 py-2.5 text-muted">
+                        {formatDate(expense.date)}
+                      </td>
+                      <td className="max-w-[14rem] px-3 py-2.5">
+                        <p className="truncate font-semibold text-foreground">
+                          {expense.description}
+                        </p>
+                        {expense.note ? (
+                          <p className="mt-0.5 truncate text-[11px] text-muted">
+                            {expense.note}
+                          </p>
+                        ) : null}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-muted">
+                        {expense.category}
+                      </td>
+                      <td className="px-3 py-2.5 text-[12px] text-muted">
+                        {expenseChannelLabel(expense)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-end font-bold tabular-nums text-[#C45C26]">
+                        {formatCurrency(expense.amount)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <ul className="flex flex-col gap-2 lg:hidden">
             {expenses.map((expense) => {
               const highlight = expense.id === justSavedId;
               const selected = expense.id === editingId;
@@ -689,12 +781,7 @@ export function ProjectExpenses({
                             {expense.category}
                           </span>
                           <span className="rounded-lg bg-background px-2 py-0.5 text-[10px] font-semibold text-muted">
-                            {expense.settlement === "credit" ||
-                            expense.storeInvoiceId
-                              ? expense.storeSupplierName
-                                ? `آجل · ${expense.storeSupplierName}`
-                                : "آجل"
-                              : "نقدي"}
+                            {expenseChannelLabel(expense)}
                           </span>
                           <span className="text-[11px] text-muted">
                             {formatDate(expense.date)}
@@ -720,6 +807,7 @@ export function ProjectExpenses({
               );
             })}
           </ul>
+          </>
         )}
       </section>
       </div>

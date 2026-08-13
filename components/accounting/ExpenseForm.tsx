@@ -26,11 +26,17 @@ import { NumericInput } from "@/components/ui/NumericInput";
 import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
 import { StoreSupplierPicker } from "@/components/accounting/StoreSupplierPicker";
 
+type Props = {
+  /** داخل صفحة المصروفات على الكمبيوتر — بدون تحويل بعد الحفظ */
+  embedded?: boolean;
+  onSaved?: () => void;
+};
+
 /**
  * تسجيل مصروف ورشة من الحسابات.
  * نقدي → سحب من خزنة المتجر · آجل → فاتورة شراء على مورد المحل.
  */
-export function ExpenseForm() {
+export function ExpenseForm({ embedded = false, onSaved }: Props) {
   const router = useRouter();
 
   const [category, setCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
@@ -238,7 +244,8 @@ export function ExpenseForm() {
               storeBridge: withStoreBridgeMeta(
                 amount,
                 sync.safe_id || chosenSafeId,
-                sync.reference_id
+                sync.reference_id,
+                bridgeSafeName
               ),
             });
           } catch (err) {
@@ -251,6 +258,19 @@ export function ExpenseForm() {
             return;
           }
         }
+      }
+      if (embedded) {
+        setCategory(EXPENSE_CATEGORIES[0]);
+        setDescription("");
+        setAmount(0);
+        setDate(todayIsoDate());
+        setNote("");
+        clearProject();
+        setSettlement("cash");
+        setSupplierId("");
+        setSupplierName("");
+        onSaved?.();
+        return;
       }
       router.replace(ROUTES.accounting.expenses);
     } catch (err) {
@@ -270,12 +290,22 @@ export function ExpenseForm() {
   return (
     <form
       onSubmit={(e) => void handleSubmit(e)}
-      className="flex w-full flex-col gap-4"
+      className={`flex w-full flex-col gap-4 ${embedded ? "" : "lg:max-w-4xl"}`}
     >
       <p className="rounded-2xl border border-[#E8956F]/30 bg-[#E8956F]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
-        سجّل مصروف ورشة عام، أو اربطه بمشروع لو عايز يتظهر في حساب المشروع.
-        نقدي = حاسبت عليها من الخزنة · آجل = مديونية على مورد المحل.
+        {embedded
+          ? "نقدي من الخزنة أو آجل على مورد. اربطه بمشروع لو عايز يظهر في حساب الشغلانة."
+          : "سجّل مصروف ورشة عام، أو اربطه بمشروع لو عايز يتظهر في حساب المشروع. نقدي = حاسبت عليها من الخزنة · آجل = مديونية على مورد المحل."}
       </p>
+
+      <div
+        className={
+          embedded
+            ? "flex flex-col gap-4"
+            : "flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5"
+        }
+      >
+      <div className="flex flex-col gap-4">
 
       <div className="flex flex-col gap-1.5 text-right">
         <span className="text-xs font-medium text-muted">التعامل</span>
@@ -340,7 +370,7 @@ export function ExpenseForm() {
           }}
           min={0}
           blankZero
-          autoFocus
+          autoFocus={!embedded}
           className={`${fieldClass} text-left text-xl font-bold tabular-nums`}
           dir="ltr"
           inputMode="decimal"
@@ -360,7 +390,9 @@ export function ExpenseForm() {
           className={fieldClass}
         />
       </label>
+      </div>
 
+      <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5 text-right">
         <span className="text-xs font-medium text-muted">التصنيف</span>
         <div className="flex flex-wrap gap-2">
@@ -480,6 +512,8 @@ export function ExpenseForm() {
         ) : (
           <p className="text-xs text-muted">مصروف عام للورشة — بدون مشروع</p>
         )}
+      </div>
+      </div>
       </div>
 
       {error ? (

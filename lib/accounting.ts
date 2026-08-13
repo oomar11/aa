@@ -90,6 +90,24 @@ export const EXPENSE_CATEGORIES = [
   "مصروفات عامة",
 ] as const;
 
+export function isCreditExpense(expense: Expense): boolean {
+  return expense.settlement === "credit" || Boolean(expense.storeInvoiceId);
+}
+
+/** التعامل المعروض: خزنة النظام أو آجل على مورد */
+export function expenseChannelLabel(expense: Expense): string {
+  if (isCreditExpense(expense)) {
+    if (expense.storeSupplierName) return `آجل · ${expense.storeSupplierName}`;
+    if (expense.storeInvoiceNumber) {
+      return `آجل · فاتورة ${expense.storeInvoiceNumber}`;
+    }
+    return "آجل";
+  }
+  const safe = expense.storeBridge?.safeName?.trim();
+  if (safe) return safe;
+  return "نقدي";
+}
+
 const seedPayments: Payment[] = [];
 
 const seedExpenses: Expense[] = [];
