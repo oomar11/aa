@@ -14,7 +14,7 @@ import { ensureStoreBridgeBootstrapped } from "@/lib/store-bridge-bootstrap";
 const SALE_SYNCED = new Map<string, string>();
 const PAY_SYNCED = new Map<string, string>();
 
-let timer: ReturnType<typeof setTimeout> | null = null;
+let timer: number | null = null;
 let inFlight = false;
 let queued = false;
 let started = false;
