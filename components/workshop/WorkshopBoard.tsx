@@ -633,7 +633,7 @@ export function WorkshopBoard() {
         >
           <ProjectList
             projects={delivered}
-            empty="لسه مفيش تسليم مسجّل"
+            empty="الشغل المتسلّم اللي خلص حسابه مش بيظهر هنا"
             renderRow={(project) => (
               <ProjectRow
                 project={project}

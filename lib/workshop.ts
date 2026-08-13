@@ -13,6 +13,7 @@ import {
   type Payment,
   loadPayments,
 } from "@/lib/accounting";
+import { getProjectMoneySummary } from "@/lib/project-money";
 
 export const WORKFLOW_LABELS: Record<ProjectWorkflow, string> = {
   quote: "مقايسة",
@@ -593,13 +594,14 @@ export function listAwaitingDeliveryProjects(): Project[] {
     });
 }
 
-/** تم التسليم (الأحدث أولاً) — بدون حد إن لم يُمرَّر limit */
+/** تم التسليم ولسه عليه حساب — الشغل المتقفل مش بيظهر في الورشة */
 export function listDeliveredProjects(limit?: number): Project[] {
   const list = listAllProjects()
     .filter(
       (p) =>
         p.workflow === "done" && projectDeliveryStatus(p) === "delivered"
     )
+    .filter((p) => getProjectMoneySummary(p.id).remaining > 0)
     .sort((a, b) => {
       const ad = a.deliveredAt ?? a.createdAt;
       const bd = b.deliveredAt ?? b.createdAt;
