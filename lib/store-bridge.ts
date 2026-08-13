@@ -567,6 +567,13 @@ export async function fetchStoreCustomerBusinessLines(
   return out;
 }
 
+/** Store matching needs ≥9 digits. Placeholder values like «010» must not merge parties. */
+function usableBridgePhone(phone?: string | null): string | null {
+  const raw = String(phone || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  return digits.length >= 9 ? raw : null;
+}
+
 export async function upsertStoreCustomer(
   input: {
     localPartyId: string;
@@ -586,7 +593,7 @@ export async function upsertStoreCustomer(
       source_system: "aa",
       local_party_id: input.localPartyId,
       name: input.name,
-      phone: input.phone || null,
+      phone: usableBridgePhone(input.phone),
       address: input.address || null,
       notes: input.notes || null,
     }),
@@ -647,7 +654,7 @@ export async function upsertStoreSupplier(
       source_system: "aa",
       local_party_id: input.localPartyId || null,
       name: input.name,
-      phone: input.phone || null,
+      phone: usableBridgePhone(input.phone),
       address: input.address || null,
       notes: input.notes || null,
     }),
