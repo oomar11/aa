@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { isAccountedProject } from "@/lib/accounting-scope";
 import { buildAccountingReport } from "@/lib/accounting-reports";
 import { mergeCustomers, type Customer } from "@/lib/customers";
@@ -48,39 +48,32 @@ export function DesktopHomeBoard() {
 
   void tick;
 
-  const customerById = useMemo(() => {
+  const customerById = (() => {
     const map = new Map<string, Customer>();
     for (const c of mergeCustomers()) map.set(c.id, c);
     return map;
-  }, [tick]);
+  })();
 
   const inWorkshop = listWorkshopProjects({ includeHeld: false });
   const queued = listQueuedProjects({ includeHeld: false });
   const awaiting = listAwaitingDeliveryProjects();
 
-  const monthReport = useMemo(() => {
-    if (typeof window === "undefined") {
-      return {
-        collected: 0,
-        outstanding: 0,
-        net: 0,
-        expenses: 0,
-      };
-    }
-    return buildAccountingReport("month");
-  }, [tick]);
+  const monthReport =
+    typeof window === "undefined"
+      ? { collected: 0, outstanding: 0, net: 0, expenses: 0 }
+      : buildAccountingReport("month");
 
-  const activeProjects = useMemo(() => {
-    if (typeof window === "undefined") return [];
-    return listAllProjects()
-      .filter(isAccountedProject)
-      .sort(compareProjectsByWorkflowThenDate)
-      .slice(0, 20)
-      .map((project) => {
-        const money = getProjectMoneySummary(project.id);
-        return { project, money };
-      });
-  }, [tick]);
+  const activeProjects =
+    typeof window === "undefined"
+      ? []
+      : listAllProjects()
+          .filter(isAccountedProject)
+          .sort(compareProjectsByWorkflowThenDate)
+          .slice(0, 20)
+          .map((project) => {
+            const money = getProjectMoneySummary(project.id);
+            return { project, money };
+          });
 
   return (
     <div className="hidden flex-col gap-5 lg:flex">

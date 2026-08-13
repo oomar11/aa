@@ -44,6 +44,15 @@ const QUEUE_FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 type TabId = "workshop" | "queued" | "held" | "awaiting" | "delivered";
 
+function initialWorkshopTab(): TabId {
+  if (typeof window === "undefined") return "workshop";
+  if (listWorkshopProjects({ includeHeld: false }).length > 0) return "workshop";
+  if (listQueuedProjects({ includeHeld: false }).length > 0) return "queued";
+  if (listAwaitingDeliveryProjects().length > 0) return "awaiting";
+  if (listHeldProjects().length > 0) return "held";
+  return "workshop";
+}
+
 function customerName(
   customerById: Map<string, Customer>,
   customerId: string
@@ -67,7 +76,7 @@ function askHoldReason(): string | null {
  */
 export function WorkshopBoard() {
   const [tick, setTick] = useState(0);
-  const [tab, setTab] = useState<TabId>("workshop");
+  const [tab, setTab] = useState<TabId>(initialWorkshopTab);
   const [movingId, setMovingId] = useState<string | null>(null);
   const queueItemRefs = useRef(new Map<string, HTMLLIElement>());
   const pendingFlipFromRef = useRef<Map<string, DOMRect> | null>(null);
@@ -97,15 +106,6 @@ export function WorkshopBoard() {
   const held = listHeldProjects();
   const awaiting = listAwaitingDeliveryProjects();
   const delivered = listDeliveredProjects();
-
-  // أول تبويب فيه شغل — مرة واحدة عند التحميل
-  useEffect(() => {
-    if (inWorkshop.length > 0) setTab("workshop");
-    else if (queued.length > 0) setTab("queued");
-    else if (awaiting.length > 0) setTab("awaiting");
-    else if (held.length > 0) setTab("held");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const queueIds = useMemo(() => queued.map((p) => p.id).join("|"), [queued]);
 
