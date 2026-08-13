@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { isAccountedProject } from "@/lib/accounting-scope";
 import { buildAccountingReport } from "@/lib/accounting-reports";
+import { todayIsoDate } from "@/lib/accounting";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import {
@@ -12,7 +13,7 @@ import {
   type Project,
 } from "@/lib/projects";
 import { ROUTES } from "@/lib/routes";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import {
   compareProjectsByWorkflowThenDate,
   listAwaitingDeliveryProjects,
@@ -27,7 +28,7 @@ function customerName(map: Map<string, Customer>, customerId: string): string {
 }
 
 /**
- * لوحة متابعة الكمبيوتر: ورشة + فلوس + مشاريع + مكسب الشهر.
+ * لوحة متابعة الكمبيوتر: ورشة اليوم + فلوس الشهر + المشاريع النشطة.
  */
 export function DesktopHomeBoard() {
   const [tick, setTick] = useState(0);
@@ -48,20 +49,24 @@ export function DesktopHomeBoard() {
 
   void tick;
 
-  const customerById = (() => {
+  const customerById = useMemo(() => {
     const map = new Map<string, Customer>();
     for (const c of mergeCustomers()) map.set(c.id, c);
     return map;
-  })();
+  }, [tick]);
 
   const inWorkshop = listWorkshopProjects({ includeHeld: false });
   const queued = listQueuedProjects({ includeHeld: false });
   const awaiting = listAwaitingDeliveryProjects();
+  const nextUpId = queued[0]?.id ?? null;
 
   const monthReport =
     typeof window === "undefined"
       ? { collected: 0, outstanding: 0, net: 0, expenses: 0 }
       : buildAccountingReport("month");
+
+  const todayLabel =
+    typeof window === "undefined" ? "" : formatDate(todayIsoDate());
 
   const activeProjects =
     typeof window === "undefined"
@@ -76,60 +81,62 @@ export function DesktopHomeBoard() {
           });
 
   return (
-    <div className="hidden flex-col gap-5 lg:flex">
-      <div className="grid grid-cols-3 gap-2.5 xl:grid-cols-6">
-        <KpiTile
-          label="قيد التنفيذ"
-          value={String(inWorkshop.length)}
-          href={ROUTES.workshop}
-          color="text-wf-workshop"
-        />
-        <KpiTile
-          label="في الانتظار"
-          value={String(queued.length)}
-          href={ROUTES.workshop}
-          color="text-wf-queued"
-        />
-        <KpiTile
-          label="جاهز للتسليم"
-          value={String(awaiting.length)}
-          href={ROUTES.workshop}
-          color="text-wf-done"
-        />
+    <div className="hidden flex-col gap-6 lg:flex">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">الرئيسية</h1>
+          {todayLabel ? (
+            <p className="mt-1 text-sm text-muted">{todayLabel}</p>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={ROUTES.design.hub}
+            className="flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-white"
+          >
+            طلب جديد
+          </Link>
+          <Link
+            href={ROUTES.accounting.newPayment}
+            className="flex h-10 items-center justify-center rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground"
+          >
+            استلام دفعة
+          </Link>
+          <Link
+            href={ROUTES.accounting.newExpense}
+            className="flex h-10 items-center justify-center rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground"
+          >
+            تسجيل مصروف
+          </Link>
+        </div>
+      </header>
+
+      <section className="grid grid-cols-4 gap-3">
         <KpiTile
           label="باقي عند العملاء"
-          value={`${formatCurrency(monthReport.outstanding)}`}
+          value={formatCurrency(monthReport.outstanding)}
           href={ROUTES.accounting.receivables}
           color="text-[#E85A8A]"
         />
         <KpiTile
           label="محصّل الشهر"
-          value={`${formatCurrency(monthReport.collected)}`}
+          value={formatCurrency(monthReport.collected)}
           href={ROUTES.accounting.payments}
           color="text-[#2F9B7A]"
         />
         <KpiTile
+          label="مصروف الشهر"
+          value={formatCurrency(monthReport.expenses)}
+          href={ROUTES.accounting.expenses}
+          color="text-[#C45C26]"
+        />
+        <KpiTile
           label="مكسب الشهر"
-          value={`${formatCurrency(monthReport.net)}`}
+          value={formatCurrency(monthReport.net)}
           href={ROUTES.accounting.reports}
           color={monthReport.net >= 0 ? "text-[#1F6B55]" : "text-[#E85A8A]"}
         />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5">
-        <Link
-          href={ROUTES.design.hub}
-          className="flex h-12 items-center justify-center rounded-2xl bg-primary text-sm font-bold text-white shadow-[0_6px_18px_rgba(43,125,233,0.28)]"
-        >
-          طلب جديد
-        </Link>
-        <Link
-          href={ROUTES.accounting.newPayment}
-          className="flex h-12 items-center justify-center rounded-2xl border border-border bg-card text-sm font-bold text-foreground"
-        >
-          استلام دفعة
-        </Link>
-      </div>
+      </section>
 
       <section className="grid grid-cols-3 gap-3">
         <WorkshopColumn
@@ -147,6 +154,7 @@ export function DesktopHomeBoard() {
           empty="قائمة الانتظار فارغة"
           projects={queued}
           customerById={customerById}
+          nextUpId={nextUpId}
         />
         <WorkshopColumn
           title="جاهز للتسليم"
@@ -158,7 +166,7 @@ export function DesktopHomeBoard() {
         />
       </section>
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <section className="overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex items-baseline justify-between border-b border-border px-4 py-3">
             <h2 className="text-sm font-bold text-foreground">المشاريع النشطة</h2>
@@ -170,20 +178,21 @@ export function DesktopHomeBoard() {
             </Link>
           </div>
           {activeProjects.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted">
+            <p className="px-4 py-10 text-center text-sm text-muted">
               مفيش شغل دخل الحساب بعد — سجّل دفعة من المقايسات.
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-start text-sm">
+              <table className="w-full min-w-[720px] text-start text-sm">
                 <thead className="bg-background text-[11px] text-muted">
                   <tr>
-                    <th className="px-4 py-2 font-semibold">المشروع</th>
-                    <th className="px-3 py-2 font-semibold">العميل</th>
-                    <th className="px-3 py-2 font-semibold">الحالة</th>
-                    <th className="px-3 py-2 text-end font-semibold">البيع</th>
-                    <th className="px-3 py-2 text-end font-semibold">مدفوع</th>
-                    <th className="px-4 py-2 text-end font-semibold">باقي</th>
+                    <th className="px-4 py-2.5 font-semibold">المشروع</th>
+                    <th className="px-3 py-2.5 font-semibold">العميل</th>
+                    <th className="px-3 py-2.5 font-semibold">الحالة</th>
+                    <th className="px-3 py-2.5 text-end font-semibold">البيع</th>
+                    <th className="px-3 py-2.5 text-end font-semibold">مدفوع</th>
+                    <th className="px-3 py-2.5 text-end font-semibold">مصروف</th>
+                    <th className="px-4 py-2.5 text-end font-semibold">باقي</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -218,6 +227,9 @@ export function DesktopHomeBoard() {
                       <td className="px-3 py-2.5 text-end tabular-nums text-[#2F9B7A]">
                         {formatCurrency(money.paid)}
                       </td>
+                      <td className="px-3 py-2.5 text-end tabular-nums text-[#C45C26]">
+                        {formatCurrency(money.expenses)}
+                      </td>
                       <td
                         className={`px-4 py-2.5 text-end tabular-nums font-semibold ${
                           money.remaining > 0
@@ -235,24 +247,47 @@ export function DesktopHomeBoard() {
           )}
         </section>
 
-        <Link
-          href={ROUTES.accounting.reports}
-          className="flex flex-col justify-between rounded-2xl bg-[#1F6B55] px-5 py-5 text-white shadow-[0_8px_24px_rgba(47,155,122,0.28)]"
-        >
-          <div>
-            <p className="text-xs font-medium opacity-85">
-              {monthReport.net >= 0 ? "بتكسب هذا الشهر" : "خسارة هذا الشهر"}
+        <aside className="flex flex-col gap-3">
+          <Link
+            href={ROUTES.accounting.reports}
+            className="rounded-2xl border border-border bg-card px-5 py-5 transition-colors hover:bg-primary-soft/30"
+          >
+            <p className="text-xs font-medium text-muted">مكسب هذا الشهر</p>
+            <p
+              className={`mt-2 text-3xl font-bold tabular-nums tracking-tight ${
+                monthReport.net >= 0 ? "text-[#1F6B55]" : "text-[#E85A8A]"
+              }`}
+            >
+              {formatCurrency(monthReport.net)}{" "}
+              <span className="text-base font-semibold text-muted">ج.م</span>
             </p>
-            <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight">
-              {formatCurrency(monthReport.net)} ج.م
+            <p className="mt-3 text-xs leading-relaxed text-muted">
+              محصّل {formatCurrency(monthReport.collected)} ج.م − مصروف{" "}
+              {formatCurrency(monthReport.expenses)} ج.م
             </p>
-            <p className="mt-2 text-xs opacity-80">
-              محصّل {formatCurrency(monthReport.collected)} − مصروف{" "}
-              {formatCurrency(monthReport.expenses)}
+            <p className="mt-4 text-sm font-bold text-primary">فتح تقارير الربح</p>
+          </Link>
+
+          <nav className="overflow-hidden rounded-2xl border border-border bg-card">
+            <p className="border-b border-border px-4 py-2.5 text-xs font-bold text-muted">
+              اختصارات
             </p>
-          </div>
-          <p className="mt-6 text-sm font-bold">فتح تقارير الربح ‹</p>
-        </Link>
+            <ul className="flex flex-col">
+              <ShortcutLink href={ROUTES.accounting.receivables}>
+                فلوس لِيا برا
+              </ShortcutLink>
+              <ShortcutLink href={ROUTES.accounting.expenses}>
+                المصروفات
+              </ShortcutLink>
+              <ShortcutLink href={ROUTES.accounting.reports}>
+                تقارير الربح
+              </ShortcutLink>
+              <ShortcutLink href={ROUTES.accounting.storeInbox} last>
+                فواتير المحل
+              </ShortcutLink>
+            </ul>
+          </nav>
+        </aside>
       </div>
     </div>
   );
@@ -265,18 +300,45 @@ function KpiTile({
   color,
 }: {
   label: string;
-  value: string;
   href: string;
+  value: string;
   color: string;
 }) {
   return (
     <Link
       href={href}
-      className="rounded-2xl border border-border bg-card px-3 py-3 transition-colors hover:bg-primary-soft/40"
+      className="rounded-2xl border border-border bg-card px-5 py-4 transition-colors hover:bg-primary-soft/40"
     >
-      <p className="text-[11px] text-muted">{label}</p>
-      <p className={`mt-1 text-xl font-bold tabular-nums ${color}`}>{value}</p>
+      <p className="text-xs text-muted">{label}</p>
+      <p className={`mt-2 text-2xl font-bold tabular-nums xl:text-3xl ${color}`}>
+        {value}
+        <span className="mr-1 text-sm font-semibold text-muted">ج.م</span>
+      </p>
     </Link>
+  );
+}
+
+function ShortcutLink({
+  href,
+  children,
+  last = false,
+}: {
+  href: string;
+  children: React.ReactNode;
+  last?: boolean;
+}) {
+  return (
+    <li className={last ? "" : "border-b border-border"}>
+      <Link
+        href={href}
+        className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground hover:bg-primary-soft/40"
+      >
+        {children}
+        <span className="text-muted" aria-hidden>
+          ‹
+        </span>
+      </Link>
+    </li>
   );
 }
 
@@ -287,6 +349,7 @@ function WorkshopColumn({
   empty,
   projects,
   customerById,
+  nextUpId,
 }: {
   title: string;
   href: string;
@@ -294,32 +357,53 @@ function WorkshopColumn({
   empty: string;
   projects: Project[];
   customerById: Map<string, Customer>;
+  nextUpId?: string | null;
 }) {
   return (
-    <section className="flex min-h-[14rem] flex-col overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-baseline justify-between border-b border-border px-3 py-2.5">
+    <section className="flex min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="flex items-baseline justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-bold text-foreground">{title}</h2>
-        <Link href={href} className="text-xs font-semibold tabular-nums text-primary">
-          {count}
+        <Link href={href} className="text-xs font-semibold text-primary">
+          فتح الورشة · {count}
         </Link>
       </div>
       {projects.length === 0 ? (
-        <p className="px-3 py-6 text-center text-xs text-muted">{empty}</p>
+        <p className="px-4 py-10 text-center text-sm text-muted">{empty}</p>
       ) : (
-        <ul className="flex flex-col gap-1.5 p-2">
+        <ul className="flex flex-col gap-2 p-3">
           {projects.slice(0, 8).map((project) => {
             const visual = WORKFLOW_VISUAL[project.workflow];
+            const remaining = getProjectMoneySummary(project.id).remaining;
+            const isNext = project.id === nextUpId;
             return (
               <li key={project.id}>
                 <Link
                   href={ROUTES.design.editor(project.customerId, project.id)}
-                  className={`block rounded-xl border border-s-[3px] border-border bg-background px-2.5 py-2 hover:bg-primary-soft/40 ${visual.rail}`}
+                  className={`block rounded-xl border border-s-[3px] px-3 py-2.5 transition-colors hover:bg-primary-soft/40 ${visual.rail} ${
+                    isNext
+                      ? "border-primary bg-primary-soft/50"
+                      : "border-border bg-background"
+                  }`}
                 >
-                  <p className="truncate text-xs font-bold text-foreground">
-                    {project.name}
-                  </p>
-                  <p className="mt-0.5 truncate text-[11px] text-muted">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 truncate text-sm font-bold text-foreground">
+                      {project.name}
+                    </p>
+                    {isNext ? (
+                      <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        التالي
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-0.5 truncate text-[12px] text-muted">
                     {customerName(customerById, project.customerId)}
+                  </p>
+                  <p
+                    className={`mt-1.5 text-[12px] font-semibold tabular-nums ${
+                      remaining > 0 ? "text-[#E85A8A]" : "text-[#2F9B7A]"
+                    }`}
+                  >
+                    باقي {formatCurrency(remaining)} ج.م
                   </p>
                 </Link>
               </li>
