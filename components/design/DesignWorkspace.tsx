@@ -766,7 +766,11 @@ export function DesignWorkspace({
   function handleConfirmExtra(next: DesignItem) {
     const current = itemsRef.current;
     const exists = current.some((i) => i.id === next.id);
-    persist(exists ? current.map((i) => (i.id === next.id ? next : i)) : [next, ...current]);
+    persist(
+      exists
+        ? current.map((i) => (i.id === next.id ? next : i))
+        : [...current, next]
+    );
     setExtraOpen(false);
     setEditingExtra(null);
   }
@@ -959,27 +963,6 @@ export function DesignWorkspace({
             </div>
           </button>
         </li>
-        <li className="h-full min-h-0">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingExtra(null);
-              setExtraOpen(true);
-            }}
-            className="flex h-full w-full flex-col overflow-hidden rounded-xl border-2 border-dashed border-[#C45C26]/40 bg-card text-[#C45C26] shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C45C26] hover:bg-[#C45C26]/10 active:scale-[0.98]"
-            aria-label="إضافة بند إضافي مثل تركيب"
-          >
-            <div className="flex aspect-square w-full shrink-0 items-center justify-center border-b border-dashed border-[#C45C26]/30 bg-[#C45C26]/10 p-3">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#C45C26] text-3xl font-light leading-none text-white shadow-[0_6px_16px_rgba(196,92,38,0.28)]">
-                ＋
-              </span>
-            </div>
-            <div className="flex h-[92px] flex-col items-center justify-center gap-1 p-2.5">
-              <span className="text-sm font-semibold">بند إضافي</span>
-              <span className="text-[10px] text-muted">تركيب أو زيادة</span>
-            </div>
-          </button>
-        </li>
 
         {items.map((item, index) => {
           const isDragging = draggingId === item.id;
@@ -1028,6 +1011,27 @@ export function DesignWorkspace({
             </li>
           );
         })}
+        <li className="col-span-2">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingExtra(null);
+              setExtraOpen(true);
+            }}
+            className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-[#C45C26]/50 bg-card px-3 py-3 text-[#C45C26] shadow-[0_1px_4px_rgba(15,20,28,0.05)] transition-all hover:border-[#C45C26] hover:bg-[#C45C26]/10 active:scale-[0.99]"
+            aria-label="إضافة تركيب أو بند زيادة في آخر الشغلانة"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#C45C26] text-2xl font-light leading-none text-white">
+              +
+            </span>
+            <span className="min-w-0 flex-1 text-right">
+              <span className="block text-sm font-bold">إضافة تركيب أو زيادة</span>
+              <span className="mt-0.5 block text-[11px] text-muted">
+                بند مش شباك — في آخر الشغلانة
+              </span>
+            </span>
+          </button>
+        </li>
       </ul>
 
       <div
