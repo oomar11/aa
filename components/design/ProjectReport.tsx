@@ -510,6 +510,7 @@ function ReportItemCard({
             widthMm={item.widthMm}
             heightMm={item.heightMm}
             showDimensions
+            printContrast
             unit={unit}
             className="h-full w-auto max-h-full max-w-full"
           />

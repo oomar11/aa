@@ -42,6 +42,8 @@ type Props = {
   showDimensions?: boolean;
   /** وحدة عرض المقاسات */
   unit?: LengthUnit;
+  /** رسم عالي التباين لطباعة المقايسة أبيض وأسود */
+  printContrast?: boolean;
 };
 
 function sum(nums: number[]) {
@@ -89,6 +91,7 @@ export function WindowPreview({
   className = "",
   showDimensions = false,
   unit = "mm",
+  printContrast = false,
 }: Props) {
   const uid = useId().replace(/:/g, "");
 
@@ -97,7 +100,13 @@ export function WindowPreview({
     (templateId ? getTemplateById(templateId)?.layout : undefined);
 
   if (!resolved) {
-    return <LegacyStylePreview style={style} className={className} />;
+    return (
+      <LegacyStylePreview
+        style={style}
+        className={className}
+        printContrast={printContrast}
+      />
+    );
   }
 
   const tree = ensurePaneIds(resolved);
@@ -106,8 +115,8 @@ export function WindowPreview({
   let winH = auto.height;
   if (widthMm && heightMm && widthMm > 0 && heightMm > 0) {
     const aspect = widthMm / heightMm;
-    const maxW = showDimensions ? 150 : 140;
-    const maxH = showDimensions ? 140 : 150;
+    const maxW = showDimensions ? (printContrast ? 168 : 150) : 140;
+    const maxH = showDimensions ? (printContrast ? 156 : 140) : 150;
     if (aspect >= 1) {
       winW = maxW;
       winH = Math.max(56, Math.round(maxW / aspect));
@@ -121,8 +130,8 @@ export function WindowPreview({
     showDimensions &&
     Boolean(widthMm && heightMm && widthMm > 0 && heightMm > 0);
   // مساحة كافية لمقاس العرض/الارتفاع فقط — بدون مقاسات تقسيم عشان متتداخلش
-  const dimPadTop = showDims ? 22 : 5;
-  const dimPadLeft = showDims ? 28 : 5;
+  const dimPadTop = showDims ? (printContrast ? 28 : 22) : 5;
+  const dimPadLeft = showDims ? (printContrast ? 36 : 28) : 5;
   const dimPadRight = showDims ? 8 : 5;
   const dimPadBottom = showDims ? 8 : 5;
   const vbW = showDims ? dimPadLeft + winW + dimPadRight : winW;
@@ -141,15 +150,20 @@ export function WindowPreview({
   collectMullionRects(tree, frame, Math.max(2.4, Math.min(frame.w, frame.h) * 0.035), mullions);
 
   const frameMeta = FRAME_COLORS[normalizeFrameColor(frameColor)];
-  const frameFill = frameMeta.hex;
+  const frameFill = printContrast
+    ? printFrameFill(frameMeta.hex)
+    : frameMeta.hex;
   const isWood = Boolean(frameMeta.wood);
-  const glass = "#9ec8e8";
-  const openStroke = "#2b7de9";
-  const hardware = "#6b7585";
-  const frameStroke = "#8a96a5";
-  const emptyFill = "#f4f6f9";
-  const emptyStroke = "#c5d0dc";
+  const glass = printContrast ? "#ffffff" : "#9ec8e8";
+  const openStroke = printContrast ? "#111111" : "#2b7de9";
+  const hardware = printContrast ? "#111111" : "#6b7585";
+  const frameStroke = printContrast ? "#111111" : "#8a96a5";
+  const emptyFill = printContrast ? "#ffffff" : "#f4f6f9";
+  const emptyStroke = printContrast ? "#555555" : "#c5d0dc";
   const profile = Math.max(2.8, Math.min(frame.w, frame.h) * 0.045);
+  const frameStrokeW = printContrast ? 1.6 : 0.9;
+  const paneStrokeW = printContrast ? 1.4 : 0.6;
+  const mullionStrokeW = printContrast ? 1.4 : 0.4;
   const woodId = `wood-${uid}`;
   const meshId = `mesh-${uid}`;
   const emptyPatId = `empty-${uid}`;
@@ -172,9 +186,9 @@ export function WindowPreview({
             <rect width="10" height="10" fill={frameFill} />
             <path
               d="M0 2.5 H10 M0 6 H10 M0 9.5 H10"
-              stroke="#a88752"
-              strokeWidth="0.7"
-              opacity="0.55"
+              stroke={printContrast ? "#5a3d18" : "#a88752"}
+              strokeWidth={printContrast ? 1.1 : 0.7}
+              opacity={printContrast ? 0.9 : 0.55}
             />
           </pattern>
         )}
@@ -186,9 +200,9 @@ export function WindowPreview({
         >
           <path
             d="M0 0 L5 5 M5 0 L0 5"
-            stroke="#6b7c8f"
-            strokeWidth="0.55"
-            opacity="0.65"
+            stroke={printContrast ? "#333333" : "#6b7c8f"}
+            strokeWidth={printContrast ? 0.9 : 0.55}
+            opacity={printContrast ? 1 : 0.65}
           />
         </pattern>
         <pattern
@@ -200,8 +214,8 @@ export function WindowPreview({
           <path
             d="M0 6 L6 0"
             stroke={emptyStroke}
-            strokeWidth="0.7"
-            opacity="0.55"
+            strokeWidth={printContrast ? 1 : 0.7}
+            opacity={printContrast ? 0.9 : 0.55}
           />
         </pattern>
       </defs>
@@ -218,7 +232,7 @@ export function WindowPreview({
             height={r.h}
             fill={emptyFill}
             stroke={emptyStroke}
-            strokeWidth={0.7}
+            strokeWidth={printContrast ? 1.2 : 0.7}
             strokeDasharray="3 2"
           />
           <rect
@@ -242,7 +256,7 @@ export function WindowPreview({
           height={p.h}
           fill={isWood ? `url(#${woodId})` : frameFill}
           stroke={frameStroke}
-          strokeWidth={0.9}
+          strokeWidth={frameStrokeW}
         />
       ))}
 
@@ -266,7 +280,7 @@ export function WindowPreview({
               height={gh}
               fill={isLouver || isExhaust ? frameFill : glass}
               stroke={frameStroke}
-              strokeWidth={0.6}
+              strokeWidth={paneStrokeW}
             />
             {!isExhaust && (
               <PaneDetailFill
@@ -278,6 +292,7 @@ export function WindowPreview({
                 frameFill={frameFill}
                 meshId={meshId}
                 svgPerMm={svgPerMm}
+                printContrast={printContrast}
               />
             )}
             <OpeningMarks
@@ -291,6 +306,7 @@ export function WindowPreview({
               hardware={hardware}
               frameFill={frameFill}
               svgPerMm={svgPerMm}
+              printContrast={printContrast}
             />
           </g>
         );
@@ -305,7 +321,7 @@ export function WindowPreview({
           height={m.h}
           fill={isWood ? `url(#${woodId})` : frameFill}
           stroke={frameStroke}
-          strokeWidth={0.4}
+          strokeWidth={mullionStrokeW}
         />
       ))}
 
@@ -315,7 +331,8 @@ export function WindowPreview({
           widthMm={widthMm}
           heightMm={heightMm}
           unit={unit}
-          color="#2b7de9"
+          color={printContrast ? "#111111" : "#2b7de9"}
+          printContrast={printContrast}
         />
       ) : null}
     </svg>
@@ -333,16 +350,18 @@ function PreviewDimensions({
   heightMm,
   unit,
   color,
+  printContrast = false,
 }: {
   frame: Rect;
   widthMm: number;
   heightMm: number;
   unit: LengthUnit;
   color: string;
+  printContrast?: boolean;
 }) {
-  const widthY = frame.y - 12;
-  const heightX = frame.x - 14;
-  const fontSize = 9;
+  const widthY = frame.y - (printContrast ? 15 : 12);
+  const heightX = frame.x - (printContrast ? 18 : 14);
+  const fontSize = printContrast ? 12 : 9;
 
   return (
     <g aria-hidden>
@@ -355,6 +374,7 @@ function PreviewDimensions({
         color={color}
         fontSize={fontSize}
         strong
+        printContrast={printContrast}
       />
       <PreviewDimV
         y1={frame.y}
@@ -365,6 +385,7 @@ function PreviewDimensions({
         color={color}
         fontSize={fontSize}
         strong
+        printContrast={printContrast}
       />
     </g>
   );
@@ -379,6 +400,7 @@ function PreviewDimH({
   color,
   fontSize,
   strong = false,
+  printContrast = false,
 }: {
   x1: number;
   x2: number;
@@ -388,10 +410,15 @@ function PreviewDimH({
   color: string;
   fontSize: number;
   strong?: boolean;
+  printContrast?: boolean;
 }) {
   const mid = (x1 + x2) / 2;
   const bw = Math.max(label.length * fontSize * 0.62 + 6, 18);
   const bh = fontSize + 3;
+  const extW = printContrast ? 1.2 : 0.7;
+  const dimW = printContrast ? (strong ? 1.8 : 1.4) : strong ? 1.1 : 0.85;
+  const chipW = printContrast ? 1.2 : 0.7;
+  const dotR = printContrast ? (strong ? 2 : 1.6) : strong ? 1.4 : 1.1;
   return (
     <g>
       <line
@@ -400,8 +427,8 @@ function PreviewDimH({
         x2={x1}
         y2={y}
         stroke={color}
-        strokeWidth={0.7}
-        opacity={0.55}
+        strokeWidth={extW}
+        opacity={printContrast ? 1 : 0.55}
       />
       <line
         x1={x2}
@@ -409,8 +436,8 @@ function PreviewDimH({
         x2={x2}
         y2={y}
         stroke={color}
-        strokeWidth={0.7}
-        opacity={0.55}
+        strokeWidth={extW}
+        opacity={printContrast ? 1 : 0.55}
       />
       <line
         x1={x1}
@@ -418,10 +445,10 @@ function PreviewDimH({
         x2={x2}
         y2={y}
         stroke={color}
-        strokeWidth={strong ? 1.1 : 0.85}
+        strokeWidth={dimW}
       />
-      <circle cx={x1} cy={y} r={strong ? 1.4 : 1.1} fill={color} />
-      <circle cx={x2} cy={y} r={strong ? 1.4 : 1.1} fill={color} />
+      <circle cx={x1} cy={y} r={dotR} fill={color} />
+      <circle cx={x2} cy={y} r={dotR} fill={color} />
       <rect
         x={mid - bw / 2}
         y={y - bh / 2}
@@ -430,7 +457,7 @@ function PreviewDimH({
         rx={2}
         fill="#ffffff"
         stroke={color}
-        strokeWidth={0.7}
+        strokeWidth={chipW}
       />
       <text
         x={mid}
@@ -456,6 +483,7 @@ function PreviewDimV({
   color,
   fontSize,
   strong = false,
+  printContrast = false,
 }: {
   y1: number;
   y2: number;
@@ -465,10 +493,15 @@ function PreviewDimV({
   color: string;
   fontSize: number;
   strong?: boolean;
+  printContrast?: boolean;
 }) {
   const mid = (y1 + y2) / 2;
   const bw = Math.max(label.length * fontSize * 0.62 + 6, 18);
   const bh = fontSize + 3;
+  const extW = printContrast ? 1.2 : 0.7;
+  const dimW = printContrast ? (strong ? 1.8 : 1.4) : strong ? 1.1 : 0.85;
+  const chipW = printContrast ? 1.2 : 0.7;
+  const dotR = printContrast ? (strong ? 2 : 1.6) : strong ? 1.4 : 1.1;
   return (
     <g>
       <line
@@ -477,8 +510,8 @@ function PreviewDimV({
         x2={x}
         y2={y1}
         stroke={color}
-        strokeWidth={0.7}
-        opacity={0.55}
+        strokeWidth={extW}
+        opacity={printContrast ? 1 : 0.55}
       />
       <line
         x1={frameX}
@@ -486,8 +519,8 @@ function PreviewDimV({
         x2={x}
         y2={y2}
         stroke={color}
-        strokeWidth={0.7}
-        opacity={0.55}
+        strokeWidth={extW}
+        opacity={printContrast ? 1 : 0.55}
       />
       <line
         x1={x}
@@ -495,10 +528,10 @@ function PreviewDimV({
         x2={x}
         y2={y2}
         stroke={color}
-        strokeWidth={strong ? 1.1 : 0.85}
+        strokeWidth={dimW}
       />
-      <circle cx={x} cy={y1} r={strong ? 1.4 : 1.1} fill={color} />
-      <circle cx={x} cy={y2} r={strong ? 1.4 : 1.1} fill={color} />
+      <circle cx={x} cy={y1} r={dotR} fill={color} />
+      <circle cx={x} cy={y2} r={dotR} fill={color} />
       <rect
         x={x - bw / 2}
         y={mid - bh / 2}
@@ -507,7 +540,7 @@ function PreviewDimV({
         rx={2}
         fill="#ffffff"
         stroke={color}
-        strokeWidth={0.7}
+        strokeWidth={chipW}
       />
       <text
         x={x}
@@ -533,6 +566,7 @@ function PaneDetailFill({
   frameFill,
   meshId,
   svgPerMm = 0,
+  printContrast = false,
 }: {
   config: PaneConfig;
   x: number;
@@ -542,6 +576,7 @@ function PaneDetailFill({
   frameFill: string;
   meshId: string;
   svgPerMm?: number;
+  printContrast?: boolean;
 }) {
   const grid = config.grid ?? "solid";
   const cells = getGridCells(grid, x, y, w, h);
@@ -567,6 +602,7 @@ function PaneDetailFill({
                 h={cell.h}
                 frameFill={frameFill}
                 svgPerMm={svgPerMm}
+                printContrast={printContrast}
               />
             )}
             {config.mesh && !isPanel && (
@@ -603,6 +639,7 @@ function SandwichPanelCell({
   h,
   frameFill,
   svgPerMm = 0,
+  printContrast = false,
 }: {
   x: number;
   y: number;
@@ -610,9 +647,10 @@ function SandwichPanelCell({
   h: number;
   frameFill: string;
   svgPerMm?: number;
+  printContrast?: boolean;
 }) {
   const { gap, positions } = panelStripeLayout(h, svgPerMm, Math.min(w, h) * 0.045);
-  const divider = panelStripeDivider(frameFill);
+  const divider = panelStripeDivider(frameFill, printContrast);
   return (
     <g>
       <rect x={x} y={y} width={w} height={h} fill={frameFill} />
@@ -642,6 +680,7 @@ function OpeningMarks({
   hardware,
   frameFill,
   svgPerMm = 0,
+  printContrast = false,
 }: {
   opening: PaneOpening;
   bouclier: boolean;
@@ -653,11 +692,15 @@ function OpeningMarks({
   hardware: string;
   frameFill: string;
   svgPerMm?: number;
+  printContrast?: boolean;
 }) {
   const cx = x + w / 2;
   const cy = y + h / 2;
   const inset = Math.max(1.5, Math.min(w, h) * 0.06);
-  const sw = Math.max(0.9, Math.min(w, h) * 0.035);
+  const sw = Math.max(
+    printContrast ? 1.3 : 0.9,
+    Math.min(w, h) * (printContrast ? 0.045 : 0.035)
+  );
 
   if (opening === "fixed" && bouclier) {
     return (
@@ -678,7 +721,7 @@ function OpeningMarks({
           y2={y + h - inset}
           stroke={openStroke}
           strokeWidth={sw}
-          opacity={0.4}
+          opacity={printContrast ? 1 : 0.4}
         />
         <line
           x1={x + w - inset}
@@ -687,7 +730,7 @@ function OpeningMarks({
           y2={y + h - inset}
           stroke={openStroke}
           strokeWidth={sw}
-          opacity={0.4}
+          opacity={printContrast ? 1 : 0.4}
         />
       </>
     );
@@ -790,7 +833,7 @@ function OpeningMarks({
           fill="none"
           stroke={openStroke}
           strokeWidth={sw * 0.85}
-          opacity={0.75}
+          opacity={printContrast ? 1 : 0.75}
         />
       </>
     );
@@ -810,7 +853,7 @@ function OpeningMarks({
           fill="none"
           stroke={openStroke}
           strokeWidth={sw * 0.85}
-          opacity={0.75}
+          opacity={printContrast ? 1 : 0.75}
         />
       </>
     );
@@ -903,7 +946,7 @@ function OpeningMarks({
       svgPerMm > 0
         ? PANEL_STRIPE_MM * svgPerMm
         : Math.max(h * 0.15, gap * 4);
-    const divider = previewLuminance(frameFill) < 0.45 ? "#ffffff66" : "#00000040";
+    const divider = panelStripeDivider(frameFill, printContrast);
     const lines: number[] = [];
     for (let pos = stripe; pos < h - 0.5; pos += stripe) {
       lines.push(pos);
@@ -935,7 +978,7 @@ function OpeningMarks({
       svgPerMm > 0
         ? PANEL_STRIPE_MM * svgPerMm
         : Math.max(w * 0.15, gap * 4);
-    const divider = previewLuminance(frameFill) < 0.45 ? "#ffffff66" : "#00000040";
+    const divider = panelStripeDivider(frameFill, printContrast);
     const lines: number[] = [];
     for (let pos = stripe; pos < w - 0.5; pos += stripe) {
       lines.push(pos);
@@ -970,16 +1013,31 @@ function previewLuminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+/** تغميق خفيف للإطار الأبيض جداً عشان ميندمجش مع الورق في الطباعة */
+function printFrameFill(hex: string): string {
+  if (previewLuminance(hex) < 0.88) return hex;
+  const raw = hex.replace("#", "");
+  const r = Math.round(parseInt(raw.slice(0, 2), 16) * 0.85);
+  const g = Math.round(parseInt(raw.slice(2, 4), 16) * 0.85);
+  const b = Math.round(parseInt(raw.slice(4, 6), 16) * 0.85);
+  return `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+}
+
 function LegacyStylePreview({
   style,
   className,
+  printContrast = false,
 }: {
   style: WindowStyle;
   className: string;
+  printContrast?: boolean;
 }) {
-  const frame = "#7a8fa8";
-  const glass = "#c5dcf5";
-  const glassDark = "#9ec4ea";
+  const frame = printContrast ? "#6a7380" : "#7a8fa8";
+  const glass = printContrast ? "#ffffff" : "#c5dcf5";
+  const glassDark = printContrast ? "#e8e8e8" : "#9ec4ea";
+  const mark = printContrast ? "#111111" : "#2b7de9";
+  const markOpacity = printContrast ? 1 : 0.4;
+  const markW = printContrast ? 1.8 : 1.2;
 
   if (style === "casement-1") {
     return (
@@ -987,8 +1045,8 @@ function LegacyStylePreview({
         <rect x="6" y="6" width="68" height="88" rx="2" fill={frame} />
         <rect x="12" y="12" width="56" height="76" fill={glass} />
         <line x1="40" y1="12" x2="40" y2="88" stroke={frame} strokeWidth="4" />
-        <line x1="16" y1="16" x2="64" y2="84" stroke="#2b7de9" strokeWidth="1.2" opacity="0.4" />
-        <line x1="64" y1="16" x2="16" y2="84" stroke="#2b7de9" strokeWidth="1.2" opacity="0.4" />
+        <line x1="16" y1="16" x2="64" y2="84" stroke={mark} strokeWidth={markW} opacity={markOpacity} />
+        <line x1="64" y1="16" x2="16" y2="84" stroke={mark} strokeWidth={markW} opacity={markOpacity} />
       </svg>
     );
   }
@@ -1000,8 +1058,8 @@ function LegacyStylePreview({
         <rect x="12" y="12" width="25" height="76" fill={glass} />
         <rect x="43" y="12" width="25" height="76" fill={glassDark} />
         <rect x="37" y="12" width="6" height="76" fill={frame} />
-        <path d="M35 16 L14 50 L35 84" fill="none" stroke="#2b7de9" strokeWidth="1.3" />
-        <path d="M45 16 L66 50 L45 84" fill="none" stroke="#2b7de9" strokeWidth="1.3" />
+        <path d="M35 16 L14 50 L35 84" fill="none" stroke={mark} strokeWidth={printContrast ? 1.8 : 1.3} />
+        <path d="M45 16 L66 50 L45 84" fill="none" stroke={mark} strokeWidth={printContrast ? 1.8 : 1.3} />
       </svg>
     );
   }
@@ -1013,8 +1071,8 @@ function LegacyStylePreview({
         <rect x="12" y="12" width="28" height="76" fill={glass} />
         <rect x="40" y="12" width="28" height="76" fill={glassDark} />
         <rect x="37" y="12" width="6" height="76" fill={frame} />
-        <line x1="30" y1="50" x2="16" y2="50" stroke="#2b7de9" strokeWidth="1.3" />
-        <line x1="50" y1="50" x2="64" y2="50" stroke="#2b7de9" strokeWidth="1.3" />
+        <line x1="30" y1="50" x2="16" y2="50" stroke={mark} strokeWidth={printContrast ? 1.8 : 1.3} />
+        <line x1="50" y1="50" x2="64" y2="50" stroke={mark} strokeWidth={printContrast ? 1.8 : 1.3} />
       </svg>
     );
   }
@@ -1038,7 +1096,7 @@ function LegacyStylePreview({
         <rect x="8" y="4" width="54" height="102" rx="2" fill={frame} />
         <rect x="14" y="10" width="42" height="55" fill={glass} />
         <rect x="14" y="70" width="42" height="30" fill={frame} />
-        <path d="M54 12 L16 55 L54 98" fill="none" stroke="#2b7de9" strokeWidth="1.4" />
+        <path d="M54 12 L16 55 L54 98" fill="none" stroke={mark} strokeWidth={printContrast ? 1.8 : 1.4} />
       </svg>
     );
   }
@@ -1047,8 +1105,8 @@ function LegacyStylePreview({
     <svg viewBox="0 0 100 70" className={className} aria-hidden>
       <rect x="6" y="6" width="88" height="58" rx="2" fill={frame} />
       <rect x="12" y="12" width="76" height="46" fill={glass} />
-      <line x1="16" y1="16" x2="84" y2="54" stroke="#2b7de9" strokeWidth="1.2" opacity="0.4" />
-      <line x1="84" y1="16" x2="16" y2="54" stroke="#2b7de9" strokeWidth="1.2" opacity="0.4" />
+      <line x1="16" y1="16" x2="84" y2="54" stroke={mark} strokeWidth={markW} opacity={markOpacity} />
+      <line x1="84" y1="16" x2="16" y2="54" stroke={mark} strokeWidth={markW} opacity={markOpacity} />
     </svg>
   );
 }

@@ -81,8 +81,13 @@ export function panelStripeLayout(
   return { gap, positions };
 }
 
-export function panelStripeDivider(frameFill: string): string {
-  return luminance(frameFill) < 0.45 ? "#ffffff66" : "#00000040";
+export function panelStripeDivider(
+  frameFill: string,
+  highContrast = false
+): string {
+  const dark = luminance(frameFill) < 0.45;
+  if (highContrast) return dark ? "#ffffff" : "#222222";
+  return dark ? "#ffffff66" : "#00000040";
 }
 
 function luminance(hex: string): number {
