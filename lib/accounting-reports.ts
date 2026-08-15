@@ -5,7 +5,7 @@ import {
   type Expense,
   type Payment,
 } from "@/lib/accounting";
-import { isAccountedProject } from "@/lib/accounting-scope";
+import { isDeliveredProject } from "@/lib/accounting-scope";
 import { mergeCustomers } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { listAllProjects, type Project } from "@/lib/projects";
@@ -29,6 +29,7 @@ export type ProjectProfitRow = {
   /** ربح تقديري = محصّل − مصروف */
   profit: number;
   workflow: Project["workflow"];
+  deliveredAt?: string;
 };
 
 export type AccountingReport = {
@@ -36,15 +37,15 @@ export type AccountingReport = {
   /** بداية الفترة (ISO تاريخ) إن وُجدت */
   fromDate: string | null;
   toDate: string;
-  /** بيع المشاريع غير المقايسة */
+  /** بيع الشغل المتسلّم في الفترة */
   sales: number;
-  /** دفعات ضمن الفترة */
+  /** محصّل الشغل المتسلّم في الفترة */
   collected: number;
-  /** مصروفات ضمن الفترة */
+  /** مصروف الشغل المتسلّم + المصروف العام في الفترة */
   expenses: number;
   /** المحصّل − المصروف */
   net: number;
-  /** باقي عند العملاء (شغل عليه حساب) */
+  /** باقي على الشغل المتسلّم الظاهر في التقرير */
   outstanding: number;
   projectRows: ProjectProfitRow[];
   paymentCount: number;
@@ -70,6 +71,19 @@ function inPeriod(isoDate: string, from: string | null, to: string): boolean {
   return isoDate <= to;
 }
 
+/** الشغل المتسلّم يدخل الفترة حسب تاريخ التسليم؛ من غير تاريخ يظهر في «كل الوقت» فقط. */
+function isDeliveredInReportPeriod(
+  project: Project,
+  fromDate: string | null,
+  toDate: string,
+  allTime: boolean
+): boolean {
+  if (!isDeliveredProject(project)) return false;
+  const deliveredAt = project.deliveredAt;
+  if (!deliveredAt) return allTime;
+  return inPeriod(deliveredAt, fromDate, toDate);
+}
+
 export const REPORT_PERIOD_LABELS: Record<ReportPeriod, string> = {
   all: "كل الوقت",
   month: "هذا الشهر",
@@ -89,8 +103,8 @@ export function reportBounds(
 }
 
 /**
- * تقرير ربحية: هل الورشة بتكسب؟
- * المحصّل والمصروف يُفلتران بالتاريخ؛ البيع والباقي من حالة المشاريع الحالية.
+ * تقرير ربحية من الشغل اللي خلص واتسلّم.
+ * الفترة على تاريخ التسليم؛ المكسب = محصّل الشغل − مصروفه − المصروف العام في الفترة.
  */
 export function buildAccountingReport(
   period: ReportPeriod = "month",
@@ -108,58 +122,60 @@ export function buildAccountingReport(
   const customers = mergeCustomers();
   const customerById = new Map(customers.map((c) => [c.id, c]));
 
-  const periodPayments = payments.filter((p) =>
-    inPeriod(p.date, fromDate, toDate)
+  const includedProjects = projects.filter((project) =>
+    isDeliveredInReportPeriod(project, fromDate, toDate, allTime)
   );
-  const periodExpenses = expenses.filter((e) =>
-    inPeriod(e.date, fromDate, toDate)
-  );
+  const includedIds = new Set(includedProjects.map((project) => project.id));
 
-  const collected = periodPayments.reduce((s, p) => s + p.amount, 0);
-  const expenseTotal = periodExpenses.reduce((s, e) => s + e.amount, 0);
+  const jobPayments = payments.filter(
+    (p) => p.projectId != null && includedIds.has(p.projectId)
+  );
+  const jobExpenses = expenses.filter(
+    (e) => e.projectId != null && includedIds.has(e.projectId)
+  );
+  const generalPeriodExpenses = expenses.filter(
+    (e) => !e.projectId && inPeriod(e.date, fromDate, toDate)
+  );
 
   let sales = 0;
+  let collected = 0;
+  let jobExpenseTotal = 0;
   let outstanding = 0;
   const projectRows: ProjectProfitRow[] = [];
 
-  for (const project of projects) {
-    if (!isAccountedProject(project)) continue;
+  for (const project of includedProjects) {
     const money = getProjectMoneySummary(project.id);
-    sales += money.sale;
-    outstanding += money.remaining;
-
-    const periodPaid = periodPayments
+    const paid = payments
       .filter((p) => p.projectId === project.id)
       .reduce((s, p) => s + p.amount, 0);
-    const periodExp = periodExpenses
+    const projectExp = expenses
       .filter((e) => e.projectId === project.id)
       .reduce((s, e) => s + e.amount, 0);
+    const remaining = Math.max(0, money.sale - paid);
+    sales += money.sale;
+    collected += paid;
+    jobExpenseTotal += projectExp;
+    outstanding += remaining;
 
-    // اعرض المشروع لو فيه حركة في الفترة أو باقي أو مصروف إجمالي
-    if (
-      allTime ||
-      periodPaid > 0 ||
-      periodExp > 0 ||
-      money.remaining > 0
-    ) {
-      projectRows.push({
-        projectId: project.id,
-        customerId: project.customerId,
-        projectName: project.name,
-        customerName: customerById.get(project.customerId)?.name ?? "عميل",
-        sale: money.sale,
-        paid: allTime ? money.paid : periodPaid,
-        remaining: money.remaining,
-        expenses: allTime ? money.expenses : periodExp,
-        profit: allTime
-          ? money.paid - money.expenses
-          : periodPaid - periodExp,
-        workflow: project.workflow,
-      });
-    }
+    projectRows.push({
+      projectId: project.id,
+      customerId: project.customerId,
+      projectName: project.name,
+      customerName: customerById.get(project.customerId)?.name ?? "عميل",
+      sale: money.sale,
+      paid,
+      remaining,
+      expenses: projectExp,
+      profit: paid - projectExp,
+      workflow: project.workflow,
+      deliveredAt: project.deliveredAt,
+    });
   }
 
   projectRows.sort((a, b) => b.profit - a.profit);
+
+  const overhead = generalPeriodExpenses.reduce((s, e) => s + e.amount, 0);
+  const expenseTotal = jobExpenseTotal + overhead;
 
   return {
     period,
@@ -171,7 +187,7 @@ export function buildAccountingReport(
     net: collected - expenseTotal,
     outstanding,
     projectRows,
-    paymentCount: periodPayments.length,
-    expenseCount: periodExpenses.length,
+    paymentCount: jobPayments.length,
+    expenseCount: jobExpenses.length + generalPeriodExpenses.length,
   };
 }

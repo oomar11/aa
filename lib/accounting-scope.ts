@@ -19,6 +19,14 @@ export function isCollectibleRemainingProject(project: Project): boolean {
   return isAccountedProject(project);
 }
 
+/**
+ * شغل يدخل تقرير الربح: مكتمل تصنيعاً واتسلّم للعميل.
+ * مش شرط الحساب يكون متسدد.
+ */
+export function isDeliveredProject(project: Project): boolean {
+  return project.workflow === "done" && project.deliveryStatus === "delivered";
+}
+
 export type WorkshopMoneyTotals = {
   /** مجموع بيع المشاريع غير المقايسة */
   sales: number;

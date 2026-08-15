@@ -43,7 +43,7 @@ const links = [
   {
     href: ROUTES.accounting.reports,
     title: "تقارير الربح",
-    description: "بتكسب ولا لأ — حسب الشهر والشغل",
+    description: "بتكسب ولا لأ — من الشغل اللي اتسلّم",
     accent: "bg-[#C47A12]",
   },
   {

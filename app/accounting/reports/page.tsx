@@ -11,7 +11,7 @@ export default function AccountingReportsPage() {
         backHref={ROUTES.accounting.hub}
         backLabel="الحسابات"
         title="تقارير الربح"
-        description="تعرف بتكسب ولا لأ — حسب الفترة والشغل"
+        description="من الشغل اللي خلص واتسلّم — حسب تاريخ التسليم"
         className="px-1 print:hidden"
       />
       <div className="mt-4">

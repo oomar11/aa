@@ -11,7 +11,7 @@ import {
 } from "@/lib/accounting-reports";
 import { ROUTES } from "@/lib/routes";
 import { downloadCsv, formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
-import { WORKFLOW_LABELS } from "@/lib/workshop";
+import { DELIVERY_LABELS } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 
 const PERIODS: ReportPeriod[] = ["month", "quarter", "year", "all"];
@@ -46,7 +46,7 @@ function readReport(
 }
 
 /**
- * تقرير ربحية الورشة: هل بتكسب ولا لأ؟
+ * تقرير ربحية الورشة من الشغل اللي خلص واتسلّم.
  */
 export function ProfitReport() {
   const initial = reportBounds("month");
@@ -99,7 +99,8 @@ export function ProfitReport() {
       [
         "المشروع",
         "العميل",
-        "الحالة",
+        "التسليم",
+        "تاريخ التسليم",
         "البيع",
         "المحصّل",
         "المصروف",
@@ -109,7 +110,8 @@ export function ProfitReport() {
       ...rows.map((row) => [
         row.projectName,
         row.customerName,
-        WORKFLOW_LABELS[row.workflow],
+        DELIVERY_LABELS.delivered,
+        row.deliveredAt ?? "",
         row.sale,
         row.paid,
         row.expenses,
@@ -196,7 +198,7 @@ export function ProfitReport() {
           ? `من ${formatDate(report.fromDate)} إلى ${formatDate(report.toDate)}`
           : `حتى ${formatDate(report.toDate)}`}
         {" · "}
-        {report.paymentCount} دفعة
+        {rows.length} شغل متسلّم
         {" · "}
         {report.expenseCount} مصروف
       </p>
@@ -209,7 +211,7 @@ export function ProfitReport() {
           {formatCurrency(report.net)} ج.م
         </p>
         <p className="mt-1 text-xs opacity-80">
-          المحصّل ناقص المصروف
+          من الشغل اللي اتسلّم ناقص المصروف
           {period !== "all" && period !== "custom"
             ? ` — ${REPORT_PERIOD_LABELS[period]}`
             : period === "custom"
@@ -219,7 +221,7 @@ export function ProfitReport() {
       </section>
 
       <section className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        <Tile label="إجمالي الحسابات" value={report.sales} tone="neutral" />
+        <Tile label="بيع المتسلّم" value={report.sales} tone="neutral" />
         <Tile label="المحصّل" value={report.collected} tone="good" />
         <Tile label="المصروفات" value={report.expenses} tone="expense" />
         <Tile label="لِيا برا" value={report.outstanding} tone="warn" />
@@ -243,7 +245,7 @@ export function ProfitReport() {
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted">
-          مفيش شغل يظهر في الفترة دي
+          مفيش شغل اتسلّم في الفترة دي
         </div>
       ) : (
         <>
@@ -253,7 +255,7 @@ export function ProfitReport() {
                 <tr>
                   <th className="px-4 py-2.5 font-semibold">المشروع</th>
                   <th className="px-3 py-2.5 font-semibold">العميل</th>
-                  <th className="px-3 py-2.5 font-semibold">الحالة</th>
+                  <th className="px-3 py-2.5 font-semibold">التسليم</th>
                   <th className="px-3 py-2.5 text-end font-semibold">البيع</th>
                   <th className="px-3 py-2.5 text-end font-semibold">المحصّل</th>
                   <th className="px-3 py-2.5 text-end font-semibold">المصروف</th>
@@ -280,7 +282,21 @@ export function ProfitReport() {
                     </td>
                     <td className="px-3 py-2.5 text-muted">{row.customerName}</td>
                     <td className="px-3 py-2.5">
-                      <WorkflowBadge workflow={row.workflow} />
+                      <div className="flex flex-col items-start gap-0.5">
+                        <WorkflowBadge
+                          workflow={row.workflow}
+                          project={{
+                            workflow: row.workflow,
+                            deliveryStatus: "delivered",
+                            deliveredAt: row.deliveredAt,
+                          }}
+                        />
+                        {row.deliveredAt ? (
+                          <span className="text-[10px] text-muted">
+                            {formatDate(row.deliveredAt)}
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 text-end tabular-nums">
                       {formatCurrency(row.sale)}
@@ -320,16 +336,26 @@ export function ProfitReport() {
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <WorkflowBadge workflow={row.workflow} />
+                      <WorkflowBadge
+                        workflow={row.workflow}
+                        project={{
+                          workflow: row.workflow,
+                          deliveryStatus: "delivered",
+                          deliveredAt: row.deliveredAt,
+                        }}
+                      />
                       <p className="truncate text-sm font-bold text-foreground">
                         {row.projectName}
                       </p>
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted">
                       {row.customerName}
+                      {row.deliveredAt
+                        ? ` · ${formatDate(row.deliveredAt)}`
+                        : ""}
                       {" · حساب "}
                       {formatCurrency(row.sale)}
-                      {" · اتسلّم "}
+                      {" · محصّل "}
                       {formatCurrency(row.paid)}
                       {" · مصروف "}
                       {formatCurrency(row.expenses)}

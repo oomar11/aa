@@ -262,7 +262,8 @@ export function DesktopHomeBoard() {
               <span className="text-base font-semibold text-muted">ج.م</span>
             </p>
             <p className="mt-3 text-xs leading-relaxed text-muted">
-              محصّل {formatCurrency(monthReport.collected)} ج.م − مصروف{" "}
+              من الشغل المتسلّم هذا الشهر · محصّل{" "}
+              {formatCurrency(monthReport.collected)} ج.م − مصروف{" "}
               {formatCurrency(monthReport.expenses)} ج.م
             </p>
             <p className="mt-4 text-sm font-bold text-primary">فتح تقارير الربح</p>
