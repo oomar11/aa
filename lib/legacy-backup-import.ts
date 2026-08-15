@@ -18,6 +18,15 @@ import type {
   Payment,
 } from "@/lib/accounting";
 import type { Project, ProjectWorkflow } from "@/lib/projects";
+import type {
+  Advance,
+  AttendanceRecord,
+  AttendanceStatus,
+  Employee,
+  PayType,
+  Payroll,
+  ProjectAssignment,
+} from "@/lib/hr";
 import {
   DELETED_CUSTOMERS_KEY,
   SHARED_STORAGE_KEYS,
@@ -133,6 +142,7 @@ export type LegacyImportSummary = {
   items: number;
   payments: number;
   expenses: number;
+  employees: number;
   skippedKeys: string[];
 };
 
@@ -149,8 +159,214 @@ export function isLegacyBackup(value: unknown): value is LegacyBackup {
   );
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function strField(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function pickField(row: Record<string, unknown>, keys: string[]): unknown {
+  for (const key of keys) {
+    if (row[key] != null && row[key] !== "") return row[key];
+  }
+  return undefined;
+}
+
 function asId(prefix: string, id: number | string): string {
   return `${prefix}-${id}`;
+}
+
+function mapLegacyRole(raw: string): string {
+  const n = raw.toLowerCase();
+  if (/قص|قطع|cut/.test(n)) return "قص";
+  if (/لحام|weld/.test(n)) return "لحام";
+  if (/اكسسوار|إكسسوار|access/.test(n)) return "اكسسوار";
+  if (/زجاج|glass/.test(n)) return "زجاج";
+  if (/تركيب|install/.test(n)) return "تركيب";
+  if (/محاسب|account/.test(n)) return "محاسب";
+  if (/إدار|ادار|مدير|admin/.test(n)) return "إدارة";
+  return raw || "أخرى";
+}
+
+function mapLegacyPayType(row: Record<string, unknown>): PayType {
+  const raw = strField(
+    pickField(row, ["payType", "wageType", "salaryType", "type"])
+  ).toLowerCase();
+  if (/daily|يوم/.test(raw)) return "daily";
+  if (/month|شهر/.test(raw)) return "monthly";
+  const daily = num(pickField(row, ["dailyWage", "dayWage", "daily"]), 0);
+  const monthly = num(pickField(row, ["salary", "monthlyWage", "wage", "amount"]), 0);
+  if (daily > 0 && monthly <= 0) return "daily";
+  return "monthly";
+}
+
+function mapLegacyAttendanceStatus(raw: unknown): AttendanceStatus | null {
+  if (raw === true || raw === 1) return "present";
+  if (raw === false || raw === 0) return "absent";
+  const n = strField(raw).toLowerCase();
+  if (!n) return null;
+  if (/present|حاضر|حضور/.test(n)) return "present";
+  if (/absent|غائب|غايب|غياب/.test(n)) return "absent";
+  if (/holiday|رسمي/.test(n)) return "holiday";
+  if (/off|vacation|leave|إجاز|اجاز|أجاز/.test(n)) return "off";
+  return null;
+}
+
+function convertLegacyHr(
+  backup: LegacyBackup,
+  validProjectIds: Set<string>
+): {
+  employees: Employee[];
+  attendance: AttendanceRecord[];
+  advances: Advance[];
+  payroll: Payroll[];
+  assignments: ProjectAssignment[];
+} {
+  const employeeIdMap = new Map<string, string>();
+  const employees: Employee[] = [];
+  for (const item of backup.employees ?? []) {
+    const row = asRecord(item);
+    if (!row) continue;
+    const legacyId = pickField(row, ["id", "employeeId"]) ?? employees.length + 1;
+    const id = asId("emp", legacyId as string | number);
+    employeeIdMap.set(String(legacyId), id);
+    const payType = mapLegacyPayType(row);
+    const wage = num(
+      pickField(
+        row,
+        payType === "daily"
+          ? ["dailyWage", "dayWage", "daily", "wage", "salary", "amount"]
+          : ["salary", "monthlyWage", "wage", "amount", "dailyWage"]
+      ),
+      0
+    );
+    const hiredAt = strField(
+      pickField(row, ["hiredAt", "hireDate", "startDate", "createdAt"])
+    ).slice(0, 10);
+    const statusRaw = strField(pickField(row, ["status", "active"])).toLowerCase();
+    employees.push({
+      id,
+      name: strField(pickField(row, ["name", "fullName", "employeeName"])) || `موظف ${legacyId}`,
+      phone: strField(pickField(row, ["phone", "mobile", "tel"])) || undefined,
+      role: mapLegacyRole(
+        strField(pickField(row, ["role", "job", "position", "title"]))
+      ),
+      payType,
+      wage,
+      hiredAt: hiredAt || new Date().toISOString().slice(0, 10),
+      status:
+        /left|inactive|سابق|ساب|off/.test(statusRaw) || row.active === false
+          ? "left"
+          : "active",
+      note: strField(pickField(row, ["note", "notes", "comment"])) || undefined,
+      createdAt:
+        strField(pickField(row, ["createdAt"])) || new Date().toISOString(),
+    });
+  }
+
+  const attendance: AttendanceRecord[] = [];
+  for (const item of backup.attendance ?? []) {
+    const row = asRecord(item);
+    if (!row) continue;
+    const legacyEmp = pickField(row, ["employeeId", "empId", "staffId"]);
+    const employeeId = employeeIdMap.get(String(legacyEmp ?? ""));
+    if (!employeeId) continue;
+    const date = strField(pickField(row, ["date", "day"])).slice(0, 10);
+    if (!date) continue;
+    const status = mapLegacyAttendanceStatus(
+      pickField(row, ["status", "present", "state", "type"])
+    );
+    if (!status) continue;
+    attendance.push({
+      id: `att-${employeeId}-${date}`,
+      employeeId,
+      date,
+      status,
+      note: strField(pickField(row, ["note", "notes"])) || undefined,
+    });
+  }
+
+  const advances: Advance[] = [];
+  for (const item of backup.advances ?? []) {
+    const row = asRecord(item);
+    if (!row) continue;
+    const legacyEmp = pickField(row, ["employeeId", "empId", "staffId"]);
+    const employeeId = employeeIdMap.get(String(legacyEmp ?? ""));
+    if (!employeeId) continue;
+    const amount = num(pickField(row, ["amount", "value"]), 0);
+    if (amount <= 0) continue;
+    const date = strField(pickField(row, ["date", "createdAt"])).slice(0, 10);
+    advances.push({
+      id: asId("adv", (pickField(row, ["id"]) as string | number) ?? advances.length + 1),
+      employeeId,
+      amount,
+      date: date || new Date().toISOString().slice(0, 10),
+      note: strField(pickField(row, ["note", "notes", "description"])) || undefined,
+      createdAt: strField(pickField(row, ["createdAt"])) || new Date().toISOString(),
+    });
+  }
+
+  const payroll: Payroll[] = [];
+  for (const item of backup.payroll ?? []) {
+    const row = asRecord(item);
+    if (!row) continue;
+    const legacyEmp = pickField(row, ["employeeId", "empId", "staffId"]);
+    const employeeId = employeeIdMap.get(String(legacyEmp ?? ""));
+    if (!employeeId) continue;
+    const periodFrom = strField(
+      pickField(row, ["periodFrom", "from", "fromDate", "startDate"])
+    ).slice(0, 10);
+    const periodTo = strField(
+      pickField(row, ["periodTo", "to", "toDate", "endDate"])
+    ).slice(0, 10);
+    const date = strField(pickField(row, ["date", "paidAt", "createdAt"])).slice(0, 10);
+    const net = num(pickField(row, ["netAmount", "net", "amount", "paid"]), 0);
+    const base = num(pickField(row, ["baseAmount", "base", "gross"]), net);
+    payroll.push({
+      id: asId("payr", (pickField(row, ["id"]) as string | number) ?? payroll.length + 1),
+      employeeId,
+      periodFrom: periodFrom || date || new Date().toISOString().slice(0, 10),
+      periodTo: periodTo || periodFrom || date || new Date().toISOString().slice(0, 10),
+      daysWorked: num(pickField(row, ["daysWorked", "days"]), 0),
+      baseAmount: base,
+      advancesDeducted: num(pickField(row, ["advancesDeducted", "deduction", "advances"]), 0),
+      netAmount: net,
+      date: date || new Date().toISOString().slice(0, 10),
+      status: "paid",
+      note: strField(pickField(row, ["note", "notes"])) || "مستورد من الباكب القديم",
+      createdAt: strField(pickField(row, ["createdAt"])) || new Date().toISOString(),
+      deductions: [],
+    });
+  }
+
+  const assignments: ProjectAssignment[] = [];
+  for (const item of backup.projectAssignments ?? []) {
+    const row = asRecord(item);
+    if (!row) continue;
+    const employeeId = employeeIdMap.get(
+      String(pickField(row, ["employeeId", "empId"]) ?? "")
+    );
+    const projectId = asId(
+      "p",
+      (pickField(row, ["projectId"]) as string | number) ?? ""
+    );
+    if (!employeeId || !validProjectIds.has(projectId)) continue;
+    assignments.push({
+      id: `asg-${projectId}-${employeeId}`,
+      projectId,
+      employeeId,
+      assignedAt:
+        strField(pickField(row, ["assignedAt", "createdAt", "date"])) ||
+        new Date().toISOString(),
+    });
+  }
+
+  return { employees, attendance, advances, payroll, assignments };
 }
 
 function num(value: unknown, fallback = 0): number {
@@ -836,17 +1052,17 @@ export function convertLegacyBackup(backup: LegacyBackup): {
     [
       "itemTypes",
       "defaultStages",
-      "employees",
-      "attendance",
-      "advances",
-      "payroll",
-      "projectAssignments",
       "notifications",
     ] as const
   ).filter((key) => {
     const value = backup[key];
     return Array.isArray(value) ? value.length > 0 : Boolean(value);
   });
+
+  const hr = convertLegacyHr(
+    backup,
+    new Set(convertedProjects.map((project) => project.id))
+  );
 
   const sharedData = {
     [STORAGE_KEYS.customers]: JSON.stringify(customers),
@@ -860,6 +1076,11 @@ export function convertLegacyBackup(backup: LegacyBackup): {
     [STORAGE_KEYS.invoices]: JSON.stringify([]),
     [STORAGE_KEYS.payments]: JSON.stringify(payments),
     [STORAGE_KEYS.expenses]: JSON.stringify(expenses),
+    [STORAGE_KEYS.employees]: JSON.stringify(hr.employees),
+    [STORAGE_KEYS.attendance]: JSON.stringify(hr.attendance),
+    [STORAGE_KEYS.advances]: JSON.stringify(hr.advances),
+    [STORAGE_KEYS.payroll]: JSON.stringify(hr.payroll),
+    [STORAGE_KEYS.projectAssignments]: JSON.stringify(hr.assignments),
   } as Record<SharedStorageKey, string | null>;
 
   // تأكيد أن كل المفاتيح المشتركة موجودة
@@ -881,6 +1102,7 @@ export function convertLegacyBackup(backup: LegacyBackup): {
       items: itemsCount,
       payments: payments.length,
       expenses: expenses.length,
+      employees: hr.employees.length,
       skippedKeys,
     },
   };
@@ -908,5 +1130,7 @@ export function formatLegacyImportSummary(summary: LegacyImportSummary): string 
     summary.skippedKeys.length > 0
       ? ` (تخطّينا: ${summary.skippedKeys.join("، ")} — مش مدعومين في البرنامج الحالي)`
       : "";
-  return `تم ترحيل ${summary.customers} عميل، ${summary.projects} مشروع، ${summary.items} بند، ${summary.payments} دفعة، ${summary.expenses} مصروف${skipped}`;
+  const employeesBit =
+    summary.employees > 0 ? `، ${summary.employees} موظف` : "";
+  return `تم ترحيل ${summary.customers} عميل، ${summary.projects} مشروع، ${summary.items} بند، ${summary.payments} دفعة، ${summary.expenses} مصروف${employeesBit}${skipped}`;
 }

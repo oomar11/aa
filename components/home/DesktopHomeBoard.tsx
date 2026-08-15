@@ -283,6 +283,9 @@ export function DesktopHomeBoard() {
               <ShortcutLink href={ROUTES.accounting.reports}>
                 تقارير الربح
               </ShortcutLink>
+              <ShortcutLink href={ROUTES.hr.hub}>
+                الموظفين والرواتب
+              </ShortcutLink>
               <ShortcutLink href={ROUTES.accounting.storeInbox} last>
                 فواتير المحل
               </ShortcutLink>

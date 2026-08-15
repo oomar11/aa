@@ -6,6 +6,7 @@ import {
   type Payment,
 } from "@/lib/accounting";
 import { getCustomerById } from "@/lib/customers";
+import { getEmployeeById } from "@/lib/hr";
 import { getProjectById } from "@/lib/projects";
 
 export type MoneyMovementKind = "in" | "out";
@@ -51,6 +52,9 @@ function expenseToMovement(expense: Expense): MoneyMovement {
   const project = expense.projectId
     ? getProjectById(expense.projectId)
     : undefined;
+  const employee = expense.employeeId
+    ? getEmployeeById(expense.employeeId)
+    : undefined;
   return {
     id: `exp:${expense.id}`,
     kind: "out",
@@ -59,7 +63,8 @@ function expenseToMovement(expense: Expense): MoneyMovement {
     title: expense.description,
     subtitle: [
       expense.category,
-      project?.name ?? "مصروف ورشة عام",
+      employee?.name,
+      project?.name ?? (employee ? undefined : "مصروف ورشة عام"),
       expense.note?.trim() || undefined,
     ]
       .filter(Boolean)

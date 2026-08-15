@@ -45,6 +45,8 @@ import {
 } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 import { ProjectMoneyLine } from "@/components/projects/ProjectMoneyLine";
+import { ProjectWorkersPicker } from "@/components/hr/ProjectWorkersPicker";
+import { assignedEmployeeNames } from "@/lib/hr";
 
 const QUEUE_FLIP_MS = 320;
 const QUEUE_FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -107,9 +109,11 @@ export function WorkshopBoard() {
     }
     window.addEventListener(PROJECTS_UPDATED_EVENT, refresh);
     window.addEventListener("upvc-accounting-updated", refresh);
+    window.addEventListener("upvc-hr-updated", refresh);
     return () => {
       window.removeEventListener(PROJECTS_UPDATED_EVENT, refresh);
       window.removeEventListener("upvc-accounting-updated", refresh);
+      window.removeEventListener("upvc-hr-updated", refresh);
     };
   }, []);
 
@@ -856,6 +860,7 @@ function ProjectRow({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const editorHref = ROUTES.design.editor(project.customerId, project.id);
+  const workerNames = assignedEmployeeNames(project.id);
   const visual =
     tone === "hold"
       ? HOLD_VISUAL
@@ -944,6 +949,11 @@ function ProjectRow({
               </p>
             ) : null}
             <ProjectMoneyLine projectId={project.id} className="mt-1" />
+            {workerNames ? (
+              <p className="mt-1 truncate text-[11px] text-muted">
+                عمال: {workerNames}
+              </p>
+            ) : null}
           </div>
           <span className="shrink-0 text-muted" aria-hidden>
             ‹
@@ -959,6 +969,7 @@ function ProjectRow({
         >
           تسجيل مصروف
         </Link>
+        <ProjectWorkersPicker projectId={project.id} compact />
         {moveControl}
         {menuActions.length > 0 ? (
           <div className="relative ms-auto">

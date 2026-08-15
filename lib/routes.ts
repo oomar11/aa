@@ -6,7 +6,7 @@
  *   الطلبات → العملاء والمقايسات + طلب جديد
  *   الورشة → تنفيذ + انتظار + متوقف + تسليم
  *   الحسابات → دفعات · مصروفات · حركة
- *   المزيد → خامات · إعدادات · نسخ احتياطي
+   *   المزيد → موظفين · خامات · إعدادات · نسخ احتياطي
  */
 
 export const ROUTES = {
@@ -84,6 +84,17 @@ export const ROUTES = {
     reports: "/accounting/reports",
   },
 
+  hr: {
+    hub: "/hr",
+    employees: "/hr/employees",
+    newEmployee: "/hr/employees/new",
+    editEmployee: (employeeId: string) =>
+      `/hr/employees/new?employee=${employeeId}`,
+    attendance: "/hr/attendance",
+    advances: "/hr/advances",
+    payroll: "/hr/payroll",
+  },
+
   materials: {
     hub: "/materials",
     profiles: "/materials/profiles",
@@ -134,7 +145,7 @@ export const APP_SECTIONS = [
   {
     id: "more",
     label: "المزيد",
-    description: "خامات · إعدادات · نسخ احتياطي",
+    description: "موظفين · خامات · إعدادات",
     href: ROUTES.more,
     color: "#6B7C93",
   },

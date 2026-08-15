@@ -26,6 +26,7 @@ import { WORKFLOW_LABELS, WORKFLOW_VISUAL } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 import { ActivityNotesPanel } from "@/components/accounting/ActivityNotesPanel";
 import { ProjectDiscountEditor } from "@/components/design/ProjectDiscountEditor";
+import { ProjectWorkersPicker } from "@/components/hr/ProjectWorkersPicker";
 
 type Props = {
   customerId: string;
@@ -118,6 +119,10 @@ export function ProjectAccount({
           <MoneyTile label="مصروف" value={money.expenses} tone="expense" />
         </section>
       ) : null}
+
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <ProjectWorkersPicker projectId={projectId} />
+      </section>
 
       {money && money.discountAmount > 0 ? (
         <p className="px-1 text-[11px] text-muted">

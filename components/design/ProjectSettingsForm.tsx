@@ -20,6 +20,7 @@ import {
 import { ROUTES } from "@/lib/routes";
 import { WORKFLOW_VISUAL } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
+import { ProjectWorkersPicker } from "@/components/hr/ProjectWorkersPicker";
 import Link from "next/link";
 
 type Props = {
@@ -170,6 +171,10 @@ export function ProjectSettingsForm({ customerId, projectId }: Props) {
         <div className="mt-1.5">
           <WorkflowBadge workflow={project.workflow} solid />
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <ProjectWorkersPicker projectId={projectId} />
       </div>
 
       {project.workflow === "quote" ? (

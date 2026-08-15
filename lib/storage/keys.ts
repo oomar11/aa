@@ -15,6 +15,16 @@ export const STORAGE_KEYS = {
   expenses: "upvc-expenses",
   /** ملاحظات المتابعة: قال / عمل / وعد */
   activityNotes: "upvc-activity-notes",
+  /** موظفون الورشة */
+  employees: "upvc-employees",
+  /** حضور يومي */
+  attendance: "upvc-attendance",
+  /** سلف الموظفين */
+  advances: "upvc-advances",
+  /** صرف الرواتب */
+  payroll: "upvc-payroll",
+  /** تعيين عمال على شغلانة */
+  projectAssignments: "upvc-project-assignments",
   /** ربط خزنة المتجر (محلي للجهاز — لا يُرفع لـ Neon لتجنب تسريب المفتاح) */
   storeBridge: "upvc-store-bridge",
 } as const;
@@ -42,6 +52,11 @@ export const SHARED_STORAGE_KEYS = [
   STORAGE_KEYS.payments,
   STORAGE_KEYS.expenses,
   STORAGE_KEYS.activityNotes,
+  STORAGE_KEYS.employees,
+  STORAGE_KEYS.attendance,
+  STORAGE_KEYS.advances,
+  STORAGE_KEYS.payroll,
+  STORAGE_KEYS.projectAssignments,
 ] as const;
 
 export type SharedStorageKey = (typeof SHARED_STORAGE_KEYS)[number];
@@ -74,6 +89,11 @@ export const SHARED_KEY_EVENTS: Record<SharedStorageKey, string[]> = {
   [STORAGE_KEYS.payments]: ["upvc-accounting-updated"],
   [STORAGE_KEYS.expenses]: ["upvc-accounting-updated"],
   [STORAGE_KEYS.activityNotes]: ["upvc-activity-updated"],
+  [STORAGE_KEYS.employees]: ["upvc-hr-updated"],
+  [STORAGE_KEYS.attendance]: ["upvc-hr-updated"],
+  [STORAGE_KEYS.advances]: ["upvc-hr-updated"],
+  [STORAGE_KEYS.payroll]: ["upvc-hr-updated", "upvc-accounting-updated"],
+  [STORAGE_KEYS.projectAssignments]: ["upvc-hr-updated", "upvc-projects-updated"],
 };
 
 /** أحداث مزامنة الكتالوج بين الشاشات */

@@ -71,6 +71,28 @@ export default function MorePage() {
       </section>
 
       <section className="flex flex-col gap-2">
+        <h2 className="px-1 text-sm font-bold text-foreground">الموظفين</h2>
+        <ul className="overflow-hidden rounded-2xl border border-border bg-card">
+          <li>
+            <Link
+              href={ROUTES.hr.hub}
+              className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-primary-soft/40"
+            >
+              <div className="min-w-0 text-right">
+                <p className="text-sm font-medium text-foreground">الموارد البشرية</p>
+                <p className="mt-0.5 text-xs text-muted">
+                  موظفين · حضور · سلف · رواتب مربوطة بالحسابات
+                </p>
+              </div>
+              <span className="shrink-0 text-muted" aria-hidden>
+                ‹
+              </span>
+            </Link>
+          </li>
+        </ul>
+      </section>
+
+      <section className="flex flex-col gap-2">
         <h2 className="px-1 text-sm font-bold text-foreground">الإعدادات</h2>
         <ul className="overflow-hidden rounded-2xl border border-border bg-card">
           {SETTINGS_LINKS.map((link, i) => (

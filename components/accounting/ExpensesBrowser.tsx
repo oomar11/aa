@@ -11,6 +11,7 @@ import {
   type Expense,
 } from "@/lib/accounting";
 import { getProjectById } from "@/lib/projects";
+import { getEmployeeById } from "@/lib/hr";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, formatDate, smartSearchMatch } from "@/lib/utils";
 import {
@@ -74,6 +75,9 @@ export function ExpensesBrowser() {
         const project = expense.projectId
           ? getProjectById(expense.projectId)
           : undefined;
+        const employeeName = expense.employeeId
+          ? (getEmployeeById(expense.employeeId)?.name ?? "")
+          : "";
         if (
           !smartSearchMatch(query, [
             expense.category,
@@ -82,6 +86,7 @@ export function ExpensesBrowser() {
             expense.storeSupplierName,
             expense.storeBridge?.safeName,
             project?.name,
+            employeeName,
           ])
         ) {
           return false;

@@ -65,6 +65,12 @@ const links = [
     accent: "bg-[#E8956F]",
   },
   {
+    href: ROUTES.hr.hub,
+    title: "رواتب الموظفين",
+    description: "حضور · سلف · صرف أجور يظهر في المصروفات والخزنة",
+    accent: "bg-[#5B6ABF]",
+  },
+  {
     href: ROUTES.accounting.newSupply,
     title: "توريد خارجي",
     description: "شراء ببنود متعددة على مورد المحل (نقدي أو آجل)",

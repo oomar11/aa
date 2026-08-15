@@ -17,11 +17,16 @@ const BUSINESS_KEYS = [
   STORAGE_KEYS.payments,
   STORAGE_KEYS.expenses,
   STORAGE_KEYS.activityNotes,
+  STORAGE_KEYS.employees,
+  STORAGE_KEYS.attendance,
+  STORAGE_KEYS.advances,
+  STORAGE_KEYS.payroll,
+  STORAGE_KEYS.projectAssignments,
   DELETED_CUSTOMERS_KEY,
 ] as const;
 
 /**
- * مسح بيانات العملاء/المشاريع/المحاسبة من الورشة المشتركة والجهاز.
+ * مسح بيانات العملاء/المشاريع/المحاسبة/الموظفين من الورشة المشتركة والجهاز.
  * لا يمس إعدادات الثيم أو الشركة أو الخامات.
  */
 export function clearBusinessData() {
