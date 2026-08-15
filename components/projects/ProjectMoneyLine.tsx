@@ -8,7 +8,7 @@ type Props = {
   className?: string;
 };
 
-/** سطر مختصر: حساب · مدفوع · باقي */
+/** سطر مختصر: حساب · مدفوع · باقي · مصروف */
 export function ProjectMoneyLine({ projectId, className = "" }: Props) {
   const money = getProjectMoneySummary(projectId);
 
@@ -33,6 +33,11 @@ export function ProjectMoneyLine({ projectId, className = "" }: Props) {
         }`}
       >
         {formatCurrency(money.remaining)}
+      </span>
+      {" · "}
+      مصروف{" "}
+      <span className="tabular-nums text-[#C45C26]">
+        {formatCurrency(money.expenses)}
       </span>
     </p>
   );

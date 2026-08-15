@@ -146,6 +146,10 @@ export function loadExpenses(): Expense[] {
   return seedExpenses;
 }
 
+export function getExpenseById(id: string): Expense | undefined {
+  return loadExpenses().find((expense) => expense.id === id);
+}
+
 export function saveExpenses(expenses: Expense[]) {
   writeArray(STORAGE_KEYS.expenses, expenses);
 }

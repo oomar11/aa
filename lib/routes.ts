@@ -63,6 +63,12 @@ export const ROUTES = {
     /** مصروفات الورشة — تسجيل وعرض */
     expenses: "/accounting/expenses",
     newExpense: "/accounting/expenses/new",
+    /** تعديل مصروف موجود */
+    editExpense: (expenseId: string) =>
+      `/accounting/expenses/new?expense=${expenseId}`,
+    /** تسجيل مصروف مربوط بمشروع */
+    expenseForProject: (projectId: string) =>
+      `/accounting/expenses/new?project=${projectId}`,
     /** توريد خارجي على مورد المحل */
     supply: "/accounting/supply",
     newSupply: "/accounting/supply/new",

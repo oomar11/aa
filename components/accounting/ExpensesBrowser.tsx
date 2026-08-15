@@ -354,17 +354,12 @@ export function ExpensesBrowser() {
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex items-center justify-end gap-3">
-                              {project ? (
-                                <Link
-                                  href={ROUTES.design.expenses(
-                                    project.customerId,
-                                    project.id
-                                  )}
-                                  className="text-xs font-semibold text-primary"
-                                >
-                                  تعديل
-                                </Link>
-                              ) : null}
+                              <Link
+                                href={ROUTES.accounting.editExpense(expense.id)}
+                                className="text-xs font-semibold text-primary"
+                              >
+                                تعديل
+                              </Link>
                               <button
                                 type="button"
                                 onClick={() => void handleDelete(expense)}
@@ -426,6 +421,12 @@ export function ExpensesBrowser() {
                           <p className="text-sm font-bold tabular-nums text-[#E8956F]">
                             {formatCurrency(expense.amount)}
                           </p>
+                          <Link
+                            href={ROUTES.accounting.editExpense(expense.id)}
+                            className="text-xs font-semibold text-primary"
+                          >
+                            تعديل
+                          </Link>
                           <button
                             type="button"
                             onClick={() => void handleDelete(expense)}

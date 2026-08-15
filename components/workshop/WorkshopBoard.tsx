@@ -952,6 +952,13 @@ function ProjectRow({
       </Link>
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         {primaryAction}
+        <Link
+          href={ROUTES.accounting.expenseForProject(project.id)}
+          draggable={false}
+          className="rounded-xl border border-[#C45C26]/35 bg-[#C45C26]/10 px-3 py-1.5 text-[11px] font-bold text-[#C45C26]"
+        >
+          تسجيل مصروف
+        </Link>
         {moveControl}
         {menuActions.length > 0 ? (
           <div className="relative ms-auto">
