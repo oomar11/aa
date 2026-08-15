@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ScreenBack } from "@/components/layout/ScreenBack";
+import { HrSectionNav } from "@/components/hr/HrSectionNav";
 import {
   currentMonthRange,
   HR_UPDATED_EVENT,
@@ -67,14 +68,17 @@ export function HrHub() {
 
   return (
     <div className="flex flex-col gap-5">
-      <ScreenBack href={ROUTES.more}>المزيد</ScreenBack>
-      <section className="rounded-2xl bg-[#5B6ABF] px-4 py-5 text-white shadow-[0_8px_24px_rgba(91,106,191,0.28)]">
+      <ScreenBack href={ROUTES.more} className="lg:hidden">
+        المزيد
+      </ScreenBack>
+      <HrSectionNav />
+      <section className="rounded-2xl bg-[#5B6ABF] px-4 py-5 text-white shadow-[0_8px_24px_rgba(91,106,191,0.28)] lg:px-6 lg:py-6">
         <p className="text-xs font-medium opacity-85">الموارد البشرية</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">الموظفين</h1>
         <p className="mt-1 text-xs opacity-80">
           مربوط بالحسابات والورشة — الراتب مصروف أجور
         </p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
           <HubStat label="شغالين" value={String(summary.activeCount)} />
           <HubStat
             label="حضور اليوم"
@@ -91,22 +95,22 @@ export function HrHub() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-2.5">
+      <section className="flex flex-col gap-2.5 lg:grid lg:grid-cols-4 lg:gap-3">
         {LINKS.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-all hover:border-primary/30 active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-all hover:border-primary/30 active:scale-[0.99] lg:flex-col lg:items-start lg:gap-2 lg:p-5"
           >
             <span
-              className="h-10 w-1.5 shrink-0 rounded-full bg-[#5B6ABF]"
+              className="h-10 w-1.5 shrink-0 rounded-full bg-[#5B6ABF] lg:h-1.5 lg:w-10"
               aria-hidden
             />
-            <div className="min-w-0 flex-1 text-right">
+            <div className="min-w-0 flex-1 text-right lg:w-full">
               <p className="text-sm font-bold text-foreground">{link.title}</p>
               <p className="mt-0.5 text-xs text-muted">{link.description}</p>
             </div>
-            <span className="text-muted" aria-hidden>
+            <span className="text-muted lg:hidden" aria-hidden>
               ‹
             </span>
           </Link>
@@ -120,7 +124,7 @@ function HubStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-white/15 px-3 py-2.5">
       <p className="text-[11px] opacity-80">{label}</p>
-      <p className="mt-0.5 text-sm font-bold tabular-nums">{value}</p>
+      <p className="mt-0.5 text-sm font-bold tabular-nums lg:text-lg">{value}</p>
     </div>
   );
 }

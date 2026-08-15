@@ -135,12 +135,17 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
-      <ContactPickerButton
-        label="إضافة من جهات الاتصال"
-        picking={picking}
-        onPick={() => void handlePickContact()}
-      />
+    <form
+      onSubmit={handleSubmit}
+      className="flex w-full flex-col gap-4 lg:max-w-4xl lg:grid lg:grid-cols-2 lg:items-start"
+    >
+      <div className="lg:col-span-2">
+        <ContactPickerButton
+          label="إضافة من جهات الاتصال"
+          picking={picking}
+          onPick={() => void handlePickContact()}
+        />
+      </div>
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
@@ -249,7 +254,7 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
         </div>
       ) : null}
 
-      <label className="flex flex-col gap-1.5 text-right">
+      <label className="flex flex-col gap-1.5 text-right lg:col-span-2">
         <span className="text-sm font-medium">ملاحظة</span>
         <textarea
           value={note}
@@ -260,13 +265,13 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
       </label>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#E85A8A] lg:col-span-2">{error}</p>
       ) : null}
 
       <button
         type="submit"
         disabled={saving}
-        className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+        className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-60 lg:col-span-2"
       >
         {saving ? "جاري الحفظ..." : existing ? "حفظ التعديل" : "حفظ الموظف"}
       </button>
@@ -275,7 +280,7 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
         <button
           type="button"
           onClick={handleDelete}
-          className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/40 bg-card text-sm font-semibold text-[#E85A8A]"
+          className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/40 bg-card text-sm font-semibold text-[#E85A8A] lg:col-span-2"
         >
           حذف الموظف
         </button>

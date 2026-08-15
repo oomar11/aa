@@ -115,6 +115,27 @@ export function ReportsIcon({ active }: { active: boolean }) {
   );
 }
 
+export function HrIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M16 11c1.66 0 3-1.57 3-3.5S17.66 4 16 4s-3 1.57-3 3.5 1.34 3.5 3 3.5Z" />
+      <path d="M8 11c1.66 0 3-1.57 3-3.5S9.66 4 8 4 5 5.57 5 7.5 6.34 11 8 11Z" />
+      <path d="M3 20v-1c0-2.76 2.24-5 5-5h.5" />
+      <path d="M21 20v-1c0-2.76-2.24-5-5-5h-.5" />
+      <path d="M9.5 20v-1.2c0-2 1.8-3.8 4-3.8h1c2.2 0 4 1.8 4 3.8V20" />
+    </svg>
+  );
+}
+
 /** RTL: أول عنصر يمين → الرئيسية يمين، المزيد شمال */
 export const NAV_ITEMS = [
   {
@@ -140,6 +161,51 @@ export const NAV_ITEMS = [
     label: "الحسابات",
     Icon: AccountingIcon,
     match: (p: string) => p.startsWith("/accounting"),
+  },
+  {
+    href: ROUTES.more,
+    label: "المزيد",
+    Icon: MoreIcon,
+    match: (p: string) =>
+      p.startsWith("/more") ||
+      p.startsWith("/hr") ||
+      p.startsWith("/materials") ||
+      p.startsWith("/settings") ||
+      p.startsWith("/profile"),
+  },
+] as const;
+
+/** قائمة الكمبيوتر: الأبواب الخمسة + الموظفين كباب مستقل */
+export const DESKTOP_NAV_ITEMS = [
+  {
+    href: ROUTES.home,
+    label: "الرئيسية",
+    Icon: HomeIcon,
+    match: (p: string) => p === "/",
+  },
+  {
+    href: ROUTES.orders,
+    label: "الطلبات",
+    Icon: OrdersIcon,
+    match: (p: string) => p.startsWith("/orders") || p.startsWith("/design"),
+  },
+  {
+    href: ROUTES.workshop,
+    label: "الورشة",
+    Icon: WorkshopIcon,
+    match: (p: string) => p.startsWith("/workshop"),
+  },
+  {
+    href: ROUTES.accounting.hub,
+    label: "الحسابات",
+    Icon: AccountingIcon,
+    match: (p: string) => p.startsWith("/accounting"),
+  },
+  {
+    href: ROUTES.hr.hub,
+    label: "الموظفين",
+    Icon: HrIcon,
+    match: (p: string) => p.startsWith("/hr"),
   },
   {
     href: ROUTES.more,

@@ -96,7 +96,7 @@ export function AdvancesBoard() {
     <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4"
+        className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 lg:sticky lg:top-4"
       >
         <h2 className="text-sm font-bold">تسجيل سلفة</h2>
         <label className="flex flex-col gap-1.5 text-right">
@@ -173,7 +173,65 @@ export function AdvancesBoard() {
             مفيش سلف
           </div>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <>
+            <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card lg:block">
+              <table className="w-full min-w-[640px] text-start text-sm">
+                <thead className="bg-background text-[11px] text-muted">
+                  <tr>
+                    <th className="px-4 py-2.5 font-semibold">الموظف</th>
+                    <th className="px-3 py-2.5 font-semibold">التاريخ</th>
+                    <th className="px-3 py-2.5 font-semibold">ملاحظة</th>
+                    <th className="px-3 py-2.5 text-end font-semibold">المتبقي</th>
+                    <th className="px-4 py-2.5 text-end font-semibold">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((advance) => {
+                    const open = advanceOpenAmount(advance);
+                    const name =
+                      employeeById.get(advance.employeeId)?.name ?? "موظف";
+                    return (
+                      <tr
+                        key={advance.id}
+                        className="border-t border-border hover:bg-primary-soft/20"
+                      >
+                        <td className="px-4 py-2.5 font-bold">{name}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-muted">
+                          {formatDate(advance.date)}
+                        </td>
+                        <td className="max-w-[16rem] truncate px-3 py-2.5 text-muted">
+                          {advance.note || "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-end font-bold tabular-nums">
+                          {formatCurrency(open)}
+                          {open < advance.amount - 0.004 ? (
+                            <span className="ms-1 text-[11px] font-medium text-muted">
+                              / {formatCurrency(advance.amount)}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-2.5 text-end">
+                          {isAdvanceOpen(advance) &&
+                          (advance.settledAmount ?? 0) < 0.004 ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(advance)}
+                              className="text-xs font-semibold text-[#E85A8A]"
+                            >
+                              حذف
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted">اتخصمت</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <ul className="flex flex-col gap-2 lg:hidden">
             {visible.map((advance) => {
               const open = advanceOpenAmount(advance);
               const name =
@@ -215,6 +273,7 @@ export function AdvancesBoard() {
               );
             })}
           </ul>
+          </>
         )}
       </section>
     </div>

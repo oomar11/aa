@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmployeeForm } from "@/components/hr/EmployeeForm";
+import { HrSectionNav } from "@/components/hr/HrSectionNav";
 import { ROUTES } from "@/lib/routes";
 
 function EmployeeFormContent() {
@@ -13,11 +14,13 @@ function EmployeeFormContent() {
 
   return (
     <>
+      <HrSectionNav />
       <PageHeader
         backHref={ROUTES.hr.employees}
         backLabel="الموظفين"
         title={isEditing ? "تعديل موظف" : "موظف جديد"}
         description={isEditing ? "الاسم · الوظيفة · الأجر" : "أضف عامل الورشة"}
+        hideBackOnDesktop
       />
       <div className="mt-4">
         <EmployeeForm />

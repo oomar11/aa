@@ -70,48 +70,110 @@ export function EmployeesBrowser() {
           مفيش موظفين — أضف العامل من «موظف جديد»
         </div>
       ) : (
-        <ul className="overflow-hidden rounded-2xl border border-border bg-card">
-          {filtered.map((employee, i) => {
-            const open = employeeOpenAdvancesTotal(employee.id);
-            return (
-              <li
-                key={employee.id}
-                className={i > 0 ? "border-t border-border" : undefined}
-              >
-                <Link
-                  href={ROUTES.hr.editEmployee(employee.id)}
-                  className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-primary-soft/40"
+        <>
+          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card lg:block">
+            <table className="w-full min-w-[720px] text-start text-sm">
+              <thead className="bg-background text-[11px] text-muted">
+                <tr>
+                  <th className="px-4 py-2.5 font-semibold">الاسم</th>
+                  <th className="px-3 py-2.5 font-semibold">الوظيفة</th>
+                  <th className="px-3 py-2.5 font-semibold">نوع الأجر</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">الأجر</th>
+                  <th className="px-3 py-2.5 font-semibold">الهاتف</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">سلف</th>
+                  <th className="px-4 py-2.5 font-semibold">الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((employee) => {
+                  const open = employeeOpenAdvancesTotal(employee.id);
+                  return (
+                    <tr
+                      key={employee.id}
+                      className="border-t border-border hover:bg-primary-soft/30"
+                    >
+                      <td className="px-4 py-2.5">
+                        <Link
+                          href={ROUTES.hr.editEmployee(employee.id)}
+                          className="font-bold text-primary hover:underline"
+                        >
+                          {employee.name}
+                        </Link>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-muted">
+                        {employee.role}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-muted">
+                        {PAY_TYPE_LABELS[employee.payType]}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-end font-bold tabular-nums">
+                        {formatCurrency(employee.wage)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-muted" dir="ltr">
+                        {employee.phone || "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums">
+                        {open > 0 ? (
+                          <span className="font-semibold text-[#E85A8A]">
+                            {formatCurrency(open)}
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-muted">
+                        {EMPLOYEE_STATUS_LABELS[employee.status]}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <ul className="overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
+            {filtered.map((employee, i) => {
+              const open = employeeOpenAdvancesTotal(employee.id);
+              return (
+                <li
+                  key={employee.id}
+                  className={i > 0 ? "border-t border-border" : undefined}
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-foreground">
-                      {employee.name}
-                      {employee.status === "left" ? (
-                        <span className="ms-2 text-[11px] font-semibold text-muted">
-                          {EMPLOYEE_STATUS_LABELS.left}
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-muted">
-                      {employee.role}
-                      {" · "}
-                      {PAY_TYPE_LABELS[employee.payType]}{" "}
-                      {formatCurrency(employee.wage)} ج.م
-                      {employee.phone ? ` · ${employee.phone}` : ""}
-                    </p>
-                    {open > 0 ? (
-                      <p className="mt-0.5 text-[11px] font-semibold text-[#E85A8A]">
-                        سلف مفتوحة {formatCurrency(open)} ج.م
+                  <Link
+                    href={ROUTES.hr.editEmployee(employee.id)}
+                    className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-primary-soft/40"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-foreground">
+                        {employee.name}
+                        {employee.status === "left" ? (
+                          <span className="ms-2 text-[11px] font-semibold text-muted">
+                            {EMPLOYEE_STATUS_LABELS.left}
+                          </span>
+                        ) : null}
                       </p>
-                    ) : null}
-                  </div>
-                  <span className="shrink-0 text-muted" aria-hidden>
-                    ‹
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                      <p className="mt-0.5 truncate text-xs text-muted">
+                        {employee.role}
+                        {" · "}
+                        {PAY_TYPE_LABELS[employee.payType]}{" "}
+                        {formatCurrency(employee.wage)} ج.م
+                        {employee.phone ? ` · ${employee.phone}` : ""}
+                      </p>
+                      {open > 0 ? (
+                        <p className="mt-0.5 text-[11px] font-semibold text-[#E85A8A]">
+                          سلف مفتوحة {formatCurrency(open)} ج.م
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 text-muted" aria-hidden>
+                      ‹
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </div>
   );

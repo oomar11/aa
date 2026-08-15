@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { WindowLogo } from "@/components/brand/WindowLogo";
-import { NAV_ITEMS, ReportsIcon } from "@/components/layout/app-nav";
+import { DESKTOP_NAV_ITEMS, ReportsIcon } from "@/components/layout/app-nav";
 import { loadCompany } from "@/lib/company";
 import { ROUTES } from "@/lib/routes";
 
 /**
- * قائمة جانبية للكمبيوتر — نفس الأبواب الخمسة + تقارير الربح.
+ * قائمة جانبية للكمبيوتر — الأبواب الخمسة + الموظفين + تقارير الربح.
  * في RTL تظهر يمين الشاشة.
  */
 export function DesktopSidebar() {
@@ -43,7 +43,7 @@ export function DesktopSidebar() {
       </Link>
 
       <nav aria-label="أقسام البرنامج" className="flex flex-1 flex-col gap-1 px-3 pb-4">
-        {NAV_ITEMS.map(({ href, label, Icon, match }) => {
+        {DESKTOP_NAV_ITEMS.map(({ href, label, Icon, match }) => {
           const active =
             href === ROUTES.accounting.hub
               ? match(pathname) && !reportsActive

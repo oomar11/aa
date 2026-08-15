@@ -8,6 +8,8 @@ type PageHeaderProps = {
   title: string;
   description?: string;
   className?: string;
+  /** على الكمبيوتر القائمة الجانبية تغني عن زر الرجوع */
+  hideBackOnDesktop?: boolean;
 };
 
 /**
@@ -21,13 +23,17 @@ export function PageHeader({
   title,
   description,
   className = "px-1",
+  hideBackOnDesktop = false,
 }: PageHeaderProps) {
   const showBreadcrumb = breadcrumb && breadcrumb.length >= 3;
 
   return (
     <div className={className}>
       {backHref ? (
-        <ScreenBack href={backHref} className="mb-2">
+        <ScreenBack
+          href={backHref}
+          className={hideBackOnDesktop ? "mb-2 lg:hidden" : "mb-2"}
+        >
           {backLabel ?? "رجوع"}
         </ScreenBack>
       ) : null}

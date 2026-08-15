@@ -69,7 +69,64 @@ export function AttendanceBoard() {
           أضف موظفين أولاً من قائمة الموظفين
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <>
+          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card lg:block">
+            <table className="w-full min-w-[680px] text-start text-sm">
+              <thead className="bg-background text-[11px] text-muted">
+                <tr>
+                  <th className="px-4 py-2.5 font-semibold">الموظف</th>
+                  <th className="px-3 py-2.5 font-semibold">الوظيفة</th>
+                  {STATUSES.map((status) => (
+                    <th key={status} className="px-3 py-2.5 text-center font-semibold">
+                      {ATTENDANCE_STATUS_LABELS[status]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((employee) => {
+                  const current = attendanceByEmployee.get(employee.id);
+                  return (
+                    <tr
+                      key={employee.id}
+                      className="border-t border-border hover:bg-primary-soft/20"
+                    >
+                      <td className="px-4 py-2 font-bold">{employee.name}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-muted">
+                        {employee.role}
+                      </td>
+                      {STATUSES.map((status) => {
+                        const selected = current === status;
+                        return (
+                          <td key={status} className="px-3 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAttendance({
+                                  employeeId: employee.id,
+                                  date,
+                                  status: selected ? null : status,
+                                })
+                              }
+                              className={`min-w-[4.5rem] rounded-xl px-2 py-1.5 text-[11px] font-bold transition-all ${
+                                selected
+                                  ? STATUS_CLASS[status]
+                                  : "border border-border bg-background text-muted"
+                              }`}
+                            >
+                              {selected ? "✓" : "—"}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <ul className="flex flex-col gap-2 lg:hidden">
           {employees.map((employee) => {
             const current = attendanceByEmployee.get(employee.id);
             return (
@@ -112,6 +169,7 @@ export function AttendanceBoard() {
             );
           })}
         </ul>
+        </>
       )}
     </div>
   );

@@ -261,7 +261,75 @@ export function PayrollBoard() {
           مفيش موظفين شغالين
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <>
+          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card lg:block">
+            <table className="w-full min-w-[860px] text-start text-sm">
+              <thead className="bg-background text-[11px] text-muted">
+                <tr>
+                  <th className="px-4 py-2.5 font-semibold">الموظف</th>
+                  <th className="px-3 py-2.5 font-semibold">الحساب</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">أساس</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">سلف</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">صافي</th>
+                  <th className="px-4 py-2.5 text-end font-semibold">إجراء</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const paid = row.alreadyPaid;
+                  return (
+                    <tr
+                      key={row.employee.id}
+                      className="border-t border-border hover:bg-primary-soft/20"
+                    >
+                      <td className="px-4 py-2.5">
+                        <p className="font-bold">{row.employee.name}</p>
+                        <p className="text-[11px] text-muted">{row.employee.role}</p>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-muted">
+                        {row.employee.payType === "daily"
+                          ? `${row.daysWorked} يوم حاضر`
+                          : "راتب شهري"}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums">
+                        {formatCurrency(row.baseAmount)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums text-[#E85A8A]">
+                        {row.advancesDeducted > 0
+                          ? `−${formatCurrency(row.advancesDeducted)}`
+                          : "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-end font-bold tabular-nums">
+                        {formatCurrency(paid?.netAmount ?? row.netAmount)}
+                      </td>
+                      <td className="px-4 py-2.5 text-end">
+                        {paid ? (
+                          <button
+                            type="button"
+                            onClick={() => void undoPay(paid)}
+                            className="text-xs font-semibold text-[#E85A8A]"
+                          >
+                            إلغاء الصرف
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void payOne(row)}
+                            disabled={Boolean(payingId)}
+                            className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                          >
+                            {payingId === row.employee.id ? "جاري الصرف…" : "صرف"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <ul className="flex flex-col gap-2 lg:hidden">
           {rows.map((row) => {
             const paid = row.alreadyPaid;
             return (
@@ -316,6 +384,7 @@ export function PayrollBoard() {
             );
           })}
         </ul>
+        </>
       )}
 
       {periodPayroll.length > 0 ? (
