@@ -115,8 +115,8 @@ export function WindowPreview({
   let winH = auto.height;
   if (widthMm && heightMm && widthMm > 0 && heightMm > 0) {
     const aspect = widthMm / heightMm;
-    const maxW = showDimensions ? (printContrast ? 168 : 150) : 140;
-    const maxH = showDimensions ? (printContrast ? 156 : 140) : 150;
+    const maxW = showDimensions ? (printContrast ? 260 : 150) : 140;
+    const maxH = showDimensions ? (printContrast ? 260 : 140) : 150;
     if (aspect >= 1) {
       winW = maxW;
       winH = Math.max(56, Math.round(maxW / aspect));
@@ -130,10 +130,10 @@ export function WindowPreview({
     showDimensions &&
     Boolean(widthMm && heightMm && widthMm > 0 && heightMm > 0);
   // مساحة كافية لمقاس العرض/الارتفاع فقط — بدون مقاسات تقسيم عشان متتداخلش
-  const dimPadTop = showDims ? (printContrast ? 28 : 22) : 5;
-  const dimPadLeft = showDims ? (printContrast ? 36 : 28) : 5;
-  const dimPadRight = showDims ? 8 : 5;
-  const dimPadBottom = showDims ? 8 : 5;
+  const dimPadTop = showDims ? (printContrast ? 42 : 22) : 5;
+  const dimPadLeft = showDims ? (printContrast ? 64 : 28) : 5;
+  const dimPadRight = showDims ? (printContrast ? 16 : 8) : 5;
+  const dimPadBottom = showDims ? (printContrast ? 16 : 8) : 5;
   const vbW = showDims ? dimPadLeft + winW + dimPadRight : winW;
   const vbH = showDims ? dimPadTop + winH + dimPadBottom : winH;
   const frame: Rect = showDims
@@ -161,9 +161,9 @@ export function WindowPreview({
   const emptyFill = printContrast ? "#ffffff" : "#f4f6f9";
   const emptyStroke = printContrast ? "#555555" : "#c5d0dc";
   const profile = Math.max(2.8, Math.min(frame.w, frame.h) * 0.045);
-  const frameStrokeW = printContrast ? 1.6 : 0.9;
-  const paneStrokeW = printContrast ? 1.4 : 0.6;
-  const mullionStrokeW = printContrast ? 1.4 : 0.4;
+  const frameStrokeW = printContrast ? 2.2 : 0.9;
+  const paneStrokeW = printContrast ? 2 : 0.6;
+  const mullionStrokeW = printContrast ? 2 : 0.4;
   const woodId = `wood-${uid}`;
   const meshId = `mesh-${uid}`;
   const emptyPatId = `empty-${uid}`;
@@ -359,9 +359,9 @@ function PreviewDimensions({
   color: string;
   printContrast?: boolean;
 }) {
-  const widthY = frame.y - (printContrast ? 15 : 12);
-  const heightX = frame.x - (printContrast ? 18 : 14);
-  const fontSize = printContrast ? 12 : 9;
+  const widthY = frame.y - (printContrast ? 24 : 12);
+  const heightX = frame.x - (printContrast ? 30 : 14);
+  const fontSize = printContrast ? 18 : 9;
 
   return (
     <g aria-hidden>
@@ -415,10 +415,10 @@ function PreviewDimH({
   const mid = (x1 + x2) / 2;
   const bw = Math.max(label.length * fontSize * 0.62 + 6, 18);
   const bh = fontSize + 3;
-  const extW = printContrast ? 1.2 : 0.7;
-  const dimW = printContrast ? (strong ? 1.8 : 1.4) : strong ? 1.1 : 0.85;
-  const chipW = printContrast ? 1.2 : 0.7;
-  const dotR = printContrast ? (strong ? 2 : 1.6) : strong ? 1.4 : 1.1;
+  const extW = printContrast ? 1.6 : 0.7;
+  const dimW = printContrast ? (strong ? 2.2 : 1.8) : strong ? 1.1 : 0.85;
+  const chipW = printContrast ? 1.6 : 0.7;
+  const dotR = printContrast ? (strong ? 2.6 : 2.1) : strong ? 1.4 : 1.1;
   return (
     <g>
       <line
@@ -498,10 +498,10 @@ function PreviewDimV({
   const mid = (y1 + y2) / 2;
   const bw = Math.max(label.length * fontSize * 0.62 + 6, 18);
   const bh = fontSize + 3;
-  const extW = printContrast ? 1.2 : 0.7;
-  const dimW = printContrast ? (strong ? 1.8 : 1.4) : strong ? 1.1 : 0.85;
-  const chipW = printContrast ? 1.2 : 0.7;
-  const dotR = printContrast ? (strong ? 2 : 1.6) : strong ? 1.4 : 1.1;
+  const extW = printContrast ? 1.6 : 0.7;
+  const dimW = printContrast ? (strong ? 2.2 : 1.8) : strong ? 1.1 : 0.85;
+  const chipW = printContrast ? 1.6 : 0.7;
+  const dotR = printContrast ? (strong ? 2.6 : 2.1) : strong ? 1.4 : 1.1;
   return (
     <g>
       <line

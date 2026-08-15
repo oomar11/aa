@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 /** مقاس صفحة A4 بالبكسل عند ~96dpi — مطابق لعرض التصدير */
 export const REPORT_PAGE_WIDTH_PX = 794;
 export const REPORT_PAGE_HEIGHT_PX = 1123;
-export const REPORT_ITEMS_PER_PAGE = 4;
+export const REPORT_ITEMS_PER_PAGE = 2;
 
 /** اسم ملف PDF آمن من اسم المشروع */
 export function projectPdfFileName(projectName?: string): string {
@@ -72,7 +72,7 @@ export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
       page.style.backgroundColor = "#ffffff";
 
       const canvas = await domToCanvas(page, {
-        scale: 2,
+        scale: 2.5,
         backgroundColor: "#ffffff",
         width: REPORT_PAGE_WIDTH_PX,
         height: REPORT_PAGE_HEIGHT_PX,
@@ -196,7 +196,7 @@ export async function buildNamedPdfFile(
   });
 }
 
-/** يقسّم البنود: ٤ في الصفحة — صفّين × عمودين */
+/** يقسّم البنود: ٢ في الصفحة — عمودين × صف واحد عشان الرسم والمقاسات يبانوا */
 export function chunkReportItems<T>(items: T[], size = REPORT_ITEMS_PER_PAGE): T[][] {
   if (items.length === 0) return [[]];
   const pages: T[][] = [];

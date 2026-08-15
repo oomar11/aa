@@ -19,6 +19,7 @@ import {
   resolveItemSalePricePerSqm,
 } from "@/lib/pricing";
 import {
+  REPORT_ITEMS_PER_PAGE,
   REPORT_PAGE_HEIGHT_PX,
   REPORT_PAGE_WIDTH_PX,
   chunkReportItems,
@@ -118,7 +119,7 @@ export function ProjectReport({
         {itemPages.map((pageItems, pageIndex) => {
           const isFirst = pageIndex === 0;
           const isLast = pageIndex === itemPages.length - 1;
-          const baseIndex = pageIndex * 4;
+          const baseIndex = pageIndex * REPORT_ITEMS_PER_PAGE;
 
           return (
             <section
@@ -336,7 +337,7 @@ export function ProjectReport({
                     لا توجد بنود في المشروع حالياً
                   </div>
                 ) : (
-                  <ul className="grid h-full grid-cols-2 grid-rows-2 gap-3">
+                  <ul className="grid h-full grid-cols-2 grid-rows-1 gap-3">
                     {pageItems.map((item, i) => (
                       <li key={item.id} className="min-h-0">
                         <ReportItemCard
@@ -348,12 +349,11 @@ export function ProjectReport({
                         />
                       </li>
                     ))}
-                    {/* خلايا فاضية تحافظ على الشبكة لو الصفحة ناقصة */}
-                    {Array.from({ length: Math.max(0, 4 - pageItems.length) }).map(
-                      (_, i) => (
-                        <li key={`empty-${i}`} className="min-h-0" aria-hidden />
-                      )
-                    )}
+                    {Array.from({
+                      length: Math.max(0, REPORT_ITEMS_PER_PAGE - pageItems.length),
+                    }).map((_, i) => (
+                      <li key={`empty-${i}`} className="min-h-0" aria-hidden />
+                    ))}
                   </ul>
                 )}
               </div>
@@ -447,11 +447,11 @@ function ReportItemCard({
       className="h-full min-h-0 overflow-hidden rounded-lg border border-[#d9e0ea] bg-white"
       style={{
         display: "grid",
-        // الرسم يصغر؛ المقاسات والخامات ثابتين عشان متتقصّش/تتراكب
+        // الرسم ياخد معظم الكارت عشان المقاسات تبان في الطباعة
         gridTemplateRows:
           materials.length > 0
-            ? `auto minmax(72px, 1fr) auto ${materialsBlockH}px`
-            : "auto minmax(72px, 1fr) auto",
+            ? `auto minmax(280px, 1fr) auto ${materialsBlockH}px`
+            : "auto minmax(280px, 1fr) auto",
         gap: 8,
         padding: 10,
         fontFamily:
@@ -484,7 +484,7 @@ function ReportItemCard({
         </p>
       </div>
 
-      <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-1.5">
+      <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-2.5">
         {extra ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#C45C26]">
             <p style={{ margin: 0, fontSize: 28, fontWeight: 300, lineHeight: 1 }}>＋</p>
@@ -516,7 +516,7 @@ function ReportItemCard({
             showDimensions
             printContrast
             unit={unit}
-            className="h-full w-auto max-h-full max-w-full"
+            className="h-full w-full max-h-full max-w-full"
           />
         )}
       </div>
