@@ -29,7 +29,10 @@ import {
   getProjectById,
   type Project,
 } from "@/lib/projects";
-import { getProjectMoneySummary } from "@/lib/project-money";
+import {
+  getProjectMoneySummary,
+  projectDiscountLabel,
+} from "@/lib/project-money";
 import { ROUTES } from "@/lib/routes";
 import { formatSizePair, type LengthUnit } from "@/lib/units";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -375,8 +378,9 @@ export function ProjectReport({
                       </p>
                       {totals.money.discountAmount > 0 ? (
                         <p className="mt-0.5 text-[10px] text-[#6b7585]">
-                          بعد خصم {formatCurrency(totals.money.discountAmount)}{" "}
-                          من {formatCurrency(totals.money.subtotal)}
+                          {projectDiscountLabel(totals.money) ?? "خصم"}{" "}
+                          {formatCurrency(totals.money.discountAmount)} من{" "}
+                          {formatCurrency(totals.money.subtotal)}
                         </p>
                       ) : null}
                     </div>

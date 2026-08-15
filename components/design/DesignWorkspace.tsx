@@ -1047,11 +1047,49 @@ export function DesignWorkspace({
           <span className="text-muted">إجمالي المساحة</span>
           <span className="font-semibold">{totals.area.toFixed(2)} م²</span>
         </div>
-        <div className="mt-2 flex items-center justify-between border-t border-border pt-2 lg:mt-0 lg:border-t-0 lg:pt-0">
-          <span className="font-medium text-foreground">الإجمالي</span>
-          <span className="text-lg font-bold text-primary">
-            {formatCurrency(Math.round(totals.price))} ج.م
-          </span>
+        <div className="mt-2 flex flex-col gap-1 border-t border-border pt-2 lg:mt-0 lg:border-t-0 lg:pt-0">
+          {money && money.discountAmount > 0 ? (
+            <div className="flex items-center justify-between text-[11px] text-muted">
+              <span>البنود</span>
+              <span className="tabular-nums">
+                {formatCurrency(money.subtotal)} ج.م
+              </span>
+            </div>
+          ) : null}
+          {money && money.discountAmount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setTab("account")}
+              className="flex items-center justify-between text-[11px] text-muted"
+            >
+              <span>
+                خصم
+                {money.discountType === "percent"
+                  ? ` ${money.discountValue}%`
+                  : ""}
+              </span>
+              <span className="tabular-nums text-[#E85A8A]">
+                −{formatCurrency(money.discountAmount)} ج.م
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setTab("account")}
+              className="self-start text-[11px] font-bold text-primary"
+            >
+              إضافة خصم على المشروع
+            </button>
+          )}
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-foreground">الإجمالي</span>
+            <span className="text-lg font-bold text-primary">
+              {formatCurrency(
+                Math.round(money?.sale ?? totals.price)
+              )}{" "}
+              ج.م
+            </span>
+          </div>
         </div>
       </div>
 

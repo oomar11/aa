@@ -137,7 +137,11 @@ export function ProjectAccount({
           ) : null}
 
           {project && money ? (
-        <ProjectDiscountEditor project={project} money={money} />
+        <ProjectDiscountEditor
+          key={project.id}
+          project={project}
+          money={money}
+        />
       ) : null}
 
       {money ? (
