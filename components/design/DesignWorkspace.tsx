@@ -26,6 +26,10 @@ import {
   type PurchaseOrderPdfExporterHandle,
 } from "@/components/design/PurchaseOrderPdfExporter";
 import {
+  WorkshopOrderPdfExporter,
+  type WorkshopOrderPdfExporterHandle,
+} from "@/components/design/WorkshopOrderPdfExporter";
+import {
   ProjectMoreMenu,
   type ProjectMoreAction,
 } from "@/components/design/ProjectReportsMenu";
@@ -134,6 +138,7 @@ export function DesignWorkspace({
   const [editingExtra, setEditingExtra] = useState<DesignItem | null>(null);
   const [editExpenseId, setEditExpenseId] = useState<string | null>(null);
   const pdfExporterRef = useRef<ProjectPdfExporterHandle>(null);
+  const workshopOrderRef = useRef<WorkshopOrderPdfExporterHandle>(null);
   const purchaseOrderRef = useRef<PurchaseOrderPdfExporterHandle>(null);
   const estimatedCostRef = useRef<EstimatedCostPdfExporterHandle>(null);
 
@@ -250,6 +255,14 @@ export function DesignWorkspace({
     if (!customerId || !projectId) return;
     if (action === "share-quote") {
       handleShare();
+      return;
+    }
+    if (action === "workshop-order") {
+      if (!workshopOrderRef.current) {
+        window.alert("تعذر فتح أمر التشغيل. حدّث الصفحة وحاول مرة أخرى.");
+        return;
+      }
+      void workshopOrderRef.current.openShare();
       return;
     }
     if (action === "purchase-order") {
@@ -878,6 +891,12 @@ export function DesignWorkspace({
         <>
           <ProjectPdfExporter
             ref={pdfExporterRef}
+            customerId={customerId}
+            projectId={projectId}
+            projectName={project?.name}
+          />
+          <WorkshopOrderPdfExporter
+            ref={workshopOrderRef}
             customerId={customerId}
             projectId={projectId}
             projectName={project?.name}

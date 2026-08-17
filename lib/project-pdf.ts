@@ -185,6 +185,15 @@ export function estimatedCostPdfFileName(projectName?: string): string {
   return `تكلفة-تقديرية-${base}.pdf`;
 }
 
+/** اسم ملف أمر تشغيل الورشة */
+export function workshopOrderPdfFileName(projectName?: string): string {
+  const base = (projectName?.trim() || "مشروع-upvc")
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "-")
+    .slice(0, 80);
+  return `أمر-تشغيل-${base}.pdf`;
+}
+
 export async function buildNamedPdfFile(
   sheet: HTMLElement,
   fileName: string

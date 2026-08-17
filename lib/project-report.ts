@@ -74,3 +74,34 @@ export function reportMaterialRows(
 
   return rows;
 }
+
+/** صفوف أمر تشغيل الورشة: نوع القطاع واللون والزجاج فقط — بدون أسعار أو اكسسوار */
+export function workshopOrderMaterialRows(
+  item: DesignItem,
+  project?: ProjectMaterialDefaults | null,
+  catalog?: MaterialCatalog
+): ReportMaterialRow[] {
+  if (isExtraChargeItem(item)) return [];
+  const cat = catalog ?? loadMaterialCatalog();
+  const mats = effectiveItemMaterials(item, project, cat);
+
+  const profile = findSystem("profiles", mats.systemId, cat);
+  const color = FRAME_COLORS[normalizeFrameColor(item.frameColor)].label;
+
+  let glassLabel = "—";
+  const glass1 = findGlassBottle(mats.glassPane1Id, cat);
+  if (glass1?.name) {
+    const glass2 = findGlassBottle(mats.glassPane2Id, cat);
+    glassLabel = glass1.name;
+    if (glass2?.name) {
+      glassLabel = `${glass1.name} + ${glass2.name}`;
+      if (mats.glassGeorgian) glassLabel += " · جورجيا";
+    }
+  }
+
+  return [
+    { label: "نوع القطاع", value: profile?.name?.trim() || "—" },
+    { label: "اللون", value: color },
+    { label: "الزجاج", value: glassLabel },
+  ];
+}

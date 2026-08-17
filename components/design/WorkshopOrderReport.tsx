@@ -1,0 +1,481 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { WindowPreview } from "@/components/design/WindowPreview";
+import { useUnit } from "@/components/settings/UnitProvider";
+import { loadCompany } from "@/lib/company";
+import { mergeCustomers, type Customer } from "@/lib/customers";
+import {
+  isExtraChargeItem,
+  type DesignItem,
+} from "@/lib/design-items";
+import { suggestItemName } from "@/lib/item-naming";
+import { loadMaterialCatalog } from "@/lib/material-systems";
+import {
+  REPORT_ITEMS_PER_PAGE,
+  REPORT_PAGE_HEIGHT_PX,
+  REPORT_PAGE_WIDTH_PX,
+  chunkReportItems,
+} from "@/lib/project-pdf";
+import { workshopOrderMaterialRows } from "@/lib/project-report";
+import {
+  getItemsForProject,
+  getProjectById,
+  type Project,
+} from "@/lib/projects";
+import { ROUTES } from "@/lib/routes";
+import { formatDate } from "@/lib/utils";
+import type { MaterialCatalog } from "@/lib/material-systems";
+import type { LengthUnit } from "@/lib/units";
+
+type Props = {
+  customerId: string;
+  projectId: string;
+  /** رسم التقرير فقط (لتوليد PDF) بدون شريط الأدوات */
+  exportOnly?: boolean;
+};
+
+function readCustomer(customerId: string): Customer | null {
+  return mergeCustomers().find((c) => c.id === customerId) ?? null;
+}
+
+function workshopItemsForProject(projectId: string): DesignItem[] {
+  return getItemsForProject(projectId).filter((item) => !isExtraChargeItem(item));
+}
+
+function readReportData(customerId: string, projectId: string) {
+  return {
+    company: loadCompany(),
+    customer: readCustomer(customerId),
+    project: getProjectById(projectId),
+    items: workshopItemsForProject(projectId),
+  };
+}
+
+export function WorkshopOrderReport({
+  customerId,
+  projectId,
+  exportOnly = false,
+}: Props) {
+  const { unit } = useUnit();
+  const [{ company, customer, project, items }] = useState(() =>
+    readReportData(customerId, projectId)
+  );
+
+  const catalog = useMemo(() => loadMaterialCatalog(), []);
+
+  const totalQty = useMemo(
+    () => items.reduce((sum, item) => sum + item.qty, 0),
+    [items]
+  );
+
+  const printedAt = useMemo(
+    () =>
+      new Intl.DateTimeFormat("ar-EG", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(new Date()),
+    []
+  );
+
+  const itemPages = useMemo(() => chunkReportItems(items), [items]);
+
+  if (!project) {
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="font-semibold text-foreground">المشروع غير موجود</p>
+        <Link
+          href={ROUTES.design.projects(customerId)}
+          className="text-sm text-primary"
+        >
+          مشاريع العميل
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="project-report bg-white text-[#152033]"
+      style={{
+        width: REPORT_PAGE_WIDTH_PX,
+        fontFamily:
+          'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif',
+      }}
+      data-export={exportOnly ? "1" : "0"}
+    >
+      <div className="report-sheet">
+        {itemPages.map((pageItems, pageIndex) => {
+          const isFirst = pageIndex === 0;
+          const isLast = pageIndex === itemPages.length - 1;
+          const baseIndex = pageIndex * REPORT_ITEMS_PER_PAGE;
+
+          return (
+            <section
+              key={`page-${pageIndex}`}
+              className="report-page box-border flex flex-col overflow-hidden bg-white"
+              style={{
+                width: REPORT_PAGE_WIDTH_PX,
+                height: REPORT_PAGE_HEIGHT_PX,
+                padding: "28px 32px",
+              }}
+            >
+              {isFirst ? (
+                <header className="shrink-0 border-b-2 border-[#2b7de9] pb-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1 text-right">
+                      <h1
+                        className="truncate text-[22px] font-bold text-[#152033]"
+                        style={{ lineHeight: "28px", margin: 0 }}
+                      >
+                        {company?.name || "شركتي للـ uPVC"}
+                      </h1>
+                      <div
+                        style={{
+                          marginTop: 6,
+                          fontSize: 11,
+                          color: "#5a6578",
+                        }}
+                      >
+                        {company?.phone ? (
+                          <p
+                            dir="ltr"
+                            className="text-right"
+                            style={{
+                              margin: 0,
+                              lineHeight: "16px",
+                              height: 16,
+                            }}
+                          >
+                            {company.phone}
+                          </p>
+                        ) : null}
+                        {company?.address ? (
+                          <p
+                            className="truncate"
+                            style={{
+                              margin: 0,
+                              marginTop: company?.phone ? 4 : 0,
+                              lineHeight: "16px",
+                              height: 16,
+                            }}
+                          >
+                            {company.address}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <table
+                      className="shrink-0"
+                      style={{
+                        width: 240,
+                        borderCollapse: "separate",
+                        borderSpacing: 0,
+                        textAlign: "left",
+                      }}
+                    >
+                      <tbody>
+                        <tr>
+                          <td
+                            style={{
+                              padding: "0 0 10px",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "#2b7de9",
+                              lineHeight: "20px",
+                              whiteSpace: "nowrap",
+                              verticalAlign: "top",
+                            }}
+                          >
+                            أمر تشغيل
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            style={{
+                              padding: "0 0 10px",
+                              fontSize: 14,
+                              fontWeight: 700,
+                              color: "#152033",
+                              lineHeight: "22px",
+                              verticalAlign: "top",
+                              maxWidth: 240,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {project.name}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            style={{
+                              padding: 0,
+                              fontSize: 11,
+                              color: "#6b7585",
+                              lineHeight: "18px",
+                              whiteSpace: "nowrap",
+                              verticalAlign: "top",
+                            }}
+                          >
+                            تاريخ الأمر: {printedAt}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div
+                    className="mt-3 grid grid-cols-2 gap-3 rounded-lg border border-[#e4e8ee] bg-[#f7f9fc] px-3 py-2.5 text-[11px]"
+                    style={{ gap: 12 }}
+                  >
+                    <div className="min-w-0">
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#6b7585",
+                          lineHeight: "15px",
+                          height: 15,
+                        }}
+                      >
+                        العميل
+                      </p>
+                      <p
+                        className="truncate font-bold text-[#152033]"
+                        style={{
+                          margin: 0,
+                          marginTop: 4,
+                          lineHeight: "17px",
+                          height: 17,
+                        }}
+                      >
+                        {customer?.name ?? "—"}
+                      </p>
+                      {customer?.phone ? (
+                        <p
+                          className="text-[#5a6578]"
+                          dir="ltr"
+                          style={{
+                            margin: 0,
+                            marginTop: 4,
+                            lineHeight: "15px",
+                            height: 15,
+                          }}
+                        >
+                          {customer.phone}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="min-w-0">
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#6b7585",
+                          lineHeight: "15px",
+                          height: 15,
+                        }}
+                      >
+                        المشروع
+                      </p>
+                      <p
+                        className="truncate font-bold text-[#152033]"
+                        style={{
+                          margin: 0,
+                          marginTop: 4,
+                          lineHeight: "17px",
+                          height: 17,
+                        }}
+                      >
+                        {project.location || project.name}
+                      </p>
+                      <p
+                        className="truncate text-[#5a6578]"
+                        style={{
+                          margin: 0,
+                          marginTop: 4,
+                          lineHeight: "15px",
+                          height: 15,
+                        }}
+                      >
+                        {formatDate(project.createdAt)} · {items.length} بند
+                      </p>
+                    </div>
+                  </div>
+                </header>
+              ) : (
+                <header className="flex shrink-0 items-center justify-between border-b border-[#e4e8ee] pb-2 text-[11px]">
+                  <p
+                    className="font-bold text-[#152033]"
+                    style={{ margin: 0, lineHeight: "16px" }}
+                  >
+                    {company?.name || "شركتي للـ uPVC"}
+                  </p>
+                  <p
+                    className="truncate text-[#6b7585]"
+                    style={{ margin: 0, lineHeight: "16px", maxWidth: "55%" }}
+                  >
+                    أمر تشغيل · {project.name} · صفحة {pageIndex + 1}
+                  </p>
+                </header>
+              )}
+
+              <div className="mt-3 min-h-0 flex-1">
+                {pageItems.length === 0 ? (
+                  <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#d5dbe5] text-sm text-[#6b7585]">
+                    لا توجد بنود تصنيع في المشروع حالياً
+                  </div>
+                ) : (
+                  <ul className="grid h-full grid-cols-2 grid-rows-1 gap-3">
+                    {pageItems.map((item, i) => (
+                      <li key={item.id} className="min-h-0">
+                        <WorkshopItemCard
+                          item={item}
+                          index={baseIndex + i}
+                          unit={unit}
+                          project={project as Project}
+                          catalog={catalog}
+                        />
+                      </li>
+                    ))}
+                    {Array.from({
+                      length: Math.max(0, REPORT_ITEMS_PER_PAGE - pageItems.length),
+                    }).map((_, i) => (
+                      <li key={`empty-${i}`} className="min-h-0" aria-hidden />
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {isLast ? (
+                <footer className="mt-3 shrink-0 rounded-lg border border-[#2b7de9]/30 bg-[#f3f8ff] px-3 py-2.5">
+                  <div className="grid grid-cols-2 gap-2 text-[12px]">
+                    <div>
+                      <p className="text-[#6b7585]">إجمالي العدد</p>
+                      <p className="mt-0.5 font-bold">{totalQty}</p>
+                    </div>
+                    <div className="text-left text-[10px] text-[#8a93a3]">
+                      {itemPages.length > 1
+                        ? `صفحة ${pageIndex + 1} من ${itemPages.length}`
+                        : "أمر تشغيل الورشة"}
+                    </div>
+                  </div>
+                </footer>
+              ) : (
+                <footer className="mt-2 shrink-0 text-center text-[10px] text-[#8a93a3]">
+                  صفحة {pageIndex + 1} من {itemPages.length}
+                </footer>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WorkshopItemCard({
+  item,
+  index,
+  unit,
+  project,
+  catalog,
+}: {
+  item: DesignItem;
+  index: number;
+  unit: LengthUnit;
+  project: Project;
+  catalog: MaterialCatalog;
+}) {
+  const name = item.name?.trim() || suggestItemName(item);
+  const materials = workshopOrderMaterialRows(item, project, catalog);
+  const materialsBlockH = 16 + materials.length * 28;
+
+  return (
+    <article
+      className="h-full min-h-0 overflow-hidden rounded-lg border border-[#d9e0ea] bg-white"
+      style={{
+        display: "grid",
+        gridTemplateRows: `auto minmax(280px, 1fr) ${materialsBlockH}px`,
+        gap: 8,
+        padding: 10,
+        fontFamily:
+          'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif',
+      }}
+    >
+      <div className="flex items-start justify-between gap-2 border-b border-[#eef1f5] pb-1.5">
+        <div className="min-w-0">
+          <p
+            className="text-[10px] font-semibold text-[#2b7de9]"
+            style={{ lineHeight: "14px", margin: 0 }}
+          >
+            بند {index + 1}
+          </p>
+          <h4
+            className="truncate text-[13px] font-bold text-[#152033]"
+            style={{ lineHeight: "18px", margin: 0 }}
+          >
+            {name}
+          </h4>
+        </div>
+        <p
+          className="shrink-0 text-[12px] font-bold text-[#152033]"
+          style={{ lineHeight: "18px", margin: 0 }}
+        >
+          العدد {item.qty}
+        </p>
+      </div>
+
+      <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-2.5">
+        <WindowPreview
+          style={item.style}
+          templateId={item.templateId}
+          layout={item.layout}
+          panes={item.panes}
+          frameColor={item.frameColor}
+          widthMm={item.widthMm}
+          heightMm={item.heightMm}
+          showDimensions
+          printContrast
+          unit={unit}
+          className="h-full w-full max-h-full max-w-full"
+        />
+      </div>
+
+      <div
+        style={{
+          background: "#f7f9fc",
+          borderRadius: 6,
+          padding: "6px 8px",
+          overflow: "hidden",
+          height: materialsBlockH,
+          boxSizing: "border-box",
+        }}
+      >
+        {materials.map((row) => (
+          <div
+            key={row.label}
+            style={{
+              display: "block",
+              fontSize: 11,
+              lineHeight: "28px",
+              height: 28,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              margin: 0,
+              padding: 0,
+            }}
+          >
+            <span style={{ color: "#6b7585" }}>{row.label}: </span>
+            <span style={{ color: "#152033", fontWeight: 700 }}>
+              {row.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
