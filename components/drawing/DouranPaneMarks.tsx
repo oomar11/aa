@@ -17,8 +17,8 @@ function ringWidth(w: number, h: number, ringW: number) {
 }
 
 /**
- * قوس دائري: القمة في أعلى الصندوق، والطرفان على خط السوقاس السفلي.
- * large-arc لو الارتفاع أكبر من نصف العرض (أكثر من نصف دائرة).
+ * قوس الدوران: القمة (cx, y) فوق صراحة، والقاعدة على السوقاس.
+ * Quadratic مش SVG arc — أعلام A بتنقلب مع y-down.
  */
 export function douranArchPath(
   x: number,
@@ -26,14 +26,13 @@ export function douranArchPath(
   w: number,
   h: number
 ): string {
-  const chord = Math.max(w, 2);
-  const sagitta = Math.max(h, 2);
-  const r = (sagitta * sagitta + (chord / 2) * (chord / 2)) / (2 * sagitta);
-  const largeArc = sagitta > chord / 2 ? 1 : 0;
   const left = x;
   const right = x + w;
   const bottom = y + h;
-  return `M ${left} ${bottom} A ${r} ${r} 0 ${largeArc} 1 ${right} ${bottom} Z`;
+  const cx = x + w / 2;
+  const peakY = y;
+  const ctrlY = 2 * peakY - bottom;
+  return `M ${left} ${bottom} Q ${cx} ${ctrlY} ${right} ${bottom} Z`;
 }
 
 export function douranInnerArch(
@@ -44,17 +43,16 @@ export function douranInnerArch(
   ringW: number
 ) {
   const rw = ringWidth(pw, ph, ringW);
+  const x = px + rw;
+  const y = py + rw;
+  const w = Math.max(pw - rw * 2, 2);
+  const h = Math.max(ph - rw, 2);
   return {
-    x: px + rw,
-    y: py + rw,
-    w: Math.max(pw - rw * 2, 2),
-    h: Math.max(ph - rw, 2),
-    path: douranArchPath(
-      px + rw,
-      py + rw,
-      Math.max(pw - rw * 2, 2),
-      Math.max(ph - rw, 2)
-    ),
+    x,
+    y,
+    w,
+    h,
+    path: douranArchPath(x, y, w, h),
   };
 }
 
@@ -97,13 +95,8 @@ export function DouranOpeningIcon({
   return (
     <svg viewBox="0 0 40 40" className={className} fill="none" aria-hidden>
       <rect x="5" y="5" width="30" height="30" stroke={s} strokeWidth="1.8" />
-      <path
-        d="M 8 28 A 12 12 0 0 1 32 28 Z"
-        fill={s}
-        fillRule="evenodd"
-        opacity="0.9"
-      />
-      <path d="M 12 27 A 8 8 0 0 1 28 27 Z" fill="var(--card, #fff)" />
+      <path d="M 8 28 Q 20 -8 32 28 Z" fill={s} opacity="0.9" />
+      <path d="M 12 27 Q 20 8 28 27 Z" fill="var(--card, #fff)" />
       <rect x="7" y="28" width="26" height="3.5" fill={s} opacity="0.7" rx="0.4" />
     </svg>
   );
