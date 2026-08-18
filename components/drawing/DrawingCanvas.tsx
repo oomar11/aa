@@ -393,6 +393,7 @@ export function DrawingCanvas({
             <OpeningOverlay
               opening={cfg.opening}
               bouclier={Boolean(cfg.bouclier)}
+              douran={Boolean(cfg.douran)}
               isDoor={Boolean(cfg.isDoor)}
               x={gx}
               y={gy}
@@ -534,6 +535,7 @@ function SandwichPanelCell({
 function OpeningOverlay({
   opening,
   bouclier = false,
+  douran = false,
   isDoor = false,
   x,
   y,
@@ -546,6 +548,7 @@ function OpeningOverlay({
 }: {
   opening: PaneOpening;
   bouclier?: boolean;
+  douran?: boolean;
   isDoor?: boolean;
   x: number;
   y: number;
@@ -567,6 +570,40 @@ function OpeningOverlay({
       <>
         <Handle x={x + inset + 4} y={cy} vertical hardware={hardware} />
         <Handle x={x + w - inset - 4} y={cy} vertical hardware={hardware} />
+      </>
+    );
+  }
+
+  if (opening === "fixed" && douran) {
+    return (
+      <>
+        <line
+          x1={x + inset}
+          y1={y + inset}
+          x2={x + w - inset}
+          y2={y + h - inset}
+          stroke={openStroke}
+          strokeWidth={1.1}
+          opacity={0.35}
+        />
+        <line
+          x1={x + w - inset}
+          y1={y + inset}
+          x2={x + inset}
+          y2={y + h - inset}
+          stroke={openStroke}
+          strokeWidth={1.1}
+          opacity={0.35}
+        />
+        <line
+          x1={x + inset}
+          y1={y + h - inset}
+          x2={x + w - inset}
+          y2={y + h - inset}
+          stroke={openStroke}
+          strokeWidth={2.2}
+          opacity={0.85}
+        />
       </>
     );
   }

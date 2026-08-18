@@ -76,6 +76,7 @@ import {
   projectMaterialDefaultsFrom,
 } from "@/lib/project-materials";
 import { applyBouclierRules, isBouclierEligible } from "@/lib/bouclier";
+import { applyDouranRules, isDouranEligible } from "@/lib/douran";
 import { fromMm, toMm } from "@/lib/units";
 import { formatCurrency } from "@/lib/utils";
 import type { LayoutNode } from "@/lib/window-layout";
@@ -202,7 +203,13 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       ...found,
       layout,
       frameColor: normalizeFrameColor(found.frameColor),
-      panes: syncPanesMap(layout, found.panes),
+      panes: applyDouranRules(
+        layout,
+        applyBouclierRules(
+          layout,
+          syncPanesMap(layout, found.panes)
+        )
+      ),
       nameIsCustom: Boolean(found.nameIsCustom),
     });
     setItem(normalized);
@@ -229,7 +236,10 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       const withRules: DesignItem = next.layout
         ? {
             ...next,
-            panes: applyBouclierRules(next.layout, next.panes ?? {}),
+            panes: applyDouranRules(
+              next.layout,
+              applyBouclierRules(next.layout, next.panes ?? {})
+            ),
           }
         : next;
       const named = withSuggestedName(withRules);
@@ -348,7 +358,19 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       const dir = id === "split-h" ? "h" : "v";
       const result = splitPane(item.layout, selectedPaneId, dir, parts);
       if (!result) return;
-      const panes = syncPanesMap(result.layout, item.panes);
+      let panes = syncPanesMap(result.layout, item.panes);
+      if (dir === "h" && result.newIds[0]) {
+        const topId = result.newIds[0];
+        panes = {
+          ...panes,
+          [topId]: normalizePaneConfig({
+            ...panes[topId],
+            opening: "fixed",
+            douran: true,
+            douranManual: false,
+          }),
+        };
+      }
       persistItem({ ...item, layout: result.layout, panes });
       setSelectedPaneId(result.newIds[0] ?? null);
       return;
@@ -702,6 +724,11 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
         bouclierEligible={
           propsPaneId && item.layout
             ? isBouclierEligible(propsPaneId, item.layout, item.panes ?? {})
+            : false
+        }
+        douranEligible={
+          propsPaneId && item.layout
+            ? isDouranEligible(propsPaneId, item.layout, item.panes ?? {})
             : false
         }
         onClose={() => setPropsPaneId(null)}

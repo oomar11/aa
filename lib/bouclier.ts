@@ -50,7 +50,7 @@ export function isBouclierEligible(
   if (!ctx || ctx.parentDir !== "v" || !ctx.leftId || !ctx.rightId) return false;
 
   const cfg = normalizePaneConfig(panes[paneId]);
-  if (cfg.opening !== "fixed") return false;
+  if (cfg.opening !== "fixed" || cfg.douran) return false;
 
   const leftOp = panes[ctx.leftId]?.opening as PaneOpening | undefined;
   const rightOp = panes[ctx.rightId]?.opening as PaneOpening | undefined;

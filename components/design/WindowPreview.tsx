@@ -298,6 +298,7 @@ export function WindowPreview({
             <OpeningMarks
               opening={cfg.opening}
               bouclier={Boolean(cfg.bouclier)}
+              douran={Boolean(cfg.douran)}
               x={gx}
               y={gy}
               w={gw}
@@ -672,6 +673,7 @@ function SandwichPanelCell({
 function OpeningMarks({
   opening,
   bouclier,
+  douran = false,
   x,
   y,
   w,
@@ -684,6 +686,7 @@ function OpeningMarks({
 }: {
   opening: PaneOpening;
   bouclier: boolean;
+  douran?: boolean;
   x: number;
   y: number;
   w: number;
@@ -707,6 +710,40 @@ function OpeningMarks({
       <>
         <rect x={x + inset} y={cy - 4} width={2.2} height={8} rx={0.6} fill={hardware} />
         <rect x={x + w - inset - 2.2} y={cy - 4} width={2.2} height={8} rx={0.6} fill={hardware} />
+      </>
+    );
+  }
+
+  if (opening === "fixed" && douran) {
+    return (
+      <>
+        <line
+          x1={x + inset}
+          y1={y + inset}
+          x2={x + w - inset}
+          y2={y + h - inset}
+          stroke={openStroke}
+          strokeWidth={sw}
+          opacity={printContrast ? 1 : 0.4}
+        />
+        <line
+          x1={x + w - inset}
+          y1={y + inset}
+          x2={x + inset}
+          y2={y + h - inset}
+          stroke={openStroke}
+          strokeWidth={sw}
+          opacity={printContrast ? 1 : 0.4}
+        />
+        <line
+          x1={x + inset}
+          y1={y + h - inset}
+          x2={x + w - inset}
+          y2={y + h - inset}
+          stroke={openStroke}
+          strokeWidth={sw * 1.6}
+          opacity={printContrast ? 1 : 0.85}
+        />
       </>
     );
   }

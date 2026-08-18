@@ -135,6 +135,7 @@ type PaneBox = {
   kind: FrameKind;
   opening: PaneOpening;
   bouclier: boolean;
+  douran: boolean;
 };
 
 type EdgeKey = string;
@@ -411,6 +412,13 @@ function paneBouclier(
   return Boolean(normalizePaneConfig(panes?.[id]).bouclier);
 }
 
+function paneDouran(
+  id: string,
+  panes: Record<string, PaneConfig> | undefined
+): boolean {
+  return Boolean(normalizePaneConfig(panes?.[id]).douran);
+}
+
 function collectPaneBoxes(
   node: LayoutNode,
   x: number,
@@ -432,6 +440,7 @@ function collectPaneBoxes(
       kind: frameKindForOpening(opening),
       opening,
       bouclier: paneBouclier(node.id, panes),
+      douran: paneDouran(node.id, panes),
     });
     return;
   }
@@ -1311,6 +1320,13 @@ export function calcItemMaterials(
     }
     frameHingedMm = Math.max(0, frameHingedMm);
     frameSlidingMm = Math.max(0, frameSlidingMm);
+  }
+
+  // حلق الدوران: 3 جهات (علوي + جانبين) — السفلي سوقاس/كوبلن
+  for (const box of boxes) {
+    if (!paneDouran(box.id, panes)) continue;
+    const cuts = profileCutsFor(box.w, box.h, deductions);
+    frameHingedMm += 2 * cuts.frameW + cuts.frameH;
   }
 
   // سوقاس/بوكلير/كوبلن: أطوال التقسيم من اللليآوت (مقاس الفتحة).

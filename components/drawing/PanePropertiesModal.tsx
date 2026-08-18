@@ -26,6 +26,7 @@ type Props = {
   open: boolean;
   initial: PaneConfig;
   bouclierEligible?: boolean;
+  douranEligible?: boolean;
   onClose: () => void;
   onConfirm: (config: PaneConfig) => void;
 };
@@ -140,6 +141,7 @@ export function PanePropertiesModal({
   open,
   initial,
   bouclierEligible = false,
+  douranEligible = false,
   onClose,
   onConfirm,
 }: Props) {
@@ -280,6 +282,11 @@ export function PanePropertiesModal({
 
   const showBouclier =
     !expandedExtra && bouclierEligible && draft.opening === "fixed";
+  const showDouran =
+    !expandedExtra &&
+    douranEligible &&
+    draft.opening === "fixed" &&
+    !draft.bouclier;
   const isExhaust = isExhaustPane(draft.opening);
   const doorSide: "door-left" | "door-right" | null =
     draft.opening === "door-left" || draft.opening === "door-right"
@@ -613,6 +620,56 @@ export function PanePropertiesModal({
               />
             </div>
           </div>
+
+          {showDouran && (
+            <div className="max-h-[28dvh] overflow-y-auto border-t border-border/60 px-2.5 py-2">
+              <div className="rounded-xl border border-border bg-card p-2">
+                <p className="mb-2 text-[11px] font-semibold text-foreground">
+                  دوران علوي
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        douran: false,
+                        douranManual: true,
+                      }))
+                    }
+                    className={`rounded-xl border px-2 py-2 text-[11px] font-semibold ${
+                      !draft.douran
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "border-border bg-background text-foreground"
+                    }`}
+                  >
+                    ثابت عادي
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        douran: true,
+                        douranManual: true,
+                      }))
+                    }
+                    className={`rounded-xl border px-2 py-2 text-[11px] font-semibold ${
+                      draft.douran
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "border-border bg-background text-foreground"
+                    }`}
+                  >
+                    دوران
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[10px] text-muted">
+                  الدوران: ثابت فوق الشباك — يُحسب له حلق وباكتة، ويفصل عن
+                  المفصلي بسوقاس أو عن الجرار بكوبلن
+                </p>
+              </div>
+            </div>
+          )}
 
           {showBouclier && (
             <div className="max-h-[28dvh] overflow-y-auto border-t border-border/60 px-2.5 py-2">
