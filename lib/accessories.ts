@@ -136,6 +136,7 @@ type PaneBox = {
   kind: FrameKind;
   opening: PaneOpening;
   bouclier: boolean;
+  douran: boolean;
   isDoor: boolean;
 };
 
@@ -243,6 +244,7 @@ function collectPaneBoxes(
       kind: frameKindForOpening(opening),
       opening,
       bouclier: Boolean(cfg.bouclier),
+      douran: Boolean(cfg.douran),
       isDoor: isDoorPane(opening, cfg),
     });
     return;

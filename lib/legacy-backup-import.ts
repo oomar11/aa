@@ -12,6 +12,7 @@ import {
   type PaneOpening,
   type WindowStyle,
 } from "@/lib/design-items";
+import { applyDouranRules } from "@/lib/douran";
 import type { Company } from "@/lib/company";
 import type {
   Expense,
@@ -476,7 +477,8 @@ function inferOpeningFamily(
   }
   if (/جرار|سحاب/.test(n)) return "sliding";
   if (/قلاب/.test(n)) return "tilt";
-  if (/مفصلي|دوران/.test(n)) return "casement";
+  if (/مفصلي/.test(n)) return "casement";
+  if (/دوران/.test(n)) return "casement";
   if (/ثابت/.test(n) && !/قلاب|مفصلي|جرار|باب/.test(n)) return "fixed";
   if (/حمام/.test(n)) return "tilt";
   if (/بلكونة|صاله|صالة|غرفه|غرفة|مطبخ|نوم/.test(n)) {
@@ -569,8 +571,13 @@ function detectSideFixed(name: string): SideFixed {
   return null;
 }
 
+function detectDouranTop(name: string): boolean {
+  return /دوران\s*علو|دوران\s*فوق/.test(name);
+}
+
 function detectTopFixed(name: string, sideFixed: SideFixed): boolean {
   if (sideFixed) return false;
+  if (detectDouranTop(name)) return true;
   return (
     /ثابت\s*علو|ثابت\s*فوق|ثابت\s*بالطول|شفاط\s*علو/.test(name) ||
     (/\+\s*ثابت/.test(name) && !/ثابت\s*(يمين|شمال|يسار)/.test(name)) ||
@@ -713,6 +720,7 @@ export function approxDrawingFromName(
       sandwichPanels: isDoor && isPanelDoor,
       mesh: wantsMesh && opening !== "exhaust",
       bouclier: false,
+      douran: id === topId && !exhaustTop && useTopFixed,
     });
   });
 
@@ -751,7 +759,7 @@ export function approxDrawingFromName(
       exhaustTop
     ),
     layout,
-    panes,
+    panes: applyDouranRules(layout, panes),
   };
 }
 

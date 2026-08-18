@@ -22,6 +22,7 @@ import {
   type ProjectMaterialDefaults,
 } from "@/lib/project-materials";
 import { applyDiscountAmount } from "@/lib/item-catalogs";
+import { isTransomTopLayout, panesForTransomLayout } from "@/lib/douran";
 import { suggestItemName } from "@/lib/item-naming";
 import type { Project } from "@/lib/projects";
 
@@ -188,9 +189,13 @@ export function resolvePaneMeshKind(
 
 export type PaneConfig = {
   opening: PaneOpening;
+  /** دوران — ثابت علوي فوق ضلفة التشغيل */
+  douran?: boolean;
+  /** المستخدم اختار يدوياً دوران/ثابت عادي */
+  douranManual?: boolean;
   /** بوكلير — ثابت بين مفصليين والمقابض باتجاه بعض */
   bouclier?: boolean;
-  /** المستخدم اختار يدوياً سوقاس/بوكلير */
+  /** المستخدم اختار يدوياً سوقاس/بوكلier */
   bouclierManual?: boolean;
   /** تقسيم داخلي */
   grid?: PaneGrid;
@@ -227,6 +232,8 @@ export function defaultPaneConfig(
 ): PaneConfig {
   return {
     opening: "fixed",
+    douran: false,
+    douranManual: false,
     bouclier: false,
     bouclierManual: false,
     grid: "solid",
@@ -295,7 +302,17 @@ export function normalizePaneConfig(
   }
   const count = gridCellCount(base.grid);
   const cells = (base.panelCells ?? []).filter((i) => i >= 0 && i < count);
-  return { ...base, panelCells: cells };
+  let next: PaneConfig = { ...base, panelCells: cells };
+  if (next.opening !== "fixed") {
+    next = { ...next, douran: false, douranManual: false };
+  }
+  if (next.douran) {
+    next = { ...next, bouclier: false, bouclierManual: false };
+  }
+  if (next.bouclier) {
+    next = { ...next, douran: false, douranManual: false };
+  }
+  return next;
 }
 
 /** زجاج الضلفة — من إعداد الضلفة أو الافتراضي على البند */
@@ -626,7 +643,9 @@ export function createItemFromTemplate(
     templateId,
     layout: cloned,
     frameColor: "white",
-    panes: defaultPanesForLayout(cloned),
+    panes: isTransomTopLayout(cloned)
+      ? panesForTransomLayout(cloned)
+      : defaultPanesForLayout(cloned),
     widthMm: size.widthMm,
     heightMm: size.heightMm,
     qty: 1,
