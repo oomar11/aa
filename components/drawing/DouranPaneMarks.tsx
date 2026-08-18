@@ -33,7 +33,7 @@ export function douranArchPath(
   const left = x;
   const right = x + w;
   const bottom = y + h;
-  return `M ${left} ${bottom} A ${r} ${r} 0 ${largeArc} 0 ${right} ${bottom} Z`;
+  return `M ${left} ${bottom} A ${r} ${r} 0 ${largeArc} 1 ${right} ${bottom} Z`;
 }
 
 export function douranInnerArch(
