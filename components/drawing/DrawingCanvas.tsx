@@ -584,7 +584,6 @@ function OpeningOverlay({
         h={h}
         stroke={openStroke}
         strokeWidth={1.4}
-        labelFill={openStroke}
       />
     );
   }

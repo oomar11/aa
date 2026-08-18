@@ -6,19 +6,12 @@ type Props = {
   w: number;
   h: number;
   stroke: string;
-  /** سُمك خط السوقاس السفلي */
   strokeWidth?: number;
-  /** لون نص «دوران» */
-  labelFill?: string;
-  /** إظهار كلمة دوران داخل الضلفة */
-  showLabel?: boolean;
-  /** طباعة PDF — تباين أعلى */
   printContrast?: boolean;
 };
 
 /**
- * رسم تمييزي للضلفة الثابتة العلوية (دوران):
- * شريط سوقاس سفلي + علامة ثابت في الجزء العلوي + تسمية «دوران».
+ * رسم الدوران: قوس علوي + سوقاس/كوبلن سفلي (بدون نص).
  */
 export function DouranPaneMarks({
   x,
@@ -27,49 +20,78 @@ export function DouranPaneMarks({
   h,
   stroke,
   strokeWidth = 1.4,
-  labelFill = "#111",
-  showLabel = true,
   printContrast = false,
 }: Props) {
   const inset = Math.max(2.5, Math.min(w, h) * 0.07);
   const bottomY = y + h - inset;
   const mullionW = Math.max(strokeWidth * 2.2, printContrast ? 2.4 : 1.8);
-  const glassTop = y + inset;
-  const glassBottom = bottomY - mullionW * 2.2;
-  const glassH = Math.max(glassBottom - glassTop, 4);
   const cx = x + w / 2;
-  const cy = glassTop + glassH / 2;
-  const labelSize = Math.max(
-    printContrast ? 9 : 7,
-    Math.min(w, h) * (printContrast ? 0.16 : 0.13)
-  );
-  const fixedOpacity = printContrast ? 0.55 : 0.32;
+  const leftX = x + inset;
+  const rightX = x + w - inset;
+
+  // قاعدة القوس — فوق السوقاس
+  const archBaseY = bottomY - mullionW * 2.8;
+  const archTopY = y + inset;
+  const archDepth = Math.max(archBaseY - archTopY, 4);
+  const archPeakY = archTopY + archDepth * 0.08;
+
+  // قوس الدوران (قوس علوي بارز)
+  const arcPath = `M ${leftX} ${archBaseY} Q ${cx} ${archPeakY} ${rightX} ${archBaseY}`;
+
+  // قوس فتح ثانوي — من الزاوية للمنتصف (اتجاه الدوران)
+  const swingPath = `M ${leftX} ${archBaseY} Q ${cx} ${archBaseY - archDepth * 0.55} ${rightX} ${archBaseY}`;
+
+  const arcSw = Math.max(strokeWidth * 1.35, printContrast ? 2 : 1.5);
+  const swingSw = Math.max(strokeWidth * 0.95, printContrast ? 1.4 : 1.1);
+  const arcOpacity = printContrast ? 1 : 0.92;
+  const swingOpacity = printContrast ? 0.75 : 0.5;
 
   return (
     <>
-      {/* زجاج ثابت — علامة X خفيفة في الجزء العلوي فقط */}
-      <line
-        x1={x + inset}
-        y1={glassTop}
-        x2={x + w - inset}
-        y2={glassBottom}
+      {/* القوس الرئيسي */}
+      <path
+        d={arcPath}
+        fill="none"
         stroke={stroke}
-        strokeWidth={strokeWidth * 0.9}
-        opacity={fixedOpacity}
-      />
-      <line
-        x1={x + w - inset}
-        y1={glassTop}
-        x2={x + inset}
-        y2={glassBottom}
-        stroke={stroke}
-        strokeWidth={strokeWidth * 0.9}
-        opacity={fixedOpacity}
+        strokeWidth={arcSw}
+        strokeLinecap="round"
+        opacity={arcOpacity}
       />
 
-      {/* سوقاس / كوبلن — شريط أفقي بارز أسفل الدوران */}
+      {/* قوس الدوران الداخلي (مسار الفتح) */}
+      <path
+        d={swingPath}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={swingSw}
+        strokeLinecap="round"
+        strokeDasharray={printContrast ? "4 3" : "3 2.5"}
+        opacity={swingOpacity}
+      />
+
+      {/* جانبا القوس */}
+      <line
+        x1={leftX}
+        y1={archBaseY}
+        x2={leftX}
+        y2={bottomY - mullionW}
+        stroke={stroke}
+        strokeWidth={strokeWidth * 0.85}
+        opacity={0.55}
+      />
+      <line
+        x1={rightX}
+        y1={archBaseY}
+        x2={rightX}
+        y2={bottomY - mullionW}
+        stroke={stroke}
+        strokeWidth={strokeWidth * 0.85}
+        opacity={0.55}
+      />
+
+      {/* سوقاس / كوبلن */}
       <rect
-        x={x + inset}
+        x={leftX}
         y={bottomY - mullionW}
         width={w - inset * 2}
         height={mullionW}
@@ -78,61 +100,52 @@ export function DouranPaneMarks({
         rx={0.4}
       />
       <line
-        x1={x + inset - 1}
+        x1={leftX - 1}
         y1={bottomY - mullionW - 1.5}
-        x2={x + inset - 1}
+        x2={leftX - 1}
         y2={bottomY + 1}
         stroke={stroke}
         strokeWidth={strokeWidth * 0.85}
         opacity={0.9}
       />
       <line
-        x1={x + w - inset + 1}
+        x1={rightX + 1}
         y1={bottomY - mullionW - 1.5}
-        x2={x + w - inset + 1}
+        x2={rightX + 1}
         y2={bottomY + 1}
         stroke={stroke}
         strokeWidth={strokeWidth * 0.85}
         opacity={0.9}
       />
-
-      {showLabel && w >= 28 && h >= 16 ? (
-        <text
-          x={cx}
-          y={cy + labelSize * 0.35}
-          textAnchor="middle"
-          fontSize={labelSize}
-          fontWeight={700}
-          fill={labelFill}
-          opacity={printContrast ? 1 : 0.88}
-          style={{ fontFamily: 'Cairo, "Noto Sans Arabic", Tahoma, sans-serif' }}
-        >
-          دوران
-        </text>
-      ) : null}
     </>
   );
 }
 
-/** أيقونة صغيرة لقائمة نوع الفتح */
-export function DouranOpeningIcon({ className = "h-full w-full text-primary" }: { className?: string }) {
+/** أيقونة قوس الدوران لقائمة نوع الفتح */
+export function DouranOpeningIcon({
+  className = "h-full w-full text-primary",
+}: {
+  className?: string;
+}) {
   const s = "currentColor";
   return (
     <svg viewBox="0 0 40 40" className={className} fill="none" aria-hidden>
       <rect x="5" y="5" width="30" height="30" stroke={s} strokeWidth="1.8" />
-      <line x1="8" y1="14" x2="32" y2="22" stroke={s} strokeWidth="1.2" opacity="0.45" />
-      <line x1="32" y1="14" x2="8" y2="22" stroke={s} strokeWidth="1.2" opacity="0.45" />
+      <path
+        d="M 8 22 Q 20 7 32 22"
+        stroke={s}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 8 22 Q 20 13 32 22"
+        stroke={s}
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeDasharray="3 2"
+        opacity="0.55"
+      />
       <rect x="7" y="26" width="26" height="4" fill={s} opacity="0.85" rx="0.5" />
-      <text
-        x="20"
-        y="21"
-        textAnchor="middle"
-        fontSize="7"
-        fontWeight="700"
-        fill={s}
-      >
-        دوران
-      </text>
     </svg>
   );
 }

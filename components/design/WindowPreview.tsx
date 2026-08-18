@@ -724,7 +724,6 @@ function OpeningMarks({
         h={h}
         stroke={openStroke}
         strokeWidth={sw}
-        labelFill={printContrast ? "#111111" : openStroke}
         printContrast={printContrast}
       />
     );
