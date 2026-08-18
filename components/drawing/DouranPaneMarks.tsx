@@ -17,8 +17,7 @@ function ringWidth(w: number, h: number, ringW: number) {
 }
 
 /**
- * قوس الدوران: القمة (cx, y) فوق صراحة، والقاعدة على السوقاس.
- * Quadratic مش SVG arc — أعلام A بتنقلب مع y-down.
+ * قوس الدوران: القمة (cx, y) فوق، والقاعدة على خط السوقاس (مش داخله).
  */
 export function douranArchPath(
   x: number,
@@ -56,8 +55,34 @@ export function douranInnerArch(
   };
 }
 
+/** ارتفاع شريط السوقاس تحت القوس */
+function barHeight(h: number, ringW: number) {
+  return Math.max(ringW, Math.min(h * 0.2, ringW * 1.15));
+}
+
 /**
- * حلق الدوران كقطاع: قوس خارجي بلون الإطار، والزجاج قوس داخلي نظيف.
+ * القوس في المساحة فوق السوقاس، والشريط السفلي سوقاس منفصل.
+ */
+export function douranLayout(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  ringW: number
+) {
+  const barH = Math.min(barHeight(h, ringW), Math.max(h * 0.28, 2));
+  const archH = Math.max(h - barH, 4);
+  return {
+    barH,
+    archH,
+    bar: { x, y: y + archH, w, h: barH },
+    outerPath: douranArchPath(x, y, w, archH),
+    inner: douranInnerArch(x, y, w, archH, ringW),
+  };
+}
+
+/**
+ * حلق الدوران: قوس فوق السوقاس + شريط سوقاس أسفله (القوس مش جوّاه).
  */
 export function DouranFrameRing({
   x,
@@ -71,21 +96,31 @@ export function DouranFrameRing({
   woodPatternId,
 }: FrameRingProps) {
   const framePaint = woodPatternId ? `url(#${woodPatternId})` : fill;
-  const outer = douranArchPath(x, y, w, h);
-  const inner = douranInnerArch(x, y, w, h, ringW);
+  const { bar, outerPath, inner } = douranLayout(x, y, w, h, ringW);
 
   return (
-    <path
-      d={`${outer} ${inner.path}`}
-      fill={framePaint}
-      fillRule="evenodd"
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-    />
+    <>
+      <path
+        d={`${outerPath} ${inner.path}`}
+        fill={framePaint}
+        fillRule="evenodd"
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+      />
+      <rect
+        x={bar.x}
+        y={bar.y}
+        width={bar.w}
+        height={bar.h}
+        fill={framePaint}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+      />
+    </>
   );
 }
 
-/** أيقونة قوس الدوران (حلق مقوّس + سوقاس) */
+/** أيقونة قوس الدوران فوق السوقاس */
 export function DouranOpeningIcon({
   className = "h-full w-full text-primary",
 }: {
@@ -95,9 +130,9 @@ export function DouranOpeningIcon({
   return (
     <svg viewBox="0 0 40 40" className={className} fill="none" aria-hidden>
       <rect x="5" y="5" width="30" height="30" stroke={s} strokeWidth="1.8" />
-      <path d="M 8 28 Q 20 -8 32 28 Z" fill={s} opacity="0.9" />
-      <path d="M 12 27 Q 20 8 28 27 Z" fill="var(--card, #fff)" />
-      <rect x="7" y="28" width="26" height="3.5" fill={s} opacity="0.7" rx="0.4" />
+      <path d="M 8 24 Q 20 -2 32 24 Z" fill={s} opacity="0.9" />
+      <path d="M 12 23 Q 20 8 28 23 Z" fill="var(--card, #fff)" />
+      <rect x="7" y="24" width="26" height="6" fill={s} opacity="0.75" rx="0.4" />
     </svg>
   );
 }

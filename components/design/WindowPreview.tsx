@@ -30,7 +30,7 @@ import { getTemplateById } from "@/lib/window-templates";
 import { formatLength, type LengthUnit } from "@/lib/units";
 import {
   DouranFrameRing,
-  douranInnerArch,
+  douranLayout,
 } from "@/components/drawing/DouranPaneMarks";
 
 type Props = {
@@ -294,7 +294,7 @@ export function WindowPreview({
         const isDouran =
           cfg.opening === "fixed" && Boolean(cfg.douran);
         const inner = isDouran
-          ? douranInnerArch(p.x, p.y, p.w, p.h, profile)
+          ? douranLayout(p.x, p.y, p.w, p.h, profile).inner
           : null;
         const gx = inner?.x ?? p.x + profile;
         const gy = inner?.y ?? p.y + profile;

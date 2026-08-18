@@ -26,7 +26,7 @@ import { formatLength } from "@/lib/units";
 import { ensurePaneIds, type LayoutNode } from "@/lib/window-layout";
 import {
   DouranFrameRing,
-  douranInnerArch,
+  douranLayout,
 } from "@/components/drawing/DouranPaneMarks";
 
 type DimTarget =
@@ -201,7 +201,7 @@ export function DrawingCanvas({
           const isDouran =
             cfg.opening === "fixed" && Boolean(cfg.douran);
           if (isDouran) {
-            const inner = douranInnerArch(p.x, p.y, p.w, p.h, profile);
+            const inner = douranLayout(p.x, p.y, p.w, p.h, profile).inner;
             return (
               <clipPath key={`clip-${p.id}`} id={`pane-clip-${p.id}`}>
                 <path d={inner.path} />
@@ -387,7 +387,7 @@ export function DrawingCanvas({
         const isDouran =
           cfg.opening === "fixed" && Boolean(cfg.douran);
         const inner = isDouran
-          ? douranInnerArch(p.x, p.y, p.w, p.h, profile)
+          ? douranLayout(p.x, p.y, p.w, p.h, profile).inner
           : null;
         const gx = inner?.x ?? p.x + profile;
         const gy = inner?.y ?? p.y + profile;
