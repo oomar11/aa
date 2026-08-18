@@ -28,7 +28,10 @@ import {
 } from "@/lib/window-layout";
 import { getTemplateById } from "@/lib/window-templates";
 import { formatLength, type LengthUnit } from "@/lib/units";
-import { DouranFrameRing, douranGlassRect } from "@/components/drawing/DouranPaneMarks";
+import {
+  DouranFrameRing,
+  douranInnerArch,
+} from "@/components/drawing/DouranPaneMarks";
 
 type Props = {
   style: WindowStyle;
@@ -247,19 +250,23 @@ export function WindowPreview({
         </g>
       ))}
 
-      {/* إطار الضلف */}
-      {paneRects.map((p) => (
-        <rect
-          key={`outer-${p.id}`}
-          x={p.x}
-          y={p.y}
-          width={p.w}
-          height={p.h}
-          fill={isWood ? `url(#${woodId})` : frameFill}
-          stroke={frameStroke}
-          strokeWidth={frameStrokeW}
-        />
-      ))}
+      {/* إطار الضلف — الدوران قوس مش مستطيل */}
+      {paneRects.map((p) => {
+        const cfg = normalizePaneConfig(panes?.[p.id]);
+        if (cfg.opening === "fixed" && cfg.douran) return null;
+        return (
+          <rect
+            key={`outer-${p.id}`}
+            x={p.x}
+            y={p.y}
+            width={p.w}
+            height={p.h}
+            fill={isWood ? `url(#${woodId})` : frameFill}
+            stroke={frameStroke}
+            strokeWidth={frameStrokeW}
+          />
+        );
+      })}
 
       {/* حلق الدوران */}
       {paneRects.map((p) => {
@@ -286,30 +293,37 @@ export function WindowPreview({
         const cfg = normalizePaneConfig(panes?.[p.id]);
         const isDouran =
           cfg.opening === "fixed" && Boolean(cfg.douran);
-        const glassBox = isDouran
-          ? douranGlassRect(p.x, p.y, p.w, p.h, profile)
-          : {
-              x: p.x + profile,
-              y: p.y + profile,
-              w: Math.max(p.w - profile * 2, 1.5),
-              h: Math.max(p.h - profile * 2, 1.5),
-            };
-        const { x: gx, y: gy, w: gw, h: gh } = glassBox;
+        const inner = isDouran
+          ? douranInnerArch(p.x, p.y, p.w, p.h, profile)
+          : null;
+        const gx = inner?.x ?? p.x + profile;
+        const gy = inner?.y ?? p.y + profile;
+        const gw = inner?.w ?? Math.max(p.w - profile * 2, 1.5);
+        const gh = inner?.h ?? Math.max(p.h - profile * 2, 1.5);
         const isLouver =
           cfg.opening === "panel-h" || cfg.opening === "panel-v";
         const isExhaust = cfg.opening === "exhaust";
 
         return (
           <g key={p.id}>
-            <rect
-              x={gx}
-              y={gy}
-              width={gw}
-              height={gh}
-              fill={isLouver || isExhaust ? frameFill : glass}
-              stroke={frameStroke}
-              strokeWidth={paneStrokeW}
-            />
+            {isDouran && inner ? (
+              <path
+                d={inner.path}
+                fill={glass}
+                stroke={frameStroke}
+                strokeWidth={paneStrokeW}
+              />
+            ) : (
+              <rect
+                x={gx}
+                y={gy}
+                width={gw}
+                height={gh}
+                fill={isLouver || isExhaust ? frameFill : glass}
+                stroke={frameStroke}
+                strokeWidth={paneStrokeW}
+              />
+            )}
             {!isExhaust && !isDouran && (
               <PaneDetailFill
                 config={cfg}

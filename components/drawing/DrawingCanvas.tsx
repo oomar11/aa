@@ -24,7 +24,10 @@ import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { panelStripeDivider, panelStripeLayout } from "@/lib/panel-stripes";
 import { formatLength } from "@/lib/units";
 import { ensurePaneIds, type LayoutNode } from "@/lib/window-layout";
-import { DouranFrameRing, douranGlassRect } from "@/components/drawing/DouranPaneMarks";
+import {
+  DouranFrameRing,
+  douranInnerArch,
+} from "@/components/drawing/DouranPaneMarks";
 
 type DimTarget =
   | { kind: "width" }
@@ -197,22 +200,21 @@ export function DrawingCanvas({
           const cfg = normalizePaneConfig(item.panes?.[p.id]);
           const isDouran =
             cfg.opening === "fixed" && Boolean(cfg.douran);
-          const glassBox = isDouran
-            ? douranGlassRect(p.x, p.y, p.w, p.h, profile)
-            : {
-                x: p.x + profile,
-                y: p.y + profile,
-                w: Math.max(p.w - profile * 2, 2),
-                h: Math.max(p.h - profile * 2, 2),
-              };
+          if (isDouran) {
+            const inner = douranInnerArch(p.x, p.y, p.w, p.h, profile);
+            return (
+              <clipPath key={`clip-${p.id}`} id={`pane-clip-${p.id}`}>
+                <path d={inner.path} />
+              </clipPath>
+            );
+          }
+          const gx = p.x + profile;
+          const gy = p.y + profile;
+          const gw = Math.max(p.w - profile * 2, 2);
+          const gh = Math.max(p.h - profile * 2, 2);
           return (
             <clipPath key={`clip-${p.id}`} id={`pane-clip-${p.id}`}>
-              <rect
-                x={glassBox.x}
-                y={glassBox.y}
-                width={glassBox.w}
-                height={glassBox.h}
-              />
+              <rect x={gx} y={gy} width={gw} height={gh} />
             </clipPath>
           );
         })}
@@ -341,19 +343,23 @@ export function DrawingCanvas({
         endRole={rootCanEqualizeH ? "edge" : "plain"}
       />
 
-      {/* إطار خارجي */}
-      {panes.map((p) => (
-        <rect
-          key={`outer-${p.id}`}
-          x={p.x}
-          y={p.y}
-          width={p.w}
-          height={p.h}
-          fill={isWood ? "url(#wood-grain)" : frameFill}
-          stroke={frameStroke}
-          strokeWidth={1}
-        />
-      ))}
+      {/* إطار خارجي — الدوران قوس مش مستطيل */}
+      {panes.map((p) => {
+        const cfg = normalizePaneConfig(item.panes?.[p.id]);
+        if (cfg.opening === "fixed" && cfg.douran) return null;
+        return (
+          <rect
+            key={`outer-${p.id}`}
+            x={p.x}
+            y={p.y}
+            width={p.w}
+            height={p.h}
+            fill={isWood ? "url(#wood-grain)" : frameFill}
+            stroke={frameStroke}
+            strokeWidth={1}
+          />
+        );
+      })}
 
       {/* حلق الدوران — 3 جهات على حدود الضلفة */}
       {panes.map((p) => {
@@ -380,15 +386,13 @@ export function DrawingCanvas({
         const selected = selectedPaneId === p.id;
         const isDouran =
           cfg.opening === "fixed" && Boolean(cfg.douran);
-        const glassBox = isDouran
-          ? douranGlassRect(p.x, p.y, p.w, p.h, profile)
-          : {
-              x: p.x + profile,
-              y: p.y + profile,
-              w: Math.max(p.w - profile * 2, 2),
-              h: Math.max(p.h - profile * 2, 2),
-            };
-        const { x: gx, y: gy, w: gw, h: gh } = glassBox;
+        const inner = isDouran
+          ? douranInnerArch(p.x, p.y, p.w, p.h, profile)
+          : null;
+        const gx = inner?.x ?? p.x + profile;
+        const gy = inner?.y ?? p.y + profile;
+        const gw = inner?.w ?? Math.max(p.w - profile * 2, 2);
+        const gh = inner?.h ?? Math.max(p.h - profile * 2, 2);
         const isPanel =
           cfg.opening === "panel-h" || cfg.opening === "panel-v";
         const isExhaust = cfg.opening === "exhaust";
@@ -409,15 +413,24 @@ export function DrawingCanvas({
             className="cursor-pointer"
             clipPath={`url(#pane-clip-${p.id})`}
           >
-            <rect
-              x={gx}
-              y={gy}
-              width={gw}
-              height={gh}
-              fill={isPanel || isExhaust ? frameFill : glass}
-              stroke={selected ? openStroke : paneStroke}
-              strokeWidth={selected ? 2.2 : 1}
-            />
+            {isDouran && inner ? (
+              <path
+                d={inner.path}
+                fill={glass}
+                stroke={selected ? openStroke : paneStroke}
+                strokeWidth={selected ? 2.2 : 1}
+              />
+            ) : (
+              <rect
+                x={gx}
+                y={gy}
+                width={gw}
+                height={gh}
+                fill={isPanel || isExhaust ? frameFill : glass}
+                stroke={selected ? openStroke : paneStroke}
+                strokeWidth={selected ? 2.2 : 1}
+              />
+            )}
             {!isExhaust && !isDouran && (
               <PaneInnerFill
                 config={cfg}
