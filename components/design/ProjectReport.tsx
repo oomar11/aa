@@ -418,7 +418,7 @@ function ReportItemCard({
   const price = itemTotalPrice(item, project);
   const materials = extra
     ? []
-    : reportMaterialRows(item, project, catalog).slice(0, 3);
+    : reportMaterialRows(item, project, catalog);
   const hasSpecial =
     extra ||
     (item.specialPrice != null &&
@@ -440,7 +440,7 @@ function ReportItemCard({
       : `${formatCurrency(Math.round(salePerSqm))} ج.م`;
 
   const materialRows = Math.max(materials.length, 1);
-  const materialsBlockH = 16 + materialRows * 28;
+  const materialsBlockH = 10 + materialRows * 22;
 
   return (
     <article
@@ -561,7 +561,7 @@ function ReportItemCard({
           style={{
             background: "#f7f9fc",
             borderRadius: 6,
-            padding: "6px 8px",
+            padding: "5px 8px",
             overflow: "hidden",
             height: materialsBlockH,
             boxSizing: "border-box",
@@ -573,8 +573,8 @@ function ReportItemCard({
               style={{
                 display: "block",
                 fontSize: 11,
-                lineHeight: "28px",
-                height: 28,
+                lineHeight: "22px",
+                height: 22,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
