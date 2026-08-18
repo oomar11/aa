@@ -183,10 +183,13 @@ export function DesignWorkspace({
 
   const totals = useMemo(() => {
     const area = items.reduce((sum, item) => sum + itemAreaSqm(item), 0);
-    const price = items.reduce((sum, item) => sum + itemTotalPrice(item), 0);
+    const price = items.reduce(
+      (sum, item) => sum + itemTotalPrice(item, project),
+      0
+    );
     const qty = items.reduce((sum, item) => sum + item.qty, 0);
     return { area, price, qty };
-  }, [items]);
+  }, [items, project]);
 
   const [money, setMoney] = useState(() =>
     projectId && typeof window !== "undefined"
@@ -1024,6 +1027,7 @@ export function DesignWorkspace({
                   item={item}
                   index={index}
                   unit={unit}
+                  project={project}
                   emphasizeIndex={isDropTarget}
                 />
               </button>
@@ -1170,6 +1174,7 @@ export function DesignWorkspace({
                   )
             }
             unit={unit}
+            project={project}
             compact
           />
         </div>
@@ -1244,18 +1249,20 @@ function ItemCardBody({
   item,
   index,
   unit,
+  project,
   compact = false,
   emphasizeIndex = false,
 }: {
   item: DesignItem;
   index: number;
   unit: LengthUnit;
+  project?: Project;
   compact?: boolean;
   emphasizeIndex?: boolean;
 }) {
   const extra = isExtraChargeItem(item);
   const area = itemAreaSqm(item);
-  const price = itemTotalPrice(item);
+  const price = itemTotalPrice(item, project);
 
   return (
     <>

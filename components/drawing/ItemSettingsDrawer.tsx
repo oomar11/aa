@@ -22,6 +22,7 @@ import {
   loadMaterialCatalog,
 } from "@/lib/material-systems";
 import {
+  itemHasOwnGlass,
   projectAccessoryDisplayName,
   resolveItemGlassPane1Id,
   resolveItemGlassPane2Id,
@@ -68,8 +69,7 @@ function toDraft(
   projectDefaults?: ProjectMaterialDefaults | null
 ): ItemSettingsPatch {
   const catalog = loadMaterialCatalog();
-  const glassFromProject =
-    !item.glassPane1Id && !item.glassPane2Id && item.glassGeorgian == null;
+  const glassFromProject = !itemHasOwnGlass(item);
   return {
     name: item.name || suggestItemName(item),
     nameIsCustom: Boolean(item.nameIsCustom),

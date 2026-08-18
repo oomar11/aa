@@ -2825,7 +2825,7 @@ const GLASS_BOTTLE_ID_ALIASES: Record<string, string> = {
 export function resolveGlassBottleId(
   id: string | undefined | null
 ): string | undefined {
-  if (!id) return undefined;
+  if (!id || id === "none") return undefined;
   return GLASS_BOTTLE_ID_ALIASES[id] ?? id;
 }
 

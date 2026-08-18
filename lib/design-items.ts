@@ -17,6 +17,7 @@ import {
   type MaterialCatalog,
 } from "@/lib/material-systems";
 import {
+  effectiveItemMaterials,
   projectUsesCustomAccessory,
   type ProjectMaterialDefaults,
 } from "@/lib/project-materials";
@@ -312,8 +313,10 @@ export function resolvePaneGlass(
     resolveGlassBottleId(item.glassPane1Id) ??
     getDefaultGlassBottleId(catalog);
   const pane2Id =
-    resolveGlassBottleId(cfg.glassPane2Id) ??
-    resolveGlassBottleId(item.glassPane2Id);
+    cfg.glassPane2Id === "none"
+      ? undefined
+      : (resolveGlassBottleId(cfg.glassPane2Id) ??
+        resolveGlassBottleId(item.glassPane2Id));
   const georgianFlag = cfg.glassGeorgian ?? item.glassGeorgian;
   return {
     pane1Id,
@@ -459,7 +462,7 @@ export function itemUnitAreaSqm(item: DesignItem): number {
 
 export function itemTotalPrice(
   item: DesignItem,
-  _project?: Project | ProjectMaterialDefaults | null
+  project?: Project | ProjectMaterialDefaults | null
 ): number {
   const qty = Math.max(1, item.qty || 1);
   if (isExtraChargeItem(item)) {
@@ -476,6 +479,63 @@ export function itemTotalPrice(
       (item.specialPrice as number) * qty,
       item.discountId
     );
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const {
+        loadPricingSettings,
+        hybridUnitSalePrice,
+        perSqmUnitSalePrice,
+        itemIsDoubleGlazing,
+        resolveItemSalePricePerSqm,
+        hasCustomSalePricePerSqm,
+        billableSaleAreaSqm,
+      } = require("@/lib/pricing") as typeof import("@/lib/pricing");
+      const settings = loadPricingSettings();
+      const unitArea = itemUnitAreaSqm(item);
+      const effective = effectiveItemMaterials(item, project);
+      const projectSystemId = project?.systemId;
+      const isDouble = itemIsDoubleGlazing(effective);
+
+      if (settings.mode === "per_sqm" || hasCustomSalePricePerSqm(item)) {
+        const salePerSqm = resolveItemSalePricePerSqm(
+          { ...item, systemId: effective.systemId },
+          projectSystemId
+        );
+        const unitSale = perSqmUnitSalePrice(
+          salePerSqm,
+          unitArea,
+          isDouble,
+          settings
+        );
+        return applyDiscountAmount(unitSale * qty, item.discountId);
+      }
+
+      if (settings.mode === "hybrid") {
+        const { calcItemMaterialsCost } =
+          require("@/lib/project-estimated-cost") as typeof import("@/lib/project-estimated-cost");
+        const cost = calcItemMaterialsCost(item, project as Project | null);
+        if (cost.hasCost && cost.beforeDiscount > 0) {
+          const materialsUnit = cost.beforeDiscount / cost.qty;
+          const unitSale = hybridUnitSalePrice(
+            materialsUnit,
+            unitArea,
+            settings
+          );
+          return applyDiscountAmount(unitSale * qty, item.discountId);
+        }
+      }
+
+      const salePerSqm = resolveItemSalePricePerSqm(
+        { ...item, systemId: effective.systemId },
+        projectSystemId
+      );
+      const base = billableSaleAreaSqm(unitArea) * salePerSqm * qty;
+      return applyDiscountAmount(base, item.discountId);
+    } catch {
+      // الرجوع لسعر المتر على البند
+    }
   }
 
   const unitArea = itemUnitAreaSqm(item);
@@ -508,16 +568,21 @@ export function itemSuggestedUnitSale(
     } = require("@/lib/pricing") as typeof import("@/lib/pricing");
     const settings = loadPricingSettings();
     const unitArea = itemUnitAreaSqm(item);
+    const effective = effectiveItemMaterials(item, project);
     const projectSystemId = (
       project as ProjectMaterialDefaults | null | undefined
     )?.systemId;
+    const isDouble = itemIsDoubleGlazing(effective);
 
     if (settings.mode === "per_sqm" || hasCustomSalePricePerSqm(item)) {
-      const salePerSqm = resolveItemSalePricePerSqm(item, projectSystemId);
+      const salePerSqm = resolveItemSalePricePerSqm(
+        { ...item, systemId: effective.systemId },
+        projectSystemId
+      );
       return perSqmUnitSalePrice(
         salePerSqm,
         unitArea,
-        itemIsDoubleGlazing(item),
+        isDouble,
         settings
       );
     }

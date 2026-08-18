@@ -415,7 +415,7 @@ function ReportItemCard({
   const extra = isExtraChargeItem(item);
   const name = item.name?.trim() || suggestItemName(item);
   const area = itemAreaSqm(item);
-  const price = itemTotalPrice(item);
+  const price = itemTotalPrice(item, project);
   const materials = extra
     ? []
     : reportMaterialRows(item, project, catalog).slice(0, 3);

@@ -32,9 +32,10 @@ function roundMoney(amount: number): number {
 }
 
 export function projectItemsSubtotal(projectId: string): number {
+  const project = getProjectById(projectId);
   return roundMoney(
     getItemsForProject(projectId).reduce(
-      (sum, item) => sum + itemTotalPrice(item),
+      (sum, item) => sum + itemTotalPrice(item, project),
       0
     )
   );

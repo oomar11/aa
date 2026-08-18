@@ -120,18 +120,23 @@ export function billableSaleAreaSqm(unitAreaSqm: number): number {
   return billableLaborAreaSqm(unitAreaSqm);
 }
 
+function isSecondGlassPane(id?: string | null): boolean {
+  return Boolean(id) && id !== "none";
+}
+
 /**
  * هل البند دبل؟ زجاجة ثانية على مستوى البند أو أي ضلفة.
+ * `"none"` معناها سنجل صريح — مش دبل.
  */
 export function itemIsDoubleGlazing(item: {
   glassPane2Id?: string | null;
   panes?: Record<string, { glassPane2Id?: string | null } | undefined> | null;
 }): boolean {
-  if (item.glassPane2Id) return true;
+  if (isSecondGlassPane(item.glassPane2Id)) return true;
   const panes = item.panes;
   if (!panes) return false;
   for (const pane of Object.values(panes)) {
-    if (pane?.glassPane2Id) return true;
+    if (isSecondGlassPane(pane?.glassPane2Id)) return true;
   }
   return false;
 }

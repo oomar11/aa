@@ -139,6 +139,19 @@ export function resolveProjectAccessoryDetails(
   };
 }
 
+/** قيمة محفوظة: البند سنجل صراحة — متعملش وراثة دبل المشروع */
+export const GLASS_PANE2_NONE = "none";
+
+export function itemHasOwnGlass(
+  item: Pick<DesignItem, "glassPane1Id" | "glassPane2Id" | "glassGeorgian">
+): boolean {
+  return (
+    Boolean(item.glassPane1Id) ||
+    item.glassPane2Id != null ||
+    item.glassGeorgian != null
+  );
+}
+
 export function resolveItemGlassPane1Id(
   item: Pick<DesignItem, "glassPane1Id">,
   project?: ProjectMaterialDefaults | null,
@@ -152,20 +165,23 @@ export function resolveItemGlassPane1Id(
 }
 
 export function resolveItemGlassPane2Id(
-  item: Pick<DesignItem, "glassPane2Id">,
+  item: Pick<DesignItem, "glassPane1Id" | "glassPane2Id" | "glassGeorgian">,
   project?: ProjectMaterialDefaults | null
 ): string | undefined {
-  return (
-    resolveGlassBottleId(item.glassPane2Id) ??
-    resolveGlassBottleId(project?.glassPane2Id)
-  );
+  if (item.glassPane2Id === GLASS_PANE2_NONE) return undefined;
+  const own = resolveGlassBottleId(item.glassPane2Id);
+  if (own) return own;
+  // زجاج البند مختار لوحده (حتى لو سنجل من غير زجاجة تانية) — متعملش وراثة دبل المشروع
+  if (itemHasOwnGlass(item)) return undefined;
+  return resolveGlassBottleId(project?.glassPane2Id);
 }
 
 export function resolveItemGlassGeorgian(
-  item: Pick<DesignItem, "glassGeorgian">,
+  item: Pick<DesignItem, "glassPane1Id" | "glassPane2Id" | "glassGeorgian">,
   project?: ProjectMaterialDefaults | null
 ): boolean {
   if (item.glassGeorgian != null) return Boolean(item.glassGeorgian);
+  if (itemHasOwnGlass(item)) return false;
   if (project?.glassGeorgian != null) return Boolean(project.glassGeorgian);
   return false;
 }

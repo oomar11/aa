@@ -32,6 +32,7 @@ import {
 import {
   createItemFromTemplate,
   isExtraChargeItem,
+  itemTotalPrice,
   normalizeFrameColor,
   normalizePaneConfig,
   type DesignItem,
@@ -39,7 +40,7 @@ import {
   type PaneConfig,
   type PaneOpening,
 } from "@/lib/design-items";
-import { itemIsDoubleGlazing } from "@/lib/pricing";
+import { itemIsDoubleGlazing, PRICING_UPDATED_EVENT } from "@/lib/pricing";
 import { withSuggestedName } from "@/lib/item-naming";
 import { calcGlassBreakdown, calcItemMaterials, calcMeshBreakdown, calcProfileCostBreakdown, scaleMaterials, type GlassBreakdown, type MeshBreakdown, type ProfileCostBreakdown } from "@/lib/materials";
 import {
@@ -71,10 +72,12 @@ import {
 } from "@/lib/projects";
 import {
   effectiveItemMaterials,
+  GLASS_PANE2_NONE,
   projectMaterialDefaultsFrom,
 } from "@/lib/project-materials";
 import { applyBouclierRules, isBouclierEligible } from "@/lib/bouclier";
 import { fromMm, toMm } from "@/lib/units";
+import { formatCurrency } from "@/lib/utils";
 import type { LayoutNode } from "@/lib/window-layout";
 import { cloneLayout, ensurePaneIds, listPaneIds } from "@/lib/window-layout";
 import { getTemplateById } from "@/lib/window-templates";
@@ -275,10 +278,20 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
   useEffect(() => {
     const bump = () => setCatalogTick((n) => n + 1);
     window.addEventListener(MATERIAL_CATALOG_UPDATED, bump);
+    window.addEventListener(PRICING_UPDATED_EVENT, bump);
     return () => {
       window.removeEventListener(MATERIAL_CATALOG_UPDATED, bump);
+      window.removeEventListener(PRICING_UPDATED_EVENT, bump);
     };
   }, []);
+
+  const saleTotal = useMemo(() => {
+    if (!item) return null;
+    void catalogTick;
+    const project = getProjectById(projectId);
+    const n = itemTotalPrice(item, project);
+    return n > 0 ? n : null;
+  }, [item, projectId, catalogTick]);
 
   const profileCostBreakdown = useMemo((): ProfileCostBreakdown | null => {
     if (!calcItem) return null;
@@ -366,10 +379,14 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
         patch.accessoryId === "__project__" ? undefined : patch.accessoryId,
       glassPane1Id:
         patch.glassFromProject ? undefined : patch.glassPane1Id,
-      glassPane2Id:
-        patch.glassFromProject ? undefined : patch.glassPane2Id,
-      glassGeorgian:
-        patch.glassFromProject ? undefined : patch.glassGeorgian,
+      glassPane2Id: patch.glassFromProject
+        ? undefined
+        : patch.glassPane2Id || GLASS_PANE2_NONE,
+      glassGeorgian: patch.glassFromProject
+        ? undefined
+        : patch.glassPane2Id
+          ? patch.glassGeorgian
+          : undefined,
       ironId: getIronSystemId(),
       frameColor: patch.frameColor,
     });
@@ -473,8 +490,8 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
               </p>
               <p className="truncate text-[11px] text-muted">
                 {item.nameIsCustom ? "اسم مخصص" : "تسمية ذكية"} · بند {itemIndex}
-                {profileCostBreakdown?.hasPricing
-                  ? ` · قطاعات ${Math.round(profileCostBreakdown.totalCost).toLocaleString("en-US")} ج.م`
+                {saleTotal != null
+                  ? ` · ${formatCurrency(Math.round(saleTotal))} ج.م`
                   : ""}
               </p>
             </div>
@@ -579,7 +596,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
               heightMm={item.heightMm}
               systemId={calcItem?.systemId ?? item.systemId}
               discountId={item.discountId}
-              isDoubleGlazing={itemIsDoubleGlazing(item)}
+              isDoubleGlazing={itemIsDoubleGlazing(calcItem ?? item)}
               fallbackPricePerSqm={item.pricePerSqm}
               customSalePricePerSqm={item.customSalePricePerSqm}
             />
