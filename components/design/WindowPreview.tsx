@@ -28,6 +28,7 @@ import {
 } from "@/lib/window-layout";
 import { getTemplateById } from "@/lib/window-templates";
 import { formatLength, type LengthUnit } from "@/lib/units";
+import { DouranPaneMarks } from "@/components/drawing/DouranPaneMarks";
 
 type Props = {
   style: WindowStyle;
@@ -716,35 +717,16 @@ function OpeningMarks({
 
   if (opening === "fixed" && douran) {
     return (
-      <>
-        <line
-          x1={x + inset}
-          y1={y + inset}
-          x2={x + w - inset}
-          y2={y + h - inset}
-          stroke={openStroke}
-          strokeWidth={sw}
-          opacity={printContrast ? 1 : 0.4}
-        />
-        <line
-          x1={x + w - inset}
-          y1={y + inset}
-          x2={x + inset}
-          y2={y + h - inset}
-          stroke={openStroke}
-          strokeWidth={sw}
-          opacity={printContrast ? 1 : 0.4}
-        />
-        <line
-          x1={x + inset}
-          y1={y + h - inset}
-          x2={x + w - inset}
-          y2={y + h - inset}
-          stroke={openStroke}
-          strokeWidth={sw * 1.6}
-          opacity={printContrast ? 1 : 0.85}
-        />
-      </>
+      <DouranPaneMarks
+        x={x}
+        y={y}
+        w={w}
+        h={h}
+        stroke={openStroke}
+        strokeWidth={sw}
+        labelFill={printContrast ? "#111111" : openStroke}
+        printContrast={printContrast}
+      />
     );
   }
 

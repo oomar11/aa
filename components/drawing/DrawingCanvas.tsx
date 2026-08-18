@@ -24,6 +24,7 @@ import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { panelStripeDivider, panelStripeLayout } from "@/lib/panel-stripes";
 import { formatLength } from "@/lib/units";
 import { ensurePaneIds, type LayoutNode } from "@/lib/window-layout";
+import { DouranPaneMarks } from "@/components/drawing/DouranPaneMarks";
 
 type DimTarget =
   | { kind: "width" }
@@ -576,35 +577,15 @@ function OpeningOverlay({
 
   if (opening === "fixed" && douran) {
     return (
-      <>
-        <line
-          x1={x + inset}
-          y1={y + inset}
-          x2={x + w - inset}
-          y2={y + h - inset}
-          stroke={openStroke}
-          strokeWidth={1.1}
-          opacity={0.35}
-        />
-        <line
-          x1={x + w - inset}
-          y1={y + inset}
-          x2={x + inset}
-          y2={y + h - inset}
-          stroke={openStroke}
-          strokeWidth={1.1}
-          opacity={0.35}
-        />
-        <line
-          x1={x + inset}
-          y1={y + h - inset}
-          x2={x + w - inset}
-          y2={y + h - inset}
-          stroke={openStroke}
-          strokeWidth={2.2}
-          opacity={0.85}
-        />
-      </>
+      <DouranPaneMarks
+        x={x}
+        y={y}
+        w={w}
+        h={h}
+        stroke={openStroke}
+        strokeWidth={1.4}
+        labelFill={openStroke}
+      />
     );
   }
 

@@ -17,6 +17,7 @@ import {
 } from "@/lib/design-items";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { MeshTypePicker } from "@/components/materials/MeshTypePicker";
+import { DouranOpeningIcon } from "@/components/drawing/DouranPaneMarks";
 import {
   meshCategoryOptions,
   meshTypeOptions,
@@ -467,7 +468,9 @@ export function PanePropertiesModal({
                   {OPENING_GROUPS.map((group) => (
                     <OptionSection key={group.title} title={group.title}>
                       {group.items.map((o) => {
-                        const active = draft.opening === o.id;
+                        const active =
+                          draft.opening === o.id &&
+                          !(o.id === "fixed" && draft.douran);
                         return (
                           <OptionCard
                             key={o.id}
@@ -478,6 +481,12 @@ export function PanePropertiesModal({
                                 applyOpeningMeshDefaults({
                                   ...d,
                                   opening: o.id,
+                                  ...(o.id === "fixed"
+                                    ? {
+                                        douran: false,
+                                        douranManual: false,
+                                      }
+                                    : {}),
                                 })
                               )
                             }
@@ -486,6 +495,28 @@ export function PanePropertiesModal({
                           </OptionCard>
                         );
                       })}
+                      {group.title === "ثابت" && douranEligible ? (
+                        <OptionCard
+                          label="دوران"
+                          active={
+                            draft.opening === "fixed" && Boolean(draft.douran)
+                          }
+                          onClick={() =>
+                            setDraft((d) =>
+                              applyOpeningMeshDefaults({
+                                ...d,
+                                opening: "fixed",
+                                douran: true,
+                                douranManual: true,
+                                bouclier: false,
+                                bouclierManual: false,
+                              })
+                            )
+                          }
+                        >
+                          <DouranOpeningIcon />
+                        </OptionCard>
+                      ) : null}
                     </OptionSection>
                   ))}
                   {isSlidingSashOpening(draft.opening) ? (
