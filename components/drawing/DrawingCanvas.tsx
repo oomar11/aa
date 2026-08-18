@@ -24,7 +24,7 @@ import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { panelStripeDivider, panelStripeLayout } from "@/lib/panel-stripes";
 import { formatLength } from "@/lib/units";
 import { ensurePaneIds, type LayoutNode } from "@/lib/window-layout";
-import { DouranPaneMarks } from "@/components/drawing/DouranPaneMarks";
+import { DouranFrameRing, douranGlassRect } from "@/components/drawing/DouranPaneMarks";
 
 type DimTarget =
   | { kind: "width" }
@@ -194,13 +194,25 @@ export function DrawingCanvas({
           />
         </pattern>
         {panes.map((p) => {
-          const gx = p.x + profile;
-          const gy = p.y + profile;
-          const gw = Math.max(p.w - profile * 2, 2);
-          const gh = Math.max(p.h - profile * 2, 2);
+          const cfg = normalizePaneConfig(item.panes?.[p.id]);
+          const isDouran =
+            cfg.opening === "fixed" && Boolean(cfg.douran);
+          const glassBox = isDouran
+            ? douranGlassRect(p.x, p.y, p.w, p.h, profile)
+            : {
+                x: p.x + profile,
+                y: p.y + profile,
+                w: Math.max(p.w - profile * 2, 2),
+                h: Math.max(p.h - profile * 2, 2),
+              };
           return (
             <clipPath key={`clip-${p.id}`} id={`pane-clip-${p.id}`}>
-              <rect x={gx} y={gy} width={gw} height={gh} />
+              <rect
+                x={glassBox.x}
+                y={glassBox.y}
+                width={glassBox.w}
+                height={glassBox.h}
+              />
             </clipPath>
           );
         })}
@@ -343,14 +355,40 @@ export function DrawingCanvas({
         />
       ))}
 
+      {/* حلق الدوران — 3 جهات على حدود الضلفة */}
+      {panes.map((p) => {
+        const cfg = normalizePaneConfig(item.panes?.[p.id]);
+        if (cfg.opening !== "fixed" || !cfg.douran) return null;
+        return (
+          <DouranFrameRing
+            key={`douran-ring-${p.id}`}
+            x={p.x}
+            y={p.y}
+            w={p.w}
+            h={p.h}
+            ringW={profile}
+            fill={frameFill}
+            stroke={frameStroke}
+            woodPatternId={isWood ? "wood-grain" : undefined}
+          />
+        );
+      })}
+
       {/* زجاج + فتح */}
       {panes.map((p) => {
         const cfg = normalizePaneConfig(item.panes?.[p.id]);
         const selected = selectedPaneId === p.id;
-        const gx = p.x + profile;
-        const gy = p.y + profile;
-        const gw = Math.max(p.w - profile * 2, 2);
-        const gh = Math.max(p.h - profile * 2, 2);
+        const isDouran =
+          cfg.opening === "fixed" && Boolean(cfg.douran);
+        const glassBox = isDouran
+          ? douranGlassRect(p.x, p.y, p.w, p.h, profile)
+          : {
+              x: p.x + profile,
+              y: p.y + profile,
+              w: Math.max(p.w - profile * 2, 2),
+              h: Math.max(p.h - profile * 2, 2),
+            };
+        const { x: gx, y: gy, w: gw, h: gh } = glassBox;
         const isPanel =
           cfg.opening === "panel-h" || cfg.opening === "panel-v";
         const isExhaust = cfg.opening === "exhaust";
@@ -380,7 +418,7 @@ export function DrawingCanvas({
               stroke={selected ? openStroke : paneStroke}
               strokeWidth={selected ? 2.2 : 1}
             />
-            {!isExhaust && (
+            {!isExhaust && !isDouran && (
               <PaneInnerFill
                 config={cfg}
                 x={gx}
@@ -576,16 +614,7 @@ function OpeningOverlay({
   }
 
   if (opening === "fixed" && douran) {
-    return (
-      <DouranPaneMarks
-        x={x}
-        y={y}
-        w={w}
-        h={h}
-        stroke={openStroke}
-        strokeWidth={1.4}
-      />
-    );
+    return null;
   }
 
   if (opening === "fixed") {

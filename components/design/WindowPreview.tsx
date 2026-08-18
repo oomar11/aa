@@ -28,7 +28,7 @@ import {
 } from "@/lib/window-layout";
 import { getTemplateById } from "@/lib/window-templates";
 import { formatLength, type LengthUnit } from "@/lib/units";
-import { DouranPaneMarks } from "@/components/drawing/DouranPaneMarks";
+import { DouranFrameRing, douranGlassRect } from "@/components/drawing/DouranPaneMarks";
 
 type Props = {
   style: WindowStyle;
@@ -261,13 +261,40 @@ export function WindowPreview({
         />
       ))}
 
+      {/* حلق الدوران */}
+      {paneRects.map((p) => {
+        const cfg = normalizePaneConfig(panes?.[p.id]);
+        if (cfg.opening !== "fixed" || !cfg.douran) return null;
+        return (
+          <DouranFrameRing
+            key={`douran-ring-${p.id}`}
+            x={p.x}
+            y={p.y}
+            w={p.w}
+            h={p.h}
+            ringW={profile}
+            fill={frameFill}
+            stroke={frameStroke}
+            strokeWidth={frameStrokeW}
+            woodPatternId={isWood ? woodId : undefined}
+          />
+        );
+      })}
+
       {/* محتوى الضلفة */}
       {paneRects.map((p) => {
         const cfg = normalizePaneConfig(panes?.[p.id]);
-        const gx = p.x + profile;
-        const gy = p.y + profile;
-        const gw = Math.max(p.w - profile * 2, 1.5);
-        const gh = Math.max(p.h - profile * 2, 1.5);
+        const isDouran =
+          cfg.opening === "fixed" && Boolean(cfg.douran);
+        const glassBox = isDouran
+          ? douranGlassRect(p.x, p.y, p.w, p.h, profile)
+          : {
+              x: p.x + profile,
+              y: p.y + profile,
+              w: Math.max(p.w - profile * 2, 1.5),
+              h: Math.max(p.h - profile * 2, 1.5),
+            };
+        const { x: gx, y: gy, w: gw, h: gh } = glassBox;
         const isLouver =
           cfg.opening === "panel-h" || cfg.opening === "panel-v";
         const isExhaust = cfg.opening === "exhaust";
@@ -283,7 +310,7 @@ export function WindowPreview({
               stroke={frameStroke}
               strokeWidth={paneStrokeW}
             />
-            {!isExhaust && (
+            {!isExhaust && !isDouran && (
               <PaneDetailFill
                 config={cfg}
                 x={gx}
@@ -716,17 +743,7 @@ function OpeningMarks({
   }
 
   if (opening === "fixed" && douran) {
-    return (
-      <DouranPaneMarks
-        x={x}
-        y={y}
-        w={w}
-        h={h}
-        stroke={openStroke}
-        strokeWidth={sw}
-        printContrast={printContrast}
-      />
-    );
+    return null;
   }
 
   if (opening === "fixed") {
