@@ -26,6 +26,7 @@ export function NumericInput({
   fallback,
   min,
   max,
+  step,
   round,
   className,
   onBlur,
@@ -63,6 +64,7 @@ export function NumericInput({
       type="number"
       min={min}
       max={max}
+      step={step ?? (round ? 1 : "any")}
       value={draft}
       className={className}
       onFocus={(e) => {
