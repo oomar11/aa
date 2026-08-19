@@ -359,18 +359,6 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       const result = splitPane(item.layout, selectedPaneId, dir, parts);
       if (!result) return;
       let panes = syncPanesMap(result.layout, item.panes);
-      if (dir === "h" && result.newIds[0]) {
-        const topId = result.newIds[0];
-        panes = {
-          ...panes,
-          [topId]: normalizePaneConfig({
-            ...panes[topId],
-            opening: "fixed",
-            douran: true,
-            douranManual: false,
-          }),
-        };
-      }
       persistItem({ ...item, layout: result.layout, panes });
       setSelectedPaneId(result.newIds[0] ?? null);
       return;

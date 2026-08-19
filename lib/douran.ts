@@ -97,7 +97,7 @@ export function isDouranEligible(
   return hasOperableBelow(ctx.hSplit, panes);
 }
 
-/** يطبّق قواعد الدوران التلقائية مع احترام اختيار المستخدم اليدوي */
+/** يطبّق قواعد الدوران — يحترم دائماً اختيار المستخدم اليدوي، لا يفعّل تلقائياً */
 export function applyDouranRules(
   layout: LayoutNode,
   panes: Record<string, PaneConfig>
@@ -109,20 +109,15 @@ export function applyDouranRules(
     const eligible = isDouranEligible(id, layout, { ...next, [id]: cfg });
 
     if (!eligible) {
+      // مش مؤهل — امسح الدوران إلا لو المستخدم اختاره يدوياً
       if (!cfg.douranManual) {
-        next[id] = { ...cfg, douran: false, douranManual: false };
-      } else {
-        next[id] = { ...cfg, douran: Boolean(cfg.douran) };
+        next[id] = { ...cfg, douran: false };
       }
       continue;
     }
 
-    if (cfg.douranManual) {
-      next[id] = { ...cfg, douran: Boolean(cfg.douran) };
-      continue;
-    }
-
-    next[id] = { ...cfg, douran: true, douranManual: false };
+    // مؤهل — احترم اختيار المستخدم اليدوي، ولو مش يدوي سيبه ثابت عادي
+    next[id] = { ...cfg, douran: Boolean(cfg.douranManual ? cfg.douran : false) };
   }
 
   return next;
@@ -139,7 +134,7 @@ export function panesForTransomLayout(
     const topIds = new Set(transomTopPaneIds(layout));
     const bottomIds = ids.filter((id) => !topIds.has(id));
     for (const id of topIds) {
-      panes[id] = defaultPaneConfig({ opening: "fixed", douran: true });
+      panes[id] = defaultPaneConfig({ opening: "fixed" });
     }
     bottomIds.forEach((id, i) => {
       panes[id] = defaultPaneConfig({
