@@ -18,6 +18,7 @@ import {
   type PaneRect,
   type Rect,
 } from "@/lib/drawing-ops";
+import { maxSplitDepth } from "@/lib/dim-system";
 import { exhaustFanGeom } from "@/lib/exhaust-fan";
 import { getGridCells, gridLines } from "@/lib/pane-grid";
 import { panelStripeDivider, panelStripeLayout } from "@/lib/panel-stripes";
@@ -133,9 +134,22 @@ export function WindowPreview({
   const showDims =
     showDimensions &&
     Boolean(widthMm && heightMm && widthMm > 0 && heightMm > 0);
-  // مساحة كافية لمقاس العرض/الارتفاع فقط — بدون مقاسات تقسيم عشان متتداخلش
-  const dimPadTop = showDims ? (printContrast ? 42 : 22) : 5;
-  const dimPadLeft = showDims ? (printContrast ? 64 : 28) : 5;
+
+  // مقاسات التقسيم الداخلية تظهر فقط في وضع الطباعة
+  const showPartDims = showDims && printContrast;
+  const PART_LANE_BASE = 10; // مسافة أول خط تقسيم عن الإطار
+  const PART_LANE_STEP = 16; // مسافة بين خطوط التقسيم المتداخلة
+  const PART_OVERALL_GAP = 20; // مسافة بين آخر خط تقسيم وخط الإجمالي
+  const splitDepth = showPartDims ? Math.max(0, maxSplitDepth(tree) - 1) : 0;
+  const partPadTop = showPartDims && splitDepth > 0
+    ? PART_LANE_BASE + splitDepth * PART_LANE_STEP + PART_OVERALL_GAP
+    : 0;
+  const partPadLeft = showPartDims && splitDepth > 0
+    ? PART_LANE_BASE + splitDepth * PART_LANE_STEP + PART_OVERALL_GAP
+    : 0;
+
+  const dimPadTop = showDims ? (printContrast ? 42 + partPadTop : 22) : 5;
+  const dimPadLeft = showDims ? (printContrast ? 64 + partPadLeft : 28) : 5;
   const dimPadRight = showDims ? (printContrast ? 16 : 8) : 5;
   const dimPadBottom = showDims ? (printContrast ? 16 : 8) : 5;
   const vbW = showDims ? dimPadLeft + winW + dimPadRight : winW;
@@ -368,6 +382,18 @@ export function WindowPreview({
         />
       ))}
 
+      {showPartDims && widthMm && heightMm ? (
+        <PartitionDimensions
+          layout={tree}
+          frame={frame}
+          widthMm={widthMm}
+          heightMm={heightMm}
+          unit={unit}
+          laneBase={PART_LANE_BASE}
+          laneStep={PART_LANE_STEP}
+        />
+      ) : null}
+
       {showDims && widthMm && heightMm ? (
         <PreviewDimensions
           frame={frame}
@@ -385,6 +411,137 @@ export function WindowPreview({
 /** خط ثابت للـ SVG — متغيرات CSS غالباً متتحلش صح وقت تصوير PDF */
 const PREVIEW_DIM_FONT =
   'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif';
+
+type PartSeg = {
+  x1: number; x2: number; y: number; label: string; isH: true;
+} | {
+  y1: number; y2: number; x: number; label: string; isH: false;
+};
+
+function collectPartitionSegs(
+  node: LayoutNode,
+  rect: Rect,
+  widthMm: number,
+  heightMm: number,
+  frame: Rect,
+  laneBase: number,
+  laneStep: number,
+  unit: LengthUnit,
+  depth: number,
+  out: PartSeg[]
+) {
+  if (node.type !== "split") return;
+  const total = sum(node.ratios) || 1;
+  const lane = laneBase + depth * laneStep;
+  let offset = 0;
+
+  if (node.dir === "v") {
+    const y = frame.y - lane;
+    node.ratios.forEach((r, i) => {
+      const w = (rect.w * r) / total;
+      const childMm = (widthMm * r) / total;
+      out.push({
+        isH: true,
+        x1: rect.x + offset,
+        x2: rect.x + offset + w,
+        y,
+        label: formatLength(Math.round(childMm), unit),
+      });
+      collectPartitionSegs(
+        node.children[i]!,
+        { x: rect.x + offset, y: rect.y, w, h: rect.h },
+        childMm, heightMm, frame, laneBase, laneStep, unit, depth + 1, out
+      );
+      offset += w;
+    });
+  } else {
+    const x = frame.x - lane;
+    node.ratios.forEach((r, i) => {
+      const h = (rect.h * r) / total;
+      const childMm = (heightMm * r) / total;
+      out.push({
+        isH: false,
+        y1: rect.y + offset,
+        y2: rect.y + offset + h,
+        x,
+        label: formatLength(Math.round(childMm), unit),
+      });
+      collectPartitionSegs(
+        node.children[i]!,
+        { x: rect.x, y: rect.y + offset, w: rect.w, h },
+        widthMm, childMm, frame, laneBase, laneStep, unit, depth + 1, out
+      );
+      offset += h;
+    });
+  }
+}
+
+function PartitionDimensions({
+  layout,
+  frame,
+  widthMm,
+  heightMm,
+  unit,
+  laneBase,
+  laneStep,
+}: {
+  layout: LayoutNode;
+  frame: Rect;
+  widthMm: number;
+  heightMm: number;
+  unit: LengthUnit;
+  laneBase: number;
+  laneStep: number;
+}) {
+  const segs: PartSeg[] = [];
+  collectPartitionSegs(
+    layout, frame, widthMm, heightMm, frame, laneBase, laneStep, unit, 0, segs
+  );
+  if (segs.length === 0) return null;
+  const color = "#333333";
+  const fontSize = 15;
+  const dotR = 2;
+  const lineW = 1.4;
+  const extW = 0.9;
+
+  return (
+    <g aria-hidden>
+      {segs.map((seg, i) => {
+        if (seg.isH) {
+          const mid = (seg.x1 + seg.x2) / 2;
+          const bw = Math.max(seg.label.length * fontSize * 0.58 + 6, 18);
+          const bh = fontSize + 4;
+          return (
+            <g key={`ph-${i}`}>
+              <line x1={seg.x1} y1={frame.y} x2={seg.x1} y2={seg.y} stroke={color} strokeWidth={extW} opacity={0.6} />
+              <line x1={seg.x2} y1={frame.y} x2={seg.x2} y2={seg.y} stroke={color} strokeWidth={extW} opacity={0.6} />
+              <line x1={seg.x1} y1={seg.y} x2={seg.x2} y2={seg.y} stroke={color} strokeWidth={lineW} />
+              <circle cx={seg.x1} cy={seg.y} r={dotR} fill={color} />
+              <circle cx={seg.x2} cy={seg.y} r={dotR} fill={color} />
+              <rect x={mid - bw / 2} y={seg.y - bh / 2} width={bw} height={bh} rx={2} fill="#ffffff" stroke={color} strokeWidth={1} />
+              <text x={mid} y={seg.y + fontSize * 0.35} textAnchor="middle" fill={color} fontSize={fontSize} fontWeight={600} fontFamily={PREVIEW_DIM_FONT}>{seg.label}</text>
+            </g>
+          );
+        } else {
+          const mid = (seg.y1 + seg.y2) / 2;
+          const bw = Math.max(seg.label.length * fontSize * 0.58 + 6, 18);
+          const bh = fontSize + 4;
+          return (
+            <g key={`pv-${i}`}>
+              <line x1={frame.x} y1={seg.y1} x2={seg.x} y2={seg.y1} stroke={color} strokeWidth={extW} opacity={0.6} />
+              <line x1={frame.x} y1={seg.y2} x2={seg.x} y2={seg.y2} stroke={color} strokeWidth={extW} opacity={0.6} />
+              <line x1={seg.x} y1={seg.y1} x2={seg.x} y2={seg.y2} stroke={color} strokeWidth={lineW} />
+              <circle cx={seg.x} cy={seg.y1} r={dotR} fill={color} />
+              <circle cx={seg.x} cy={seg.y2} r={dotR} fill={color} />
+              <rect x={seg.x - bw / 2} y={mid - bh / 2} width={bw} height={bh} rx={2} fill="#ffffff" stroke={color} strokeWidth={1} />
+              <text x={seg.x} y={mid + fontSize * 0.35} textAnchor="middle" fill={color} fontSize={fontSize} fontWeight={600} fontFamily={PREVIEW_DIM_FONT}>{seg.label}</text>
+            </g>
+          );
+        }
+      })}
+    </g>
+  );
+}
 
 /** مقاسات العرض والارتفاع الكلية فقط على معاينة التقرير */
 function PreviewDimensions({
