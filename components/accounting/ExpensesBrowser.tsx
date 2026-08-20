@@ -28,6 +28,7 @@ import {
   type ExpectedExpenseRow,
 } from "@/lib/expected-expenses";
 import { ExpenseForm } from "@/components/accounting/ExpenseForm";
+import { WorkshopSyncBanner } from "@/components/settings/WorkshopSyncBanner";
 
 type SettlementFilter = "all" | "cash" | "credit";
 type PeriodFilter = "all" | "month";
@@ -167,6 +168,8 @@ export function ExpensesBrowser() {
 
   return (
     <div className="flex flex-col gap-4">
+      <WorkshopSyncBanner />
+
       <Link
         href={ROUTES.accounting.newExpense}
         className="flex h-12 items-center justify-center rounded-2xl bg-[#C45C26] text-sm font-bold text-white transition-all hover:brightness-105 active:scale-[0.98] lg:hidden"

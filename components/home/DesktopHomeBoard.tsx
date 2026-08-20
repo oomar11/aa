@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { isAccountedProject } from "@/lib/accounting-scope";
-import { buildAccountingReport } from "@/lib/accounting-reports";
-import { todayIsoDate } from "@/lib/accounting";
+import {
+  buildAccountingReport,
+  expensesTotalInPeriod,
+} from "@/lib/accounting-reports";
+import { loadExpenses, todayIsoDate } from "@/lib/accounting";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import {
@@ -64,6 +67,13 @@ export function DesktopHomeBoard() {
     typeof window === "undefined"
       ? { collected: 0, outstanding: 0, net: 0, expenses: 0 }
       : buildAccountingReport("month");
+
+  // مصروف الشهر = كل القيود بتاريخها هذا الشهر (فواتير/مشروع/عام) —
+  // مش بس مصروف الشغل المتسلّم زي تقرير الربح.
+  const monthExpenses =
+    typeof window === "undefined"
+      ? 0
+      : expensesTotalInPeriod("month", loadExpenses());
 
   const todayLabel =
     typeof window === "undefined" ? "" : formatDate(todayIsoDate());
@@ -126,7 +136,7 @@ export function DesktopHomeBoard() {
         />
         <KpiTile
           label="مصروف الشهر"
-          value={formatCurrency(monthReport.expenses)}
+          value={formatCurrency(monthExpenses)}
           href={ROUTES.accounting.expenses}
           color="text-[#C45C26]"
         />

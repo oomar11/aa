@@ -6,6 +6,7 @@
 import {
   SHARED_KEY_EVENTS,
   SHARED_STORAGE_KEYS,
+  STORAGE_KEYS,
   isSharedStorageKey,
   type SharedStorageKey,
 } from "@/lib/storage/keys";
@@ -120,6 +121,57 @@ function snapshotToResponse(
   };
 }
 
+/** مفاتيح تُدمج بالـ id عشان قيود جهاز متضيعش قيود جهاز تاني */
+const MERGE_BY_ID_KEYS = new Set<SharedStorageKey>([
+  STORAGE_KEYS.expenses,
+  STORAGE_KEYS.payments,
+  STORAGE_KEYS.invoices,
+  STORAGE_KEYS.activityNotes,
+  STORAGE_KEYS.employees,
+  STORAGE_KEYS.attendance,
+  STORAGE_KEYS.advances,
+  STORAGE_KEYS.payroll,
+  STORAGE_KEYS.projectAssignments,
+]);
+
+function mergeJsonArraysById(
+  localRaw: string,
+  serverRaw: string
+): { value: string; localOnly: boolean } {
+  try {
+    const local = JSON.parse(localRaw) as unknown;
+    const server = JSON.parse(serverRaw) as unknown;
+    if (!Array.isArray(local) || !Array.isArray(server)) {
+      return { value: serverRaw, localOnly: false };
+    }
+
+    type Row = { id?: string; createdAt?: string };
+    const byId = new Map<string, Row>();
+    for (const item of server as Row[]) {
+      if (item && typeof item.id === "string") byId.set(item.id, item);
+    }
+    let localOnly = false;
+    for (const item of local as Row[]) {
+      if (!item || typeof item.id !== "string") continue;
+      const existing = byId.get(item.id);
+      if (!existing) {
+        byId.set(item.id, item);
+        localOnly = true;
+        continue;
+      }
+      const localT = Date.parse(String(item.createdAt || "")) || 0;
+      const serverT = Date.parse(String(existing.createdAt || "")) || 0;
+      if (localT > serverT) {
+        byId.set(item.id, item);
+        localOnly = true;
+      }
+    }
+    return { value: JSON.stringify([...byId.values()]), localOnly };
+  } catch {
+    return { value: serverRaw, localOnly: false };
+  }
+}
+
 function hydrateFromSnapshot(
   snapshot: StoreResponse,
   options?: { silent?: boolean }
@@ -141,22 +193,63 @@ function hydrateFromSnapshot(
   }
 
   const changed: string[] = [];
+  const restore: Record<string, string> = {};
   for (const key of SHARED_STORAGE_KEYS) {
+    // متكتبش فوق تعديل محلي لسه مترفعش
+    if (pending.has(key)) continue;
+
     const next = key in snapshot.data ? snapshot.data[key] : null;
     const prev = memory.has(key)
       ? memory.get(key)
       : typeof window !== "undefined"
         ? localStorage.getItem(key)
         : null;
-    memory.set(key, next ?? null);
-    applyToLocalStorage(key, next ?? null);
-    if (prev !== (next ?? null)) changed.push(key);
+
+    // السيرفر رجّع null/فاضي لكن الجهاز فيه بيانات — متلمسهاش؛ ارفعها تاني.
+    // ده بيحمي مصروفات التليفون لما جهاز تاني يهاجر من غير المفتاح.
+    if (
+      (next === null || next === undefined || next.length === 0) &&
+      typeof prev === "string" &&
+      prev.length > 0
+    ) {
+      restore[key] = prev;
+      continue;
+    }
+
+    let applied = next ?? null;
+    if (
+      MERGE_BY_ID_KEYS.has(key) &&
+      typeof prev === "string" &&
+      prev.length > 0 &&
+      typeof next === "string" &&
+      next.length > 0 &&
+      prev !== next
+    ) {
+      const merged = mergeJsonArraysById(prev, next);
+      applied = merged.value;
+      if (merged.localOnly) {
+        restore[key] = merged.value;
+      }
+    }
+
+    memory.set(key, applied);
+    applyToLocalStorage(key, applied);
+    if (prev !== applied) changed.push(key);
   }
+
+  for (const [key, value] of Object.entries(restore)) {
+    memory.set(key, value);
+    pending.set(key, value);
+  }
+  if (Object.keys(restore).length > 0) {
+    scheduleFlush(100);
+  }
+
   revision = Number(snapshot.revision ?? revision) || 0;
   updatedAt = snapshot.updatedAt ?? updatedAt;
   backend = snapshot.backend ?? backend;
   durable = snapshot.durable ?? durable;
-  hasData = Boolean(snapshot.hasData) || snapshotHasSharedPayload(snapshot);
+  hasData = Boolean(snapshot.hasData) || snapshotHasSharedPayload(snapshot) || localHasSharedData();
   lastPulledAt = new Date().toISOString();
   ready = true;
   error = null;
@@ -175,12 +268,24 @@ function snapshotHasSharedPayload(snapshot: StoreResponse): boolean {
   });
 }
 
-/** رفع المحلي للسيرفر بدون مسح الجهاز عند الفشل */
+/** رفع المحلي للسيرفر بدون مسح الجهاز عند الفشل.
+ * نرفع فقط المفاتيح اللي فيها بيانات محلية — مش بنمسح مفاتيح على السيرفر
+ * لو الجهاز الحالي معندوش المفتاح (مثلاً كمبيوتر فاضي يمسح مصروفات التليفون).
+ */
 async function migrateLocalToServer(): Promise<StoreResponse> {
-  const data = collectLocalSharedData();
-  return neonConfigured()
-    ? await replaceViaNeon(data)
-    : await replaceViaApi(data);
+  const local = collectLocalSharedData();
+  const patch: Record<string, string | null> = {};
+  for (const [key, value] of Object.entries(local)) {
+    if (typeof value === "string" && value.length > 0) {
+      patch[key] = value;
+    }
+  }
+  if (Object.keys(patch).length === 0) {
+    return neonConfigured()
+      ? await pullViaNeon({ migrateIfEmpty: false })
+      : await pullViaApi({ migrateIfEmpty: false });
+  }
+  return neonConfigured() ? await pushViaNeon(patch) : await pushViaApi(patch);
 }
 
 async function pullViaNeon(options?: {
@@ -195,7 +300,8 @@ async function pullViaNeon(options?: {
     options?.migrateIfEmpty &&
     localHasSharedData()
   ) {
-    snapshot = await replacePostgresKv(url, collectLocalSharedData());
+    // ترحيل جزئي — متمسحش مفاتيح ناقصة على الجهاز
+    return migrateLocalToServer();
   }
   return snapshotToResponse(snapshot, "neon");
 }
@@ -248,17 +354,8 @@ async function pullViaApi(options?: {
     options?.migrateIfEmpty &&
     localHasSharedData()
   ) {
-    const putRes = await fetch("/api/store", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: collectLocalSharedData() }),
-      cache: "no-store",
-    });
-    const putJson = (await putRes.json()) as StoreResponse;
-    if (!putRes.ok || !putJson.ok) {
-      throw new Error(putJson.error || "تعذر رفع بيانات الجهاز للورشة");
-    }
-    return putJson;
+    // ترحيل جزئي عبر PATCH — متمسحش مفاتيح ناقصة على الجهاز
+    return migrateLocalToServer();
   }
 
   return json;
@@ -343,6 +440,11 @@ async function pullFromServer(options?: {
   migrateIfEmpty?: boolean;
 }): Promise<void> {
   if (typeof window === "undefined") return;
+  // لو فيه حفظ محلي لسه مترفعش — متسحبش لقطة قديمة فوقه
+  if (pending.size > 0) {
+    scheduleFlush(100);
+    return;
+  }
   syncing = true;
   notifySyncStatus();
   try {
@@ -352,6 +454,12 @@ async function pullFromServer(options?: {
     const json = neonConfigured()
       ? await pullViaNeon({ migrateIfEmpty })
       : await pullViaApi({ migrateIfEmpty });
+
+    if (pending.size > 0) {
+      // حصل حفظ أثناء السحب — متطبقش اللقطة فوقه
+      scheduleFlush(100);
+      return;
+    }
 
     if (!json.data && json.revision === revision) {
       lastPulledAt = new Date().toISOString();

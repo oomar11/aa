@@ -23,6 +23,7 @@ import {
 } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 import { StoreInboxBanner } from "@/components/accounting/StoreInboxBanner";
+import { WorkshopSyncBanner } from "@/components/settings/WorkshopSyncBanner";
 import { DesktopHomeBoard } from "@/components/home/DesktopHomeBoard";
 
 function customerName(
@@ -79,6 +80,9 @@ export function HomeDashboard() {
   return (
     <div className="flex flex-col gap-5">
       <StoreInboxBanner />
+      <div className="hidden lg:block">
+        <WorkshopSyncBanner />
+      </div>
       <DesktopHomeBoard />
 
       <div className="flex flex-col gap-5 lg:hidden">

@@ -26,6 +26,7 @@ import { ensureStoreBridgeBootstrapped } from "@/lib/store-bridge-bootstrap";
 import { formatCurrency } from "@/lib/utils";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
 import { StoreInboxBanner } from "@/components/accounting/StoreInboxBanner";
+import { WorkshopSyncBanner } from "@/components/settings/WorkshopSyncBanner";
 
 const links = [
   {
@@ -170,6 +171,7 @@ export function AccountingHub() {
   return (
     <div className="flex flex-col gap-5">
       <StoreInboxBanner />
+      <WorkshopSyncBanner />
 
       <section className="rounded-2xl bg-[#1F6B55] px-4 py-5 text-white shadow-[0_8px_24px_rgba(47,155,122,0.28)]">
         <p className="text-xs font-medium opacity-85">الحسابات</p>

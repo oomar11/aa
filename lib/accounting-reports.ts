@@ -66,9 +66,25 @@ export function startOfPeriod(period: ReportPeriod, now = new Date()): string | 
   return new Date(y, 0, 1).toISOString().slice(0, 10);
 }
 
-function inPeriod(isoDate: string, from: string | null, to: string): boolean {
+export function inPeriod(isoDate: string, from: string | null, to: string): boolean {
   if (from && isoDate < from) return false;
   return isoDate <= to;
+}
+
+/** مجموع كل المصروفات بتاريخها داخل الفترة (مشروط بتاريخ المصروف، مش التسليم). */
+export function expensesTotalInPeriod(
+  period: ReportPeriod = "month",
+  expenses: Expense[] = loadExpenses(),
+  range?: ReportDateRange
+): number {
+  const toDate = range?.toDate || todayIsoDate();
+  const fromDate =
+    range && "fromDate" in range
+      ? range.fromDate ?? null
+      : startOfPeriod(period);
+  return expenses
+    .filter((expense) => inPeriod(expense.date, fromDate, toDate))
+    .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
 }
 
 /** الشغل المتسلّم يدخل الفترة حسب تاريخ التسليم؛ من غير تاريخ يظهر في «كل الوقت» فقط. */
