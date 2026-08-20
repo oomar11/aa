@@ -343,7 +343,35 @@ export async function fetchWorkshopInvoiceInbox(
   return json.invoices || [];
 }
 
-/** Refresh local project expenses linked to store invoices after POS edits. */
+function storeInvoiceExpenseFields(row: StoreInvoiceInboxItem) {
+  const amount = Number(row.total) || 0;
+  const date = row.invoice_date
+    ? row.invoice_date.slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+  const lines = (row.items_summary || [])
+    .slice(0, 4)
+    .map((l) => l.name || "صنف")
+    .filter(Boolean);
+  const note = [
+    lines.length ? lines.join(" · ") : undefined,
+    row.notes?.trim() || undefined,
+  ]
+    .filter(Boolean)
+    .join(" — ");
+  return {
+    amount,
+    date,
+    note: note || undefined,
+    description: `فاتورة محل ${row.invoice_number}`,
+  };
+}
+
+/**
+ * مزامنة مصروفات فواتير المحل المعيّنة:
+ * - ينشئ المصروف محلياً لو الفاتورة متعيّنة في المحل ومش موجودة على الجهاز
+ *   (عشان الموبايل والكمبيوتر يتشوفوا نفس الفواتير)
+ * - يحدّث المبلغ/الوصف لو الفاتورة اتعدّلت في نقطة البيع
+ */
 export async function syncAssignedStoreInvoiceExpenses(
   config: StoreBridgeConfig | null = loadStoreBridgeConfig()
 ): Promise<number> {
@@ -352,58 +380,71 @@ export async function syncAssignedStoreInvoiceExpenses(
 
   const { loadExpenses, upsertExpense } = await import("@/lib/accounting");
   const rows = await fetchWorkshopInvoiceInbox("assigned", config);
-  const expenses = loadExpenses().filter((e) => e.storeInvoiceId);
-  if (!expenses.length || !rows.length) return 0;
+  if (!rows.length) return 0;
 
-  const byInvoice = new Map(rows.map((r) => [r.invoice_id, r]));
-  let updated = 0;
+  const expenses = loadExpenses();
+  const byInvoice = new Map(
+    expenses
+      .filter((e) => e.storeInvoiceId)
+      .map((e) => [e.storeInvoiceId as string, e])
+  );
+  let changedCount = 0;
 
-  for (const expense of expenses) {
-    const invoiceId = expense.storeInvoiceId;
-    if (!invoiceId) continue;
-    const row = byInvoice.get(invoiceId);
-    if (!row) continue;
+  for (const row of rows) {
+    const fields = storeInvoiceExpenseFields(row);
+    const existing = byInvoice.get(row.invoice_id);
 
-    const amount = Number(row.total) || 0;
-    const date = row.invoice_date
-      ? row.invoice_date.slice(0, 10)
-      : expense.date;
-    const lines = (row.items_summary || [])
-      .slice(0, 4)
-      .map((l) => l.name || "صنف")
-      .filter(Boolean);
-    const note = [
-      lines.length ? lines.join(" · ") : undefined,
-      row.notes?.trim() || undefined,
-    ]
-      .filter(Boolean)
-      .join(" — ");
+    if (!existing) {
+      const projectId = row.assigned_project_key?.trim() || undefined;
+      // فاتورة متعيّنة بدون شغلانة: نسجّلها عامة عشان متضيعش بين الأجهزة
+      upsertExpense({
+        id: `exp-store-${row.invoice_id}`,
+        category: "خامات",
+        description: fields.description,
+        amount: fields.amount,
+        date: fields.date,
+        projectId,
+        note: fields.note,
+        createdAt:
+          row.assigned_at ||
+          row.created_at ||
+          row.updated_at ||
+          new Date().toISOString(),
+        storeInvoiceId: row.invoice_id,
+        storeInvoiceNumber: row.invoice_number,
+      });
+      changedCount += 1;
+      continue;
+    }
 
-    const nextDescription = `فاتورة محل ${row.invoice_number}`;
+    const nextProjectId =
+      row.assigned_project_key?.trim() || existing.projectId;
     const changed =
-      Math.abs((Number(expense.amount) || 0) - amount) > 0.001 ||
-      expense.storeInvoiceNumber !== row.invoice_number ||
-      expense.description !== nextDescription ||
-      (expense.note || "") !== note ||
-      expense.date !== date;
+      Math.abs((Number(existing.amount) || 0) - fields.amount) > 0.001 ||
+      existing.storeInvoiceNumber !== row.invoice_number ||
+      existing.description !== fields.description ||
+      (existing.note || "") !== (fields.note || "") ||
+      existing.date !== fields.date ||
+      (existing.projectId || "") !== (nextProjectId || "");
 
     if (!changed) continue;
 
     upsertExpense({
-      ...expense,
-      amount,
-      date,
-      description: nextDescription,
-      note: note || undefined,
+      ...existing,
+      amount: fields.amount,
+      date: fields.date,
+      description: fields.description,
+      note: fields.note,
+      projectId: nextProjectId,
       storeInvoiceNumber: row.invoice_number,
     });
-    updated += 1;
+    changedCount += 1;
   }
 
-  if (updated > 0) {
+  if (changedCount > 0) {
     window.dispatchEvent(new Event("upvc-accounting-updated"));
   }
-  return updated;
+  return changedCount;
 }
 
 export async function resolveWorkshopInvoice(
