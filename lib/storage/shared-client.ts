@@ -141,6 +141,7 @@ function hydrateFromSnapshot(
   }
 
   const changed: string[] = [];
+  let shouldFlushProtected = false;
   for (const key of SHARED_STORAGE_KEYS) {
     const next = key in snapshot.data ? snapshot.data[key] : null;
     const prev = memory.has(key)
@@ -148,15 +149,36 @@ function hydrateFromSnapshot(
       : typeof window !== "undefined"
         ? localStorage.getItem(key)
         : null;
-    memory.set(key, next ?? null);
-    applyToLocalStorage(key, next ?? null);
-    if (prev !== (next ?? null)) changed.push(key);
+    // لا تمسح مفتاح محلي فيه بيانات لو السيرفر رجّع null
+    // (يحصل لما جهاز تاني يرفع لقطة ناقصة أو /tmp يتصفّر جزئياً)
+    const nextValue = next ?? null;
+    const prevValue = prev ?? null;
+    if (
+      (nextValue === null || nextValue === "") &&
+      typeof prevValue === "string" &&
+      prevValue.length > 0
+    ) {
+      memory.set(key, prevValue);
+      applyToLocalStorage(key, prevValue);
+      pending.set(key, prevValue);
+      shouldFlushProtected = true;
+      continue;
+    }
+    memory.set(key, nextValue);
+    applyToLocalStorage(key, nextValue);
+    if (prevValue !== nextValue) changed.push(key);
+  }
+  if (shouldFlushProtected) {
+    scheduleFlush(400);
   }
   revision = Number(snapshot.revision ?? revision) || 0;
   updatedAt = snapshot.updatedAt ?? updatedAt;
   backend = snapshot.backend ?? backend;
   durable = snapshot.durable ?? durable;
-  hasData = Boolean(snapshot.hasData) || snapshotHasSharedPayload(snapshot);
+  hasData =
+    Boolean(snapshot.hasData) ||
+    snapshotHasSharedPayload(snapshot) ||
+    localHasSharedData();
   lastPulledAt = new Date().toISOString();
   ready = true;
   error = null;

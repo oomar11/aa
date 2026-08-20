@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { isAccountedProject } from "@/lib/accounting-scope";
-import { buildAccountingReport } from "@/lib/accounting-reports";
-import { todayIsoDate } from "@/lib/accounting";
+import { buildAccountingReport, startOfPeriod } from "@/lib/accounting-reports";
+import { loadExpenses, todayIsoDate } from "@/lib/accounting";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import {
@@ -64,6 +64,19 @@ export function DesktopHomeBoard() {
     typeof window === "undefined"
       ? { collected: 0, outstanding: 0, net: 0, expenses: 0 }
       : buildAccountingReport("month");
+
+  // مصروف الشهر على الرئيسية = كل المصروفات بتاريخ الشهر
+  // (مش بس شغل متسلّم) عشان فواتير الموبايل تظهر فوراً على الكمبيوتر
+  const monthExpenseTotal =
+    typeof window === "undefined"
+      ? 0
+      : (() => {
+          const from = startOfPeriod("month");
+          const to = todayIsoDate();
+          return loadExpenses()
+            .filter((e) => (!from || e.date >= from) && e.date <= to)
+            .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        })();
 
   const todayLabel =
     typeof window === "undefined" ? "" : formatDate(todayIsoDate());
@@ -126,15 +139,19 @@ export function DesktopHomeBoard() {
         />
         <KpiTile
           label="مصروف الشهر"
-          value={formatCurrency(monthReport.expenses)}
+          value={formatCurrency(monthExpenseTotal)}
           href={ROUTES.accounting.expenses}
           color="text-[#C45C26]"
         />
         <KpiTile
           label="مكسب الشهر"
-          value={formatCurrency(monthReport.net)}
+          value={formatCurrency(monthReport.collected - monthExpenseTotal)}
           href={ROUTES.accounting.reports}
-          color={monthReport.net >= 0 ? "text-[#1F6B55]" : "text-[#E85A8A]"}
+          color={
+            monthReport.collected - monthExpenseTotal >= 0
+              ? "text-[#1F6B55]"
+              : "text-[#E85A8A]"
+          }
         />
       </section>
 
