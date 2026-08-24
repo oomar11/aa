@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import {
   DEFAULT_COMPANY,
+  DEFAULT_CONTRACT_TERMS,
   loadCompany,
   saveCompany,
   type Company,
@@ -41,7 +42,7 @@ export function CompanyForm() {
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
       <p className="rounded-2xl border border-border bg-primary-soft/60 px-4 py-3 text-xs leading-relaxed text-foreground">
-        البرنامج لشركة واحدة فقط. البيانات دي بتظهر في الحسابات والهيدر.
+        البرنامج لشركة واحدة فقط. البيانات دي بتظهر في الحسابات والهيدر وعقد الاتفاق.
       </p>
 
       <label className="flex flex-col gap-1.5 text-right">
@@ -123,6 +124,20 @@ export function CompanyForm() {
           className={`${fieldClass} resize-none`}
           placeholder="أي تفاصيل مهمة عن الشركة…"
         />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-right">
+        <span className="text-sm font-medium">بنود الاتفاق (عقد العملاء)</span>
+        <textarea
+          value={form.contractTerms ?? DEFAULT_CONTRACT_TERMS}
+          onChange={(e) => update("contractTerms", e.target.value)}
+          rows={8}
+          className={`${fieldClass} min-h-[160px] resize-y`}
+          placeholder="اكتب كل بند في سطر منفصل…"
+        />
+        <span className="text-[11px] leading-relaxed text-muted">
+          كل سطر = بند في عقد الاتفاق. تظهر عند مشاركة/طباعة العقد من المشروع.
+        </span>
       </label>
 
       {error ? (

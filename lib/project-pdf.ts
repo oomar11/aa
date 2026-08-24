@@ -194,6 +194,15 @@ export function workshopOrderPdfFileName(projectName?: string): string {
   return `أمر-تشغيل-${base}.pdf`;
 }
 
+/** اسم ملف عقد الاتفاق */
+export function contractPdfFileName(projectName?: string): string {
+  const base = (projectName?.trim() || "مشروع-upvc")
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "-")
+    .slice(0, 80);
+  return `عقد-اتفاق-${base}.pdf`;
+}
+
 export async function buildNamedPdfFile(
   sheet: HTMLElement,
   fileName: string

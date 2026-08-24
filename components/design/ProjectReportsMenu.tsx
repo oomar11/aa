@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 export type ProjectMoreAction =
   | "share-quote"
+  | "share-contract"
   | "workshop-order"
   | "purchase-order"
   | "estimated-cost";
@@ -94,6 +95,15 @@ export function ProjectMoreMenu({
             onClick={() => pick("share-quote")}
           >
             <span>مشاركة المقايسة</span>
+            <span className="text-[10px] font-medium text-muted">PDF</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-right text-sm font-semibold transition-colors hover:bg-primary-soft"
+            onClick={() => pick("share-contract")}
+          >
+            <span>عقد اتفاق</span>
             <span className="text-[10px] font-medium text-muted">PDF</span>
           </button>
           <button

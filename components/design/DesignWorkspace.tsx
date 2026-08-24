@@ -30,6 +30,10 @@ import {
   type WorkshopOrderPdfExporterHandle,
 } from "@/components/design/WorkshopOrderPdfExporter";
 import {
+  ContractPdfExporter,
+  type ContractPdfExporterHandle,
+} from "@/components/design/ContractPdfExporter";
+import {
   ProjectMoreMenu,
   type ProjectMoreAction,
 } from "@/components/design/ProjectReportsMenu";
@@ -138,6 +142,7 @@ export function DesignWorkspace({
   const [editingExtra, setEditingExtra] = useState<DesignItem | null>(null);
   const [editExpenseId, setEditExpenseId] = useState<string | null>(null);
   const pdfExporterRef = useRef<ProjectPdfExporterHandle>(null);
+  const contractExporterRef = useRef<ContractPdfExporterHandle>(null);
   const workshopOrderRef = useRef<WorkshopOrderPdfExporterHandle>(null);
   const purchaseOrderRef = useRef<PurchaseOrderPdfExporterHandle>(null);
   const estimatedCostRef = useRef<EstimatedCostPdfExporterHandle>(null);
@@ -258,6 +263,14 @@ export function DesignWorkspace({
     if (!customerId || !projectId) return;
     if (action === "share-quote") {
       handleShare();
+      return;
+    }
+    if (action === "share-contract") {
+      if (!contractExporterRef.current) {
+        window.alert("تعذر فتح عقد الاتفاق. حدّث الصفحة وحاول مرة أخرى.");
+        return;
+      }
+      void contractExporterRef.current.openShare();
       return;
     }
     if (action === "workshop-order") {
@@ -894,6 +907,12 @@ export function DesignWorkspace({
         <>
           <ProjectPdfExporter
             ref={pdfExporterRef}
+            customerId={customerId}
+            projectId={projectId}
+            projectName={project?.name}
+          />
+          <ContractPdfExporter
+            ref={contractExporterRef}
             customerId={customerId}
             projectId={projectId}
             projectName={project?.name}
