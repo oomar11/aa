@@ -84,6 +84,10 @@ export type Advance = {
   settledAmount?: number;
   /** آخر راتب خصم منها */
   payrollId?: string;
+  /** مصروف الأجور الذي سحب المبلغ من الخزنة */
+  expenseId?: string;
+  /** مزامنة الخزنة في المتجر (إن وُجد الربط) */
+  storeBridge?: StoreBridgeMeta;
 };
 
 export type PayrollDeduction = {
@@ -192,6 +196,11 @@ export function deleteEmployee(employeeId: string) {
   saveAttendance(
     loadAttendance().filter((row) => row.employeeId !== employeeId)
   );
+  for (const advance of loadAdvances().filter(
+    (row) => row.employeeId === employeeId
+  )) {
+    if (advance.expenseId) deleteExpense(advance.expenseId);
+  }
   saveAdvances(loadAdvances().filter((row) => row.employeeId !== employeeId));
   savePayroll(loadPayroll().filter((row) => row.employeeId !== employeeId));
   saveProjectAssignments(
@@ -302,10 +311,90 @@ export function upsertAdvance(advance: Advance) {
   saveAdvances(all);
 }
 
+export function getAdvanceById(advanceId: string): Advance | undefined {
+  return loadAdvances().find((row) => row.id === advanceId);
+}
+
+function advanceExpenseDescription(employee: Employee) {
+  return `سلفة ${employee.name}`;
+}
+
+export type RegisterAdvanceInput = {
+  employeeId: string;
+  amount: number;
+  date?: string;
+  note?: string;
+  storeBridge?: StoreBridgeMeta;
+};
+
+/** تسجيل سلفة + مصروف أجور نقدي (يتسحب من الخزنة عند الربط) */
+export function registerAdvance(input: RegisterAdvanceInput): Advance {
+  const employee = getEmployeeById(input.employeeId);
+  if (!employee) {
+    throw new Error("الموظف غير موجود");
+  }
+  const amount = roundMoney(input.amount);
+  if (!(amount > 0)) {
+    throw new Error("أدخل مبلغ السلفة");
+  }
+
+  const advanceId = `adv-${Date.now()}`;
+  const date = input.date || todayIsoDate();
+  const createdAt = new Date().toISOString();
+  const note = input.note?.trim() || undefined;
+  const expenseId = `exp-${advanceId}`;
+
+  upsertExpense({
+    id: expenseId,
+    category: "أجور",
+    description: advanceExpenseDescription(employee),
+    amount,
+    date,
+    note,
+    createdAt,
+    settlement: "cash",
+    employeeId: employee.id,
+    advanceId,
+    storeBridge: input.storeBridge,
+  });
+
+  const advance: Advance = {
+    id: advanceId,
+    employeeId: employee.id,
+    amount,
+    date,
+    note,
+    createdAt,
+    expenseId,
+    storeBridge: input.storeBridge,
+  };
+  upsertAdvance(advance);
+  return advance;
+}
+
+export function attachAdvanceStoreBridge(
+  advanceId: string,
+  storeBridge: StoreBridgeMeta
+) {
+  const advance = getAdvanceById(advanceId);
+  if (!advance) return;
+  const next: Advance = { ...advance, storeBridge };
+  upsertAdvance(next);
+  if (advance.expenseId) {
+    const expense = getExpenseById(advance.expenseId);
+    if (expense) {
+      upsertExpense({ ...expense, storeBridge });
+    }
+  }
+}
+
 export function deleteAdvance(advanceId: string) {
   const existing = loadAdvances().find((row) => row.id === advanceId);
   if (existing && (existing.settledAmount ?? 0) > 0.004) {
     throw new Error("لا يمكن حذف سلفة اتخصمت من راتب");
+  }
+  if (existing?.expenseId) {
+    deleteExpense(existing.expenseId);
   }
   saveAdvances(loadAdvances().filter((row) => row.id !== advanceId));
 }

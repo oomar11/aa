@@ -27,7 +27,7 @@ const LINKS = [
   {
     href: ROUTES.hr.advances,
     title: "السلف",
-    description: "بتتخصم تلقائي عند صرف الراتب",
+    description: "مصروف أجور يتسحب من الخزنة ويتخصم من الراتب",
   },
   {
     href: ROUTES.hr.payroll,

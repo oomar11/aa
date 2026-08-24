@@ -12,7 +12,7 @@ export default function AdvancesPage() {
         backHref={ROUTES.hr.hub}
         backLabel="الموظفين"
         title="السلف"
-        description="بتتخصم من الراتب عند الصرف"
+        description="مصروف أجور من الخزنة — بيتخصم من الراتب عند الصرف"
         hideBackOnDesktop
       />
       <div className="mt-4">

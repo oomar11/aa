@@ -59,10 +59,12 @@ export type Expense = {
   /** فاتورة متجر مرتبطة (صندوق وارد / توريد آجل) — بدون سحب خزنة مكرر */
   storeInvoiceId?: string;
   storeInvoiceNumber?: string;
-  /** موظف عند مصروف أجور / راتب */
+  /** موظف عند مصروف أجور / راتب / سلفة */
   employeeId?: string;
   /** صرف راتب أنشأ هذا المصروف */
   payrollId?: string;
+  /** سلفة موظف أنشأت هذا المصروف (سحب من الخزنة) */
+  advanceId?: string;
 };
 
 export const EXPENSE_SETTLEMENT_LABELS: Record<ExpenseSettlement, string> = {

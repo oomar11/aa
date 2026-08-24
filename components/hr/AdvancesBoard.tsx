@@ -1,20 +1,28 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { todayIsoDate } from "@/lib/accounting";
 import {
   advanceOpenAmount,
+  attachAdvanceStoreBridge,
   deleteAdvance,
   HR_UPDATED_EVENT,
   isAdvanceOpen,
   listActiveEmployees,
   loadAdvances,
   loadEmployees,
-  upsertAdvance,
+  registerAdvance,
   type Advance,
   type Employee,
 } from "@/lib/hr";
+import {
+  isStoreBridgeActive,
+  loadStoreBridgeConfig,
+  syncMoneyToStore,
+  withStoreBridgeMeta,
+} from "@/lib/store-bridge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 const FIELD =
@@ -27,7 +35,10 @@ export function AdvancesBoard() {
   const [amount, setAmount] = useState(0);
   const [date, setDate] = useState(todayIsoDate);
   const [note, setNote] = useState("");
+  const [safeId, setSafeId] = useState("");
+  const [safeName, setSafeName] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [filterOpen, setFilterOpen] = useState(true);
 
   useEffect(() => {
@@ -39,7 +50,11 @@ export function AdvancesBoard() {
     }
     refresh();
     window.addEventListener(HR_UPDATED_EVENT, refresh);
-    return () => window.removeEventListener(HR_UPDATED_EVENT, refresh);
+    window.addEventListener("upvc-accounting-updated", refresh);
+    return () => {
+      window.removeEventListener(HR_UPDATED_EVENT, refresh);
+      window.removeEventListener("upvc-accounting-updated", refresh);
+    };
   }, []);
 
   const employeeById = new Map<string, Employee>();
@@ -57,7 +72,7 @@ export function AdvancesBoard() {
     [advances]
   );
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!employeeId) {
       setError("اختر الموظف");
@@ -67,26 +82,102 @@ export function AdvancesBoard() {
       setError("أدخل مبلغ السلفة");
       return;
     }
+    const cfg = loadStoreBridgeConfig();
+    const bridgeOn = isStoreBridgeActive(cfg);
+    if (bridgeOn && !safeId) {
+      setError("اختر خزنة المتجر");
+      return;
+    }
+
     setError("");
-    upsertAdvance({
-      id: `adv-${Date.now()}`,
-      employeeId,
-      amount,
-      date,
-      note: note.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    });
-    setAmount(0);
-    setNote("");
-    setAdvances(loadAdvances());
+    setSaving(true);
+    try {
+      const employeeName =
+        employeeById.get(employeeId)?.name ??
+        listActiveEmployees().find((row) => row.id === employeeId)?.name ??
+        "موظف";
+      const saved = registerAdvance({
+        employeeId,
+        amount,
+        date,
+        note: note.trim() || undefined,
+      });
+
+      if (saved.expenseId && bridgeOn && cfg) {
+        try {
+          const sync = await syncMoneyToStore(
+            {
+              kind: "expense",
+              externalKey: saved.expenseId,
+              amount: saved.amount,
+              description: ["ورشة · سلفة", employeeName].join(" · "),
+              notes: saved.note,
+              occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
+              safeId,
+            },
+            cfg
+          );
+          attachAdvanceStoreBridge(
+            saved.id,
+            withStoreBridgeMeta(
+              saved.amount,
+              sync.safe_id || safeId,
+              sync.reference_id,
+              safeName
+            )
+          );
+        } catch (err) {
+          setError(
+            `اتسجّلت السلفة محلياً — ${
+              err instanceof Error ? err.message : "فشلت مزامنة الخزنة"
+            }`
+          );
+        }
+      }
+
+      setAmount(0);
+      setNote("");
+      setAdvances(loadAdvances());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر تسجيل السلفة");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDelete(advance: Advance) {
-    if (!window.confirm("حذف السلفة؟")) return;
+  async function handleDelete(advance: Advance) {
+    if (!window.confirm("حذف السلفة؟ هترجع للخزنة لو كانت متزامنة.")) return;
+    setError("");
+    const cfg = loadStoreBridgeConfig();
+    if (
+      advance.expenseId &&
+      advance.storeBridge &&
+      isStoreBridgeActive(cfg) &&
+      cfg
+    ) {
+      try {
+        await syncMoneyToStore(
+          {
+            kind: "expense",
+            externalKey: advance.expenseId,
+            amount: 0,
+            description: "ورشة · إلغاء سلفة",
+            safeId: advance.storeBridge.safeId || cfg.safeId,
+          },
+          cfg
+        );
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? `فشل إلغاء السلفة في الخزنة: ${err.message}`
+            : "فشل إلغاء السلفة في الخزنة"
+        );
+        return;
+      }
+    }
     try {
       deleteAdvance(advance.id);
       setAdvances(loadAdvances());
-      setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "تعذر حذف السلفة");
     }
@@ -95,7 +186,7 @@ export function AdvancesBoard() {
   return (
     <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
       <form
-        onSubmit={handleSubmit}
+        onSubmit={(e) => void handleSubmit(e)}
         className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 lg:sticky lg:top-4"
       >
         <h2 className="text-sm font-bold">تسجيل سلفة</h2>
@@ -143,15 +234,30 @@ export function AdvancesBoard() {
             className={FIELD}
           />
         </label>
+        <StoreSafePicker
+          value={safeId}
+          preferredSafeId={safeId}
+          onChange={(id, safe) => {
+            setSafeId(id);
+            setSafeName(safe?.name ?? "");
+          }}
+          label="خزنة الصرف"
+          variant="choices"
+        />
         {error ? (
           <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
         ) : null}
         <button
           type="submit"
-          className="flex h-11 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white"
+          disabled={saving}
+          className="flex h-11 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-white disabled:opacity-50"
         >
-          حفظ السلفة
+          {saving ? "جاري الحفظ…" : "حفظ السلفة"}
         </button>
+        <p className="text-[11px] text-muted">
+          السلفة مصروف أجور وتتخصم من الراتب عند الصرف، ومع الربط تتسحب من
+          الخزنة فوراً.
+        </p>
       </form>
 
       <section className="flex flex-col gap-3">
@@ -201,6 +307,11 @@ export function AdvancesBoard() {
                         </td>
                         <td className="max-w-[16rem] truncate px-3 py-2.5 text-muted">
                           {advance.note || "—"}
+                          {advance.storeBridge?.safeName ? (
+                            <span className="ms-1 text-[11px]">
+                              · {advance.storeBridge.safeName}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-end font-bold tabular-nums">
                           {formatCurrency(open)}
@@ -215,7 +326,7 @@ export function AdvancesBoard() {
                           (advance.settledAmount ?? 0) < 0.004 ? (
                             <button
                               type="button"
-                              onClick={() => handleDelete(advance)}
+                              onClick={() => void handleDelete(advance)}
                               className="text-xs font-semibold text-[#E85A8A]"
                             >
                               حذف
@@ -247,6 +358,9 @@ export function AdvancesBoard() {
                       <p className="mt-0.5 text-xs text-muted">
                         {formatDate(advance.date)}
                         {advance.note ? ` · ${advance.note}` : ""}
+                        {advance.storeBridge?.safeName
+                          ? ` · ${advance.storeBridge.safeName}`
+                          : ""}
                       </p>
                     </div>
                     <div className="shrink-0 text-end">
@@ -263,7 +377,7 @@ export function AdvancesBoard() {
                   {isAdvanceOpen(advance) && (advance.settledAmount ?? 0) < 0.004 ? (
                     <button
                       type="button"
-                      onClick={() => handleDelete(advance)}
+                      onClick={() => void handleDelete(advance)}
                       className="mt-2 text-[11px] font-semibold text-[#E85A8A]"
                     >
                       حذف
