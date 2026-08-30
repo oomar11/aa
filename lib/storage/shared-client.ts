@@ -10,6 +10,7 @@ import {
   isSharedStorageKey,
   type SharedStorageKey,
 } from "@/lib/storage/keys";
+import { mergeJsonArraysById } from "@/lib/storage/merge-by-id";
 import { getSavedNeonConnectionString } from "@/lib/storage/neon-connection";
 import {
   patchPostgresKv,
@@ -123,6 +124,7 @@ function snapshotToResponse(
 
 /** مفاتيح تُدمج بالـ id عشان قيود جهاز متضيعش قيود جهاز تاني */
 const MERGE_BY_ID_KEYS = new Set<SharedStorageKey>([
+  STORAGE_KEYS.projects,
   STORAGE_KEYS.expenses,
   STORAGE_KEYS.payments,
   STORAGE_KEYS.invoices,
@@ -134,42 +136,54 @@ const MERGE_BY_ID_KEYS = new Set<SharedStorageKey>([
   STORAGE_KEYS.projectAssignments,
 ]);
 
-function mergeJsonArraysById(
-  localRaw: string,
-  serverRaw: string
-): { value: string; localOnly: boolean } {
-  try {
-    const local = JSON.parse(localRaw) as unknown;
-    const server = JSON.parse(serverRaw) as unknown;
-    if (!Array.isArray(local) || !Array.isArray(server)) {
-      return { value: serverRaw, localOnly: false };
-    }
+/**
+ * قبل الرفع: ادمج مفاتيح الـ id مع لقطة السيرفر عشان جهاز بنسخة قديمة
+ * ما يمسحتش تعديلات جهاز تاني (مثلاً تسليم مشاريع).
+ */
+async function mergePendingWithServer(
+  data: Record<string, string | null>
+): Promise<Record<string, string | null>> {
+  const mergeKeys = Object.keys(data).filter(
+    (key) =>
+      isSharedStorageKey(key) &&
+      MERGE_BY_ID_KEYS.has(key) &&
+      typeof data[key] === "string" &&
+      (data[key] as string).length > 0
+  );
+  if (mergeKeys.length === 0) return data;
 
-    type Row = { id?: string; createdAt?: string };
-    const byId = new Map<string, Row>();
-    for (const item of server as Row[]) {
-      if (item && typeof item.id === "string") byId.set(item.id, item);
-    }
-    let localOnly = false;
-    for (const item of local as Row[]) {
-      if (!item || typeof item.id !== "string") continue;
-      const existing = byId.get(item.id);
-      if (!existing) {
-        byId.set(item.id, item);
-        localOnly = true;
-        continue;
-      }
-      const localT = Date.parse(String(item.createdAt || "")) || 0;
-      const serverT = Date.parse(String(existing.createdAt || "")) || 0;
-      if (localT > serverT) {
-        byId.set(item.id, item);
-        localOnly = true;
-      }
-    }
-    return { value: JSON.stringify([...byId.values()]), localOnly };
+  let server: StoreResponse;
+  try {
+    server = neonConfigured()
+      ? await pullViaNeon({ migrateIfEmpty: false })
+      : await pullViaApi({ migrateIfEmpty: false });
   } catch {
-    return { value: serverRaw, localOnly: false };
+    // لو السحب فشل نرفع المحلي زي ما هو — أحسن من ضياع الحفظ
+    return data;
   }
+
+  if (!server.data) return data;
+
+  const merged: Record<string, string | null> = { ...data };
+  for (const key of mergeKeys) {
+    const sharedKey = key as SharedStorageKey;
+    const localValue = data[key];
+    const serverValue = server.data[key];
+    if (
+      typeof localValue !== "string" ||
+      typeof serverValue !== "string" ||
+      serverValue.length === 0
+    ) {
+      continue;
+    }
+    const result = mergeJsonArraysById(localValue, serverValue, {
+      key: sharedKey,
+    });
+    merged[key] = result.value;
+    memory.set(key, result.value);
+    applyToLocalStorage(key, result.value);
+  }
+  return merged;
 }
 
 function hydrateFromSnapshot(
@@ -225,7 +239,7 @@ function hydrateFromSnapshot(
       next.length > 0 &&
       prev !== next
     ) {
-      const merged = mergeJsonArraysById(prev, next);
+      const merged = mergeJsonArraysById(prev, next, { key });
       applied = merged.value;
       if (merged.localOnly) {
         restore[key] = merged.value;
@@ -294,7 +308,7 @@ async function pullViaNeon(options?: {
   const url = getSavedNeonConnectionString();
   if (!url) throw new Error("Neon URL missing");
 
-  let snapshot = await readPostgresKv(url);
+  const snapshot = await readPostgresKv(url);
   if (
     !snapshot.hasData &&
     options?.migrateIfEmpty &&
@@ -403,9 +417,10 @@ async function pushPending(): Promise<void> {
   syncing = true;
   notifySyncStatus();
   try {
+    const toPush = await mergePendingWithServer(data);
     const json = neonConfigured()
-      ? await pushViaNeon(data)
-      : await pushViaApi(data);
+      ? await pushViaNeon(toPush)
+      : await pushViaApi(toPush);
     if (json.data) {
       hydrateFromSnapshot(json, { silent: true });
     } else {

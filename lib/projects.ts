@@ -42,6 +42,8 @@ export type Project = {
   name: string;
   location?: string;
   createdAt: string;
+  /** آخر تعديل محلي — للمزامنة بين الأجهزة (أحدث صف يفوز) */
+  updatedAt?: string;
   /** توافق قديم: open ≈ غير مكتمل، done ≈ مكتمل */
   status: "open" | "done";
   /** مسار الورشة — يُحدَّث من الدفعات وأزرار الورشة فقط */
@@ -118,6 +120,12 @@ export function normalizeProject(project: Project): Project {
       ? Math.round(agreedRaw * 100) / 100
       : undefined;
 
+  const updatedAtRaw = project.updatedAt?.trim();
+  const updatedAt =
+    updatedAtRaw && Number.isFinite(Date.parse(updatedAtRaw))
+      ? new Date(updatedAtRaw).toISOString()
+      : undefined;
+
   return {
     ...project,
     workflow,
@@ -126,6 +134,7 @@ export function normalizeProject(project: Project): Project {
     holdAt,
     deliveryStatus,
     deliveredAt,
+    updatedAt,
     discountType: discountValue ? discountType ?? "amount" : undefined,
     discountValue: discountValue ? discountValue : undefined,
     agreedSale,
@@ -256,7 +265,10 @@ export function upsertProjectOverride(project: Project) {
   if (deleted.length !== previousDeleted.length) {
     saveDeletedProjectIds(deleted);
   }
-  const normalized = normalizeProject(project);
+  const normalized = normalizeProject({
+    ...project,
+    updatedAt: new Date().toISOString(),
+  });
   const local = loadLocalProjects().filter((p) => p.id !== normalized.id);
   sharedSetItem(
     PROJECTS_STORAGE_KEY,
