@@ -11,7 +11,7 @@ export function WorkshopSyncBanner() {
   const sync = useWorkshopSync();
 
   if (!sync.ready || sync.syncing) return null;
-  if (sync.neonConfigured || sync.backend === "neon" || sync.backend === "postgres") {
+  if (sync.durable && sync.backend === "postgres") {
     return null;
   }
   if (sync.durable && sync.backend !== "file" && sync.backend !== "unknown") {
@@ -24,14 +24,14 @@ export function WorkshopSyncBanner() {
         بيانات التليفون مش هتوصل للكمبيوتر لوحدها
       </p>
       <p className="mt-1 text-xs leading-relaxed text-muted">
-        اربط Neon بنفس الرابط على التليفون والكمبيوتر من الإعدادات — غير كده كل
-        جهاز بيشوف مصروفاته لوحده.
+        اربط Supabase من Vercel (DATABASE_URL) — غير كده كل جهاز بيشوف
+        مصروفاته لوحده.
       </p>
       <Link
         href={ROUTES.settings}
         className="mt-2 inline-flex text-xs font-bold text-primary hover:underline"
       >
-        فتح ربط Neon من الإعدادات
+        فتح إعدادات المزامنة
       </Link>
     </div>
   );

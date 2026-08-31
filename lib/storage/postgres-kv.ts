@@ -72,7 +72,7 @@ function client(databaseUrl: string): SqlClient {
   return neon(databaseUrl) as unknown as SqlClient;
 }
 
-/** قراءة لقطة الورشة من Postgres/Neon */
+/** قراءة لقطة الورشة من Postgres (Supabase) */
 export async function readPostgresKv(
   databaseUrl: string
 ): Promise<PostgresKvSnapshot> {
@@ -159,7 +159,7 @@ export async function testPostgresKv(databaseUrl: string): Promise<{
     return { ok: true, revision: snapshot.revision };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "تعذر الاتصال بقاعدة Neon";
+      error instanceof Error ? error.message : "تعذر الاتصال بقاعدة Postgres";
     return { ok: false, error: message };
   }
 }

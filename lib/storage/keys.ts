@@ -25,7 +25,7 @@ export const STORAGE_KEYS = {
   payroll: "upvc-payroll",
   /** تعيين عمال على شغلانة */
   projectAssignments: "upvc-project-assignments",
-  /** ربط خزنة المتجر (محلي للجهاز — لا يُرفع لـ Neon لتجنب تسريب المفتاح) */
+  /** ربط خزنة المتجر (محلي للجهاز — لا يُرفع للقاعدة لتجنب تسريب المفتاح) */
   storeBridge: "upvc-store-bridge",
 } as const;
 

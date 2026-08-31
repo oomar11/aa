@@ -28,14 +28,13 @@ function isVercelRuntime() {
   return Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
 }
 
-/** أسماء شائعة لرابط Postgres من Neon / Vercel */
+/** أسماء شائعة لرابط Postgres (Supabase / Vercel) */
 const DATABASE_URL_ENV_KEYS = [
   "DATABASE_URL",
   "POSTGRES_URL",
   "POSTGRES_PRISMA_URL",
   "DATABASE_URL_UNPOOLED",
   "POSTGRES_URL_NON_POOLING",
-  "NEON_DATABASE_URL",
 ] as const;
 
 function getDatabaseUrl(): string | undefined {

@@ -25,7 +25,7 @@ import {
   uploadLocalWorkshopData,
 } from "@/lib/storage/shared-client";
 import { useWorkshopSync } from "@/components/settings/SharedDataProvider";
-import { NeonConnectPanel } from "@/components/settings/NeonConnectPanel";
+import { SupabaseSyncStatusPanel } from "@/components/settings/SupabaseSyncStatusPanel";
 
 const BACKUP_KEYS = [
   ...Object.values(STORAGE_KEYS),
@@ -40,8 +40,7 @@ type BackupPayload = {
 };
 
 function backendLabel(backend: string) {
-  if (backend === "neon") return "Neon مباشر من الإعدادات";
-  if (backend === "postgres") return "قاعدة بيانات Postgres (سحابية)";
+  if (backend === "postgres") return "Supabase Postgres (عبر السيرفر)";
   if (backend === "file") return "ملف ورشة على السيرفر";
   return "جارٍ الاتصال…";
 }
@@ -187,7 +186,7 @@ export function DataBackupPanel() {
 
   return (
     <>
-      <NeonConnectPanel />
+      <SupabaseSyncStatusPanel />
 
       <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
         <div className="border-b border-border px-4 py-3.5 text-right">
@@ -208,21 +207,15 @@ export function DataBackupPanel() {
             {" · "}
             {backendLabel(sync.backend)}
           </p>
-          {sync.neonConfigured || sync.backend === "neon" ? (
+          {sync.durable && sync.backend === "postgres" ? (
             <p className="rounded-xl border border-[#2F9B7A]/35 bg-[#2F9B7A]/10 px-3 py-2 text-xs leading-relaxed text-foreground">
-              Neon مربوط من الإعدادات — كل الأجهزة اللي لصقت نفس الرابط تشوف
-              نفس بيانات الورشة.
+              متصل بـ Supabase عبر السيرفر — بيانات الورشة مشتركة وثابتة لكل
+              الأجهزة.
             </p>
           ) : !sync.durable ? (
             <p className="rounded-xl border border-[#E8A838]/40 bg-[#E8A838]/10 px-3 py-2 text-xs leading-relaxed text-foreground">
-              استخدم قسم <span className="font-semibold">ربط Neon بسهولة</span>{" "}
-              فوق: انسخ Connection string من Neon والصقه هنا. أسهل من إعدادات
-              Vercel.
-            </p>
-          ) : sync.backend === "postgres" ? (
-            <p className="rounded-xl border border-[#2F9B7A]/35 bg-[#2F9B7A]/10 px-3 py-2 text-xs leading-relaxed text-foreground">
-              متصل بقاعدة Neon/Postgres عبر السيرفر — بيانات الورشة مشتركة
-              وثابتة لكل الأجهزة.
+              أضف <span className="font-semibold">DATABASE_URL</span> من Supabase
+              في Vercel (Connection string — pooled) ثم أعد النشر.
             </p>
           ) : null}
           {sync.updatedAt ? (

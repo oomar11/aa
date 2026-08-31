@@ -1,6 +1,6 @@
 /**
  * طبقة تخزين العميل للبيانات المشتركة.
- * تفضّل Neon عبر رابط محفوظ في الإعدادات، وإلا /api/store.
+ * كل المزامنة عبر /api/store — Supabase Postgres على السيرفر (DATABASE_URL).
  */
 
 import {
@@ -11,34 +11,29 @@ import {
   type SharedStorageKey,
 } from "@/lib/storage/keys";
 import { mergeJsonArraysById } from "@/lib/storage/merge-by-id";
-import { getSavedNeonConnectionString } from "@/lib/storage/neon-connection";
-import {
-  patchPostgresKv,
-  readPostgresKv,
-  replacePostgresKv,
-  type PostgresKvSnapshot,
-} from "@/lib/storage/postgres-kv";
+
+/** مفتاح Neon القديم — يُمسح مرة واحدة بعد الانتقال لـ Supabase */
+const LEGACY_NEON_URL_KEY = "upvc-neon-database-url";
 
 export const WORKSHOP_SYNC_EVENT = "upvc-workshop-sync";
 
 export type WorkshopSyncStatus = {
   ready: boolean;
   syncing: boolean;
-  backend: "postgres" | "neon" | "file" | "unknown";
+  backend: "postgres" | "file" | "unknown";
   durable: boolean;
   revision: number;
   updatedAt: string | null;
   hasData: boolean;
   error: string | null;
   lastPulledAt: string | null;
-  neonConfigured: boolean;
 };
 
 type StoreResponse = {
   ok: boolean;
   revision?: number;
   updatedAt?: string;
-  backend?: "postgres" | "neon" | "file";
+  backend?: "postgres" | "file";
   durable?: boolean;
   hasData?: boolean;
   data?: Record<string, string | null>;
@@ -61,8 +56,13 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let bootPromise: Promise<void> | null = null;
 
-function neonConfigured(): boolean {
-  return Boolean(getSavedNeonConnectionString());
+function clearLegacyNeonConnection() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(LEGACY_NEON_URL_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 function notifySyncStatus() {
@@ -107,21 +107,6 @@ function localHasSharedData(): boolean {
   });
 }
 
-function snapshotToResponse(
-  snapshot: PostgresKvSnapshot,
-  source: "neon" | "postgres"
-): StoreResponse {
-  return {
-    ok: true,
-    revision: snapshot.revision,
-    updatedAt: snapshot.updatedAt,
-    backend: source,
-    durable: true,
-    hasData: snapshot.hasData,
-    data: snapshot.data,
-  };
-}
-
 /** مفاتيح تُدمج بالـ id عشان قيود جهاز متضيعش قيود جهاز تاني */
 const MERGE_BY_ID_KEYS = new Set<SharedStorageKey>([
   STORAGE_KEYS.projects,
@@ -154,11 +139,8 @@ async function mergePendingWithServer(
 
   let server: StoreResponse;
   try {
-    server = neonConfigured()
-      ? await pullViaNeon({ migrateIfEmpty: false })
-      : await pullViaApi({ migrateIfEmpty: false });
+    server = await pullViaApi({ migrateIfEmpty: false });
   } catch {
-    // لو السحب فشل نرفع المحلي زي ما هو — أحسن من ضياع الحفظ
     return data;
   }
 
@@ -192,7 +174,6 @@ function hydrateFromSnapshot(
 ) {
   if (!snapshot.data) return;
 
-  // أمان إضافي: لو اللقطة فاضية متلمسش localStorage أبداً
   if (!snapshotHasSharedPayload(snapshot)) {
     revision = Number(snapshot.revision ?? revision) || 0;
     updatedAt = snapshot.updatedAt ?? updatedAt;
@@ -209,7 +190,6 @@ function hydrateFromSnapshot(
   const changed: string[] = [];
   const restore: Record<string, string> = {};
   for (const key of SHARED_STORAGE_KEYS) {
-    // متكتبش فوق تعديل محلي لسه مترفعش
     if (pending.has(key)) continue;
 
     const next = key in snapshot.data ? snapshot.data[key] : null;
@@ -219,8 +199,6 @@ function hydrateFromSnapshot(
         ? localStorage.getItem(key)
         : null;
 
-    // السيرفر رجّع null/فاضي لكن الجهاز فيه بيانات — متلمسهاش؛ ارفعها تاني.
-    // ده بيحمي مصروفات التليفون لما جهاز تاني يهاجر من غير المفتاح.
     if (
       (next === null || next === undefined || next.length === 0) &&
       typeof prev === "string" &&
@@ -263,7 +241,10 @@ function hydrateFromSnapshot(
   updatedAt = snapshot.updatedAt ?? updatedAt;
   backend = snapshot.backend ?? backend;
   durable = snapshot.durable ?? durable;
-  hasData = Boolean(snapshot.hasData) || snapshotHasSharedPayload(snapshot) || localHasSharedData();
+  hasData =
+    Boolean(snapshot.hasData) ||
+    snapshotHasSharedPayload(snapshot) ||
+    localHasSharedData();
   lastPulledAt = new Date().toISOString();
   ready = true;
   error = null;
@@ -273,7 +254,6 @@ function hydrateFromSnapshot(
   notifySyncStatus();
 }
 
-/** هل لقطة السيرفر فيها أي بيانات مشتركة؟ (نتحقق من المحتوى مش العلم فقط) */
 function snapshotHasSharedPayload(snapshot: StoreResponse): boolean {
   if (!snapshot.data) return false;
   return SHARED_STORAGE_KEYS.some((key) => {
@@ -282,10 +262,6 @@ function snapshotHasSharedPayload(snapshot: StoreResponse): boolean {
   });
 }
 
-/** رفع المحلي للسيرفر بدون مسح الجهاز عند الفشل.
- * نرفع فقط المفاتيح اللي فيها بيانات محلية — مش بنمسح مفاتيح على السيرفر
- * لو الجهاز الحالي معندوش المفتاح (مثلاً كمبيوتر فاضي يمسح مصروفات التليفون).
- */
 async function migrateLocalToServer(): Promise<StoreResponse> {
   const local = collectLocalSharedData();
   const patch: Record<string, string | null> = {};
@@ -295,47 +271,9 @@ async function migrateLocalToServer(): Promise<StoreResponse> {
     }
   }
   if (Object.keys(patch).length === 0) {
-    return neonConfigured()
-      ? await pullViaNeon({ migrateIfEmpty: false })
-      : await pullViaApi({ migrateIfEmpty: false });
+    return pullViaApi({ migrateIfEmpty: false });
   }
-  return neonConfigured() ? await pushViaNeon(patch) : await pushViaApi(patch);
-}
-
-async function pullViaNeon(options?: {
-  migrateIfEmpty?: boolean;
-}): Promise<StoreResponse> {
-  const url = getSavedNeonConnectionString();
-  if (!url) throw new Error("Neon URL missing");
-
-  const snapshot = await readPostgresKv(url);
-  if (
-    !snapshot.hasData &&
-    options?.migrateIfEmpty &&
-    localHasSharedData()
-  ) {
-    // ترحيل جزئي — متمسحش مفاتيح ناقصة على الجهاز
-    return migrateLocalToServer();
-  }
-  return snapshotToResponse(snapshot, "neon");
-}
-
-async function pushViaNeon(
-  data: Record<string, string | null>
-): Promise<StoreResponse> {
-  const url = getSavedNeonConnectionString();
-  if (!url) throw new Error("Neon URL missing");
-  const snapshot = await patchPostgresKv(url, data);
-  return snapshotToResponse(snapshot, "neon");
-}
-
-async function replaceViaNeon(
-  data: Record<string, string | null>
-): Promise<StoreResponse> {
-  const url = getSavedNeonConnectionString();
-  if (!url) throw new Error("Neon URL missing");
-  const snapshot = await replacePostgresKv(url, data);
-  return snapshotToResponse(snapshot, "neon");
+  return pushViaApi(patch);
 }
 
 async function pullViaApi(options?: {
@@ -368,7 +306,6 @@ async function pullViaApi(options?: {
     options?.migrateIfEmpty &&
     localHasSharedData()
   ) {
-    // ترحيل جزئي عبر PATCH — متمسحش مفاتيح ناقصة على الجهاز
     return migrateLocalToServer();
   }
 
@@ -418,9 +355,7 @@ async function pushPending(): Promise<void> {
   notifySyncStatus();
   try {
     const toPush = await mergePendingWithServer(data);
-    const json = neonConfigured()
-      ? await pushViaNeon(toPush)
-      : await pushViaApi(toPush);
+    const json = await pushViaApi(toPush);
     if (json.data) {
       hydrateFromSnapshot(json, { silent: true });
     } else {
@@ -455,7 +390,6 @@ async function pullFromServer(options?: {
   migrateIfEmpty?: boolean;
 }): Promise<void> {
   if (typeof window === "undefined") return;
-  // لو فيه حفظ محلي لسه مترفعش — متسحبش لقطة قديمة فوقه
   if (pending.size > 0) {
     scheduleFlush(100);
     return;
@@ -463,15 +397,10 @@ async function pullFromServer(options?: {
   syncing = true;
   notifySyncStatus();
   try {
-    // عند السيرفر الفاضي: ارفع المحلي دائماً (حتى في الـ polling)
-    // عشان /tmp على Vercel بعد الـ deploy ما يمسحش بيانات الجهاز.
     const migrateIfEmpty = options?.migrateIfEmpty ?? true;
-    const json = neonConfigured()
-      ? await pullViaNeon({ migrateIfEmpty })
-      : await pullViaApi({ migrateIfEmpty });
+    const json = await pullViaApi({ migrateIfEmpty });
 
     if (pending.size > 0) {
-      // حصل حفظ أثناء السحب — متطبقش اللقطة فوقه
       scheduleFlush(100);
       return;
     }
@@ -483,7 +412,6 @@ async function pullFromServer(options?: {
       return;
     }
 
-    // سيرفر فاضي: متكتبش null فوق المحلي أبداً
     if (!snapshotHasSharedPayload(json)) {
       if (localHasSharedData()) {
         try {
@@ -531,7 +459,7 @@ async function pullFromServer(options?: {
   }
 }
 
-/** إعادة تشغيل المزامنة بعد حفظ/مسح رابط Neon */
+/** إعادة تشغيل المزامنة */
 export function resetWorkshopSync(): Promise<void> {
   bootPromise = null;
   bootPromise = pullFromServer({ migrateIfEmpty: true });
@@ -544,6 +472,8 @@ export function startWorkshopSync(): () => void {
     return () => {};
   }
 
+  clearLegacyNeonConnection();
+
   if (!bootPromise) {
     bootPromise = pullFromServer({ migrateIfEmpty: true });
   }
@@ -552,7 +482,6 @@ export function startWorkshopSync(): () => void {
     pollTimer = setInterval(() => {
       if (document.visibilityState === "hidden") return;
       if (pending.size > 0) return;
-      // migrateIfEmpty: true — لو الـ deploy مسح /tmp نرفع المحلي تاني
       void pullFromServer({ migrateIfEmpty: true });
     }, 8000);
   }
@@ -588,7 +517,6 @@ export function getWorkshopSyncStatus(): WorkshopSyncStatus {
     hasData,
     error,
     lastPulledAt,
-    neonConfigured: neonConfigured(),
   };
 }
 
@@ -631,9 +559,7 @@ export async function uploadLocalWorkshopData(): Promise<WorkshopSyncStatus> {
   notifySyncStatus();
   try {
     const data = collectLocalSharedData();
-    const json = neonConfigured()
-      ? await replaceViaNeon(data)
-      : await replaceViaApi(data);
+    const json = await replaceViaApi(data);
     hydrateFromSnapshot(json);
   } catch (err) {
     error = err instanceof Error ? err.message : "تعذر رفع البيانات";
@@ -667,9 +593,7 @@ export async function clearSharedBusinessKeys(
   syncing = true;
   notifySyncStatus();
   try {
-    const json = neonConfigured()
-      ? await pushViaNeon(data)
-      : await pushViaApi(data);
+    const json = await pushViaApi(data);
     hydrateFromSnapshot(json);
   } catch (err) {
     error =
