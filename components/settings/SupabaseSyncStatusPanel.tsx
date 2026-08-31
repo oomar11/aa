@@ -24,8 +24,8 @@ export function SupabaseSyncStatusPanel() {
           مزامنة الورشة (Supabase)
         </p>
         <p className="mt-0.5 text-xs leading-relaxed text-muted">
-          اربط Supabase مرة واحدة من إعدادات Vercel — التليفون والكمبيوتر
-          يتزامنوا تلقائياً بدون لصق رابط على كل جهاز.
+          متصل بمشروع Supabase workshop-windoor — التليفون والكمبيوتر يتزامنوا
+          تلقائياً.
         </p>
       </div>
       <div className="flex flex-col gap-2 px-4 py-3.5 text-right">
@@ -51,9 +51,8 @@ export function SupabaseSyncStatusPanel() {
           </p>
         ) : needsSetup ? (
           <p className="rounded-xl border border-[#E8A838]/40 bg-[#E8A838]/10 px-3 py-2 text-xs leading-relaxed text-foreground">
-            أضف <span className="font-semibold">DATABASE_URL</span> من Supabase
-            في Vercel (Connection string — pooled). بعد إعادة النشر، كل الأجهزة
-            تتزامن تلقائياً.
+            المزامنة مع Supabase غير متاحة حالياً — تحقق من اتصال السيرفر
+            بالإنترنت أو راجع إعدادات Supabase.
           </p>
         ) : null}
 

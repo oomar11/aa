@@ -48,7 +48,9 @@ lib/           منطق الأعمال (حسابات، تخطيط، تخزين،
 
 بيانات الورشة مشتركة عبر **Supabase Postgres**.
 
-**الربط (مرة واحدة):** من Supabase Dashboard → Project Settings → Database → **Connection string** (URI، pooled). أضفه في Vercel باسم `DATABASE_URL` ثم أعد النشر. التليفون والكمبيوتر يتزامنوا تلقائياً عبر `/api/store` — بدون لصق رابط على كل جهاز.
+**الربط:** البرنامج متصل افتراضياً بمشروع Supabase `workshop-windoor`. التليفون والكمبيوتر يتزامنوا تلقائياً عبر `/api/store` — بدون إعداد إضافي.
+
+اختياري: `DATABASE_URL` (Postgres pooled) أو `SUPABASE_URL` + `SUPABASE_ANON_KEY` في Vercel.
 
 الثيم ووحدة القياس وترتيب التمبلتات تبقى على الجهاز فقط.
 

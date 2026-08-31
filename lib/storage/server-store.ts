@@ -8,13 +8,22 @@ import {
   patchPostgresKv,
   readPostgresKv,
 } from "@/lib/storage/postgres-kv";
+import {
+  getSupabaseConfig,
+  getSupabaseEnvPresence,
+  hasSupabaseConfig,
+} from "@/lib/storage/supabase-config";
+import {
+  patchSupabaseKv,
+  readSupabaseKv,
+} from "@/lib/storage/supabase-kv";
 
 export type WorkshopStoreSnapshot = {
   revision: number;
   updatedAt: string;
   data: Record<SharedStorageKey, string | null>;
   backend: "postgres" | "file";
-  /** false على Vercel بدون DATABASE_URL — التخزين مؤقت وغير مشترك بين السيرفرات */
+  /** false على Vercel بدون قاعدة — التخزين مؤقت وغير مشترك بين السيرفرات */
   durable: boolean;
 };
 
@@ -51,12 +60,15 @@ export function getDatabaseEnvPresence(): Record<string, boolean> {
   for (const key of DATABASE_URL_ENV_KEYS) {
     presence[key] = Boolean(process.env[key]?.trim());
   }
-  return presence;
+  return { ...presence, ...getSupabaseEnvPresence() };
+}
+
+function usesRemoteStore(): boolean {
+  return hasSupabaseConfig() || Boolean(getDatabaseUrl());
 }
 
 function resolveStorePaths() {
-  // على Vercel نظام الملفات للقراءة فقط ما عدا /tmp
-  if (isVercelRuntime() && !getDatabaseUrl()) {
+  if (isVercelRuntime() && !usesRemoteStore()) {
     const dir = path.join("/tmp", "upvc-workshop");
     return {
       dir,
@@ -146,10 +158,26 @@ function writeFileStore(store: StoreFile) {
   );
 }
 
-async function readPostgresStore(): Promise<WorkshopStoreSnapshot> {
+async function readRemoteStore(): Promise<WorkshopStoreSnapshot> {
+  if (hasSupabaseConfig()) {
+    try {
+      const snapshot = await readSupabaseKv(getSupabaseConfig()!);
+      return {
+        revision: snapshot.revision,
+        updatedAt: snapshot.updatedAt,
+        data: snapshot.data,
+        backend: "postgres",
+        durable: true,
+      };
+    } catch (err) {
+      console.error("[workshop-store] Supabase read failed", err);
+      if (!getDatabaseUrl()) throw err;
+    }
+  }
+
   const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
-    throw new Error("DATABASE_URL missing");
+    throw new Error("Remote store unavailable");
   }
   const snapshot = await readPostgresKv(databaseUrl);
   return {
@@ -161,12 +189,28 @@ async function readPostgresStore(): Promise<WorkshopStoreSnapshot> {
   };
 }
 
-async function writePostgresStore(
+async function writeRemoteStore(
   patch: Record<string, string | null>
 ): Promise<WorkshopStoreSnapshot> {
+  if (hasSupabaseConfig()) {
+    try {
+      const snapshot = await patchSupabaseKv(patch, getSupabaseConfig()!);
+      return {
+        revision: snapshot.revision,
+        updatedAt: snapshot.updatedAt,
+        data: snapshot.data,
+        backend: "postgres",
+        durable: true,
+      };
+    } catch (err) {
+      console.error("[workshop-store] Supabase write failed", err);
+      if (!getDatabaseUrl()) throw err;
+    }
+  }
+
   const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
-    throw new Error("DATABASE_URL missing");
+    throw new Error("Remote store unavailable");
   }
   const snapshot = await patchPostgresKv(databaseUrl, patch);
   return {
@@ -178,13 +222,10 @@ async function writePostgresStore(
   };
 }
 
-/**
- * قراءة لقطة بيانات الورشة المشتركة.
- * يستخدم Postgres عند توفر DATABASE_URL، وإلا ملف data/workshop-kv.json.
- */
+/** قراءة لقطة بيانات الورشة المشتركة */
 export async function readWorkshopStore(): Promise<WorkshopStoreSnapshot> {
-  if (getDatabaseUrl()) {
-    return readPostgresStore();
+  if (usesRemoteStore()) {
+    return readRemoteStore();
   }
   const file = readFileStore();
   return {
@@ -196,9 +237,7 @@ export async function readWorkshopStore(): Promise<WorkshopStoreSnapshot> {
   };
 }
 
-/**
- * دمج تحديثات مفاتيح في مخزن الورشة (last-write-wins لكل مفتاح).
- */
+/** دمج تحديثات مفاتيح في مخزن الورشة */
 export async function patchWorkshopStore(
   patch: Record<string, string | null>
 ): Promise<WorkshopStoreSnapshot> {
@@ -211,8 +250,8 @@ export async function patchWorkshopStore(
     return readWorkshopStore();
   }
 
-  if (getDatabaseUrl()) {
-    return writePostgresStore(filtered);
+  if (usesRemoteStore()) {
+    return writeRemoteStore(filtered);
   }
 
   const current = readFileStore();
@@ -254,9 +293,9 @@ export function workshopStoreHasData(
 }
 
 export function getWorkshopStoreBackend(): "postgres" | "file" {
-  return getDatabaseUrl() ? "postgres" : "file";
+  return usesRemoteStore() ? "postgres" : "file";
 }
 
 export function isWorkshopStoreDurable(): boolean {
-  return Boolean(getDatabaseUrl()) || !isVercelRuntime();
+  return usesRemoteStore() || !isVercelRuntime();
 }
