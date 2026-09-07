@@ -12,7 +12,7 @@ export default function PayrollPage() {
         backHref={ROUTES.hr.hub}
         backLabel="الموظفين"
         title="صرف الرواتب"
-        description="يومية أو شهري — مصروف أجور في الحسابات"
+        description="رصيد تراكمي — يومية ونسبة ومكافأة وبدون ثابت"
         hideBackOnDesktop
       />
       <div className="mt-4">

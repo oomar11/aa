@@ -81,7 +81,7 @@ export default function MorePage() {
               <div className="min-w-0 text-right">
                 <p className="text-sm font-medium text-foreground">الموارد البشرية</p>
                 <p className="mt-0.5 text-xs text-muted">
-                  موظفين · حضور · سلف · رواتب مربوطة بالحسابات
+                  موظفين · حضور · سلف · مكافآت · رواتب تراكمية
                 </p>
               </div>
               <span className="shrink-0 text-muted" aria-hidden>

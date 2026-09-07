@@ -17,7 +17,7 @@ const LINKS = [
   {
     href: ROUTES.hr.employees,
     title: "الموظفين",
-    description: "ملف العامل · الوظيفة · اليومية أو الشهري",
+    description: "ملف العامل · يومية · شهري · نسبة · بدون ثابت",
   },
   {
     href: ROUTES.hr.attendance,
@@ -30,9 +30,14 @@ const LINKS = [
     description: "مصروف أجور يتسحب من الخزنة ويتخصم من الراتب",
   },
   {
+    href: ROUTES.hr.bonuses,
+    title: "المكافآت",
+    description: "بتدخل المستحق التراكمي وتتصرِف مع الراتب",
+  },
+  {
     href: ROUTES.hr.payroll,
     title: "صرف الرواتب",
-    description: "يسجّل مصروف أجور ويسحب من الخزنة",
+    description: "رصيد تراكمي — اصرف كامل أو جزء لما تحب",
   },
 ] as const;
 
@@ -43,6 +48,8 @@ export function HrHub() {
           activeCount: 0,
           presentToday: 0,
           openAdvances: 0,
+          openBonuses: 0,
+          openAccrued: 0,
           monthPaid: 0,
           monthPayrollCount: 0,
           periodFrom: "",
@@ -76,13 +83,17 @@ export function HrHub() {
         <p className="text-xs font-medium opacity-85">الموارد البشرية</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">الموظفين</h1>
         <p className="mt-1 text-xs opacity-80">
-          مربوط بالحسابات والورشة — الراتب مصروف أجور
+          مربوط بالحسابات والورشة — الراتب التراكمي مصروف أجور عند الصرف
         </p>
-        <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-5 lg:gap-3">
           <HubStat label="شغالين" value={String(summary.activeCount)} />
           <HubStat
             label="حضور اليوم"
             value={`${summary.presentToday}`}
+          />
+          <HubStat
+            label="مستحقات"
+            value={`${formatCurrency(summary.openAccrued)} ج.م`}
           />
           <HubStat
             label="سلف مفتوحة"
@@ -95,7 +106,7 @@ export function HrHub() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-2.5 lg:grid lg:grid-cols-4 lg:gap-3">
+      <section className="flex flex-col gap-2.5 lg:grid lg:grid-cols-5 lg:gap-3">
         {LINKS.map((link) => (
           <Link
             key={link.href}

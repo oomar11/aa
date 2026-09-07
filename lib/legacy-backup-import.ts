@@ -23,6 +23,7 @@ import type {
   Advance,
   AttendanceRecord,
   AttendanceStatus,
+  Bonus,
   Employee,
   PayType,
   Payroll,
@@ -124,6 +125,7 @@ export type LegacyBackup = {
   advances?: unknown[];
   payroll?: unknown[];
   projectAssignments?: unknown[];
+  bonuses?: unknown[];
   notifications?: unknown[];
 };
 
@@ -198,6 +200,8 @@ function mapLegacyPayType(row: Record<string, unknown>): PayType {
   const raw = strField(
     pickField(row, ["payType", "wageType", "salaryType", "type"])
   ).toLowerCase();
+  if (/percent|commission|نسب|عمول/.test(raw)) return "percent";
+  if (/manual|custom|piece|يدوي|بدون/.test(raw)) return "manual";
   if (/daily|يوم/.test(raw)) return "daily";
   if (/month|شهر/.test(raw)) return "monthly";
   const daily = num(pickField(row, ["dailyWage", "dayWage", "daily"]), 0);
@@ -225,6 +229,7 @@ function convertLegacyHr(
   employees: Employee[];
   attendance: AttendanceRecord[];
   advances: Advance[];
+  bonuses: Bonus[];
   payroll: Payroll[];
   assignments: ProjectAssignment[];
 } {
@@ -250,6 +255,10 @@ function convertLegacyHr(
       pickField(row, ["hiredAt", "hireDate", "startDate", "createdAt"])
     ).slice(0, 10);
     const statusRaw = strField(pickField(row, ["status", "active"])).toLowerCase();
+    const commissionPercent = num(
+      pickField(row, ["commissionPercent", "percent", "sharePercent", "ratio"]),
+      0
+    );
     employees.push({
       id,
       name: strField(pickField(row, ["name", "fullName", "employeeName"])) || `موظف ${legacyId}`,
@@ -258,7 +267,11 @@ function convertLegacyHr(
         strField(pickField(row, ["role", "job", "position", "title"]))
       ),
       payType,
-      wage,
+      wage: payType === "daily" || payType === "monthly" ? wage : 0,
+      commissionPercent:
+        payType === "percent" && commissionPercent > 0
+          ? commissionPercent
+          : undefined,
       hiredAt: hiredAt || new Date().toISOString().slice(0, 10),
       status:
         /left|inactive|سابق|ساب|off/.test(statusRaw) || row.active === false
@@ -357,6 +370,10 @@ function convertLegacyHr(
       (pickField(row, ["projectId"]) as string | number) ?? ""
     );
     if (!employeeId || !validProjectIds.has(projectId)) continue;
+    const sharePercent = num(
+      pickField(row, ["sharePercent", "percent", "commissionPercent"]),
+      0
+    );
     assignments.push({
       id: `asg-${projectId}-${employeeId}`,
       projectId,
@@ -364,10 +381,31 @@ function convertLegacyHr(
       assignedAt:
         strField(pickField(row, ["assignedAt", "createdAt", "date"])) ||
         new Date().toISOString(),
+      sharePercent: sharePercent > 0 ? sharePercent : undefined,
     });
   }
 
-  return { employees, attendance, advances, payroll, assignments };
+  const bonuses: Bonus[] = [];
+  for (const item of backup.bonuses ?? []) {
+    const row = asRecord(item);
+    if (!row) continue;
+    const legacyEmp = pickField(row, ["employeeId", "empId", "staffId"]);
+    const employeeId = employeeIdMap.get(String(legacyEmp ?? ""));
+    if (!employeeId) continue;
+    const amount = num(pickField(row, ["amount", "value"]), 0);
+    if (amount <= 0) continue;
+    const date = strField(pickField(row, ["date", "createdAt"])).slice(0, 10);
+    bonuses.push({
+      id: asId("bon", (pickField(row, ["id"]) as string | number) ?? bonuses.length + 1),
+      employeeId,
+      amount,
+      date: date || new Date().toISOString().slice(0, 10),
+      note: strField(pickField(row, ["note", "notes"])) || undefined,
+      createdAt: strField(pickField(row, ["createdAt"])) || new Date().toISOString(),
+    });
+  }
+
+  return { employees, attendance, advances, bonuses, payroll, assignments };
 }
 
 function num(value: unknown, fallback = 0): number {
@@ -1088,6 +1126,7 @@ export function convertLegacyBackup(backup: LegacyBackup): {
     [STORAGE_KEYS.attendance]: JSON.stringify(hr.attendance),
     [STORAGE_KEYS.advances]: JSON.stringify(hr.advances),
     [STORAGE_KEYS.payroll]: JSON.stringify(hr.payroll),
+    [STORAGE_KEYS.bonuses]: JSON.stringify(hr.bonuses),
     [STORAGE_KEYS.projectAssignments]: JSON.stringify(hr.assignments),
   } as Record<SharedStorageKey, string | null>;
 

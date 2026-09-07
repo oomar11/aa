@@ -8,10 +8,20 @@ import {
   PAY_TYPE_LABELS,
   employeeOpenAdvancesTotal,
   loadEmployees,
+  previewEmployeeBalance,
   type Employee,
 } from "@/lib/hr";
 import { ROUTES } from "@/lib/routes";
 import { formatCurrency, smartSearchMatch } from "@/lib/utils";
+
+function payRateLabel(employee: Employee): string {
+  if (employee.payType === "manual") return "بدون ثابت";
+  if (employee.payType === "percent") {
+    const pct = Number(employee.commissionPercent) || 0;
+    return `${pct}%`;
+  }
+  return `${formatCurrency(employee.wage)} ج.م`;
+}
 
 export function EmployeesBrowser() {
   const [employees, setEmployees] = useState<Employee[]>(() =>
@@ -79,6 +89,7 @@ export function EmployeesBrowser() {
                   <th className="px-3 py-2.5 font-semibold">الوظيفة</th>
                   <th className="px-3 py-2.5 font-semibold">نوع الأجر</th>
                   <th className="px-3 py-2.5 text-end font-semibold">الأجر</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">مستحق</th>
                   <th className="px-3 py-2.5 font-semibold">الهاتف</th>
                   <th className="px-3 py-2.5 text-end font-semibold">سلف</th>
                   <th className="px-4 py-2.5 font-semibold">الحالة</th>
@@ -87,6 +98,7 @@ export function EmployeesBrowser() {
               <tbody>
                 {filtered.map((employee) => {
                   const open = employeeOpenAdvancesTotal(employee.id);
+                  const accrued = previewEmployeeBalance(employee).netAmount;
                   return (
                     <tr
                       key={employee.id}
@@ -107,7 +119,16 @@ export function EmployeesBrowser() {
                         {PAY_TYPE_LABELS[employee.payType]}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-end font-bold tabular-nums">
-                        {formatCurrency(employee.wage)}
+                        {payRateLabel(employee)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums">
+                        {accrued > 0.004 ? (
+                          <span className="font-semibold text-primary">
+                            {formatCurrency(accrued)}
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-muted" dir="ltr">
                         {employee.phone || "—"}
@@ -134,6 +155,7 @@ export function EmployeesBrowser() {
           <ul className="overflow-hidden rounded-2xl border border-border bg-card lg:hidden">
             {filtered.map((employee, i) => {
               const open = employeeOpenAdvancesTotal(employee.id);
+              const accrued = previewEmployeeBalance(employee).netAmount;
               return (
                 <li
                   key={employee.id}
@@ -156,9 +178,14 @@ export function EmployeesBrowser() {
                         {employee.role}
                         {" · "}
                         {PAY_TYPE_LABELS[employee.payType]}{" "}
-                        {formatCurrency(employee.wage)} ج.م
+                        {payRateLabel(employee)}
                         {employee.phone ? ` · ${employee.phone}` : ""}
                       </p>
+                      {accrued > 0.004 ? (
+                        <p className="mt-0.5 text-[11px] font-semibold text-primary">
+                          مستحق {formatCurrency(accrued)} ج.م
+                        </p>
+                      ) : null}
                       {open > 0 ? (
                         <p className="mt-0.5 text-[11px] font-semibold text-[#E85A8A]">
                           سلف مفتوحة {formatCurrency(open)} ج.م

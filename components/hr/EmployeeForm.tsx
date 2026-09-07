@@ -11,6 +11,7 @@ import {
   EMPLOYEE_STATUS_LABELS,
   getEmployeeById,
   PAY_TYPE_LABELS,
+  PAY_TYPES,
   upsertEmployee,
   type Employee,
   type EmployeeStatus,
@@ -67,6 +68,9 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
   const [role, setRole] = useState(existing?.role ?? EMPLOYEE_ROLES[0]);
   const [payType, setPayType] = useState<PayType>(existing?.payType ?? "daily");
   const [wage, setWage] = useState(existing?.wage ?? 0);
+  const [commissionPercent, setCommissionPercent] = useState(
+    existing?.commissionPercent ?? 0
+  );
   const [hiredAt, setHiredAt] = useState(existing?.hiredAt ?? todayIsoDate());
   const [status, setStatus] = useState<EmployeeStatus>(
     existing?.status ?? "active"
@@ -108,7 +112,14 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
         phone: phone.trim() || undefined,
         role,
         payType,
-        wage: Math.max(0, wage),
+        wage:
+          payType === "daily" || payType === "monthly"
+            ? Math.max(0, wage)
+            : 0,
+        commissionPercent:
+          payType === "percent"
+            ? Math.max(0, Math.min(100, commissionPercent))
+            : undefined,
         hiredAt,
         status,
         note: note.trim() || undefined,
@@ -190,10 +201,10 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
         </select>
       </label>
 
-      <div className="flex flex-col gap-1.5 text-right">
+      <div className="flex flex-col gap-1.5 text-right lg:col-span-2">
         <span className="text-sm font-medium">نوع الأجر</span>
-        <div className="grid grid-cols-2 gap-2">
-          {(["daily", "monthly"] as const).map((id) => (
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {PAY_TYPES.map((id) => (
             <button
               key={id}
               type="button"
@@ -208,19 +219,50 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
             </button>
           ))}
         </div>
+        {payType === "manual" ? (
+          <p className="text-[11px] text-muted">
+            مفيش راتب ثابت — تدخل المبلغ عند الصرف أو تضيف مكافأة
+          </p>
+        ) : null}
+        {payType === "percent" ? (
+          <p className="text-[11px] text-muted">
+            النسبة من صافي بيع الشغلانة اللي العامل متعيّن عليها — تتراكم لحد
+            الصرف
+          </p>
+        ) : null}
+        {payType === "daily" ? (
+          <p className="text-[11px] text-muted">
+            أيام الحضور تتراكم وما بتتصرفش لوحدها — اصرف لما تحب
+          </p>
+        ) : null}
       </div>
 
-      <label className="flex flex-col gap-1.5 text-right">
-        <span className="text-sm font-medium">
-          {payType === "daily" ? "اليومية (ج.م)" : "الراتب الشهري (ج.م)"}
-        </span>
-        <NumericInput
-          value={wage}
-          onChange={setWage}
-          min={0}
-          className={FIELD}
-        />
-      </label>
+      {payType === "daily" || payType === "monthly" ? (
+        <label className="flex flex-col gap-1.5 text-right">
+          <span className="text-sm font-medium">
+            {payType === "daily" ? "اليومية (ج.م)" : "الراتب الشهري (ج.م)"}
+          </span>
+          <NumericInput
+            value={wage}
+            onChange={setWage}
+            min={0}
+            className={FIELD}
+          />
+        </label>
+      ) : null}
+
+      {payType === "percent" ? (
+        <label className="flex flex-col gap-1.5 text-right">
+          <span className="text-sm font-medium">النسبة من الشغل (%)</span>
+          <NumericInput
+            value={commissionPercent}
+            onChange={setCommissionPercent}
+            min={0}
+            max={100}
+            className={FIELD}
+          />
+        </label>
+      ) : null}
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">تاريخ التعيين</span>

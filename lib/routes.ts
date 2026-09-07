@@ -92,6 +92,7 @@ export const ROUTES = {
       `/hr/employees/new?employee=${employeeId}`,
     attendance: "/hr/attendance",
     advances: "/hr/advances",
+    bonuses: "/hr/bonuses",
     payroll: "/hr/payroll",
   },
 

@@ -21,6 +21,7 @@ const BUSINESS_KEYS = [
   STORAGE_KEYS.attendance,
   STORAGE_KEYS.advances,
   STORAGE_KEYS.payroll,
+  STORAGE_KEYS.bonuses,
   STORAGE_KEYS.projectAssignments,
   DELETED_CUSTOMERS_KEY,
 ] as const;

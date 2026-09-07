@@ -19,7 +19,7 @@ function EmployeeFormContent() {
         backHref={ROUTES.hr.employees}
         backLabel="الموظفين"
         title={isEditing ? "تعديل موظف" : "موظف جديد"}
-        description={isEditing ? "الاسم · الوظيفة · الأجر" : "أضف عامل الورشة"}
+        description={isEditing ? "الاسم · الوظيفة · نوع الأجر" : "أضف عامل الورشة"}
         hideBackOnDesktop
       />
       <div className="mt-4">

@@ -68,7 +68,7 @@ const links = [
   {
     href: ROUTES.hr.hub,
     title: "رواتب الموظفين",
-    description: "حضور · سلف · صرف أجور يظهر في المصروفات والخزنة",
+    description: "حضور · سلف · مكافآت · رصيد تراكمي يظهر في المصروفات والخزنة",
     accent: "bg-[#5B6ABF]",
   },
   {

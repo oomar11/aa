@@ -26,6 +26,11 @@ const ITEMS = [
     match: (p: string) => p.startsWith("/hr/advances"),
   },
   {
+    href: ROUTES.hr.bonuses,
+    label: "المكافآت",
+    match: (p: string) => p.startsWith("/hr/bonuses"),
+  },
+  {
     href: ROUTES.hr.payroll,
     label: "الرواتب",
     match: (p: string) => p.startsWith("/hr/payroll"),
@@ -41,7 +46,7 @@ export function HrSectionNav() {
   return (
     <nav
       aria-label="أقسام الموظفين"
-      className="mb-4 hidden rounded-xl border border-border bg-card p-1 lg:grid lg:grid-cols-5"
+      className="mb-4 hidden rounded-xl border border-border bg-card p-1 lg:grid lg:grid-cols-6"
     >
       {ITEMS.map((item) => {
         const active = item.match(pathname);

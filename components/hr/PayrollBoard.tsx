@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
+import { NumericInput } from "@/components/ui/NumericInput";
 import { todayIsoDate } from "@/lib/accounting";
 import {
   attachPayrollStoreBridge,
@@ -10,12 +11,13 @@ import {
   HR_UPDATED_EVENT,
   listActiveEmployees,
   loadPayroll,
-  payEmployeePayroll,
+  payEmployeeBalance,
+  PAY_TYPE_LABELS,
   periodLabel,
-  previewPayroll,
+  previewEmployeeBalance,
+  type BalancePreview,
   type Employee,
   type Payroll,
-  type PayrollPreview,
 } from "@/lib/hr";
 import { listAllProjects, type Project } from "@/lib/projects";
 import {
@@ -24,7 +26,7 @@ import {
   syncMoneyToStore,
   withStoreBridgeMeta,
 } from "@/lib/store-bridge";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { WORKFLOW_LABELS } from "@/lib/workshop";
 
 const FIELD =
@@ -32,8 +34,6 @@ const FIELD =
 
 export function PayrollBoard() {
   const month = currentMonthRange();
-  const [from, setFrom] = useState(month.from);
-  const [to, setTo] = useState(month.to);
   const [date, setDate] = useState(todayIsoDate);
   const [projectId, setProjectId] = useState("");
   const [safeId, setSafeId] = useState("");
@@ -43,6 +43,11 @@ export function PayrollBoard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState("");
   const [payingId, setPayingId] = useState("");
+  const [customAmounts, setCustomAmounts] = useState<Record<string, number>>(
+    {}
+  );
+  const [historyFrom, setHistoryFrom] = useState(month.from);
+  const [historyTo, setHistoryTo] = useState(month.to);
 
   useEffect(() => {
     function refresh() {
@@ -61,38 +66,74 @@ export function PayrollBoard() {
     };
   }, []);
 
-  const rows = employees.map((employee) =>
-    previewPayroll(employee, from, to)
+  const rows = employees.map((employee) => previewEmployeeBalance(employee));
+  const payable = rows.filter(
+    (row) =>
+      row.netAmount > 0.004 ||
+      (row.employee.payType === "manual" &&
+        (customAmounts[row.employee.id] ?? 0) > 0.004)
   );
+  const payableTotal = payable.reduce((sum, row) => {
+    if (row.employee.payType === "manual" && row.accruedAmount <= 0.004) {
+      const typed = roundShown(customAmounts[row.employee.id] ?? 0);
+      return sum + typed;
+    }
+    return sum + row.netAmount;
+  }, 0);
 
-  const periodPayroll = useMemo(
+  const history = useMemo(
     () =>
-      payroll.filter(
-        (row) =>
-          row.status === "paid" &&
-          row.periodFrom === from &&
-          row.periodTo === to
-      ),
-    [payroll, from, to]
+      payroll
+        .filter(
+          (row) =>
+            row.status === "paid" &&
+            row.date >= historyFrom &&
+            row.date <= historyTo
+        )
+        .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)),
+    [payroll, historyFrom, historyTo]
   );
 
-  const unpaid = rows.filter((row) => !row.alreadyPaid);
-  const payableTotal = unpaid.reduce((sum, row) => sum + row.netAmount, 0);
+  const employeeById = useMemo(() => {
+    const map = new Map<string, Employee>();
+    for (const row of employees) map.set(row.id, row);
+    return map;
+  }, [employees]);
 
-  async function payOne(preview: PayrollPreview) {
+  async function payOne(preview: BalancePreview, custom?: boolean) {
     setError("");
+    const typed = roundShown(customAmounts[preview.employee.id] ?? 0);
+    const amount =
+      custom || preview.employee.payType === "manual"
+        ? typed > 0.004
+          ? typed
+          : preview.employee.payType === "manual"
+            ? undefined
+            : typed
+        : undefined;
+    if (
+      preview.employee.payType === "manual" &&
+      preview.accruedAmount <= 0.004 &&
+      !(typed > 0.004)
+    ) {
+      setError("أدخل مبلغ الصرف للعامل بدون راتب ثابت");
+      return;
+    }
     const cfg = loadStoreBridgeConfig();
     const bridgeOn = isStoreBridgeActive(cfg);
-    if (bridgeOn && preview.netAmount > 0.004 && !safeId) {
+    const expectedNet =
+      amount == null
+        ? preview.netAmount
+        : Math.max(0, amount - Math.min(amount, preview.openAdvances));
+    if (bridgeOn && expectedNet > 0.004 && !safeId) {
       setError("اختر خزنة المتجر");
       return;
     }
     setPayingId(preview.employee.id);
     try {
-      const paid = payEmployeePayroll({
+      const paid = payEmployeeBalance({
         employee: preview.employee,
-        periodFrom: from,
-        periodTo: to,
+        amount,
         date,
         projectId: projectId || undefined,
       });
@@ -106,7 +147,7 @@ export function PayrollBoard() {
               description: [
                 "ورشة · راتب",
                 preview.employee.name,
-                periodLabel(from, to),
+                PAY_TYPE_LABELS[preview.employee.payType],
               ].join(" · "),
               occurredAt: date ? `${date}T12:00:00.000Z` : undefined,
               safeId,
@@ -130,6 +171,10 @@ export function PayrollBoard() {
           );
         }
       }
+      setCustomAmounts((current) => ({
+        ...current,
+        [preview.employee.id]: 0,
+      }));
       setPayroll(loadPayroll());
     } catch (err) {
       setError(err instanceof Error ? err.message : "تعذر صرف الراتب");
@@ -139,14 +184,19 @@ export function PayrollBoard() {
   }
 
   async function payAll() {
-    for (const row of unpaid) {
-      if (row.alreadyPaid) continue;
-      await payOne(row);
+    for (const row of payable) {
+      if (payingId) return;
+      const typed = roundShown(customAmounts[row.employee.id] ?? 0);
+      const useCustom =
+        row.employee.payType === "manual" || typed > 0.004;
+      await payOne(row, useCustom && typed > 0.004);
     }
   }
 
   async function undoPay(row: Payroll) {
-    if (!window.confirm("إلغاء صرف الراتب؟ هيتشال المصروف وترجع السلف.")) return;
+    if (!window.confirm("إلغاء صرف الراتب؟ هيتشال المصروف وترجع السلف والمكافآت.")) {
+      return;
+    }
     setError("");
     const cfg = loadStoreBridgeConfig();
     if (row.expenseId && row.storeBridge && isStoreBridgeActive(cfg) && cfg) {
@@ -176,25 +226,7 @@ export function PayrollBoard() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-card p-4 lg:grid-cols-4">
-        <label className="flex flex-col gap-1.5 text-right">
-          <span className="text-xs font-medium text-muted">من</span>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className={FIELD}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-right">
-          <span className="text-xs font-medium text-muted">إلى</span>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className={FIELD}
-          />
-        </label>
+      <section className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-card p-4">
         <label className="flex flex-col gap-1.5 text-right">
           <span className="text-xs font-medium text-muted">تاريخ الصرف</span>
           <input
@@ -239,16 +271,15 @@ export function PayrollBoard() {
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-bold">
-          {periodLabel(from, to)} · صافي المستحق{" "}
-          {formatCurrency(payableTotal)} ج.م
+          صافي المستحق المتراكم {formatCurrency(payableTotal)} ج.م
         </p>
         <button
           type="button"
           onClick={() => void payAll()}
-          disabled={unpaid.length === 0 || Boolean(payingId)}
+          disabled={payable.length === 0 || Boolean(payingId)}
           className="rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
-          صرف الكل
+          صرف كل المستحقات
         </button>
       </div>
 
@@ -263,136 +294,291 @@ export function PayrollBoard() {
       ) : (
         <>
           <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card lg:block">
-            <table className="w-full min-w-[860px] text-start text-sm">
+            <table className="w-full min-w-[980px] text-start text-sm">
               <thead className="bg-background text-[11px] text-muted">
                 <tr>
                   <th className="px-4 py-2.5 font-semibold">الموظف</th>
                   <th className="px-3 py-2.5 font-semibold">الحساب</th>
-                  <th className="px-3 py-2.5 text-end font-semibold">أساس</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">متراكم</th>
+                  <th className="px-3 py-2.5 text-end font-semibold">مكافآت</th>
                   <th className="px-3 py-2.5 text-end font-semibold">سلف</th>
                   <th className="px-3 py-2.5 text-end font-semibold">صافي</th>
+                  <th className="px-3 py-2.5 font-semibold">صرف مبلغ</th>
                   <th className="px-4 py-2.5 text-end font-semibold">إجراء</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => {
-                  const paid = row.alreadyPaid;
-                  return (
-                    <tr
-                      key={row.employee.id}
-                      className="border-t border-border hover:bg-primary-soft/20"
-                    >
-                      <td className="px-4 py-2.5">
-                        <p className="font-bold">{row.employee.name}</p>
-                        <p className="text-[11px] text-muted">{row.employee.role}</p>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-muted">
-                        {row.employee.payType === "daily"
-                          ? `${row.daysWorked} يوم حاضر`
-                          : "راتب شهري"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums">
-                        {formatCurrency(row.baseAmount)}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums text-[#E85A8A]">
-                        {row.advancesDeducted > 0
-                          ? `−${formatCurrency(row.advancesDeducted)}`
-                          : "—"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-end font-bold tabular-nums">
-                        {formatCurrency(paid?.netAmount ?? row.netAmount)}
-                      </td>
-                      <td className="px-4 py-2.5 text-end">
-                        {paid ? (
-                          <button
-                            type="button"
-                            onClick={() => void undoPay(paid)}
-                            className="text-xs font-semibold text-[#E85A8A]"
-                          >
-                            إلغاء الصرف
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => void payOne(row)}
-                            disabled={Boolean(payingId)}
-                            className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
-                          >
-                            {payingId === row.employee.id ? "جاري الصرف…" : "صرف"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {rows.map((row) => (
+                  <PayrollTableRow
+                    key={row.employee.id}
+                    row={row}
+                    customAmount={customAmounts[row.employee.id] ?? 0}
+                    payingId={payingId}
+                    onCustomAmount={(value) =>
+                      setCustomAmounts((current) => ({
+                        ...current,
+                        [row.employee.id]: value,
+                      }))
+                    }
+                    onPayFull={() => void payOne(row, false)}
+                    onPayCustom={() => void payOne(row, true)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
 
           <ul className="flex flex-col gap-2 lg:hidden">
-          {rows.map((row) => {
-            const paid = row.alreadyPaid;
-            return (
-              <li
+            {rows.map((row) => (
+              <PayrollCard
                 key={row.employee.id}
-                className="rounded-2xl border border-border bg-card px-3.5 py-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold">{row.employee.name}</p>
-                    <p className="mt-0.5 text-xs text-muted">
-                      {row.employee.payType === "daily"
-                        ? `${row.daysWorked} يوم حاضر`
-                        : "راتب شهري"}
-                      {" · أساس "}
-                      {formatCurrency(row.baseAmount)}
-                      {row.advancesDeducted > 0
-                        ? ` · سلف −${formatCurrency(row.advancesDeducted)}`
-                        : ""}
-                    </p>
-                    {row.leftoverAdvances > 0.004 && !paid ? (
-                      <p className="mt-0.5 text-[11px] text-[#C47A12]">
-                        هيفضل سلف {formatCurrency(row.leftoverAdvances)} ج.م
-                      </p>
-                    ) : null}
-                  </div>
-                  <p className="shrink-0 text-sm font-bold tabular-nums">
-                    {formatCurrency(paid?.netAmount ?? row.netAmount)} ج.م
-                  </p>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {paid ? (
-                    <button
-                      type="button"
-                      onClick={() => void undoPay(paid)}
-                      className="rounded-xl border border-[#E85A8A]/35 bg-[#E85A8A]/10 px-3 py-1.5 text-[11px] font-bold text-[#E85A8A]"
-                    >
-                      إلغاء الصرف
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void payOne(row)}
-                      disabled={Boolean(payingId)}
-                      className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
-                    >
-                      {payingId === row.employee.id ? "جاري الصرف…" : "صرف"}
-                    </button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                row={row}
+                customAmount={customAmounts[row.employee.id] ?? 0}
+                payingId={payingId}
+                onCustomAmount={(value) =>
+                  setCustomAmounts((current) => ({
+                    ...current,
+                    [row.employee.id]: value,
+                  }))
+                }
+                onPayFull={() => void payOne(row, false)}
+                onPayCustom={() => void payOne(row, true)}
+              />
+            ))}
+          </ul>
         </>
       )}
 
-      {periodPayroll.length > 0 ? (
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <p className="text-sm font-bold">سجل الصرف</p>
+          <div className="flex flex-wrap gap-2">
+            <label className="flex flex-col gap-1 text-right">
+              <span className="text-[11px] text-muted">من</span>
+              <input
+                type="date"
+                value={historyFrom}
+                onChange={(e) => setHistoryFrom(e.target.value)}
+                className="h-10 rounded-xl border border-border bg-card px-3 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-right">
+              <span className="text-[11px] text-muted">إلى</span>
+              <input
+                type="date"
+                value={historyTo}
+                onChange={(e) => setHistoryTo(e.target.value)}
+                className="h-10 rounded-xl border border-border bg-card px-3 text-sm"
+              />
+            </label>
+          </div>
+        </div>
+        {history.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
+            مفيش صرف في الفترة دي
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {history.map((row) => {
+              const name =
+                employeeById.get(row.employeeId)?.name ?? "موظف";
+              return (
+                <li
+                  key={row.id}
+                  className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border bg-card px-3.5 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold">{name}</p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {formatDate(row.date)}
+                      {" · "}
+                      {periodLabel(row.periodFrom, row.periodTo)}
+                      {row.note ? ` · ${row.note}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm font-bold tabular-nums">
+                      {formatCurrency(row.netAmount)} ج.م
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void undoPay(row)}
+                      className="text-xs font-semibold text-[#E85A8A]"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
         <p className="px-1 text-[11px] text-muted">
           المصروف يظهر في الحسابات ← مصروفات الورشة (أجور) وسجل الحركة
-          {projectId ? " وحساب الشغلانة المختارة" : ""}.
+          {projectId ? " وحساب الشغلانة المختارة" : ""}. الأيام والنسب
+          والمكافآت تتراكم لحد الصرف.
         </p>
-      ) : null}
+      </section>
     </div>
+  );
+}
+
+function roundShown(amount: number): number {
+  return Math.round((Number(amount) || 0) * 100) / 100;
+}
+
+function PayrollTableRow({
+  row,
+  customAmount,
+  payingId,
+  onCustomAmount,
+  onPayFull,
+  onPayCustom,
+}: {
+  row: BalancePreview;
+  customAmount: number;
+  payingId: string;
+  onCustomAmount: (value: number) => void;
+  onPayFull: () => void;
+  onPayCustom: () => void;
+}) {
+  const busy = Boolean(payingId);
+  const canPayFull = row.accruedAmount > 0.004;
+  const canPayCustom =
+    customAmount > 0.004 &&
+    (row.employee.payType === "manual" || row.accruedAmount > 0.004);
+
+  return (
+    <tr className="border-t border-border hover:bg-primary-soft/20">
+      <td className="px-4 py-2.5">
+        <p className="font-bold">{row.employee.name}</p>
+        <p className="text-[11px] text-muted">{row.employee.role}</p>
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-muted">
+        {row.accountLabel}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums">
+        {formatCurrency(row.accruedAmount)}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums">
+        {row.bonusAmount > 0 ? formatCurrency(row.bonusAmount) : "—"}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums text-[#E85A8A]">
+        {row.openAdvances > 0 ? `−${formatCurrency(row.openAdvances)}` : "—"}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-end font-bold tabular-nums">
+        {formatCurrency(row.netAmount)}
+      </td>
+      <td className="px-3 py-2.5">
+        <NumericInput
+          value={customAmount}
+          onChange={onCustomAmount}
+          min={0}
+          className="h-10 w-28 rounded-xl border border-border bg-background px-3 text-sm"
+        />
+      </td>
+      <td className="px-4 py-2.5 text-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          {canPayFull ? (
+            <button
+              type="button"
+              onClick={onPayFull}
+              disabled={busy}
+              className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+            >
+              {payingId === row.employee.id ? "جاري الصرف…" : "صرف المستحق"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onPayCustom}
+            disabled={busy || !canPayCustom}
+            className="rounded-xl border border-border px-3 py-1.5 text-[11px] font-bold disabled:opacity-50"
+          >
+            صرف المبلغ
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function PayrollCard({
+  row,
+  customAmount,
+  payingId,
+  onCustomAmount,
+  onPayFull,
+  onPayCustom,
+}: {
+  row: BalancePreview;
+  customAmount: number;
+  payingId: string;
+  onCustomAmount: (value: number) => void;
+  onPayFull: () => void;
+  onPayCustom: () => void;
+}) {
+  const busy = Boolean(payingId);
+  const canPayFull = row.accruedAmount > 0.004;
+  const canPayCustom =
+    customAmount > 0.004 &&
+    (row.employee.payType === "manual" || row.accruedAmount > 0.004);
+
+  return (
+    <li className="rounded-2xl border border-border bg-card px-3.5 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold">{row.employee.name}</p>
+          <p className="mt-0.5 text-xs text-muted">
+            {row.accountLabel}
+            {" · متراكم "}
+            {formatCurrency(row.accruedAmount)}
+            {row.bonusAmount > 0
+              ? ` · مكافآت ${formatCurrency(row.bonusAmount)}`
+              : ""}
+            {row.openAdvances > 0
+              ? ` · سلف −${formatCurrency(row.openAdvances)}`
+              : ""}
+          </p>
+          {row.leftoverAdvances > 0.004 && row.netAmount > 0.004 ? (
+            <p className="mt-0.5 text-[11px] text-[#C47A12]">
+              هيفضل سلف {formatCurrency(row.leftoverAdvances)} ج.م
+            </p>
+          ) : null}
+        </div>
+        <p className="shrink-0 text-sm font-bold tabular-nums">
+          {formatCurrency(row.netAmount)} ج.م
+        </p>
+      </div>
+      <div className="mt-2 flex flex-col gap-2">
+        <NumericInput
+          value={customAmount}
+          onChange={onCustomAmount}
+          min={0}
+          placeholder="صرف مبلغ"
+          className="h-10 rounded-xl border border-border bg-background px-3 text-sm"
+        />
+        <div className="flex flex-wrap gap-2">
+          {canPayFull ? (
+            <button
+              type="button"
+              onClick={onPayFull}
+              disabled={busy}
+              className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+            >
+              {payingId === row.employee.id ? "جاري الصرف…" : "صرف المستحق"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onPayCustom}
+            disabled={busy || !canPayCustom}
+            className="rounded-xl border border-border px-3 py-1.5 text-[11px] font-bold disabled:opacity-50"
+          >
+            صرف المبلغ
+          </button>
+        </div>
+      </div>
+    </li>
   );
 }

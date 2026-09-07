@@ -23,6 +23,8 @@ export const STORAGE_KEYS = {
   advances: "upvc-advances",
   /** صرف الرواتب */
   payroll: "upvc-payroll",
+  /** مكافآت الموظفين (مستحق — تُصرف مع الراتب) */
+  bonuses: "upvc-hr-bonuses",
   /** تعيين عمال على شغلانة */
   projectAssignments: "upvc-project-assignments",
   /** ربط خزنة المتجر (محلي للجهاز — لا يُرفع للقاعدة لتجنب تسريب المفتاح) */
@@ -56,6 +58,7 @@ export const SHARED_STORAGE_KEYS = [
   STORAGE_KEYS.attendance,
   STORAGE_KEYS.advances,
   STORAGE_KEYS.payroll,
+  STORAGE_KEYS.bonuses,
   STORAGE_KEYS.projectAssignments,
 ] as const;
 
@@ -93,6 +96,7 @@ export const SHARED_KEY_EVENTS: Record<SharedStorageKey, string[]> = {
   [STORAGE_KEYS.attendance]: ["upvc-hr-updated"],
   [STORAGE_KEYS.advances]: ["upvc-hr-updated"],
   [STORAGE_KEYS.payroll]: ["upvc-hr-updated", "upvc-accounting-updated"],
+  [STORAGE_KEYS.bonuses]: ["upvc-hr-updated"],
   [STORAGE_KEYS.projectAssignments]: ["upvc-hr-updated", "upvc-projects-updated"],
 };
 

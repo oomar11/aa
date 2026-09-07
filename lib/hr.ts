@@ -1,5 +1,5 @@
 /**
- * موارد بشرية الورشة: موظفون · حضور · سلف · رواتب · تعيين على شغلانة.
+ * موارد بشرية الورشة: موظفون · حضور · سلف · مكافآت · رواتب تراكمية · تعيين على شغلانة.
  * التخزين مشترك (Supabase) مثل العملاء والحسابات.
  */
 
@@ -11,6 +11,8 @@ import {
   type Expense,
   type StoreBridgeMeta,
 } from "@/lib/accounting";
+import { projectSaleTotal } from "@/lib/project-money";
+import { getProjectById } from "@/lib/projects";
 import { STORAGE_KEYS } from "@/lib/storage/keys";
 import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
 
@@ -29,7 +31,7 @@ export const EMPLOYEE_ROLES = [
 
 export type EmployeeRole = (typeof EMPLOYEE_ROLES)[number] | string;
 
-export type PayType = "daily" | "monthly";
+export type PayType = "daily" | "monthly" | "percent" | "manual";
 
 export type EmployeeStatus = "active" | "left";
 
@@ -40,6 +42,8 @@ export type Employee = {
   role: EmployeeRole;
   payType: PayType;
   wage: number;
+  /** نسبة افتراضية من صافي بيع الشغلانة (لنوع «نسبة من الشغل») */
+  commissionPercent?: number;
   hiredAt: string;
   status: EmployeeStatus;
   note?: string;
@@ -49,7 +53,11 @@ export type Employee = {
 export const PAY_TYPE_LABELS: Record<PayType, string> = {
   daily: "يومية",
   monthly: "شهري",
+  percent: "نسبة من الشغل",
+  manual: "بدون ثابت",
 };
+
+export const PAY_TYPES: PayType[] = ["daily", "monthly", "percent", "manual"];
 
 export const EMPLOYEE_STATUS_LABELS: Record<EmployeeStatus, string> = {
   active: "شغال",
@@ -90,8 +98,40 @@ export type Advance = {
   storeBridge?: StoreBridgeMeta;
 };
 
+export type Bonus = {
+  id: string;
+  employeeId: string;
+  amount: number;
+  date: string;
+  note?: string;
+  projectId?: string;
+  createdAt: string;
+  settledAmount?: number;
+  payrollId?: string;
+};
+
 export type PayrollDeduction = {
   advanceId: string;
+  amount: number;
+};
+
+export type PayrollDaySettlement = {
+  date: string;
+  amount: number;
+};
+
+export type PayrollMonthSettlement = {
+  month: string;
+  amount: number;
+};
+
+export type PayrollShareSettlement = {
+  assignmentId: string;
+  amount: number;
+};
+
+export type PayrollBonusSettlement = {
+  bonusId: string;
   amount: number;
 };
 
@@ -114,6 +154,16 @@ export type Payroll = {
   createdAt: string;
   deductions: PayrollDeduction[];
   storeBridge?: StoreBridgeMeta;
+  payType?: PayType;
+  bonusesAdded?: number;
+  percentAmount?: number;
+  manualAmount?: number;
+  /** توافق قديم: أيام حضور اتسددت بالكامل */
+  settledDates?: string[];
+  daySettlements?: PayrollDaySettlement[];
+  monthSettlements?: PayrollMonthSettlement[];
+  shareSettlements?: PayrollShareSettlement[];
+  bonusSettlements?: PayrollBonusSettlement[];
 };
 
 export type ProjectAssignment = {
@@ -121,6 +171,8 @@ export type ProjectAssignment = {
   projectId: string;
   employeeId: string;
   assignedAt: string;
+  /** نسبة هذا العامل من صافي بيع الشغلانة */
+  sharePercent?: number;
 };
 
 export type PayrollPreview = {
@@ -137,8 +189,116 @@ export type PayrollPreview = {
   alreadyPaid: Payroll | undefined;
 };
 
+export type OpenShareLine = {
+  assignmentId: string;
+  projectId: string;
+  projectName: string;
+  percent: number;
+  sale: number;
+  amount: number;
+};
+
+export type OpenMonthLine = {
+  month: string;
+  amount: number;
+};
+
+export type OpenDayLine = {
+  date: string;
+  amount: number;
+};
+
+export type BalancePreview = {
+  employee: Employee;
+  unpaidDays: number;
+  unpaidDayDates: string[];
+  dayLines: OpenDayLine[];
+  dailyAmount: number;
+  unpaidMonths: number;
+  unpaidMonthKeys: string[];
+  monthLines: OpenMonthLine[];
+  monthlyAmount: number;
+  percentAmount: number;
+  percentLines: OpenShareLine[];
+  bonusAmount: number;
+  openBonuses: Bonus[];
+  accruedAmount: number;
+  openAdvances: number;
+  advancesDeducted: number;
+  netAmount: number;
+  leftoverAdvances: number;
+  deductions: PayrollDeduction[];
+  accountLabel: string;
+};
+
+type EarningItem =
+  | { kind: "day"; date: string; amount: number }
+  | { kind: "month"; month: string; amount: number }
+  | { kind: "share"; assignmentId: string; amount: number }
+  | { kind: "bonus"; bonusId: string; amount: number };
+
 function roundMoney(amount: number): number {
   return Math.round((Number(amount) || 0) * 100) / 100;
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function isoDateYmd(year: number, monthIndex0: number, day: number): string {
+  return `${year}-${pad2(monthIndex0 + 1)}-${pad2(day)}`;
+}
+
+function monthKeyFromIso(isoDate: string): string {
+  return (isoDate || "").slice(0, 7);
+}
+
+function monthRange(monthKey: string): { from: string; to: string } {
+  const [yRaw, mRaw] = monthKey.split("-");
+  const year = Number(yRaw);
+  const month = Number(mRaw);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1) {
+    return { from: monthKey, to: monthKey };
+  }
+  const last = new Date(year, month, 0).getDate();
+  return {
+    from: `${year}-${pad2(month)}-01`,
+    to: `${year}-${pad2(month)}-${pad2(last)}`,
+  };
+}
+
+function listMonthKeysInclusive(fromIso: string, toIso: string): string[] {
+  const fromKey = monthKeyFromIso(fromIso);
+  const toKey = monthKeyFromIso(toIso);
+  if (!/^\d{4}-\d{2}$/.test(fromKey) || !/^\d{4}-\d{2}$/.test(toKey)) {
+    return [];
+  }
+  const [fy, fm] = fromKey.split("-").map(Number);
+  const [ty, tm] = toKey.split("-").map(Number);
+  const keys: string[] = [];
+  let y = fy;
+  let m = fm;
+  while (y < ty || (y === ty && m <= tm)) {
+    keys.push(`${y}-${pad2(m)}`);
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return keys;
+}
+
+export function normalizePayType(value: unknown): PayType {
+  if (
+    value === "daily" ||
+    value === "monthly" ||
+    value === "percent" ||
+    value === "manual"
+  ) {
+    return value;
+  }
+  return "monthly";
 }
 
 function readArray<T>(key: string): T[] {
@@ -160,7 +320,15 @@ function writeArray<T>(key: string, items: T[]) {
 }
 
 export function loadEmployees(): Employee[] {
-  return readArray<Employee>(STORAGE_KEYS.employees);
+  return readArray<Employee>(STORAGE_KEYS.employees).map((row) => ({
+    ...row,
+    payType: normalizePayType(row.payType),
+    wage: Math.max(0, Number(row.wage) || 0),
+    commissionPercent:
+      row.commissionPercent == null
+        ? undefined
+        : Math.max(0, Number(row.commissionPercent) || 0),
+  }));
 }
 
 export function saveEmployees(employees: Employee[]) {
@@ -202,6 +370,7 @@ export function deleteEmployee(employeeId: string) {
     if (advance.expenseId) deleteExpense(advance.expenseId);
   }
   saveAdvances(loadAdvances().filter((row) => row.employeeId !== employeeId));
+  saveBonuses(loadBonuses().filter((row) => row.employeeId !== employeeId));
   savePayroll(loadPayroll().filter((row) => row.employeeId !== employeeId));
   saveProjectAssignments(
     loadProjectAssignments().filter((row) => row.employeeId !== employeeId)
@@ -399,6 +568,89 @@ export function deleteAdvance(advanceId: string) {
   saveAdvances(loadAdvances().filter((row) => row.id !== advanceId));
 }
 
+export function loadBonuses(): Bonus[] {
+  return readArray<Bonus>(STORAGE_KEYS.bonuses);
+}
+
+export function saveBonuses(rows: Bonus[]) {
+  writeArray(STORAGE_KEYS.bonuses, rows);
+}
+
+export function bonusOpenAmount(bonus: Bonus): number {
+  return roundMoney(
+    Math.max(0, (Number(bonus.amount) || 0) - (Number(bonus.settledAmount) || 0))
+  );
+}
+
+export function isBonusOpen(bonus: Bonus): boolean {
+  return bonusOpenAmount(bonus) > 0.004;
+}
+
+export function listOpenBonuses(
+  employeeId: string,
+  rows: Bonus[] = loadBonuses()
+): Bonus[] {
+  return rows
+    .filter((row) => row.employeeId === employeeId && isBonusOpen(row))
+    .sort(
+      (a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt)
+    );
+}
+
+export function employeeOpenBonusesTotal(employeeId: string): number {
+  return roundMoney(
+    listOpenBonuses(employeeId).reduce((sum, row) => sum + bonusOpenAmount(row), 0)
+  );
+}
+
+export function upsertBonus(bonus: Bonus) {
+  const all = [bonus, ...loadBonuses().filter((row) => row.id !== bonus.id)];
+  saveBonuses(all);
+}
+
+export function getBonusById(bonusId: string): Bonus | undefined {
+  return loadBonuses().find((row) => row.id === bonusId);
+}
+
+export type RegisterBonusInput = {
+  employeeId: string;
+  amount: number;
+  date?: string;
+  note?: string;
+  projectId?: string;
+};
+
+/** تسجيل مكافأة على المستحق — المصروف يتسجل عند صرف الراتب فقط */
+export function registerBonus(input: RegisterBonusInput): Bonus {
+  const employee = getEmployeeById(input.employeeId);
+  if (!employee) {
+    throw new Error("الموظف غير موجود");
+  }
+  const amount = roundMoney(input.amount);
+  if (!(amount > 0)) {
+    throw new Error("أدخل مبلغ المكافأة");
+  }
+  const bonus: Bonus = {
+    id: `bon-${Date.now()}`,
+    employeeId: employee.id,
+    amount,
+    date: input.date || todayIsoDate(),
+    note: input.note?.trim() || undefined,
+    projectId: input.projectId || undefined,
+    createdAt: new Date().toISOString(),
+  };
+  upsertBonus(bonus);
+  return bonus;
+}
+
+export function deleteBonus(bonusId: string) {
+  const existing = loadBonuses().find((row) => row.id === bonusId);
+  if (existing && (existing.settledAmount ?? 0) > 0.004) {
+    throw new Error("لا يمكن حذف مكافأة اتخصمت من راتب");
+  }
+  saveBonuses(loadBonuses().filter((row) => row.id !== bonusId));
+}
+
 export function loadPayroll(): Payroll[] {
   return readArray<Payroll>(STORAGE_KEYS.payroll);
 }
@@ -455,24 +707,94 @@ export function assignedEmployeeNames(projectId: string): string {
     .join(" · ");
 }
 
+export function getAssignment(
+  projectId: string,
+  employeeId: string
+): ProjectAssignment | undefined {
+  return loadProjectAssignments().find(
+    (row) => row.projectId === projectId && row.employeeId === employeeId
+  );
+}
+
+function assignmentSettledTotal(
+  assignmentId: string,
+  payrolls: Payroll[] = loadPayroll()
+): number {
+  let sum = 0;
+  for (const payroll of payrolls) {
+    if (payroll.status !== "paid") continue;
+    for (const row of payroll.shareSettlements ?? []) {
+      if (row.assignmentId === assignmentId) sum += Number(row.amount) || 0;
+    }
+  }
+  return roundMoney(sum);
+}
+
+export function assignmentShareAmount(assignment: ProjectAssignment, employee?: Employee): number {
+  const worker = employee ?? getEmployeeById(assignment.employeeId);
+  const percent =
+    assignment.sharePercent ??
+    (worker?.payType === "percent" ? worker.commissionPercent : undefined) ??
+    0;
+  if (!(percent > 0)) return 0;
+  const sale = projectSaleTotal(assignment.projectId);
+  return roundMoney((Math.max(0, sale) * Math.min(percent, 100)) / 100);
+}
+
+export function assignmentOpenShareAmount(
+  assignment: ProjectAssignment,
+  employee?: Employee
+): number {
+  const full = assignmentShareAmount(assignment, employee);
+  return roundMoney(Math.max(0, full - assignmentSettledTotal(assignment.id)));
+}
+
 export function toggleProjectEmployee(projectId: string, employeeId: string) {
   const all = loadProjectAssignments();
   const existing = all.find(
     (row) => row.projectId === projectId && row.employeeId === employeeId
   );
   if (existing) {
+    if (assignmentSettledTotal(existing.id) > 0.004) {
+      throw new Error("لا يمكن فك العامل — فيه نسبة اتصرِفت من الشغلانة دي");
+    }
     saveProjectAssignments(all.filter((row) => row.id !== existing.id));
     return;
   }
+  const employee = getEmployeeById(employeeId);
   saveProjectAssignments([
     {
       id: `asg-${projectId}-${employeeId}`,
       projectId,
       employeeId,
       assignedAt: new Date().toISOString(),
+      sharePercent:
+        employee?.payType === "percent"
+          ? Math.max(0, Number(employee.commissionPercent) || 0) || undefined
+          : undefined,
     },
     ...all,
   ]);
+}
+
+export function setAssignmentSharePercent(
+  projectId: string,
+  employeeId: string,
+  sharePercent: number
+) {
+  const all = loadProjectAssignments();
+  const existing = all.find(
+    (row) => row.projectId === projectId && row.employeeId === employeeId
+  );
+  if (!existing) return;
+  const nextPercent = Math.max(0, Math.min(100, roundMoney(sharePercent)));
+  saveProjectAssignments(
+    all.map((row) =>
+      row.id === existing.id
+        ? { ...row, sharePercent: nextPercent > 0 ? nextPercent : undefined }
+        : row
+    )
+  );
 }
 
 export function currentMonthRange(now = new Date()): {
@@ -481,18 +803,14 @@ export function currentMonthRange(now = new Date()): {
 } {
   const y = now.getFullYear();
   const m = now.getMonth();
-  const from = new Date(y, m, 1).toISOString().slice(0, 10);
-  const to = new Date(y, m + 1, 0).toISOString().slice(0, 10);
-  return { from, to };
+  const last = new Date(y, m + 1, 0).getDate();
+  return { from: isoDateYmd(y, m, 1), to: isoDateYmd(y, m, last) };
 }
 
 export function periodLabel(from: string, to: string): string {
   const start = new Date(`${from}T12:00:00`);
   const end = new Date(`${to}T12:00:00`);
-  if (
-    Number.isNaN(start.getTime()) ||
-    Number.isNaN(end.getTime())
-  ) {
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return `${from} — ${to}`;
   }
   if (
@@ -530,6 +848,293 @@ function planAdvanceDeductions(
   return { deductions, deducted };
 }
 
+function payrollHasStructuredSettlements(payroll: Payroll): boolean {
+  return Boolean(
+    (payroll.daySettlements && payroll.daySettlements.length > 0) ||
+      (payroll.monthSettlements && payroll.monthSettlements.length > 0) ||
+      (payroll.shareSettlements && payroll.shareSettlements.length > 0) ||
+      (payroll.bonusSettlements && payroll.bonusSettlements.length > 0) ||
+      (payroll.settledDates && payroll.settledDates.length > 0) ||
+      (payroll.manualAmount ?? 0) > 0.004
+  );
+}
+
+function paidDayAmount(
+  employeeId: string,
+  date: string,
+  wage: number,
+  payrolls: Payroll[]
+): number {
+  let sum = 0;
+  for (const payroll of payrolls) {
+    if (payroll.status !== "paid" || payroll.employeeId !== employeeId) continue;
+    if (payrollHasStructuredSettlements(payroll)) {
+      if (payroll.settledDates?.includes(date)) {
+        sum += wage;
+        continue;
+      }
+      for (const row of payroll.daySettlements ?? []) {
+        if (row.date === date) sum += Number(row.amount) || 0;
+      }
+      continue;
+    }
+    if (payroll.payType === "monthly") continue;
+    if (date >= payroll.periodFrom && date <= payroll.periodTo) {
+      sum += wage;
+    }
+  }
+  return roundMoney(Math.min(wage, Math.max(0, sum)));
+}
+
+function paidMonthAmount(
+  employeeId: string,
+  monthKey: string,
+  wage: number,
+  payrolls: Payroll[]
+): number {
+  let sum = 0;
+  for (const payroll of payrolls) {
+    if (payroll.status !== "paid" || payroll.employeeId !== employeeId) continue;
+    if (payrollHasStructuredSettlements(payroll)) {
+      for (const row of payroll.monthSettlements ?? []) {
+        if (row.month === monthKey) sum += Number(row.amount) || 0;
+      }
+      continue;
+    }
+    if (payroll.payType === "daily") continue;
+    if (!payroll.payType && payroll.daysWorked > 0) continue;
+    const periodMonths = listMonthKeysInclusive(
+      payroll.periodFrom,
+      payroll.periodTo
+    );
+    if (periodMonths[0] === monthKey) {
+      sum += Number(payroll.baseAmount) || wage;
+    }
+  }
+  return roundMoney(Math.min(wage, Math.max(0, sum)));
+}
+
+function listPresentDates(employeeId: string, attendance: AttendanceRecord[]): string[] {
+  return attendance
+    .filter((row) => row.employeeId === employeeId && row.status === "present")
+    .map((row) => row.date)
+    .sort();
+}
+
+function openDayLines(
+  employee: Employee,
+  attendance: AttendanceRecord[],
+  payrolls: Payroll[]
+): OpenDayLine[] {
+  if (employee.payType !== "daily") return [];
+  const wage = roundMoney(employee.wage);
+  if (!(wage > 0)) return [];
+  const hiredAt = employee.hiredAt || "0000-01-01";
+  const lines: OpenDayLine[] = [];
+  for (const date of listPresentDates(employee.id, attendance)) {
+    if (date < hiredAt) continue;
+    const open = roundMoney(wage - paidDayAmount(employee.id, date, wage, payrolls));
+    if (open > 0.004) lines.push({ date, amount: open });
+  }
+  return lines;
+}
+
+function openMonthLines(employee: Employee, payrolls: Payroll[], today: string): OpenMonthLine[] {
+  if (employee.payType !== "monthly") return [];
+  const wage = roundMoney(employee.wage);
+  if (!(wage > 0)) return [];
+  const from = employee.hiredAt || today;
+  const keys = listMonthKeysInclusive(from, today);
+  const lines: OpenMonthLine[] = [];
+  for (const month of keys) {
+    const open = roundMoney(
+      wage - paidMonthAmount(employee.id, month, wage, payrolls)
+    );
+    if (open > 0.004) lines.push({ month, amount: open });
+  }
+  return lines;
+}
+
+function openShareLines(
+  employee: Employee,
+  assignments: ProjectAssignment[]
+): OpenShareLine[] {
+  if (employee.payType !== "percent") return [];
+  const lines: OpenShareLine[] = [];
+  for (const assignment of assignments) {
+    if (assignment.employeeId !== employee.id) continue;
+    const amount = assignmentOpenShareAmount(assignment, employee);
+    if (!(amount > 0.004)) continue;
+    const percent =
+      assignment.sharePercent ?? employee.commissionPercent ?? 0;
+    const project = getProjectById(assignment.projectId);
+    lines.push({
+      assignmentId: assignment.id,
+      projectId: assignment.projectId,
+      projectName: project?.name || "شغلانة",
+      percent,
+      sale: projectSaleTotal(assignment.projectId),
+      amount,
+    });
+  }
+  return lines.sort((a, b) => a.projectName.localeCompare(b.projectName, "ar"));
+}
+
+function earningItemsFromPreview(preview: BalancePreview): EarningItem[] {
+  const items: EarningItem[] = [];
+  for (const line of preview.dayLines) {
+    items.push({ kind: "day", date: line.date, amount: line.amount });
+  }
+  for (const line of preview.monthLines) {
+    items.push({ kind: "month", month: line.month, amount: line.amount });
+  }
+  for (const line of preview.percentLines) {
+    items.push({
+      kind: "share",
+      assignmentId: line.assignmentId,
+      amount: line.amount,
+    });
+  }
+  for (const bonus of preview.openBonuses) {
+    items.push({
+      kind: "bonus",
+      bonusId: bonus.id,
+      amount: bonusOpenAmount(bonus),
+    });
+  }
+  return items;
+}
+
+function allocateEarnings(
+  items: EarningItem[],
+  target: number
+): {
+  taken: number;
+  daySettlements: PayrollDaySettlement[];
+  monthSettlements: PayrollMonthSettlement[];
+  shareSettlements: PayrollShareSettlement[];
+  bonusSettlements: PayrollBonusSettlement[];
+} {
+  let remaining = roundMoney(Math.max(0, target));
+  const daySettlements: PayrollDaySettlement[] = [];
+  const monthSettlements: PayrollMonthSettlement[] = [];
+  const shareSettlements: PayrollShareSettlement[] = [];
+  const bonusSettlements: PayrollBonusSettlement[] = [];
+  for (const item of items) {
+    if (remaining <= 0.004) break;
+    const take = roundMoney(Math.min(item.amount, remaining));
+    if (take <= 0.004) continue;
+    if (item.kind === "day") daySettlements.push({ date: item.date, amount: take });
+    if (item.kind === "month") {
+      monthSettlements.push({ month: item.month, amount: take });
+    }
+    if (item.kind === "share") {
+      shareSettlements.push({ assignmentId: item.assignmentId, amount: take });
+    }
+    if (item.kind === "bonus") {
+      bonusSettlements.push({ bonusId: item.bonusId, amount: take });
+    }
+    remaining = roundMoney(remaining - take);
+  }
+  const taken = roundMoney(
+    daySettlements.reduce((sum, row) => sum + row.amount, 0) +
+      monthSettlements.reduce((sum, row) => sum + row.amount, 0) +
+      shareSettlements.reduce((sum, row) => sum + row.amount, 0) +
+      bonusSettlements.reduce((sum, row) => sum + row.amount, 0)
+  );
+  return {
+    taken,
+    daySettlements,
+    monthSettlements,
+    shareSettlements,
+    bonusSettlements,
+  };
+}
+
+function accountLabelFromPreview(preview: Pick<
+  BalancePreview,
+  "employee" | "unpaidDays" | "unpaidMonths" | "percentAmount" | "bonusAmount"
+>): string {
+  const parts: string[] = [];
+  if (preview.employee.payType === "daily" && preview.unpaidDays > 0) {
+    parts.push(`${preview.unpaidDays} يوم حاضر`);
+  }
+  if (preview.employee.payType === "monthly" && preview.unpaidMonths > 0) {
+    parts.push(
+      preview.unpaidMonths === 1 ? "شهر" : `${preview.unpaidMonths} شهور`
+    );
+  }
+  if (preview.employee.payType === "percent" && preview.percentAmount > 0.004) {
+    parts.push("نسبة شغل");
+  }
+  if (preview.employee.payType === "manual") {
+    parts.push("بدون ثابت");
+  }
+  if (preview.bonusAmount > 0.004) {
+    parts.push("مكافآت");
+  }
+  return parts.join(" · ") || PAY_TYPE_LABELS[preview.employee.payType];
+}
+
+export function previewEmployeeBalance(employee: Employee): BalancePreview {
+  const payrolls = loadPayroll().filter((row) => row.employeeId === employee.id);
+  const attendance = loadAttendance();
+  const assignments = loadProjectAssignments();
+  const today = todayIsoDate();
+  const dayLines = openDayLines(employee, attendance, payrolls);
+  const monthLines = openMonthLines(employee, payrolls, today);
+  const percentLines = openShareLines(employee, assignments);
+  const openBonuses = listOpenBonuses(employee.id);
+  const dailyAmount = roundMoney(dayLines.reduce((sum, row) => sum + row.amount, 0));
+  const monthlyAmount = roundMoney(
+    monthLines.reduce((sum, row) => sum + row.amount, 0)
+  );
+  const percentAmount = roundMoney(
+    percentLines.reduce((sum, row) => sum + row.amount, 0)
+  );
+  const bonusAmount = roundMoney(
+    openBonuses.reduce((sum, row) => sum + bonusOpenAmount(row), 0)
+  );
+  const accruedAmount = roundMoney(
+    dailyAmount + monthlyAmount + percentAmount + bonusAmount
+  );
+  const openList = listOpenAdvances(employee.id);
+  const openAdvances = roundMoney(
+    openList.reduce((sum, row) => sum + advanceOpenAmount(row), 0)
+  );
+  const { deductions, deducted } = planAdvanceDeductions(openList, accruedAmount);
+  const preview: BalancePreview = {
+    employee,
+    unpaidDays: dayLines.length,
+    unpaidDayDates: dayLines.map((row) => row.date),
+    dayLines,
+    dailyAmount,
+    unpaidMonths: monthLines.length,
+    unpaidMonthKeys: monthLines.map((row) => row.month),
+    monthLines,
+    monthlyAmount,
+    percentAmount,
+    percentLines,
+    bonusAmount,
+    openBonuses,
+    accruedAmount,
+    openAdvances,
+    advancesDeducted: deducted,
+    netAmount: roundMoney(Math.max(0, accruedAmount - deducted)),
+    leftoverAdvances: roundMoney(Math.max(0, openAdvances - deducted)),
+    deductions,
+    accountLabel: "",
+  };
+  preview.accountLabel = accountLabelFromPreview(preview);
+  return preview;
+}
+
+export function employeeAccruedNet(employeeId: string): number {
+  const employee = getEmployeeById(employeeId);
+  if (!employee) return 0;
+  return previewEmployeeBalance(employee).netAmount;
+}
+
 export function previewPayroll(
   employee: Employee,
   periodFrom: string,
@@ -539,7 +1144,9 @@ export function previewPayroll(
   const baseAmount =
     employee.payType === "daily"
       ? roundMoney(employee.wage * daysWorked)
-      : roundMoney(employee.wage);
+      : employee.payType === "monthly"
+        ? roundMoney(employee.wage)
+        : 0;
   const alreadyPaid = findPaidPayroll(employee.id, periodFrom, periodTo);
   const openList = listOpenAdvances(employee.id);
   const openAdvances = roundMoney(
@@ -562,6 +1169,35 @@ export function previewPayroll(
   };
 }
 
+function applyAmountMap<T extends { id: string; settledAmount?: number; payrollId?: string; amount: number }>(
+  rows: T[],
+  deltas: Map<string, number>,
+  payrollId: string,
+  reverse: boolean
+): T[] {
+  return rows.map((row) => {
+    const change = deltas.get(row.id);
+    if (!change) return row;
+    const nextSettled = roundMoney(
+      Math.max(0, (Number(row.settledAmount) || 0) + (reverse ? -change : change))
+    );
+    const fullySettled = nextSettled >= roundMoney(row.amount) - 0.004;
+    return {
+      ...row,
+      settledAmount: nextSettled > 0.004 ? nextSettled : undefined,
+      payrollId: reverse
+        ? row.payrollId === payrollId
+          ? fullySettled
+            ? row.payrollId
+            : undefined
+          : row.payrollId
+        : fullySettled
+          ? payrollId
+          : row.payrollId ?? payrollId,
+    };
+  });
+}
+
 function applyDeductions(
   advances: Advance[],
   deductions: PayrollDeduction[],
@@ -572,34 +1208,51 @@ function applyDeductions(
   for (const row of deductions) {
     delta.set(row.advanceId, (delta.get(row.advanceId) ?? 0) + row.amount);
   }
-  return advances.map((advance) => {
-    const change = delta.get(advance.id);
-    if (!change) return advance;
-    const nextSettled = roundMoney(
-      Math.max(
-        0,
-        (Number(advance.settledAmount) || 0) + (reverse ? -change : change)
-      )
-    );
-    const fullySettled = nextSettled >= roundMoney(advance.amount) - 0.004;
-    return {
-      ...advance,
-      settledAmount: nextSettled > 0.004 ? nextSettled : undefined,
-      payrollId: reverse
-        ? advance.payrollId === payrollId
-          ? fullySettled
-            ? advance.payrollId
-            : undefined
-          : advance.payrollId
-        : fullySettled
-          ? payrollId
-          : advance.payrollId ?? payrollId,
-    };
-  });
+  return applyAmountMap(advances, delta, payrollId, reverse);
 }
 
-function payrollExpenseDescription(employee: Employee, from: string, to: string) {
-  return `راتب ${employee.name} · ${periodLabel(from, to)}`;
+function applyBonusSettlements(
+  bonuses: Bonus[],
+  settlements: PayrollBonusSettlement[],
+  payrollId: string,
+  reverse: boolean
+): Bonus[] {
+  const delta = new Map<string, number>();
+  for (const row of settlements) {
+    delta.set(row.bonusId, (delta.get(row.bonusId) ?? 0) + row.amount);
+  }
+  return applyAmountMap(bonuses, delta, payrollId, reverse);
+}
+
+function payrollExpenseDescription(employee: Employee, detail: string) {
+  return detail ? `أجر ${employee.name} · ${detail}` : `أجر ${employee.name}`;
+}
+
+function settlementPeriod(
+  date: string,
+  days: PayrollDaySettlement[],
+  months: PayrollMonthSettlement[]
+): { from: string; to: string } {
+  const dates = days.map((row) => row.date).sort();
+  const monthKeys = months.map((row) => row.month).sort();
+  const fromCandidates = [
+    dates[0],
+    monthKeys[0] ? monthRange(monthKeys[0]).from : undefined,
+    date,
+  ].filter(Boolean) as string[];
+  const toCandidates = [
+    dates[dates.length - 1],
+    monthKeys[monthKeys.length - 1]
+      ? monthRange(monthKeys[monthKeys.length - 1]).to
+      : undefined,
+    date,
+  ].filter(Boolean) as string[];
+  fromCandidates.sort();
+  toCandidates.sort();
+  return {
+    from: fromCandidates[0] || date,
+    to: toCandidates[toCandidates.length - 1] || date,
+  };
 }
 
 export type PayPayrollInput = {
@@ -612,6 +1265,168 @@ export type PayPayrollInput = {
   storeBridge?: StoreBridgeMeta;
 };
 
+export type PayBalanceInput = {
+  employee: Employee;
+  /** إجمالي المستحق المراد تسديده. فارغ = كل المستحق. لليدوي: المبلغ الإضافي فوق المكافآت. */
+  amount?: number;
+  date?: string;
+  projectId?: string;
+  note?: string;
+  storeBridge?: StoreBridgeMeta;
+};
+
+export function payEmployeeBalance(input: PayBalanceInput): Payroll {
+  const employee = getEmployeeById(input.employee.id) ?? input.employee;
+  const preview = previewEmployeeBalance(employee);
+  const items = earningItemsFromPreview(preview);
+
+  let targetGross: number;
+  let manualAmount = 0;
+  if (input.amount == null) {
+    if (employee.payType === "manual" && preview.accruedAmount <= 0.004) {
+      throw new Error("أدخل مبلغ الصرف للعامل بدون راتب ثابت");
+    }
+    targetGross = preview.accruedAmount;
+  } else {
+    const requested = roundMoney(input.amount);
+    if (!(requested > 0)) {
+      throw new Error("أدخل مبلغ الصرف");
+    }
+    if (employee.payType === "manual") {
+      const fromAccrued = roundMoney(Math.min(requested, preview.accruedAmount));
+      manualAmount = roundMoney(Math.max(0, requested - fromAccrued));
+      targetGross = fromAccrued;
+    } else {
+      if (preview.accruedAmount <= 0.004) {
+        throw new Error("مفيش مستحق متراكم للصرف");
+      }
+      targetGross = roundMoney(Math.min(requested, preview.accruedAmount));
+    }
+  }
+
+  const allocated = allocateEarnings(items, targetGross);
+  const gross = roundMoney(allocated.taken + manualAmount);
+  if (!(gross > 0.004)) {
+    throw new Error("مفيش مبلغ للصرف");
+  }
+
+  const openList = listOpenAdvances(employee.id);
+  const { deductions, deducted } = planAdvanceDeductions(openList, gross);
+  const netAmount = roundMoney(Math.max(0, gross - deducted));
+  const leftoverAdvances = roundMoney(
+    Math.max(
+      0,
+      openList.reduce((sum, row) => sum + advanceOpenAmount(row), 0) - deducted
+    )
+  );
+
+  const date = input.date || todayIsoDate();
+  const period = settlementPeriod(
+    date,
+    allocated.daySettlements,
+    allocated.monthSettlements
+  );
+  const payrollId = `payr-${employee.id}-${date}-${Date.now()}`;
+  const createdAt = new Date().toISOString();
+  const bonusesAdded = roundMoney(
+    allocated.bonusSettlements.reduce((sum, row) => sum + row.amount, 0)
+  );
+  const percentAmount = roundMoney(
+    allocated.shareSettlements.reduce((sum, row) => sum + row.amount, 0)
+  );
+  const dailyPaid = roundMoney(
+    allocated.daySettlements.reduce((sum, row) => sum + row.amount, 0)
+  );
+  const monthlyPaid = roundMoney(
+    allocated.monthSettlements.reduce((sum, row) => sum + row.amount, 0)
+  );
+  const detailParts = [
+    allocated.daySettlements.length
+      ? `${allocated.daySettlements.length} يوم`
+      : "",
+    allocated.monthSettlements.length
+      ? allocated.monthSettlements.length === 1
+        ? "شهر"
+        : `${allocated.monthSettlements.length} شهور`
+      : "",
+    percentAmount > 0.004 ? "نسبة شغل" : "",
+    bonusesAdded > 0.004 ? "مكافأة" : "",
+    manualAmount > 0.004 ? "مبلغ يدوي" : "",
+  ].filter(Boolean);
+  const leftoverNote =
+    leftoverAdvances > 0.004 ? `باقي سلف ${leftoverAdvances} ج.م` : undefined;
+  const note = [input.note?.trim(), leftoverNote].filter(Boolean).join(" · ");
+
+  let expenseId: string | undefined;
+  if (netAmount > 0.004) {
+    expenseId = `exp-${payrollId}`;
+    const expense: Expense = {
+      id: expenseId,
+      category: "أجور",
+      description: payrollExpenseDescription(employee, detailParts.join(" + ")),
+      amount: netAmount,
+      date,
+      projectId: input.projectId || undefined,
+      note: note || undefined,
+      createdAt,
+      settlement: "cash",
+      employeeId: employee.id,
+      payrollId,
+      storeBridge: input.storeBridge,
+    };
+    upsertExpense(expense);
+  }
+
+  const payroll: Payroll = {
+    id: payrollId,
+    employeeId: employee.id,
+    periodFrom: period.from,
+    periodTo: period.to,
+    daysWorked: allocated.daySettlements.length,
+    baseAmount: roundMoney(dailyPaid + monthlyPaid + percentAmount + manualAmount),
+    advancesDeducted: deducted,
+    netAmount,
+    date,
+    expenseId,
+    projectId: input.projectId || undefined,
+    status: "paid",
+    note: note || undefined,
+    createdAt,
+    deductions,
+    storeBridge: input.storeBridge,
+    payType: employee.payType,
+    bonusesAdded: bonusesAdded > 0.004 ? bonusesAdded : undefined,
+    percentAmount: percentAmount > 0.004 ? percentAmount : undefined,
+    manualAmount: manualAmount > 0.004 ? manualAmount : undefined,
+    daySettlements:
+      allocated.daySettlements.length > 0 ? allocated.daySettlements : undefined,
+    monthSettlements:
+      allocated.monthSettlements.length > 0
+        ? allocated.monthSettlements
+        : undefined,
+    shareSettlements:
+      allocated.shareSettlements.length > 0
+        ? allocated.shareSettlements
+        : undefined,
+    bonusSettlements:
+      allocated.bonusSettlements.length > 0
+        ? allocated.bonusSettlements
+        : undefined,
+  };
+
+  saveAdvances(applyDeductions(loadAdvances(), deductions, payrollId, false));
+  saveBonuses(
+    applyBonusSettlements(
+      loadBonuses(),
+      allocated.bonusSettlements,
+      payrollId,
+      false
+    )
+  );
+  savePayroll([payroll, ...loadPayroll()]);
+  return payroll;
+}
+
 export function payEmployeePayroll(input: PayPayrollInput): Payroll {
   const preview = previewPayroll(
     input.employee,
@@ -621,64 +1436,17 @@ export function payEmployeePayroll(input: PayPayrollInput): Payroll {
   if (preview.alreadyPaid) {
     throw new Error("الراتب للفترة دي متصرف قبل كده");
   }
-
-  const payrollId = `payr-${input.employee.id}-${input.periodFrom}-${Date.now()}`;
-  const date = input.date || todayIsoDate();
-  const createdAt = new Date().toISOString();
-  const leftoverNote =
-    preview.leftoverAdvances > 0.004
-      ? `باقي سلف ${preview.leftoverAdvances} ج.م`
-      : undefined;
-  const note = [input.note?.trim(), leftoverNote].filter(Boolean).join(" · ");
-
-  let expenseId: string | undefined;
-  if (preview.netAmount > 0.004) {
-    expenseId = `exp-${payrollId}`;
-    const expense: Expense = {
-      id: expenseId,
-      category: "أجور",
-      description: payrollExpenseDescription(
-        input.employee,
-        input.periodFrom,
-        input.periodTo
-      ),
-      amount: preview.netAmount,
-      date,
-      projectId: input.projectId || undefined,
-      note: note || undefined,
-      createdAt,
-      settlement: "cash",
-      employeeId: input.employee.id,
-      payrollId,
-      storeBridge: input.storeBridge,
-    };
-    upsertExpense(expense);
+  if (preview.baseAmount <= 0.004) {
+    throw new Error("مفيش أجر للفترة دي");
   }
-
-  const payroll: Payroll = {
-    id: payrollId,
-    employeeId: input.employee.id,
-    periodFrom: input.periodFrom,
-    periodTo: input.periodTo,
-    daysWorked: preview.daysWorked,
-    baseAmount: preview.baseAmount,
-    advancesDeducted: preview.advancesDeducted,
-    netAmount: preview.netAmount,
-    date,
-    expenseId,
-    projectId: input.projectId || undefined,
-    status: "paid",
-    note: note || undefined,
-    createdAt,
-    deductions: preview.deductions,
+  return payEmployeeBalance({
+    employee: input.employee,
+    amount: preview.baseAmount,
+    date: input.date,
+    projectId: input.projectId,
+    note: input.note,
     storeBridge: input.storeBridge,
-  };
-
-  saveAdvances(
-    applyDeductions(loadAdvances(), preview.deductions, payrollId, false)
-  );
-  savePayroll([payroll, ...loadPayroll()]);
-  return payroll;
+  });
 }
 
 export function attachPayrollStoreBridge(
@@ -703,6 +1471,14 @@ export function deletePaidPayroll(payrollId: string) {
   saveAdvances(
     applyDeductions(loadAdvances(), payroll.deductions ?? [], payrollId, true)
   );
+  saveBonuses(
+    applyBonusSettlements(
+      loadBonuses(),
+      payroll.bonusSettlements ?? [],
+      payrollId,
+      true
+    )
+  );
   if (payroll.expenseId) {
     deleteExpense(payroll.expenseId);
   }
@@ -719,10 +1495,15 @@ export function hrHubSummary(now = new Date()) {
   const openAdvances = roundMoney(
     loadAdvances().reduce((sum, row) => sum + advanceOpenAmount(row), 0)
   );
+  const openBonuses = roundMoney(
+    loadBonuses().reduce((sum, row) => sum + bonusOpenAmount(row), 0)
+  );
+  const openAccrued = roundMoney(
+    active.reduce((sum, employee) => sum + previewEmployeeBalance(employee).netAmount, 0)
+  );
   const { from, to } = currentMonthRange(now);
   const monthPayroll = loadPayroll().filter(
-    (row) =>
-      row.status === "paid" && row.periodFrom >= from && row.periodFrom <= to
+    (row) => row.status === "paid" && row.date >= from && row.date <= to
   );
   const monthPaid = roundMoney(
     monthPayroll.reduce((sum, row) => sum + row.netAmount, 0)
@@ -731,6 +1512,8 @@ export function hrHubSummary(now = new Date()) {
     activeCount: active.length,
     presentToday,
     openAdvances,
+    openBonuses,
+    openAccrued,
     monthPaid,
     monthPayrollCount: monthPayroll.length,
     periodFrom: from,
