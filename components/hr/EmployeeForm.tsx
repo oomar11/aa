@@ -103,6 +103,16 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
       setError("أدخل اسم الموظف");
       return;
     }
+    if ((payType === "daily" || payType === "monthly") && !(wage > 0)) {
+      setError(
+        payType === "daily" ? "أدخل قيمة اليومية" : "أدخل الراتب الشهري"
+      );
+      return;
+    }
+    if (payType === "percent" && !(commissionPercent > 0)) {
+      setError("أدخل نسبة الشغل");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -235,12 +245,18 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
             أيام الحضور تتراكم وما بتتصرفش لوحدها — اصرف لما تحب
           </p>
         ) : null}
+        {payType === "monthly" ? (
+          <p className="text-[11px] text-muted">
+            الراتب الشهري يتراكم لو الشهر فات من غير صرف
+          </p>
+        ) : null}
       </div>
 
       {payType === "daily" || payType === "monthly" ? (
-        <label className="flex flex-col gap-1.5 text-right">
+        <label className="flex flex-col gap-1.5 text-right lg:col-span-2">
           <span className="text-sm font-medium">
             {payType === "daily" ? "اليومية (ج.م)" : "الراتب الشهري (ج.م)"}
+            <span className="text-[#E85A8A]"> *</span>
           </span>
           <NumericInput
             value={wage}
@@ -252,8 +268,10 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
       ) : null}
 
       {payType === "percent" ? (
-        <label className="flex flex-col gap-1.5 text-right">
-          <span className="text-sm font-medium">النسبة من الشغل (%)</span>
+        <label className="flex flex-col gap-1.5 text-right lg:col-span-2">
+          <span className="text-sm font-medium">
+            النسبة من الشغل (%) <span className="text-[#E85A8A]">*</span>
+          </span>
           <NumericInput
             value={commissionPercent}
             onChange={setCommissionPercent}

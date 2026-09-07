@@ -293,42 +293,7 @@ export function PayrollBoard() {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card lg:block">
-            <table className="w-full min-w-[980px] text-start text-sm">
-              <thead className="bg-background text-[11px] text-muted">
-                <tr>
-                  <th className="px-4 py-2.5 font-semibold">الموظف</th>
-                  <th className="px-3 py-2.5 font-semibold">الحساب</th>
-                  <th className="px-3 py-2.5 text-end font-semibold">متراكم</th>
-                  <th className="px-3 py-2.5 text-end font-semibold">مكافآت</th>
-                  <th className="px-3 py-2.5 text-end font-semibold">سلف</th>
-                  <th className="px-3 py-2.5 text-end font-semibold">صافي</th>
-                  <th className="px-3 py-2.5 font-semibold">صرف مبلغ</th>
-                  <th className="px-4 py-2.5 text-end font-semibold">إجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <PayrollTableRow
-                    key={row.employee.id}
-                    row={row}
-                    customAmount={customAmounts[row.employee.id] ?? 0}
-                    payingId={payingId}
-                    onCustomAmount={(value) =>
-                      setCustomAmounts((current) => ({
-                        ...current,
-                        [row.employee.id]: value,
-                      }))
-                    }
-                    onPayFull={() => void payOne(row, false)}
-                    onPayCustom={() => void payOne(row, true)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <ul className="flex flex-col gap-2 lg:hidden">
+          <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2">
             {rows.map((row) => (
               <PayrollCard
                 key={row.employee.id}
@@ -427,82 +392,6 @@ function roundShown(amount: number): number {
   return Math.round((Number(amount) || 0) * 100) / 100;
 }
 
-function PayrollTableRow({
-  row,
-  customAmount,
-  payingId,
-  onCustomAmount,
-  onPayFull,
-  onPayCustom,
-}: {
-  row: BalancePreview;
-  customAmount: number;
-  payingId: string;
-  onCustomAmount: (value: number) => void;
-  onPayFull: () => void;
-  onPayCustom: () => void;
-}) {
-  const busy = Boolean(payingId);
-  const canPayFull = row.accruedAmount > 0.004;
-  const canPayCustom =
-    customAmount > 0.004 &&
-    (row.employee.payType === "manual" || row.accruedAmount > 0.004);
-
-  return (
-    <tr className="border-t border-border hover:bg-primary-soft/20">
-      <td className="px-4 py-2.5">
-        <p className="font-bold">{row.employee.name}</p>
-        <p className="text-[11px] text-muted">{row.employee.role}</p>
-      </td>
-      <td className="whitespace-nowrap px-3 py-2.5 text-muted">
-        {row.accountLabel}
-      </td>
-      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums">
-        {formatCurrency(row.accruedAmount)}
-      </td>
-      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums">
-        {row.bonusAmount > 0 ? formatCurrency(row.bonusAmount) : "—"}
-      </td>
-      <td className="whitespace-nowrap px-3 py-2.5 text-end tabular-nums text-[#E85A8A]">
-        {row.openAdvances > 0 ? `−${formatCurrency(row.openAdvances)}` : "—"}
-      </td>
-      <td className="whitespace-nowrap px-3 py-2.5 text-end font-bold tabular-nums">
-        {formatCurrency(row.netAmount)}
-      </td>
-      <td className="px-3 py-2.5">
-        <NumericInput
-          value={customAmount}
-          onChange={onCustomAmount}
-          min={0}
-          className="h-10 w-28 rounded-xl border border-border bg-background px-3 text-sm"
-        />
-      </td>
-      <td className="px-4 py-2.5 text-end">
-        <div className="flex flex-wrap justify-end gap-2">
-          {canPayFull ? (
-            <button
-              type="button"
-              onClick={onPayFull}
-              disabled={busy}
-              className="rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
-            >
-              {payingId === row.employee.id ? "جاري الصرف…" : "صرف المستحق"}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onPayCustom}
-            disabled={busy || !canPayCustom}
-            className="rounded-xl border border-border px-3 py-1.5 text-[11px] font-bold disabled:opacity-50"
-          >
-            صرف المبلغ
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
 function PayrollCard({
   row,
   customAmount,
@@ -551,11 +440,12 @@ function PayrollCard({
         </p>
       </div>
       <div className="mt-2 flex flex-col gap-2">
+        <span className="text-[11px] text-muted">مبلغ جزئي / يدوي</span>
         <NumericInput
           value={customAmount}
           onChange={onCustomAmount}
           min={0}
-          placeholder="صرف مبلغ"
+          aria-label="صرف مبلغ"
           className="h-10 rounded-xl border border-border bg-background px-3 text-sm"
         />
         <div className="flex flex-wrap gap-2">
