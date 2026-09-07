@@ -146,10 +146,10 @@ export function ProjectWorkersPicker({ projectId, compact = false }: Props) {
                         className="h-9 w-24 rounded-lg border border-border bg-background px-2 text-sm"
                       />
                       <span className="text-[11px] text-muted">
-                        % من البيع
+                        % من صافي البيع
                         {sale > 0
-                          ? ` · ${formatCurrency(estimate)} ج.م`
-                          : " · بعد تحديد الحساب"}
+                          ? ` · نصيبه ≈ ${formatCurrency(estimate)} من ${formatCurrency(sale)} ج.م`
+                          : " · يظهر المبلغ بعد تحديد حساب الشغلانة"}
                       </span>
                     </div>
                   ) : null}

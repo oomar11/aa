@@ -429,6 +429,16 @@ function PayrollCard({
               ? ` · سلف −${formatCurrency(row.openAdvances)}`
               : ""}
           </p>
+          {row.percentLines.length > 0 ? (
+            <p className="mt-0.5 text-[11px] text-muted">
+              {row.percentLines
+                .map(
+                  (line) =>
+                    `${line.projectName} ${line.percent}% = ${formatCurrency(line.amount)}`
+                )
+                .join(" · ")}
+            </p>
+          ) : null}
           {row.leftoverAdvances > 0.004 && row.netAmount > 0.004 ? (
             <p className="mt-0.5 text-[11px] text-[#C47A12]">
               هيفضل سلف {formatCurrency(row.leftoverAdvances)} ج.م
