@@ -10,6 +10,7 @@ import {
   loadStoreBridgeConfig,
   upsertStoreCustomer,
 } from "@/lib/store-bridge";
+import { toLocalIsoDate } from "@/lib/utils";
 
 export function NewCustomerForm() {
   const router = useRouter();
@@ -63,7 +64,7 @@ export function NewCustomerForm() {
       address: address.trim() || undefined,
       note: note.trim() || undefined,
       balance: 0,
-      lastDealAt: new Date().toISOString().slice(0, 10),
+      lastDealAt: toLocalIsoDate(),
       projectsCount: 0,
     };
 
@@ -110,7 +111,7 @@ export function NewCustomerForm() {
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium text-foreground">
-          الاسم <span className="text-[#E85A8A]">*</span>
+          الاسم <span className="text-[#b5543f]">*</span>
         </span>
         <input
           type="text"
@@ -127,7 +128,7 @@ export function NewCustomerForm() {
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium text-foreground">
-          رقم الهاتف <span className="text-[#E85A8A]">*</span>
+          رقم الهاتف <span className="text-[#b5543f]">*</span>
         </span>
         <input
           type="tel"
@@ -173,7 +174,7 @@ export function NewCustomerForm() {
       </label>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f]">{error}</p>
       ) : null}
 
       <button

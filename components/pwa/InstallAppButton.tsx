@@ -88,7 +88,7 @@ export function InstallAppButton({ className = "" }: InstallAppCardProps) {
           <div className="min-w-0 text-right">
             <p className="text-sm font-bold text-foreground">التطبيق مثبّت</p>
             <p className="mt-0.5 text-xs text-muted">
-              UPVC Design على شاشتك الرئيسية باللوجو الأزرق.
+              الوهيدي على شاشتك الرئيسية بالختم.
             </p>
           </div>
         </div>
@@ -111,7 +111,7 @@ export function InstallAppButton({ className = "" }: InstallAppCardProps) {
         <div className="min-w-0 flex-1 text-right">
           <p className="text-base font-bold text-foreground">نزّل التطبيق</p>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            ثبّت UPVC Design على التليفون — هيظهر باللوجو الأزرق على الشاشة
+            ثبّت الوهيدي على التليفون — هيظهر بالختم على الشاشة
             الرئيسية زي أي تطبيق.
           </p>
         </div>

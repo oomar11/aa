@@ -39,8 +39,10 @@ function sameOrigin(request: NextRequest): boolean {
       return false;
     }
   }
-  // Same-origin fetch from older browsers may omit Origin; allow missing both.
-  return true;
+  // Non-browser clients (curl, server-to-server) send neither header —
+  // reject explicitly instead of assuming same-origin. The whole site is
+  // already gated by AA_SITE_PASSWORD via proxy.ts.
+  return false;
 }
 
 async function proxy(

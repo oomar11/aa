@@ -432,7 +432,7 @@ export function PaymentForm() {
           </div>
           <div>
             <p className="text-[10px] text-muted">باقي</p>
-            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#E85A8A]">
+            <p className="mt-0.5 text-sm font-bold tabular-nums text-[#b5543f]">
               {formatCurrency(money.remaining)}
             </p>
           </div>
@@ -441,7 +441,7 @@ export function PaymentForm() {
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
-          المبلغ (ج.م) <span className="text-[#E85A8A]">*</span>
+          المبلغ (ج.م) <span className="text-[#b5543f]">*</span>
         </span>
         <NumericInput
           value={amount}
@@ -493,7 +493,7 @@ export function PaymentForm() {
       </label>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f]">{error}</p>
       ) : null}
 
       <button
@@ -513,7 +513,7 @@ export function PaymentForm() {
           type="button"
           disabled={saving}
           onClick={() => void handleDelete()}
-          className="flex h-11 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/35 text-sm font-semibold text-[#E85A8A] disabled:opacity-60"
+          className="flex h-11 w-full items-center justify-center rounded-2xl border border-[#b5543f]/35 text-sm font-semibold text-[#b5543f] disabled:opacity-60"
         >
           حذف الدفعة
         </button>

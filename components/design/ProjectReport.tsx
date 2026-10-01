@@ -85,6 +85,8 @@ export function ProjectReport({
         year: "numeric",
         month: "long",
         day: "numeric",
+        numberingSystem: "latn",
+        timeZone: "Africa/Cairo",
       }).format(new Date()),
     []
   );
@@ -107,7 +109,7 @@ export function ProjectReport({
 
   return (
     <div
-      className="project-report bg-white text-[#152033]"
+      className="project-report bg-white text-[#1f1b16]"
       style={{
         width: REPORT_PAGE_WIDTH_PX,
         fontFamily:
@@ -132,20 +134,24 @@ export function ProjectReport({
               }}
             >
               {isFirst ? (
-                <header className="shrink-0 border-b-2 border-[#2b7de9] pb-3">
+                <header className="shrink-0 border-b-2 border-[#0d6a6b] pb-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 text-right">
-                      <h1
-                        className="truncate text-[22px] font-bold text-[#152033]"
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/brand/logo.png" alt="" style={{ display: "block", height: 46, width: "auto", marginBottom: 8 }} />
+                      {(company?.name || "الوهيدي").trim() !== "الوهيدي" ? (
+<h1
+                        className="truncate text-[22px] font-bold text-[#1f1b16]"
                         style={{ lineHeight: "28px", margin: 0 }}
                       >
-                        {company?.name || "شركتي للـ uPVC"}
+                        {company?.name || "الوهيدي"}
                       </h1>
+) : null}
                       <div
                         style={{
                           marginTop: 6,
                           fontSize: 11,
-                          color: "#5a6578",
+                          color: "#5c4e3f",
                         }}
                       >
                         {company?.phone ? (
@@ -192,7 +198,7 @@ export function ProjectReport({
                               padding: "0 0 10px",
                               fontSize: 12,
                               fontWeight: 600,
-                              color: "#2b7de9",
+                              color: "#0d6a6b",
                               lineHeight: "20px",
                               whiteSpace: "nowrap",
                               verticalAlign: "top",
@@ -207,7 +213,7 @@ export function ProjectReport({
                               padding: "0 0 10px",
                               fontSize: 14,
                               fontWeight: 700,
-                              color: "#152033",
+                              color: "#1f1b16",
                               lineHeight: "22px",
                               verticalAlign: "top",
                               maxWidth: 240,
@@ -224,7 +230,7 @@ export function ProjectReport({
                             style={{
                               padding: 0,
                               fontSize: 11,
-                              color: "#6b7585",
+                              color: "#6b5a48",
                               lineHeight: "18px",
                               whiteSpace: "nowrap",
                               verticalAlign: "top",
@@ -238,14 +244,14 @@ export function ProjectReport({
                   </div>
 
                   <div
-                    className="mt-3 grid grid-cols-2 gap-3 rounded-lg border border-[#e4e8ee] bg-[#f7f9fc] px-3 py-2.5 text-[11px]"
+                    className="mt-3 grid grid-cols-2 gap-3 rounded-lg border border-[#e4dccd] bg-[#f7f4ee] px-3 py-2.5 text-[11px]"
                     style={{ gap: 12 }}
                   >
                     <div className="min-w-0">
                       <p
                         style={{
                           margin: 0,
-                          color: "#6b7585",
+                          color: "#6b5a48",
                           lineHeight: "15px",
                           height: 15,
                         }}
@@ -253,7 +259,7 @@ export function ProjectReport({
                         العميل
                       </p>
                       <p
-                        className="truncate font-bold text-[#152033]"
+                        className="truncate font-bold text-[#1f1b16]"
                         style={{
                           margin: 0,
                           marginTop: 4,
@@ -265,7 +271,7 @@ export function ProjectReport({
                       </p>
                       {customer?.phone ? (
                         <p
-                          className="text-[#5a6578]"
+                          className="text-[#5c4e3f]"
                           dir="ltr"
                           style={{
                             margin: 0,
@@ -282,7 +288,7 @@ export function ProjectReport({
                       <p
                         style={{
                           margin: 0,
-                          color: "#6b7585",
+                          color: "#6b5a48",
                           lineHeight: "15px",
                           height: 15,
                         }}
@@ -290,7 +296,7 @@ export function ProjectReport({
                         المشروع
                       </p>
                       <p
-                        className="truncate font-bold text-[#152033]"
+                        className="truncate font-bold text-[#1f1b16]"
                         style={{
                           margin: 0,
                           marginTop: 4,
@@ -301,7 +307,7 @@ export function ProjectReport({
                         {project.location || project.name}
                       </p>
                       <p
-                        className="truncate text-[#5a6578]"
+                        className="truncate text-[#5c4e3f]"
                         style={{
                           margin: 0,
                           marginTop: 4,
@@ -315,15 +321,15 @@ export function ProjectReport({
                   </div>
                 </header>
               ) : (
-                <header className="flex shrink-0 items-center justify-between border-b border-[#e4e8ee] pb-2 text-[11px]">
+                <header className="flex shrink-0 items-center justify-between border-b border-[#e4dccd] pb-2 text-[11px]">
                   <p
-                    className="font-bold text-[#152033]"
+                    className="font-bold text-[#1f1b16]"
                     style={{ margin: 0, lineHeight: "16px" }}
                   >
-                    {company?.name || "شركتي للـ uPVC"}
+                    {company?.name || "الوهيدي"}
                   </p>
                   <p
-                    className="truncate text-[#6b7585]"
+                    className="truncate text-[#6b5a48]"
                     style={{ margin: 0, lineHeight: "16px", maxWidth: "55%" }}
                   >
                     {project.name} · صفحة {pageIndex + 1}
@@ -333,7 +339,7 @@ export function ProjectReport({
 
               <div className="mt-3 min-h-0 flex-1">
                 {pageItems.length === 0 ? (
-                  <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#d5dbe5] text-sm text-[#6b7585]">
+                  <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#d6ccb9] text-sm text-[#6b5a48]">
                     لا توجد بنود في المشروع حالياً
                   </div>
                 ) : (
@@ -359,25 +365,25 @@ export function ProjectReport({
               </div>
 
               {isLast ? (
-                <footer className="mt-3 shrink-0 rounded-lg border border-[#2b7de9]/30 bg-[#f3f8ff] px-3 py-2.5">
+                <footer className="mt-3 shrink-0 rounded-lg border border-[#0d6a6b]/30 bg-[#eef6f5] px-3 py-2.5">
                   <div className="grid grid-cols-3 gap-2 text-[12px]">
                     <div>
-                      <p className="text-[#6b7585]">إجمالي العدد</p>
+                      <p className="text-[#6b5a48]">إجمالي العدد</p>
                       <p className="mt-0.5 font-bold">{totals.qty}</p>
                     </div>
                     <div>
-                      <p className="text-[#6b7585]">إجمالي المساحة</p>
+                      <p className="text-[#6b5a48]">إجمالي المساحة</p>
                       <p className="mt-0.5 font-bold">
                         {totals.area.toFixed(2)} م²
                       </p>
                     </div>
                     <div className="text-left">
-                      <p className="text-[#6b7585]">الإجمالي</p>
-                      <p className="mt-0.5 text-[16px] font-bold text-[#2b7de9]">
+                      <p className="text-[#6b5a48]">الإجمالي</p>
+                      <p className="mt-0.5 text-[16px] font-bold text-[#0d6a6b]">
                         {formatCurrency(Math.round(totals.money.sale))} ج.م
                       </p>
                       {totals.money.discountAmount > 0 ? (
-                        <p className="mt-0.5 text-[10px] text-[#6b7585]">
+                        <p className="mt-0.5 text-[10px] text-[#6b5a48]">
                           {projectDiscountLabel(totals.money) ?? "خصم"}{" "}
                           {formatCurrency(totals.money.discountAmount)} من{" "}
                           {formatCurrency(totals.money.subtotal)}
@@ -387,7 +393,7 @@ export function ProjectReport({
                   </div>
                 </footer>
               ) : (
-                <footer className="mt-2 shrink-0 text-center text-[10px] text-[#8a93a3]">
+                <footer className="mt-2 shrink-0 text-center text-[10px] text-[#8a7a68]">
                   صفحة {pageIndex + 1} من {itemPages.length}
                 </footer>
               )}
@@ -444,7 +450,7 @@ function ReportItemCard({
 
   return (
     <article
-      className="h-full min-h-0 overflow-hidden rounded-lg border border-[#d9e0ea] bg-white"
+      className="h-full min-h-0 overflow-hidden rounded-lg border border-[#d6ccb9] bg-white"
       style={{
         display: "grid",
         // الرسم ياخد معظم الكارت عشان المقاسات تبان في الطباعة
@@ -458,24 +464,24 @@ function ReportItemCard({
           'Cairo, "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif',
       }}
     >
-      <div className="flex items-start justify-between gap-2 border-b border-[#eef1f5] pb-1.5">
+      <div className="flex items-start justify-between gap-2 border-b border-[#f2ede3] pb-1.5">
         <div className="min-w-0">
           <p
-            className="text-[10px] font-semibold text-[#2b7de9]"
+            className="text-[10px] font-semibold text-[#0d6a6b]"
             style={{ lineHeight: "14px", margin: 0 }}
           >
             بند {index + 1}
             {extra ? " · إضافة" : ""}
           </p>
           <h4
-            className="truncate text-[13px] font-bold text-[#152033]"
+            className="truncate text-[13px] font-bold text-[#1f1b16]"
             style={{ lineHeight: "18px", margin: 0 }}
           >
             {name}
           </h4>
         </div>
         <p
-          className="shrink-0 text-[12px] font-bold text-[#2b7de9]"
+          className="shrink-0 text-[12px] font-bold text-[#0d6a6b]"
           style={{ lineHeight: "18px", margin: 0 }}
           dir="ltr"
         >
@@ -484,7 +490,7 @@ function ReportItemCard({
         </p>
       </div>
 
-      <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border border-[#e8edf3] bg-[#f4f7fb] p-2.5">
+      <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border border-[#f2ede3] bg-[#f2ede3] p-2.5">
         {extra ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#C45C26]">
             <p style={{ margin: 0, fontSize: 28, fontWeight: 300, lineHeight: 1 }}>＋</p>
@@ -495,7 +501,7 @@ function ReportItemCard({
                   margin: 0,
                   marginTop: 4,
                   fontSize: 11,
-                  color: "#5a6578",
+                  color: "#5c4e3f",
                   textAlign: "center",
                   padding: "0 8px",
                 }}
@@ -559,7 +565,7 @@ function ReportItemCard({
       {materials.length > 0 ? (
         <div
           style={{
-            background: "#f7f9fc",
+            background: "#f7f4ee",
             borderRadius: 6,
             padding: "5px 8px",
             overflow: "hidden",
@@ -582,8 +588,8 @@ function ReportItemCard({
                 padding: 0,
               }}
             >
-              <span style={{ color: "#6b7585" }}>{row.label}: </span>
-              <span style={{ color: "#152033", fontWeight: 700 }}>
+              <span style={{ color: "#6b5a48" }}>{row.label}: </span>
+              <span style={{ color: "#1f1b16", fontWeight: 700 }}>
                 {row.value}
               </span>
             </div>
@@ -606,7 +612,7 @@ function Meta({
   return (
     <div
       style={{
-        background: "#f7f9fc",
+        background: "#f7f4ee",
         borderRadius: 6,
         padding: "6px 7px",
         overflow: "hidden",
@@ -614,7 +620,7 @@ function Meta({
     >
       <div
         style={{
-          color: "#6b7585",
+          color: "#6b5a48",
           fontSize: 9,
           lineHeight: "14px",
           height: 14,
@@ -628,7 +634,7 @@ function Meta({
       <div
         style={{
           marginTop: 5,
-          color: "#152033",
+          color: "#1f1b16",
           fontSize: 11,
           fontWeight: 700,
           lineHeight: "16px",

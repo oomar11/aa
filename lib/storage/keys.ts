@@ -29,6 +29,8 @@ export const STORAGE_KEYS = {
   projectAssignments: "upvc-project-assignments",
   /** ربط خزنة المتجر (محلي للجهاز — لا يُرفع للقاعدة لتجنب تسريب المفتاح) */
   storeBridge: "upvc-store-bridge",
+  /** سجل محاولات مزامنة الحسابات مع المتجر اللي فشلت */
+  ledgerSyncFailures: "upvc-ledger-sync-failures",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
@@ -60,6 +62,7 @@ export const SHARED_STORAGE_KEYS = [
   STORAGE_KEYS.payroll,
   STORAGE_KEYS.bonuses,
   STORAGE_KEYS.projectAssignments,
+  STORAGE_KEYS.ledgerSyncFailures,
 ] as const;
 
 export type SharedStorageKey = (typeof SHARED_STORAGE_KEYS)[number];
@@ -98,6 +101,7 @@ export const SHARED_KEY_EVENTS: Record<SharedStorageKey, string[]> = {
   [STORAGE_KEYS.payroll]: ["upvc-hr-updated", "upvc-accounting-updated"],
   [STORAGE_KEYS.bonuses]: ["upvc-hr-updated"],
   [STORAGE_KEYS.projectAssignments]: ["upvc-hr-updated", "upvc-projects-updated"],
+  [STORAGE_KEYS.ledgerSyncFailures]: ["upvc-ledger-sync-failures-updated"],
 };
 
 /** أحداث مزامنة الكتالوج بين الشاشات */

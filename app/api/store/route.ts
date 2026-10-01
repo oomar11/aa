@@ -10,8 +10,34 @@ import {
 } from "@/lib/storage/server-store";
 import { SHARED_STORAGE_KEYS } from "@/lib/storage/keys";
 import { syncWorkshopSnapshotToStore } from "@/lib/workshop-ledger-sync";
+import { recordLedgerSyncFailure } from "@/lib/ledger-sync-failures";
 
 export const dynamic = "force-dynamic";
+
+/** حد أقصى لحجم قيمة المفتاح الواحد (حروف) — بيحمي من قيم ضخمة أو تالفة. */
+const MAX_VALUE_CHARS = 8_000_000;
+
+/**
+ * كل قيمة لازم تكون null أو JSON صالح (التطبيق بيخزّن JSON.stringify دايماً).
+ * قيمة تالفة كانت بتتكتب وتكسر كل الأجهزة.
+ */
+function validateData(
+  data: Record<string, string | null>
+): string | null {
+  for (const [key, value] of Object.entries(data)) {
+    if (value === null) continue;
+    if (typeof value !== "string") return `قيمة ${key} لازم تكون نص أو null`;
+    if (value.length > MAX_VALUE_CHARS) return `قيمة ${key} كبيرة جداً`;
+    if (value === "") continue;
+    try {
+      JSON.parse(value);
+    } catch {
+      return `قيمة ${key} مش JSON صالح`;
+    }
+  }
+  return null;
+}
+
 export const runtime = "nodejs";
 
 /** حالة المخزن — هل فيه بيانات وأي باكند مستخدم */
@@ -93,6 +119,10 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
+    const invalid = validateData(body.data);
+    if (invalid) {
+      return NextResponse.json({ ok: false, error: invalid }, { status: 400 });
+    }
     const before = await readWorkshopStore();
     const snapshot = await patchWorkshopStore(body.data);
     try {
@@ -103,6 +133,7 @@ export async function PATCH(request: Request) {
       );
     } catch (err) {
       console.error("[api/store PATCH ledger]", err);
+      await recordLedgerSyncFailure(Object.keys(body.data), err);
     }
     return NextResponse.json({
       ok: true,
@@ -133,6 +164,10 @@ export async function PUT(request: Request) {
         { status: 400 }
       );
     }
+    const invalid = validateData(body.data);
+    if (invalid) {
+      return NextResponse.json({ ok: false, error: invalid }, { status: 400 });
+    }
     const before = await readWorkshopStore();
     const snapshot = await replaceWorkshopStore(body.data);
     try {
@@ -143,6 +178,7 @@ export async function PUT(request: Request) {
       );
     } catch (err) {
       console.error("[api/store PUT ledger]", err);
+      await recordLedgerSyncFailure(Object.keys(body.data), err);
     }
     return NextResponse.json({
       ok: true,

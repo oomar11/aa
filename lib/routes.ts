@@ -85,14 +85,13 @@ export const ROUTES = {
   },
 
   hr: {
+    /** الهب = قائمة الموظفين نفسها، مفيش صفحة قائمة منفصلة */
     hub: "/hr",
-    employees: "/hr/employees",
     newEmployee: "/hr/employees/new",
     editEmployee: (employeeId: string) =>
       `/hr/employees/new?employee=${employeeId}`,
+    employeeDetail: (employeeId: string) => `/hr/employees/${employeeId}`,
     attendance: "/hr/attendance",
-    advances: "/hr/advances",
-    bonuses: "/hr/bonuses",
     payroll: "/hr/payroll",
   },
 
@@ -120,14 +119,14 @@ export const APP_SECTIONS = [
     label: "الرئيسية",
     description: "ملخص اليوم والاختصارات",
     href: ROUTES.home,
-    color: "#2B7DE9",
+    color: "#0D6A6B",
   },
   {
     id: "orders",
     label: "الطلبات",
     description: "المقايسات والمشاريع + طلب جديد",
     href: ROUTES.orders,
-    color: "#E85A8A",
+    color: "#b5543f",
   },
   {
     id: "workshop",
@@ -148,6 +147,6 @@ export const APP_SECTIONS = [
     label: "المزيد",
     description: "موظفين · خامات · إعدادات",
     href: ROUTES.more,
-    color: "#6B7C93",
+    color: "#6b5a48",
   },
 ] as const;

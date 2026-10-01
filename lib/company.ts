@@ -26,7 +26,7 @@ export type Company = {
 };
 
 export const DEFAULT_COMPANY: Company = {
-  name: "شركتي للـ uPVC",
+  name: "الوهيدي",
   phone: "",
   address: "",
   email: "",

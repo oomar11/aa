@@ -15,7 +15,7 @@ export default function DesignPage() {
       <div className="mt-8 flex w-full flex-col gap-3">
         <Link
           href={ROUTES.design.newCustomer}
-          className="flex h-14 items-center justify-center rounded-2xl bg-primary text-base font-semibold text-white shadow-[0_6px_18px_rgba(43,125,233,0.28)] transition-all active:scale-[0.98]"
+          className="flex h-14 items-center justify-center rounded-2xl bg-primary text-base font-semibold text-white shadow-[0_6px_18px_rgba(13,106,107,0.28)] transition-all active:scale-[0.98]"
         >
           عميل جديد
         </Link>

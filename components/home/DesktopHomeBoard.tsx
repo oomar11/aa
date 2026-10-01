@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { isAccountedProject } from "@/lib/accounting-scope";
-import {
-  buildAccountingReport,
-  expensesTotalInPeriod,
-} from "@/lib/accounting-reports";
-import { loadExpenses, todayIsoDate } from "@/lib/accounting";
+import { isAccountedProject, workshopMoneyTotals } from "@/lib/accounting-scope";
+import { buildAccountingReport } from "@/lib/accounting-reports";
+import { todayIsoDate } from "@/lib/accounting";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import {
@@ -25,6 +22,11 @@ import {
   WORKFLOW_VISUAL,
 } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
+import {
+  AddExpenseIcon,
+  NewOrderIcon,
+  ReceivePaymentIcon,
+} from "@/components/home/HomeIcons";
 
 function customerName(map: Map<string, Customer>, customerId: string): string {
   return map.get(customerId)?.name ?? "عميل";
@@ -35,11 +37,19 @@ function customerName(map: Map<string, Customer>, customerId: string): string {
  */
 export function DesktopHomeBoard() {
   const [tick, setTick] = useState(0);
+  // بيانات الحسابات/المشاريع مخزّنة محلياً في المتصفح، فالسيرفر ميقدرش يعرضها.
+  // بنسيب أول عرض (سيرفر وعميل) فاضي زي بعضه بالظبط عشان الـ hydration ميتعارضش،
+  // وبعد أول تركيب بنملاه بالبيانات الحقيقية.
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     function refresh() {
       setTick((n) => n + 1);
     }
+    function markMounted() {
+      setMounted(true);
+    }
+    markMounted();
     window.addEventListener(PROJECTS_UPDATED_EVENT, refresh);
     window.addEventListener("upvc-accounting-updated", refresh);
     window.addEventListener("upvc-customers-updated", refresh);
@@ -54,41 +64,39 @@ export function DesktopHomeBoard() {
 
   const customerById = useMemo(() => {
     const map = new Map<string, Customer>();
-    for (const c of mergeCustomers()) map.set(c.id, c);
+    if (mounted) {
+      for (const c of mergeCustomers()) map.set(c.id, c);
+    }
     return map;
-  }, [tick]);
+  }, [tick, mounted]);
 
-  const inWorkshop = listWorkshopProjects({ includeHeld: false });
-  const queued = listQueuedProjects({ includeHeld: false });
-  const awaiting = listAwaitingDeliveryProjects();
+  const inWorkshop = mounted
+    ? listWorkshopProjects({ includeHeld: false })
+    : [];
+  const queued = mounted ? listQueuedProjects({ includeHeld: false }) : [];
+  const awaiting = mounted ? listAwaitingDeliveryProjects() : [];
   const nextUpId = queued[0]?.id ?? null;
 
-  const monthReport =
-    typeof window === "undefined"
-      ? { collected: 0, outstanding: 0, net: 0, expenses: 0 }
-      : buildAccountingReport("month");
+  const monthReport = !mounted
+    ? { collected: 0, outstanding: 0, net: 0, expenses: 0 }
+    : buildAccountingReport("month");
 
-  // مصروف الشهر = كل القيود بتاريخها هذا الشهر (فواتير/مشروع/عام) —
-  // مش بس مصروف الشغل المتسلّم زي تقرير الربح.
-  const monthExpenses =
-    typeof window === "undefined"
-      ? 0
-      : expensesTotalInPeriod("month", loadExpenses());
+  // إجمالي الباقي عند العملاء على كل الشغل — مش بس اللي اتسلّم الشهر ده،
+  // عشان يطابق نفس الرقم الظاهر في نسخة الموبايل وصفحة "فلوس ليا برا".
+  const outstanding = !mounted ? 0 : workshopMoneyTotals().outstanding;
 
-  const todayLabel =
-    typeof window === "undefined" ? "" : formatDate(todayIsoDate());
+  const todayLabel = !mounted ? "" : formatDate(todayIsoDate());
 
-  const activeProjects =
-    typeof window === "undefined"
-      ? []
-      : listAllProjects()
-          .filter(isAccountedProject)
-          .sort(compareProjectsByWorkflowThenDate)
-          .slice(0, 20)
-          .map((project) => {
-            const money = getProjectMoneySummary(project.id);
-            return { project, money };
-          });
+  const activeProjects = !mounted
+    ? []
+    : listAllProjects()
+        .filter(isAccountedProject)
+        .sort(compareProjectsByWorkflowThenDate)
+        .slice(0, 20)
+        .map((project) => {
+          const money = getProjectMoneySummary(project.id);
+          return { project, money };
+        });
 
   return (
     <div className="hidden flex-col gap-6 lg:flex">
@@ -102,51 +110,27 @@ export function DesktopHomeBoard() {
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={ROUTES.design.hub}
-            className="flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-white"
+            className="flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-bold text-white"
           >
+            <NewOrderIcon className="h-4 w-4" />
             طلب جديد
           </Link>
           <Link
             href={ROUTES.accounting.newPayment}
-            className="flex h-10 items-center justify-center rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground"
+            className="flex h-10 items-center gap-1.5 rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground"
           >
+            <ReceivePaymentIcon className="h-4 w-4" />
             استلام دفعة
           </Link>
           <Link
             href={ROUTES.accounting.newExpense}
-            className="flex h-10 items-center justify-center rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground"
+            className="flex h-10 items-center gap-1.5 rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground"
           >
+            <AddExpenseIcon className="h-4 w-4" />
             تسجيل مصروف
           </Link>
         </div>
       </header>
-
-      <section className="grid grid-cols-4 gap-3">
-        <KpiTile
-          label="باقي عند العملاء"
-          value={formatCurrency(monthReport.outstanding)}
-          href={ROUTES.accounting.receivables}
-          color="text-[#E85A8A]"
-        />
-        <KpiTile
-          label="محصّل الشهر"
-          value={formatCurrency(monthReport.collected)}
-          href={ROUTES.accounting.payments}
-          color="text-[#2F9B7A]"
-        />
-        <KpiTile
-          label="مصروف الشهر"
-          value={formatCurrency(monthExpenses)}
-          href={ROUTES.accounting.expenses}
-          color="text-[#C45C26]"
-        />
-        <KpiTile
-          label="مكسب الشهر"
-          value={formatCurrency(monthReport.net)}
-          href={ROUTES.accounting.reports}
-          color={monthReport.net >= 0 ? "text-[#1F6B55]" : "text-[#E85A8A]"}
-        />
-      </section>
 
       <section className="grid grid-cols-3 gap-3">
         <WorkshopColumn
@@ -175,6 +159,22 @@ export function DesktopHomeBoard() {
           customerById={customerById}
         />
       </section>
+
+      <Link
+        href={ROUTES.accounting.receivables}
+        className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#b5543f]/30 bg-[#b5543f]/8 px-6 py-5 transition-colors hover:bg-[#b5543f]/12"
+      >
+        <div>
+          <p className="text-sm font-bold text-[#b5543f]">باقي عند العملاء</p>
+          <p className="mt-1 text-xs text-muted">
+            فلوس على شغل خرج من الورشة ولسه متسلّمش
+          </p>
+        </div>
+        <p className="text-3xl font-bold tabular-nums text-[#b5543f] xl:text-4xl">
+          {formatCurrency(outstanding)}{" "}
+          <span className="text-base font-semibold text-muted">ج.م</span>
+        </p>
+      </Link>
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <section className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -243,7 +243,7 @@ export function DesktopHomeBoard() {
                       <td
                         className={`px-4 py-2.5 text-end tabular-nums font-semibold ${
                           money.remaining > 0
-                            ? "text-[#E85A8A]"
+                            ? "text-[#b5543f]"
                             : "text-[#2F9B7A]"
                         }`}
                       >
@@ -265,7 +265,7 @@ export function DesktopHomeBoard() {
             <p className="text-xs font-medium text-muted">مكسب هذا الشهر</p>
             <p
               className={`mt-2 text-3xl font-bold tabular-nums tracking-tight ${
-                monthReport.net >= 0 ? "text-[#1F6B55]" : "text-[#E85A8A]"
+                monthReport.net >= 0 ? "text-[#1F6B55]" : "text-[#b5543f]"
               }`}
             >
               {formatCurrency(monthReport.net)}{" "}
@@ -304,31 +304,6 @@ export function DesktopHomeBoard() {
         </aside>
       </div>
     </div>
-  );
-}
-
-function KpiTile({
-  label,
-  value,
-  href,
-  color,
-}: {
-  label: string;
-  href: string;
-  value: string;
-  color: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="rounded-2xl border border-border bg-card px-5 py-4 transition-colors hover:bg-primary-soft/40"
-    >
-      <p className="text-xs text-muted">{label}</p>
-      <p className={`mt-2 text-2xl font-bold tabular-nums xl:text-3xl ${color}`}>
-        {value}
-        <span className="mr-1 text-sm font-semibold text-muted">ج.م</span>
-      </p>
-    </Link>
   );
 }
 
@@ -414,7 +389,7 @@ function WorkshopColumn({
                   </p>
                   <p
                     className={`mt-1.5 text-[12px] font-semibold tabular-nums ${
-                      remaining > 0 ? "text-[#E85A8A]" : "text-[#2F9B7A]"
+                      remaining > 0 ? "text-[#b5543f]" : "text-[#2F9B7A]"
                     }`}
                   >
                     باقي {formatCurrency(remaining)} ج.م

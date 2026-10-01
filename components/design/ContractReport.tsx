@@ -33,7 +33,7 @@ function PartyBlock({
     <div
       style={{
         flex: 1,
-        border: "1px solid #d8dee8",
+        border: "1px solid #d6ccb9",
         borderRadius: 10,
         padding: "12px 14px",
         minWidth: 0,
@@ -44,7 +44,7 @@ function PartyBlock({
           margin: 0,
           fontSize: 11,
           fontWeight: 700,
-          color: "#2b7de9",
+          color: "#0d6a6b",
           lineHeight: "16px",
         }}
       >
@@ -55,7 +55,7 @@ function PartyBlock({
           margin: "6px 0 0",
           fontSize: 14,
           fontWeight: 700,
-          color: "#152033",
+          color: "#1f1b16",
           lineHeight: "20px",
         }}
       >
@@ -67,7 +67,7 @@ function PartyBlock({
           style={{
             margin: "4px 0 0",
             fontSize: 11,
-            color: "#5a6578",
+            color: "#5c4e3f",
             lineHeight: "16px",
             textAlign: "right",
           }}
@@ -80,7 +80,7 @@ function PartyBlock({
           style={{
             margin: "4px 0 0",
             fontSize: 11,
-            color: "#5a6578",
+            color: "#5c4e3f",
             lineHeight: "16px",
           }}
         >
@@ -99,8 +99,8 @@ function MoneyRow({ label, value, bold }: { label: string; value: string; bold?:
           padding: "8px 10px",
           fontSize: 12,
           fontWeight: bold ? 700 : 500,
-          color: "#152033",
-          borderBottom: "1px solid #e8edf5",
+          color: "#1f1b16",
+          borderBottom: "1px solid #f2ede3",
         }}
       >
         {label}
@@ -110,9 +110,9 @@ function MoneyRow({ label, value, bold }: { label: string; value: string; bold?:
           padding: "8px 10px",
           fontSize: 13,
           fontWeight: bold ? 700 : 600,
-          color: "#152033",
+          color: "#1f1b16",
           textAlign: "left",
-          borderBottom: "1px solid #e8edf5",
+          borderBottom: "1px solid #f2ede3",
           fontVariantNumeric: "tabular-nums",
           whiteSpace: "nowrap",
         }}
@@ -147,7 +147,7 @@ export function ContractReport({
             height: REPORT_PAGE_HEIGHT_PX,
           }}
         >
-          <p style={{ fontSize: 14, color: "#5a6578" }}>المشروع غير موجود</p>
+          <p style={{ fontSize: 14, color: "#5c4e3f" }}>المشروع غير موجود</p>
         </section>
       </div>
     );
@@ -194,7 +194,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
               <>
                 <header
                   className="shrink-0"
-                  style={{ borderBottom: "2px solid #2b7de9", paddingBottom: 12 }}
+                  style={{ borderBottom: "2px solid #0d6a6b", paddingBottom: 12 }}
                 >
                   <div
                     style={{
@@ -205,24 +205,28 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                     }}
                   >
                     <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
-                      <h1
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/brand/logo.png" alt="" style={{ display: "block", height: 46, width: "auto", marginBottom: 8 }} />
+                      {(company.name || "الوهيدي").trim() !== "الوهيدي" ? (
+<h1
                         style={{
                           margin: 0,
                           fontSize: 22,
                           fontWeight: 700,
-                          color: "#152033",
+                          color: "#1f1b16",
                           lineHeight: "28px",
                         }}
                       >
-                        {company.name || "شركتي للـ uPVC"}
+                        {company.name || "الوهيدي"}
                       </h1>
+) : null}
                       {company.phone ? (
                         <p
                           dir="ltr"
                           style={{
                             margin: "6px 0 0",
                             fontSize: 11,
-                            color: "#5a6578",
+                            color: "#5c4e3f",
                             lineHeight: "16px",
                             textAlign: "right",
                           }}
@@ -235,7 +239,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                           style={{
                             margin: "4px 0 0",
                             fontSize: 11,
-                            color: "#5a6578",
+                            color: "#5c4e3f",
                             lineHeight: "16px",
                           }}
                         >
@@ -249,7 +253,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                           margin: 0,
                           fontSize: 16,
                           fontWeight: 700,
-                          color: "#2b7de9",
+                          color: "#0d6a6b",
                           lineHeight: "22px",
                         }}
                       >
@@ -259,7 +263,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                         style={{
                           margin: "6px 0 0",
                           fontSize: 11,
-                          color: "#5a6578",
+                          color: "#5c4e3f",
                           lineHeight: "16px",
                         }}
                       >
@@ -294,7 +298,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                 <div
                   style={{
                     marginTop: 14,
-                    border: "1px solid #d8dee8",
+                    border: "1px solid #d6ccb9",
                     borderRadius: 10,
                     padding: "12px 14px",
                     flexShrink: 0,
@@ -305,7 +309,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                       margin: 0,
                       fontSize: 11,
                       fontWeight: 700,
-                      color: "#2b7de9",
+                      color: "#0d6a6b",
                     }}
                   >
                     موضوع العقد
@@ -315,7 +319,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                       margin: "6px 0 0",
                       fontSize: 14,
                       fontWeight: 700,
-                      color: "#152033",
+                      color: "#1f1b16",
                       lineHeight: "20px",
                     }}
                   >
@@ -326,7 +330,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                       style={{
                         margin: "4px 0 0",
                         fontSize: 12,
-                        color: "#5a6578",
+                        color: "#5c4e3f",
                         lineHeight: "18px",
                       }}
                     >
@@ -340,7 +344,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                     width: "100%",
                     marginTop: 14,
                     borderCollapse: "collapse",
-                    border: "1px solid #d8dee8",
+                    border: "1px solid #d6ccb9",
                     borderRadius: 10,
                     overflow: "hidden",
                     flexShrink: 0,
@@ -368,7 +372,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
               <header
                 className="shrink-0"
                 style={{
-                  borderBottom: "1px solid #d8dee8",
+                  borderBottom: "1px solid #d6ccb9",
                   paddingBottom: 10,
                   marginBottom: 12,
                 }}
@@ -378,7 +382,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                     margin: 0,
                     fontSize: 13,
                     fontWeight: 700,
-                    color: "#152033",
+                    color: "#1f1b16",
                   }}
                 >
                   عقد اتفاق — {project.name}
@@ -386,7 +390,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                     style={{
                       marginRight: 8,
                       fontWeight: 500,
-                      color: "#5a6578",
+                      color: "#5c4e3f",
                       fontSize: 11,
                     }}
                   >
@@ -403,7 +407,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                     margin: "0 0 10px",
                     fontSize: 13,
                     fontWeight: 700,
-                    color: "#152033",
+                    color: "#1f1b16",
                   }}
                 >
                   بنود الاتفاق
@@ -424,7 +428,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                       marginBottom: 8,
                       fontSize: 12,
                       lineHeight: "18px",
-                      color: "#152033",
+                      color: "#1f1b16",
                     }}
                   >
                     {term}
@@ -450,7 +454,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                   style={{
                     margin: "14px 0 0",
                     fontSize: 10,
-                    color: "#8a93a3",
+                    color: "#8a7a68",
                     textAlign: "center",
                   }}
                 >
@@ -462,7 +466,7 @@ function ContractPages({ data }: { data: ProjectContractData }) {
                 style={{
                   marginTop: "auto",
                   fontSize: 10,
-                  color: "#8a93a3",
+                  color: "#8a7a68",
                   textAlign: "center",
                   flexShrink: 0,
                 }}
@@ -485,7 +489,7 @@ function SignatureBox({ label }: { label: string }) {
           margin: 0,
           fontSize: 11,
           fontWeight: 600,
-          color: "#152033",
+          color: "#1f1b16",
           lineHeight: "16px",
         }}
       >
@@ -494,7 +498,7 @@ function SignatureBox({ label }: { label: string }) {
       <div
         style={{
           marginTop: 36,
-          borderBottom: "1px solid #152033",
+          borderBottom: "1px solid #1f1b16",
           height: 1,
         }}
       />
@@ -502,7 +506,7 @@ function SignatureBox({ label }: { label: string }) {
         style={{
           margin: "8px 0 0",
           fontSize: 10,
-          color: "#8a93a3",
+          color: "#8a7a68",
         }}
       >
         الاسم / التاريخ

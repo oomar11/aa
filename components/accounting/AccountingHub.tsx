@@ -33,7 +33,7 @@ const links = [
     href: ROUTES.accounting.receivables,
     title: "فلوس لِيا برا",
     description: "عليه فلوس · اتسلّم · الشغل اتسلّم ولا لأ",
-    accent: "bg-[#E85A8A]",
+    accent: "bg-[#b5543f]",
   },
   {
     href: ROUTES.accounting.activity,
@@ -63,7 +63,7 @@ const links = [
     href: ROUTES.accounting.expenses,
     title: "مصروفات الورشة",
     description: "نقدي من الخزنة أو آجل على مورد + إضافة مورد سريع",
-    accent: "bg-[#E8956F]",
+    accent: "bg-[#d98a6c]",
   },
   {
     href: ROUTES.hr.hub,
@@ -259,7 +259,7 @@ export function AccountingHub() {
                     </div>
                     <div className="shrink-0 text-end">
                       <p className="text-[10px] text-muted">باقي</p>
-                      <p className="text-sm font-bold tabular-nums text-[#E85A8A]">
+                      <p className="text-sm font-bold tabular-nums text-[#b5543f]">
                         {formatCurrency(row.remaining)}
                       </p>
                     </div>
@@ -311,7 +311,7 @@ function SummaryTile({
     tone === "good"
       ? "text-[#2F9B7A]"
       : tone === "warn"
-        ? "text-[#E85A8A]"
+        ? "text-[#b5543f]"
         : tone === "expense"
           ? "text-[#C45C26]"
           : "text-foreground";

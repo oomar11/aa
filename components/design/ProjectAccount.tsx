@@ -155,7 +155,7 @@ export function ProjectAccount({
             <p className="text-xs text-muted">المحصّل ناقص المصروف</p>
             <p
               className={`text-sm font-bold tabular-nums ${
-                profit >= 0 ? "text-[#2F9B7A]" : "text-[#E85A8A]"
+                profit >= 0 ? "text-[#2F9B7A]" : "text-[#b5543f]"
               }`}
             >
               {formatCurrency(profit)} ج.م
@@ -240,7 +240,7 @@ export function ProjectAccount({
         {expenses.map((expense) => {
           const expensesHref = ROUTES.design.expenses(customerId, projectId);
           const rowClass =
-            "flex w-full items-center justify-between gap-3 rounded-xl bg-background/60 px-3 py-2.5 text-right transition-all hover:bg-[#E8956F]/10 active:scale-[0.99]";
+            "flex w-full items-center justify-between gap-3 rounded-xl bg-background/60 px-3 py-2.5 text-right transition-all hover:bg-[#d98a6c]/10 active:scale-[0.99]";
           const body = (
             <>
               <div className="min-w-0">
@@ -316,7 +316,7 @@ function MoneyTile({
     tone === "good"
       ? "text-[#2F9B7A]"
       : tone === "warn"
-        ? "text-[#E85A8A]"
+        ? "text-[#b5543f]"
         : tone === "expense"
           ? "text-[#C45C26]"
           : "text-foreground";

@@ -2,22 +2,22 @@
 
 :root {
   color-scheme: light;
-  --background: #f4f6f9;
-  --foreground: #152033;
-  --card: #ffffff;
-  --primary: #2b7de9;
-  --primary-soft: #e8f1fc;
+  --background: #f7f4ee;
+  --foreground: #1f1b16;
+  --card: #fffdf8;
+  --primary: #0d6a6b;
+  --primary-soft: #e2f0ee;
   --primary-foreground: #ffffff;
-  --border: #e4e8ee;
-  --muted: #8a93a3;
-  --icon-bg: #eef4fc;
+  --border: #dcd4c4;
+  --muted: #6b5a48;
+  --icon-bg: #e6f1ef;
   /* حالات المشروع — تمييز بصري سريع */
-  --wf-quote: #5b6b7c;
-  --wf-quote-soft: #eef1f4;
+  --wf-quote: #6b5a48;
+  --wf-quote-soft: #efeae0;
   --wf-queued: #c47a12;
-  --wf-queued-soft: #fff4e5;
-  --wf-workshop: #1f7a5c;
-  --wf-workshop-soft: #e6f5ef;
+  --wf-queued-soft: #fbf0dc;
+  --wf-workshop: #5a7d2a;
+  --wf-workshop-soft: #eef3e1;
   --wf-done: #3d6fa8;
   --wf-done-soft: #e8f0f8;
 }
@@ -49,6 +49,16 @@ body {
   font-family: var(--font-cairo), system-ui, sans-serif;
 }
 
+/* تلميح بصري إن شريط التبويبات القابل للتمرير أفقياً فيه محتوى زيادة مقصوص */
+.scroll-fade-x {
+  mask-image: linear-gradient(to left, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(
+    to left,
+    black calc(100% - 28px),
+    transparent 100%
+  );
+}
+
 /* تقرير المشروع — طباعة / حفظ PDF */
 @media print {
   @page {
@@ -59,7 +69,7 @@ body {
   html,
   body {
     background: #ffffff !important;
-    color: #152033 !important;
+    color: #1f1b16 !important;
   }
 
   .print\:hidden,
@@ -87,7 +97,7 @@ body {
   .project-report {
     max-width: none !important;
     background: #ffffff !important;
-    color: #152033 !important;
+    color: #1f1b16 !important;
   }
 
   .report-sheet {

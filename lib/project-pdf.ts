@@ -41,6 +41,9 @@ export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
   if (typeof document !== "undefined" && document.fonts?.ready) {
     try {
       await document.fonts.ready;
+      await Promise.all(
+        Array.from(document.images).map((im) => im.decode().catch(() => undefined)),
+      );
     } catch {
       /* ignore */
     }
@@ -68,7 +71,7 @@ export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
       page.style.boxSizing = "border-box";
       page.style.overflow = "hidden";
       page.style.opacity = "1";
-      page.style.color = "#152033";
+      page.style.color = "#1f1b16";
       page.style.backgroundColor = "#ffffff";
 
       const canvas = await domToCanvas(page, {
@@ -82,7 +85,7 @@ export async function elementToPdfBlob(element: HTMLElement): Promise<Blob> {
           letterSpacing: "0px",
           wordSpacing: "0px",
           opacity: "1",
-          color: "#152033",
+          color: "#1f1b16",
           backgroundColor: "#ffffff",
         },
       });

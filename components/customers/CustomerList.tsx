@@ -169,7 +169,7 @@ export function CustomerList() {
                       <p className="text-[11px] text-muted">متبقي</p>
                       <p
                         className={`mt-0.5 text-sm font-bold ${
-                          owes ? "text-[#E85A8A]" : "text-emerald-600"
+                          owes ? "text-[#b5543f]" : "text-emerald-600"
                         }`}
                       >
                         {owes

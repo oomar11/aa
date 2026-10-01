@@ -125,7 +125,7 @@ export const EstimatedCostPdfExporter = forwardRef<
             <div
               ref={hostRef}
               aria-hidden
-              className="pointer-events-none fixed top-0 left-0 z-[-1] overflow-visible bg-white text-[#152033]"
+              className="pointer-events-none fixed top-0 left-0 z-[-1] overflow-visible bg-white text-[#1f1b16]"
               style={{
                 width: REPORT_PAGE_WIDTH_PX,
                 opacity: 0.01,
@@ -260,6 +260,9 @@ async function waitForPaint() {
   if (typeof document !== "undefined" && document.fonts?.ready) {
     try {
       await document.fonts.ready;
+      await Promise.all(
+        Array.from(document.images).map((im) => im.decode().catch(() => undefined)),
+      );
     } catch {
       /* ignore */
     }

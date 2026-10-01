@@ -109,9 +109,9 @@ export function DrawingCanvas({
   const isWood = Boolean(frameMeta.wood);
 
   const glass = "#b7d6f0";
-  const openStroke = "#2b7de9";
+  const openStroke = "#0d6a6b";
   const hardware = "#8a93a0";
-  const frameStroke = "#9aa3ad";
+  const frameStroke = "#8a7a68";
   const paneStroke = "#7a8796";
   const dimColors: DimColors = {
     line: "#222",

@@ -399,14 +399,14 @@ function ExpenseFormFields({
   }
 
   const fieldClass =
-    "w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-[#E8956F] focus:ring-2 focus:ring-[#E8956F]/20";
+    "w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-[#d98a6c] focus:ring-2 focus:ring-[#d98a6c]/20";
 
   return (
     <form
       onSubmit={(e) => void handleSubmit(e)}
       className={`flex w-full flex-col gap-4 ${embedded ? "" : "lg:max-w-4xl"}`}
     >
-      <p className="rounded-2xl border border-[#E8956F]/30 bg-[#E8956F]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
+      <p className="rounded-2xl border border-[#d98a6c]/30 bg-[#d98a6c]/10 px-3.5 py-3 text-xs leading-relaxed text-foreground">
         {isEditing
           ? "عدّل المبلغ أو الوصف أو المشروع. التغيير يظهر في حساب الشغلانة والربح وسجل الحركة."
           : embedded
@@ -532,7 +532,7 @@ function ExpenseFormFields({
                 onClick={() => setCategory(item)}
                 className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all active:scale-95 ${
                   active
-                    ? "bg-[#E8956F] text-white"
+                    ? "bg-[#d98a6c] text-white"
                     : "border border-border bg-background text-foreground"
                 }`}
               >
@@ -574,7 +574,7 @@ function ExpenseFormFields({
             <button
               type="button"
               onClick={clearProject}
-              className="text-xs font-semibold text-[#E85A8A]"
+              className="text-xs font-semibold text-[#b5543f]"
             >
               إزالة الربط
             </button>
@@ -590,7 +590,7 @@ function ExpenseFormFields({
         </div>
 
         {selectedProject ? (
-          <div className="rounded-2xl border border-[#E8956F]/40 bg-[#E8956F]/10 px-3.5 py-3">
+          <div className="rounded-2xl border border-[#d98a6c]/40 bg-[#d98a6c]/10 px-3.5 py-3">
             <p className="text-sm font-bold text-foreground">
               {selectedProject.name}
             </p>
@@ -607,7 +607,7 @@ function ExpenseFormFields({
               value={projectQuery}
               onChange={(e) => setProjectQuery(e.target.value)}
               placeholder="بحث باسم المشروع أو العميل…"
-              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-[#E8956F]"
+              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-[#d98a6c]"
             />
             <ul className="max-h-48 overflow-y-auto">
               {filteredProjects.length === 0 ? (
@@ -620,7 +620,7 @@ function ExpenseFormFields({
                     <button
                       type="button"
                       onClick={() => pickProject(project)}
-                      className="flex w-full flex-col gap-0.5 rounded-xl px-2.5 py-2 text-right hover:bg-[#E8956F]/10"
+                      className="flex w-full flex-col gap-0.5 rounded-xl px-2.5 py-2 text-right hover:bg-[#d98a6c]/10"
                     >
                       <span className="text-sm font-semibold text-foreground">
                         {project.name}
@@ -644,7 +644,7 @@ function ExpenseFormFields({
       </div>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f]">{error}</p>
       ) : null}
 
       <button

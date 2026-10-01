@@ -13,12 +13,12 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "UPVC Design",
+  title: "الوهيدي",
   description: "تصميم أبواب ونوافذ الـ uPVC",
-  applicationName: "UPVC Design",
+  applicationName: "الوهيدي",
   appleWebApp: {
     capable: true,
-    title: "UPVC Design",
+    title: "الوهيدي",
     statusBarStyle: "default",
   },
   formatDetection: {
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#2b7de9",
+  themeColor: "#0d6a6b",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover" as const,

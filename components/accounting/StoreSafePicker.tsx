@@ -90,7 +90,7 @@ export function StoreSafePicker({
     <span className="text-sm font-medium">
       {label}{" "}
       {bridgeOn && safes.length > 0 ? (
-        <span className="text-[#E85A8A]">*</span>
+        <span className="text-[#b5543f]">*</span>
       ) : null}
     </span>
   );
@@ -119,7 +119,7 @@ export function StoreSafePicker({
     return (
       <div className={`flex flex-col gap-1.5 text-right ${className || ""}`}>
         {heading}
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f]">{error}</p>
       </div>
     );
   }

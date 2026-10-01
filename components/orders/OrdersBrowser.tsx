@@ -493,7 +493,7 @@ export function OrdersBrowser() {
                       <td
                         className={`px-3 py-2.5 text-end tabular-nums font-semibold ${
                           money.remaining > 0
-                            ? "text-[#E85A8A]"
+                            ? "text-[#b5543f]"
                             : "text-[#2F9B7A]"
                         }`}
                       >
@@ -644,7 +644,7 @@ function RowMenu({
               setOpen(false);
               onDelete();
             }}
-            className="block w-full px-3 py-2 text-right text-xs font-semibold text-[#E85A8A] hover:bg-[#E85A8A]/10"
+            className="block w-full px-3 py-2 text-right text-xs font-semibold text-[#b5543f] hover:bg-[#b5543f]/10"
           >
             حذف المشروع
           </button>

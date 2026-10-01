@@ -12,6 +12,7 @@ import {
   upsertProjectOverride,
   type Project,
 } from "@/lib/projects";
+import { toLocalIsoDate } from "@/lib/utils";
 
 type Props = {
   customerId: string;
@@ -47,7 +48,7 @@ export function NewProjectForm({ customerId }: Props) {
       customerId,
       name: trimmedName,
       location: trimmedAddress,
-      createdAt: new Date().toISOString().slice(0, 10),
+      createdAt: toLocalIsoDate(),
       status: "open",
       workflow: "quote",
       itemsCount: 0,
@@ -69,7 +70,7 @@ export function NewProjectForm({ customerId }: Props) {
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium text-foreground">
-          اسم المشروع <span className="text-[#E85A8A]">*</span>
+          اسم المشروع <span className="text-[#b5543f]">*</span>
         </span>
         <input
           type="text"
@@ -85,7 +86,7 @@ export function NewProjectForm({ customerId }: Props) {
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium text-foreground">
-          العنوان <span className="text-[#E85A8A]">*</span>
+          العنوان <span className="text-[#b5543f]">*</span>
         </span>
         <input
           type="text"
@@ -110,7 +111,7 @@ export function NewProjectForm({ customerId }: Props) {
       </div>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f]">{error}</p>
       ) : null}
 
       <button

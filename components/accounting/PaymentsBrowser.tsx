@@ -149,7 +149,7 @@ export function PaymentsBrowser() {
       </div>
 
       {actionError ? (
-        <p className="rounded-xl border border-[#E85A8A]/35 bg-[#E85A8A]/10 px-3 py-2 text-xs font-medium text-[#E85A8A]">
+        <p className="rounded-xl border border-[#b5543f]/35 bg-[#b5543f]/10 px-3 py-2 text-xs font-medium text-[#b5543f]">
           {actionError}
         </p>
       ) : null}
@@ -198,7 +198,7 @@ export function PaymentsBrowser() {
                         type="button"
                         disabled={busyId === payment.id}
                         onClick={() => void handleDelete(payment)}
-                        className="text-xs font-semibold text-[#E85A8A] disabled:opacity-50"
+                        className="text-xs font-semibold text-[#b5543f] disabled:opacity-50"
                       >
                         {busyId === payment.id ? "…" : "حذف"}
                       </button>

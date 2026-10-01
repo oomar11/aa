@@ -1,10 +1,25 @@
 /**
- * Server-only: after PVC data is saved, push sales/collections to the store ledger.
+ * Server-only: after PVC data is saved, push collections (and deterministic
+ * sales / voids) to the store ledger.
  * Never import from Client Components.
+ *
+ * ملاحظات تصميم:
+ * - الدفعات: بتتبعت بالمبلغ نفسه، والمحذوف بيتبعت له `workshop_void`.
+ * - البيع: السيرفر ما يقدرش يحسب سعر البنود زي العميل (الأسعار بتعتمد على
+ *   كتالوج النظام في المتصفح)، فمايبعتش قيد بيع غير لما يكون فيه `agreedSale`
+ *   (مبلغ متفق عليه = رقم ثابت). باقي المشاريع بيبعتها `store-ledger-mirror.ts`
+ *   من المتصفح بالحساب الصح — كده مفيش مصدرين بيتنافسوا على نفس `sale:<id>`.
+ * - أي طلب يفشل بيتخزن في سجل الفشل ويتعاد تلقائياً في أول مزامنة جاية.
  */
 import { STORAGE_KEYS } from "@/lib/storage/keys";
 import type { WorkshopStoreSnapshot } from "@/lib/storage/server-store";
 import { getOutboundStoreBridge } from "@/lib/store-bridge-server";
+import {
+  LedgerSyncError,
+  clearPendingLedgerBodies,
+  loadPendingLedgerBodies,
+  type LedgerBody,
+} from "@/lib/ledger-sync-failures";
 
 type SnapshotProject = {
   id: string;
@@ -12,16 +27,10 @@ type SnapshotProject = {
   name: string;
   workflow?: string;
   agreedSale?: number;
-  discountType?: "amount" | "percent";
-  discountValue?: number;
 };
 
 type SnapshotCustomer = {
   id: string;
-  name?: string;
-  phone?: string;
-  address?: string;
-  note?: string;
   storeCustomerId?: string;
 };
 
@@ -32,19 +41,11 @@ type SnapshotPayment = {
   amount: number;
   date?: string;
   note?: string;
-  method?: string;
 };
 
-type SnapshotItem = {
-  kind?: string;
-  qty?: number;
-  specialPrice?: number | null;
-  customSalePricePerSqm?: number | null;
-  pricePerSqm?: number;
-  widthMm?: number;
-  heightMm?: number;
-  discountId?: string | null;
-};
+const CONCURRENCY = 4;
+/** حد زمني للمزامنة جوه الطلب — اللي مخلصش بيتأجل للإعادة */
+const DEADLINE_MS = 25_000;
 
 function roundMoney(amount: number): number {
   return Math.round((Number(amount) || 0) * 100) / 100;
@@ -59,52 +60,46 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
   }
 }
 
-function billedItemTotal(item: SnapshotItem): number {
-  const qty = Math.max(1, Number(item.qty) || 1);
-  const special = Number(item.specialPrice);
-  const discountId = item.discountId;
-  const percent =
-    discountId === "d1" ? 1 : discountId === "d3" ? 3 : discountId === "d5" ? 5 : 0;
-  const apply = (n: number) =>
-    percent > 0 ? n * (1 - percent / 100) : n;
-  if (item.kind === "extra") {
-    return apply(Number.isFinite(special) && special > 0 ? special * qty : 0);
-  }
-  if (Number.isFinite(special) && special > 0) {
-    return apply(special * qty);
-  }
-  const w = Number(item.widthMm) || 0;
-  const h = Number(item.heightMm) || 0;
-  const unitArea = (w * h) / 1_000_000;
-  const billable = unitArea > 0 ? Math.max(1, unitArea) : 1;
-  const custom = Number(item.customSalePricePerSqm);
-  const rate =
-    Number.isFinite(custom) && custom > 0
-      ? custom
-      : Number(item.pricePerSqm) || 0;
-  return apply(billable * rate * qty);
+type SaleDecision =
+  | { mode: "post"; amount: number }
+  | { mode: "void" }
+  | { mode: "skip" };
+
+function paidFor(projectId: string, payments: SnapshotPayment[]): number {
+  return payments
+    .filter((p) => p.projectId === projectId)
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 }
 
-function projectSale(
+function decideSale(
   project: SnapshotProject,
-  items: SnapshotItem[]
-): number {
+  payments: SnapshotPayment[]
+): SaleDecision {
+  if (project.workflow === "quote") return { mode: "void" };
   const agreed = Number(project.agreedSale);
-  if (Number.isFinite(agreed) && agreed > 0) return roundMoney(agreed);
-  const subtotal = roundMoney(items.reduce((sum, it) => sum + billedItemTotal(it), 0));
-  const raw = Number(project.discountValue) || 0;
-  if (!project.discountType || raw <= 0 || subtotal <= 0) return subtotal;
-  const discount =
-    project.discountType === "percent"
-      ? roundMoney(Math.min(subtotal, (subtotal * Math.min(raw, 100)) / 100))
-      : roundMoney(Math.min(subtotal, raw));
-  return roundMoney(Math.max(0, subtotal - discount));
+  if (Number.isFinite(agreed) && agreed > 0) {
+    // الزيادة على نفس الشغلانة ما تعملش رصيد دائن: قيد البيع = الأكبر بين الاتنين
+    return {
+      mode: "post",
+      amount: roundMoney(Math.max(agreed, paidFor(project.id, payments))),
+    };
+  }
+  return { mode: "skip" };
+}
+
+function saleFingerprint(project: SnapshotProject, d: SaleDecision): string {
+  const amount = d.mode === "post" ? d.amount : 0;
+  return `${project.id}:${d.mode}:${amount}:${project.customerId}`;
+}
+
+function payFingerprint(p: SnapshotPayment): string {
+  return `${p.id}:${roundMoney(Number(p.amount) || 0)}:${p.projectId || ""}:${p.customerId}`;
 }
 
 async function postLedger(
   storeUrl: string,
   secret: string,
-  body: Record<string, unknown>
+  body: LedgerBody
 ): Promise<void> {
   const res = await fetch(`${storeUrl}/api/workshop/parties/ledger`, {
     method: "POST",
@@ -114,6 +109,7 @@ async function postLedger(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) {
     const json = (await res.json().catch(() => ({}))) as { error?: string };
@@ -122,7 +118,8 @@ async function postLedger(
 }
 
 /**
- * Push PVC sales + collections that changed onto the store customer ledger.
+ * Push PVC collections / voids (and agreed-price sales) that changed onto the
+ * store customer ledger. Throws LedgerSyncError if anything could not be sent.
  */
 export async function syncWorkshopSnapshotToStore(
   before: WorkshopStoreSnapshot | null,
@@ -144,6 +141,10 @@ export async function syncWorkshopSnapshotToStore(
     after.data[STORAGE_KEYS.customers],
     []
   );
+  const beforeCustomers = parseJson<SnapshotCustomer[]>(
+    before?.data[STORAGE_KEYS.customers],
+    []
+  );
   const projects = parseJson<SnapshotProject[]>(
     after.data[STORAGE_KEYS.projects],
     []
@@ -152,12 +153,6 @@ export async function syncWorkshopSnapshotToStore(
     after.data[STORAGE_KEYS.payments],
     []
   );
-  const itemsByProject = parseJson<Record<string, SnapshotItem[]>>(
-    after.data[STORAGE_KEYS.projectItems],
-    {}
-  );
-  const customerById = new Map(customers.map((c) => [c.id, c]));
-
   const beforePayments = parseJson<SnapshotPayment[]>(
     before?.data[STORAGE_KEYS.payments],
     []
@@ -166,111 +161,191 @@ export async function syncWorkshopSnapshotToStore(
     before?.data[STORAGE_KEYS.projects],
     []
   );
-  const beforeItems = parseJson<Record<string, SnapshotItem[]>>(
-    before?.data[STORAGE_KEYS.projectItems],
-    {}
-  );
 
-  const payFingerprint = (p: SnapshotPayment) =>
-    `${p.id}:${roundMoney(Number(p.amount) || 0)}:${p.projectId || ""}`;
-  const beforePay = new Set(beforePayments.map(payFingerprint));
-
-  const saleFingerprint = (p: SnapshotProject) => {
-    const items = itemsByProject[p.id] || [];
-    const paid = payments
-      .filter((pay) => pay.projectId === p.id)
-      .reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
-    const sale = projectSale(p, items);
-    const accounted = p.workflow !== "quote";
-    const ledger = accounted ? roundMoney(Math.max(sale, paid)) : 0;
-    return `${p.id}:${accounted ? 1 : 0}:${ledger}:${p.customerId}`;
-  };
-  const beforeSale = new Set(
-    beforeProjects.map((p) => {
-      const items = beforeItems[p.id] || [];
-      const paid = beforePayments
-        .filter((pay) => pay.projectId === p.id)
-        .reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
-      const sale = projectSale(p, items);
-      const accounted = p.workflow !== "quote";
-      const ledger = accounted ? roundMoney(Math.max(sale, paid)) : 0;
-      return `${p.id}:${accounted ? 1 : 0}:${ledger}:${p.customerId}`;
-    })
-  );
-
-  const forceAll = !before;
-
-  for (const pay of payments) {
-    if (!forceAll && beforePay.has(payFingerprint(pay))) continue;
-    const customer = customerById.get(pay.customerId);
-    const storeCustomerId = customer?.storeCustomerId;
-    if (!storeCustomerId) continue;
-    const project = projects.find((p) => p.id === pay.projectId);
-    try {
-      await postLedger(bridge.storeUrl, bridge.secret, {
-        source_system: "aa",
-        source_ref: `pay:${pay.id}`,
-        party_type: "customer",
-        store_customer_id: storeCustomerId,
-        entry_type: "workshop_collection",
-        amount: Number(pay.amount) || 0,
-        direction: "credit",
-        occurred_at: pay.date ? `${pay.date}T12:00:00.000Z` : null,
-        notes: pay.note || null,
-        project_label: project?.name || null,
-        details: {
-          kind: "aa_payment",
-          project_id: pay.projectId || null,
-          payment_id: pay.id,
-          local_party_id: pay.customerId,
-          customer_id: pay.customerId,
-        },
-      });
-    } catch (err) {
-      console.error("[store-ledger] payment", pay.id, err);
-    }
+  // الحالي بيكسب على القديم (لو العميل اتحذف نفضل نعرف رقمه في المتجر)
+  const storeIdByCustomer = new Map<string, string>();
+  for (const c of [...beforeCustomers, ...customers]) {
+    if (c.storeCustomerId) storeIdByCustomer.set(c.id, c.storeCustomerId);
   }
 
-  for (const project of projects) {
-    const fingerprint = saleFingerprint(project);
-    if (!forceAll && beforeSale.has(fingerprint)) continue;
-    const customer = customerById.get(project.customerId);
-    const storeCustomerId = customer?.storeCustomerId;
+  const forceAll = !before;
+  const bodies = new Map<string, LedgerBody>();
+
+  // 1) طلبات فشلت قبل كده — تتعاد (والجديد لنفس الـ ref بيكسب)
+  const pending = await loadPendingLedgerBodies(
+    after.data[STORAGE_KEYS.ledgerSyncFailures]
+  );
+  const pendingRefs = new Set(pending.map((b) => b.source_ref));
+  for (const body of pending) bodies.set(body.source_ref, body);
+
+  // 2) دفعات جديدة/متغيّرة
+  const beforePay = new Set(beforePayments.map(payFingerprint));
+  const afterPayIds = new Set(payments.map((p) => p.id));
+  const projectName = new Map(projects.map((p) => [p.id, p.name]));
+  for (const pay of payments) {
+    if (!forceAll && beforePay.has(payFingerprint(pay))) continue;
+    const storeCustomerId = storeIdByCustomer.get(pay.customerId);
     if (!storeCustomerId) continue;
-    const accounted = project.workflow !== "quote";
-    const items = itemsByProject[project.id] || [];
-    const paid = payments
-      .filter((pay) => pay.projectId === project.id)
-      .reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
-    const sale = projectSale(project, items);
-    const amount = accounted ? roundMoney(Math.max(sale, paid)) : 0;
-    try {
-      await postLedger(bridge.storeUrl, bridge.secret, {
-        source_system: "aa",
-        source_ref: `sale:${project.id}`,
-        party_type: "customer",
-        store_customer_id: storeCustomerId,
-        entry_type: amount > 0 ? "workshop_sale" : "workshop_void",
-        amount,
-        direction: "debit",
-        notes:
-          amount > 0
-            ? `بيع مشروع ${project.name}`
-            : `إلغاء مقايسة ${project.name}`,
-        project_label: project.name,
-        details: {
-          kind: "aa_project_sale",
-          project_id: project.id,
-          project_name: project.name,
-          local_party_id: project.customerId,
-          customer_id: project.customerId,
-          sale_amount: amount,
-          computed_sale: sale,
-          paid,
-        },
-      });
-    } catch (err) {
-      console.error("[store-ledger] sale", project.id, err);
+    bodies.set(`pay:${pay.id}`, {
+      source_system: "aa",
+      source_ref: `pay:${pay.id}`,
+      party_type: "customer",
+      store_customer_id: storeCustomerId,
+      entry_type: "workshop_collection",
+      amount: Number(pay.amount) || 0,
+      direction: "credit",
+      occurred_at: pay.date ? `${pay.date}T12:00:00.000Z` : null,
+      notes: pay.note || null,
+      project_label: (pay.projectId && projectName.get(pay.projectId)) || null,
+      details: {
+        kind: "aa_payment",
+        project_id: pay.projectId || null,
+        payment_id: pay.id,
+        local_party_id: pay.customerId,
+        customer_id: pay.customerId,
+      },
+    });
+  }
+
+  // 3) دفعات اتحذفت — void
+  for (const pay of beforePayments) {
+    if (afterPayIds.has(pay.id)) continue;
+    const storeCustomerId = storeIdByCustomer.get(pay.customerId);
+    if (!storeCustomerId) continue;
+    bodies.set(`pay:${pay.id}`, {
+      source_system: "aa",
+      source_ref: `pay:${pay.id}`,
+      party_type: "customer",
+      store_customer_id: storeCustomerId,
+      entry_type: "workshop_void",
+      amount: 0,
+      direction: "credit",
+      occurred_at: null,
+      notes: "حذف دفعة ورشة",
+      project_label: null,
+      details: {
+        kind: "aa_payment",
+        project_id: pay.projectId || null,
+        payment_id: pay.id,
+        local_party_id: pay.customerId,
+        customer_id: pay.customerId,
+      },
+    });
+  }
+
+  // 4) مبيعات المشاريع
+  const beforeDecision = new Map<string, { fp: string; d: SaleDecision }>();
+  for (const p of beforeProjects) {
+    const d = decideSale(p, beforePayments);
+    beforeDecision.set(p.id, { fp: saleFingerprint(p, d), d });
+  }
+  const afterProjectIds = new Set(projects.map((p) => p.id));
+
+  for (const project of projects) {
+    const d = decideSale(project, payments);
+    if (d.mode === "skip") continue;
+    const prev = beforeDecision.get(project.id);
+    if (!forceAll && prev?.fp === saleFingerprint(project, d)) continue;
+    // مقايسة جديدة ما اتبعتش قبل كده — مفيش حاجة تتلغي
+    if (d.mode === "void" && !forceAll && prev?.d.mode === undefined) continue;
+    if (d.mode === "void" && !forceAll && prev?.d.mode === "void") continue;
+    const storeCustomerId = storeIdByCustomer.get(project.customerId);
+    if (!storeCustomerId) continue;
+    const amount = d.mode === "post" ? d.amount : 0;
+    bodies.set(`sale:${project.id}`, {
+      source_system: "aa",
+      source_ref: `sale:${project.id}`,
+      party_type: "customer",
+      store_customer_id: storeCustomerId,
+      entry_type: amount > 0 ? "workshop_sale" : "workshop_void",
+      amount,
+      direction: "debit",
+      occurred_at: null,
+      notes:
+        amount > 0
+          ? `بيع مشروع ${project.name}`
+          : `إلغاء مقايسة ${project.name}`,
+      project_label: project.name,
+      details: {
+        kind: "aa_project_sale",
+        project_id: project.id,
+        project_name: project.name,
+        local_party_id: project.customerId,
+        customer_id: project.customerId,
+        sale_amount: amount,
+        paid: paidFor(project.id, payments),
+      },
+    });
+  }
+
+  // 5) مشاريع اتحذفت — void لأي قيد بيع كان متسجّل
+  for (const project of beforeProjects) {
+    if (afterProjectIds.has(project.id)) continue;
+    if (project.workflow === "quote") continue;
+    const storeCustomerId = storeIdByCustomer.get(project.customerId);
+    if (!storeCustomerId) continue;
+    bodies.set(`sale:${project.id}`, {
+      source_system: "aa",
+      source_ref: `sale:${project.id}`,
+      party_type: "customer",
+      store_customer_id: storeCustomerId,
+      entry_type: "workshop_void",
+      amount: 0,
+      direction: "debit",
+      occurred_at: null,
+      notes: `حذف مشروع ${project.name}`,
+      project_label: project.name,
+      details: {
+        kind: "aa_project_sale",
+        project_id: project.id,
+        project_name: project.name,
+        local_party_id: project.customerId,
+        customer_id: project.customerId,
+        sale_amount: 0,
+      },
+    });
+  }
+
+  if (bodies.size === 0) return;
+
+  // إرسال بتوازي محدود وحد زمني؛ اللي يفشل أو ما يلحقش بيتخزن للإعادة
+  const queue = [...bodies.values()];
+  const started = Date.now();
+  const failed: LedgerBody[] = [];
+  const succeeded: string[] = [];
+  const errors: string[] = [];
+  let next = 0;
+
+  async function worker() {
+    while (next < queue.length) {
+      const body = queue[next++]!;
+      if (Date.now() - started > DEADLINE_MS) {
+        failed.push(body);
+        continue;
+      }
+      try {
+        await postLedger(bridge.storeUrl, bridge.secret, body);
+        succeeded.push(body.source_ref);
+      } catch (err) {
+        console.error("[store-ledger]", body.source_ref, err);
+        failed.push(body);
+        errors.push(
+          `${body.source_ref}: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
     }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, queue.length) }, () => worker())
+  );
+
+  // اللي نجح (حتى لو كان معلّق قبل كده) يتشال من قايمة الإعادة
+  await clearPendingLedgerBodies(succeeded.filter((ref) => pendingRefs.has(ref)));
+
+  if (failed.length > 0) {
+    throw new LedgerSyncError(
+      `فشل إرسال ${failed.length} قيد للمتجر${errors.length ? ` — ${errors[0]}` : " (انتهى الوقت)"}`,
+      failed
+    );
   }
 }

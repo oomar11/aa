@@ -211,7 +211,7 @@ export function StoreInvoiceInboxPanel() {
       </div>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f]">{error}</p>
       ) : null}
       {message ? (
         <p className="text-sm font-medium text-[#2F9B7A]">{message}</p>
@@ -246,7 +246,9 @@ export function StoreInvoiceInboxPanel() {
                     </p>
                     <p className="mt-0.5 text-xs text-muted">
                       {item.invoice_date
-                        ? new Date(item.invoice_date).toLocaleDateString("ar-EG")
+                        ? new Date(item.invoice_date).toLocaleDateString("ar-EG", {
+                            numberingSystem: "latn",
+                          })
                         : "—"}
                       {(item.items_summary || []).length
                         ? ` · ${(item.items_summary || []).length} صنف`
@@ -295,7 +297,7 @@ export function StoreInvoiceInboxPanel() {
                     type="button"
                     disabled={busy}
                     onClick={() => void dismissItem(item)}
-                    className="rounded-xl border border-[#E85A8A]/30 px-3 py-2 text-xs font-semibold text-[#E85A8A] disabled:opacity-60"
+                    className="rounded-xl border border-[#b5543f]/30 px-3 py-2 text-xs font-semibold text-[#b5543f] disabled:opacity-60"
                   >
                     تجاهل
                   </button>

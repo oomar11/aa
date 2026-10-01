@@ -234,7 +234,7 @@ export function ProjectStoreIssue({
   }
 
   const fieldClass =
-    "w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-[#E8956F] focus:ring-2 focus:ring-[#E8956F]/20";
+    "w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-[#d98a6c] focus:ring-2 focus:ring-[#d98a6c]/20";
 
   if (!bridgeOk) {
     return (
@@ -421,7 +421,7 @@ export function ProjectStoreIssue({
             />
           </label>
 
-          <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#C45C26] to-[#E8956F] px-4 py-4 text-white">
+          <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#C45C26] to-[#d98a6c] px-4 py-4 text-white">
             <div className="flex items-center justify-between text-xs opacity-90">
               <span>الإجمالي قبل الخصم</span>
               <span className="tabular-nums">{formatCurrency(subtotal)} ج.م</span>

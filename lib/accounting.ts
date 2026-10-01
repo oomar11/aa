@@ -1,5 +1,6 @@
 import { STORAGE_KEYS } from "@/lib/storage/keys";
 import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
+import { toLocalIsoDate } from "@/lib/utils";
 
 export type PaymentMethod = "cash" | "transfer" | "cheque" | "other";
 
@@ -236,5 +237,5 @@ export function getAccountingSummary(
 }
 
 export function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalIsoDate();
 }

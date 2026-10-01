@@ -620,7 +620,7 @@ export function buildProjectPurchaseOrder(
   }).format(new Date());
 
   return {
-    companyName: company?.name || "شركتي للـ uPVC",
+    companyName: company?.name || "الوهيدي",
     companyPhone: company?.phone,
     customerName: customer?.name ?? "—",
     customerPhone: customer?.phone,

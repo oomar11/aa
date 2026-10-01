@@ -165,7 +165,7 @@ export function ActivityNotesPanel({
                     deleteActivityNote(note.id);
                   }
                 }}
-                className="shrink-0 text-[11px] font-semibold text-[#E85A8A]"
+                className="shrink-0 text-[11px] font-semibold text-[#b5543f]"
               >
                 حذف
               </button>

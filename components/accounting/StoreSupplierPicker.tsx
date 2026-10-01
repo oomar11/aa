@@ -243,7 +243,7 @@ export function StoreSupplierPicker({
       </div>
 
       {error ? (
-        <p className="mt-2 text-xs font-medium text-[#E85A8A]">{error}</p>
+        <p className="mt-2 text-xs font-medium text-[#b5543f]">{error}</p>
       ) : null}
     </div>
   );

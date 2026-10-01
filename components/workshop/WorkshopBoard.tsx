@@ -306,7 +306,7 @@ export function WorkshopBoard() {
       <div
         role="tablist"
         aria-label="حالات الورشة"
-        className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden"
+        className="scroll-fade-x flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden"
       >
         {tabs.map((t) => {
           const active = tab === t.id;

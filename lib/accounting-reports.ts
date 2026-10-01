@@ -9,6 +9,7 @@ import { isDeliveredProject } from "@/lib/accounting-scope";
 import { mergeCustomers } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { listAllProjects, type Project } from "@/lib/projects";
+import { toLocalIsoDate } from "@/lib/utils";
 
 export type ReportPeriod = "all" | "month" | "quarter" | "year" | "custom";
 
@@ -57,13 +58,13 @@ export function startOfPeriod(period: ReportPeriod, now = new Date()): string | 
   const y = now.getFullYear();
   const m = now.getMonth();
   if (period === "month") {
-    return new Date(y, m, 1).toISOString().slice(0, 10);
+    return toLocalIsoDate(new Date(y, m, 1));
   }
   if (period === "quarter") {
     const qStart = Math.floor(m / 3) * 3;
-    return new Date(y, qStart, 1).toISOString().slice(0, 10);
+    return toLocalIsoDate(new Date(y, qStart, 1));
   }
-  return new Date(y, 0, 1).toISOString().slice(0, 10);
+  return toLocalIsoDate(new Date(y, 0, 1));
 }
 
 export function inPeriod(isoDate: string, from: string | null, to: string): boolean {
@@ -114,7 +115,7 @@ export function reportBounds(
 ): { fromDate: string | null; toDate: string } {
   return {
     fromDate: startOfPeriod(period, now),
-    toDate: now.toISOString().slice(0, 10),
+    toDate: toLocalIsoDate(now),
   };
 }
 

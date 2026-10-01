@@ -48,3 +48,6 @@ next-env.d.ts
 
 # باكبات خام/مرحّلة محلية (بيانات عملاء)
 /data/imports/
+
+.vercel
+.env*

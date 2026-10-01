@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AttendanceStatusToggle } from "@/components/hr/AttendanceStatusToggle";
 import { todayIsoDate } from "@/lib/accounting";
 import {
   ATTENDANCE_STATUS_LABELS,
@@ -12,16 +13,10 @@ import {
   type AttendanceStatus,
   type Employee,
 } from "@/lib/hr";
+import { ATTENDANCE_VISUAL } from "@/lib/hr-visual";
 import { formatDate } from "@/lib/utils";
 
 const STATUSES: AttendanceStatus[] = ["present", "absent", "off", "holiday"];
-
-const STATUS_CLASS: Record<AttendanceStatus, string> = {
-  present: "bg-[#2F9B7A] text-white",
-  absent: "bg-[#E85A8A] text-white",
-  off: "bg-[#C47A12] text-white",
-  holiday: "border border-border bg-card text-foreground",
-};
 
 export function AttendanceBoard() {
   const [date, setDate] = useState(todayIsoDate);
@@ -110,7 +105,7 @@ export function AttendanceBoard() {
                               }
                               className={`min-w-[4.5rem] rounded-xl px-2 py-1.5 text-[11px] font-bold transition-all ${
                                 selected
-                                  ? STATUS_CLASS[status]
+                                  ? ATTENDANCE_VISUAL[status].active
                                   : "border border-border bg-background text-muted"
                               }`}
                             >
@@ -127,48 +122,30 @@ export function AttendanceBoard() {
           </div>
 
           <ul className="flex flex-col gap-2 lg:hidden">
-          {employees.map((employee) => {
-            const current = attendanceByEmployee.get(employee.id);
-            return (
-              <li
-                key={employee.id}
-                className="rounded-2xl border border-border bg-card px-3.5 py-3"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="truncate text-sm font-bold">{employee.name}</p>
-                  <p className="shrink-0 text-[11px] text-muted">
-                    {employee.role}
-                  </p>
-                </div>
-                <div className="mt-2 grid grid-cols-4 gap-1.5">
-                  {STATUSES.map((status) => {
-                    const selected = current === status;
-                    return (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() =>
-                          setAttendance({
-                            employeeId: employee.id,
-                            date,
-                            status: selected ? null : status,
-                          })
-                        }
-                        className={`rounded-xl px-1.5 py-2 text-[11px] font-bold transition-all active:scale-[0.98] ${
-                          selected
-                            ? STATUS_CLASS[status]
-                            : "border border-border bg-background text-muted"
-                        }`}
-                      >
-                        {ATTENDANCE_STATUS_LABELS[status]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+            {employees.map((employee) => {
+              const current = attendanceByEmployee.get(employee.id);
+              return (
+                <li
+                  key={employee.id}
+                  className="rounded-2xl border border-border bg-card px-3.5 py-3"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="truncate text-sm font-bold">{employee.name}</p>
+                    <p className="shrink-0 text-[11px] text-muted">
+                      {employee.role}
+                    </p>
+                  </div>
+                  <AttendanceStatusToggle
+                    current={current}
+                    onChange={(status) =>
+                      setAttendance({ employeeId: employee.id, date, status })
+                    }
+                    className="mt-2"
+                  />
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
     </div>

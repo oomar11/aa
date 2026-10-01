@@ -29,7 +29,7 @@ export function ProjectMoneyLine({ projectId, className = "" }: Props) {
       باقي{" "}
       <span
         className={`tabular-nums ${
-          money.remaining > 0 ? "text-[#E85A8A]" : "text-[#2F9B7A]"
+          money.remaining > 0 ? "text-[#b5543f]" : "text-[#2F9B7A]"
         }`}
       >
         {formatCurrency(money.remaining)}

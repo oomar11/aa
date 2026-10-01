@@ -28,10 +28,22 @@ export function smartSearchMatch(
   return queryTokens.every((token) => combinedText.includes(token));
 }
 
+/**
+ * "YYYY-MM-DD" من تاريخ محلي مباشرة — بدون المرور بـ toISOString() (UTC)،
+ * اللي بيقلب التاريخ ليوم قبله قرب منتصف الليل بتوقيت مصر.
+ */
+export function toLocalIsoDate(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("ar-EG", {
     style: "decimal",
     maximumFractionDigits: 0,
+    numberingSystem: "latn",
   }).format(amount);
 }
 
@@ -40,6 +52,8 @@ export function formatDate(isoDate: string): string {
     year: "numeric",
     month: "short",
     day: "numeric",
+    numberingSystem: "latn",
+    timeZone: "Africa/Cairo",
   }).format(new Date(isoDate));
 }
 
