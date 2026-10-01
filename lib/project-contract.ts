@@ -9,6 +9,7 @@ import {
   type ProjectMoneySummary,
 } from "@/lib/project-money";
 import { getProjectById, type Project } from "@/lib/projects";
+import { toLocalIsoDate } from "@/lib/utils";
 
 export type ProjectContractData = {
   company: Company;
@@ -59,11 +60,13 @@ export function buildProjectContract(
     project,
     money: getProjectMoneySummary(projectId),
     terms: terms.length > 0 ? terms : companyContractTerms(company),
-    contractDate: now.toISOString().slice(0, 10),
+    contractDate: toLocalIsoDate(now),
     printedAt: new Intl.DateTimeFormat("ar-EG", {
       year: "numeric",
       month: "long",
       day: "numeric",
+      numberingSystem: "latn",
+      timeZone: "Africa/Cairo",
     }).format(now),
   };
 }

@@ -128,7 +128,7 @@ export function ProfitReport() {
         <div
           role="tablist"
           aria-label="فترة التقرير"
-          className="flex gap-1.5 overflow-x-auto pb-0.5"
+          className="scroll-fade-x flex gap-1.5 overflow-x-auto pb-0.5"
         >
           {PERIODS.map((id) => {
             const active = period === id;
@@ -309,14 +309,14 @@ export function ProfitReport() {
                     </td>
                     <td
                       className={`px-3 py-2.5 text-end tabular-nums ${
-                        row.remaining > 0 ? "text-[#E85A8A]" : "text-[#2F9B7A]"
+                        row.remaining > 0 ? "text-[#b5543f]" : "text-[#2F9B7A]"
                       }`}
                     >
                       {formatCurrency(row.remaining)}
                     </td>
                     <td
                       className={`px-4 py-2.5 text-end tabular-nums font-bold ${
-                        row.profit >= 0 ? "text-[#2F9B7A]" : "text-[#E85A8A]"
+                        row.profit >= 0 ? "text-[#2F9B7A]" : "text-[#b5543f]"
                       }`}
                     >
                       {formatCurrency(row.profit)}
@@ -365,13 +365,13 @@ export function ProfitReport() {
                     <p className="text-[10px] text-muted">مكسب</p>
                     <p
                       className={`text-sm font-bold tabular-nums ${
-                        row.profit >= 0 ? "text-[#2F9B7A]" : "text-[#E85A8A]"
+                        row.profit >= 0 ? "text-[#2F9B7A]" : "text-[#b5543f]"
                       }`}
                     >
                       {formatCurrency(row.profit)}
                     </p>
                     {row.remaining > 0 ? (
-                      <p className="mt-0.5 text-[10px] tabular-nums text-[#E85A8A]">
+                      <p className="mt-0.5 text-[10px] tabular-nums text-[#b5543f]">
                         باقي {formatCurrency(row.remaining)}
                       </p>
                     ) : null}
@@ -399,7 +399,7 @@ function Tile({
     tone === "good"
       ? "text-[#2F9B7A]"
       : tone === "warn"
-        ? "text-[#E85A8A]"
+        ? "text-[#b5543f]"
         : tone === "expense"
           ? "text-[#C45C26]"
           : "text-foreground";

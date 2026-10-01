@@ -101,7 +101,7 @@ export function ReceivablesBrowser() {
       <div
         role="tablist"
         aria-label="تصفية المستحقات"
-        className="flex gap-1.5 overflow-x-auto pb-0.5"
+        className="scroll-fade-x flex gap-1.5 overflow-x-auto pb-0.5"
       >
         {FILTERS.map((id) => {
           const active = filter === id;
@@ -169,7 +169,7 @@ export function ReceivablesBrowser() {
                       <p
                         className={`text-sm font-bold tabular-nums ${
                           row.remaining > 0
-                            ? "text-[#E85A8A]"
+                            ? "text-[#b5543f]"
                             : "text-[#2F9B7A]"
                         }`}
                       >
@@ -215,7 +215,7 @@ function SummaryTile({
     tone === "good"
       ? "text-[#2F9B7A]"
       : tone === "warn"
-        ? "text-[#E85A8A]"
+        ? "text-[#b5543f]"
         : "text-foreground";
   return (
     <div className="rounded-2xl border border-border bg-card px-3.5 py-3">

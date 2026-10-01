@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { mergeCustomers, type Customer } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { listAllProjects, type Project } from "@/lib/projects";
+import { ROUTES } from "@/lib/routes";
 import { formatCurrency, smartSearchMatch } from "@/lib/utils";
 import { WORKFLOW_LABELS } from "@/lib/workshop";
 import { WorkflowBadge } from "@/components/workshop/WorkflowBadge";
@@ -32,7 +34,7 @@ function MoneyRow({
     tone === "good"
       ? "text-[#2F9B7A]"
       : tone === "warn"
-        ? "text-[#E85A8A]"
+        ? "text-[#b5543f]"
         : "text-foreground";
 
   return (
@@ -139,11 +141,11 @@ export function PaymentProjectPicker({
       <div className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
           المشروع
-          {required ? <span className="text-[#E85A8A]"> *</span> : null}
+          {required ? <span className="text-[#b5543f]"> *</span> : null}
         </span>
         <div
           className={`rounded-2xl border bg-card p-3.5 ${
-            error ? "border-[#E85A8A]" : "border-primary/35"
+            error ? "border-[#b5543f]" : "border-primary/35"
           }`}
         >
           <div className="flex items-start justify-between gap-3">
@@ -198,7 +200,7 @@ export function PaymentProjectPicker({
     <div className="flex flex-col gap-2 text-right">
       <span className="text-sm font-medium">
         المشروع
-        {required ? <span className="text-[#E85A8A]"> *</span> : " "}
+        {required ? <span className="text-[#b5543f]"> *</span> : " "}
         {!required ? (
           <span className="font-normal text-muted">(اختياري)</span>
         ) : null}
@@ -216,7 +218,7 @@ export function PaymentProjectPicker({
           onFocus={() => setOpen(true)}
           placeholder="ابحث باسم العميل أو المشروع أو الهاتف…"
           className={`h-12 w-full rounded-2xl border bg-card py-3 ps-10 pe-4 text-sm outline-none transition-shadow placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/20 ${
-            error ? "border-[#E85A8A]" : "border-border"
+            error ? "border-[#b5543f]" : "border-border"
           }`}
           autoComplete="off"
         />
@@ -249,11 +251,21 @@ export function PaymentProjectPicker({
         }`}
       >
         {filtered.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-muted">
-            {openProjects.length === 0
-              ? "لا توجد مشاريع مفتوحة"
-              : "لا توجد نتائج مطابقة للبحث"}
-          </p>
+          <div className="flex flex-col items-center gap-3 px-4 py-8 text-center text-sm text-muted">
+            <p>
+              {openProjects.length === 0
+                ? "لا توجد مشاريع مفتوحة"
+                : "لا توجد نتائج مطابقة للبحث"}
+            </p>
+            {openProjects.length === 0 ? (
+              <Link
+                href={ROUTES.design.newCustomer}
+                className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
+              >
+                أنشئ طلب جديد
+              </Link>
+            ) : null}
+          </div>
         ) : (
           <ul className="divide-y divide-border">
             {filtered.map((project) => {
@@ -300,7 +312,7 @@ export function PaymentProjectPicker({
                       <span
                         className={`font-semibold ${
                           money.remaining > 0
-                            ? "text-[#E85A8A]"
+                            ? "text-[#b5543f]"
                             : "text-[#2F9B7A]"
                         }`}
                       >

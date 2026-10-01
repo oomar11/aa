@@ -160,7 +160,7 @@ export function EditCustomerForm({ customerId }: Props) {
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
-          الاسم <span className="text-[#E85A8A]">*</span>
+          الاسم <span className="text-[#b5543f]">*</span>
         </span>
         <input
           type="text"
@@ -176,7 +176,7 @@ export function EditCustomerForm({ customerId }: Props) {
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
-          رقم الهاتف <span className="text-[#E85A8A]">*</span>
+          رقم الهاتف <span className="text-[#b5543f]">*</span>
         </span>
         <input
           type="tel"
@@ -218,7 +218,7 @@ export function EditCustomerForm({ customerId }: Props) {
       </label>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f]">{error}</p>
       ) : null}
       {saved ? (
         <p className="text-sm font-medium text-emerald-600">تم الحفظ</p>
@@ -234,7 +234,7 @@ export function EditCustomerForm({ customerId }: Props) {
       <button
         type="button"
         onClick={handleDelete}
-        className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/40 text-sm font-semibold text-[#E85A8A]"
+        className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#b5543f]/40 text-sm font-semibold text-[#b5543f]"
       >
         حذف العميل
       </button>

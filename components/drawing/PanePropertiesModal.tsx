@@ -860,7 +860,7 @@ function PanelCellPicker({
       </div>
 
       <div
-        className="relative mx-auto overflow-hidden rounded-lg border-2 border-[#6b7280] bg-[#6b7280] shadow-inner"
+        className="relative mx-auto overflow-hidden rounded-lg border-2 border-[#6b5a48] bg-[#6b5a48] shadow-inner"
         style={{ width: "100%", maxWidth: 168, aspectRatio: "1 / 1.05" }}
       >
         {cells.map((cell, i) => {
@@ -882,7 +882,7 @@ function PanelCellPicker({
                 top: `${cell.y}%`,
                 width: `${cell.w}%`,
                 height: `${cell.h}%`,
-                boxShadow: "inset 0 0 0 1.5px #6b7280",
+                boxShadow: "inset 0 0 0 1.5px #6b5a48",
               }}
             >
               {on && (

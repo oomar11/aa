@@ -136,7 +136,7 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
         createdAt: existing?.createdAt || new Date().toISOString(),
       };
       upsertEmployee(employee);
-      router.replace(ROUTES.hr.employees);
+      router.replace(ROUTES.hr.employeeDetail(employee.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "تعذر حفظ الموظف");
     } finally {
@@ -149,7 +149,7 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
     if (!window.confirm(`حذف «${existing.name}»؟`)) return;
     try {
       deleteEmployee(existing.id);
-      router.replace(ROUTES.hr.employees);
+      router.replace(ROUTES.hr.hub);
     } catch (err) {
       setError(err instanceof Error ? err.message : "تعذر حذف الموظف");
     }
@@ -170,7 +170,7 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
-          الاسم <span className="text-[#E85A8A]">*</span>
+          الاسم <span className="text-[#b5543f]">*</span>
         </span>
         <input
           type="text"
@@ -256,7 +256,7 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
         <label className="flex flex-col gap-1.5 text-right lg:col-span-2">
           <span className="text-sm font-medium">
             {payType === "daily" ? "اليومية (ج.م)" : "الراتب الشهري (ج.م)"}
-            <span className="text-[#E85A8A]"> *</span>
+            <span className="text-[#b5543f]"> *</span>
           </span>
           <NumericInput
             value={wage}
@@ -270,7 +270,7 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
       {payType === "percent" ? (
         <label className="flex flex-col gap-1.5 text-right lg:col-span-2">
           <span className="text-sm font-medium">
-            النسبة من الشغل (%) <span className="text-[#E85A8A]">*</span>
+            النسبة من الشغل (%) <span className="text-[#b5543f]">*</span>
           </span>
           <NumericInput
             value={commissionPercent}
@@ -325,7 +325,7 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
       </label>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A] lg:col-span-2">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f] lg:col-span-2">{error}</p>
       ) : null}
 
       <button
@@ -340,7 +340,7 @@ function EmployeeFormFields({ existing }: { existing: Employee | null }) {
         <button
           type="button"
           onClick={handleDelete}
-          className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/40 bg-card text-sm font-semibold text-[#E85A8A] lg:col-span-2"
+          className="flex h-12 w-full items-center justify-center rounded-2xl border border-[#b5543f]/40 bg-card text-sm font-semibold text-[#b5543f] lg:col-span-2"
         >
           حذف الموظف
         </button>

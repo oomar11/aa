@@ -109,8 +109,8 @@ export function TemplatePreview({
   const FRAME = "#ffffff";
   const GLASS = "#9ec8e8";
   const GLASS_ALT = "#8ebadf";
-  const OUTER = "#8a96a5";
-  const STROKE = "#c5d0dc";
+  const OUTER = "#8a7a68";
+  const STROKE = "#d6ccb9";
 
   const pad = 6;
   const profile = 5;

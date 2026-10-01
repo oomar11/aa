@@ -69,7 +69,7 @@ export function MoneyLedger() {
           <p className="text-[11px] text-muted">الرصيد التقديري</p>
           <p
             className={`mt-1 text-lg font-bold tabular-nums ${
-              net >= 0 ? "text-[#2F9B7A]" : "text-[#E85A8A]"
+              net >= 0 ? "text-[#2F9B7A]" : "text-[#b5543f]"
             }`}
           >
             {formatCurrency(net)} ج.م
@@ -129,7 +129,7 @@ export function MoneyLedger() {
                         className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${
                           isIn
                             ? "bg-[#2F9B7A]/15 text-[#1F6B55]"
-                            : "bg-[#E8956F]/20 text-[#C45C26]"
+                            : "bg-[#d98a6c]/20 text-[#C45C26]"
                         }`}
                       >
                         {isIn ? "تحصيل" : "مصروف"}

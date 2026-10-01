@@ -7,16 +7,15 @@ import { loadCompany } from "@/lib/company";
 import { ROUTES } from "@/lib/routes";
 
 export function Header() {
-  const [companyName, setCompanyName] = useState(() =>
-    typeof window === "undefined"
-      ? "UPVC Design"
-      : loadCompany().name || "UPVC Design"
-  );
+  // بيبدأ بالاسم الافتراضي دايماً (زي السيرفر بالظبط) عشان الـ hydration ميعملش
+  // تعارض، وبعدين بيتحدّث من localStorage بعد أول تركيب — تحديث بعد المزامنة عادي.
+  const [companyName, setCompanyName] = useState("الوهيدي");
 
   useEffect(() => {
     function refresh() {
-      setCompanyName(loadCompany().name || "UPVC Design");
+      setCompanyName(loadCompany().name || "الوهيدي");
     }
+    refresh();
     window.addEventListener("upvc-company-updated", refresh);
     return () => window.removeEventListener("upvc-company-updated", refresh);
   }, []);

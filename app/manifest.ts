@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "UPVC Design",
-    short_name: "UPVC",
+    name: "الوهيدي",
+    short_name: "الوهيدي",
     description: "تصميم أبواب ونوافذ الـ uPVC",
     start_url: "/",
     display: "standalone",
-    background_color: "#f4f6f9",
-    theme_color: "#2b7de9",
+    background_color: "#f7f4ee",
+    theme_color: "#0d6a6b",
     lang: "ar",
     dir: "rtl",
     orientation: "portrait",

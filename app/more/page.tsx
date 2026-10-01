@@ -12,7 +12,7 @@ const SETTINGS_LINKS = [
   {
     href: ROUTES.settings,
     title: "الإعدادات",
-    description: "وحدة القياس · الشركة · التسعير · الأشكال",
+    description: "وحدة القياس · المزامنة · الأشكال",
   },
   {
     href: ROUTES.settingsCompany,

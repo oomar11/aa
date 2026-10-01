@@ -670,7 +670,7 @@ export function buildProjectEstimatedCost(
   const flatLines = sections.flatMap((s) => s.lines);
 
   return {
-    companyName: company?.name || "شركتي للـ uPVC",
+    companyName: company?.name || "الوهيدي",
     companyPhone: company?.phone,
     customerName: customer?.name ?? "—",
     customerPhone: customer?.phone,

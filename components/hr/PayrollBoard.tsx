@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
+import { BalanceChips } from "@/components/hr/BalanceChips";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { todayIsoDate } from "@/lib/accounting";
 import {
@@ -284,7 +285,7 @@ export function PayrollBoard() {
       </div>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f]">{error}</p>
       ) : null}
 
       {rows.length === 0 ? (
@@ -368,7 +369,7 @@ export function PayrollBoard() {
                     <button
                       type="button"
                       onClick={() => void undoPay(row)}
-                      className="text-xs font-semibold text-[#E85A8A]"
+                      className="text-xs font-semibold text-[#b5543f]"
                     >
                       إلغاء
                     </button>
@@ -418,17 +419,8 @@ function PayrollCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold">{row.employee.name}</p>
-          <p className="mt-0.5 text-xs text-muted">
-            {row.accountLabel}
-            {" · متراكم "}
-            {formatCurrency(row.accruedAmount)}
-            {row.bonusAmount > 0
-              ? ` · مكافآت ${formatCurrency(row.bonusAmount)}`
-              : ""}
-            {row.openAdvances > 0
-              ? ` · سلف −${formatCurrency(row.openAdvances)}`
-              : ""}
-          </p>
+          <p className="mt-0.5 text-xs text-muted">{row.accountLabel}</p>
+          <BalanceChips row={row} className="mt-1.5" />
           {row.percentLines.length > 0 ? (
             <p className="mt-0.5 text-[11px] text-muted">
               {row.percentLines

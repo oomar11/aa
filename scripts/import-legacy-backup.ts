@@ -11,6 +11,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import {
   buildUpvcBackupFromLegacy,
+  getLegacyBackupIssues,
   isLegacyBackup,
   type LegacyBackup,
 } from "../lib/legacy-backup-import";
@@ -48,6 +49,13 @@ function main() {
   const backup = JSON.parse(readFileSync(input, "utf8")) as unknown;
   if (!isLegacyBackup(backup)) {
     console.error("الملف لا يبدو باكب البرنامج القديم (clients/projects)");
+    process.exit(1);
+  }
+
+  const issues = getLegacyBackupIssues(backup);
+  if (issues.length > 0) {
+    console.error("ملف الباكب فيه مشاكل:");
+    for (const issue of issues) console.error(" -", issue);
     process.exit(1);
   }
 

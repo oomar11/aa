@@ -162,6 +162,79 @@ export function isLegacyBackup(value: unknown): value is LegacyBackup {
   );
 }
 
+const MAX_LEGACY_ROWS_PER_ARRAY = 200_000;
+const MAX_LEGACY_ISSUES = 40;
+
+function isPlainRow(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isFiniteMoneyField(value: unknown): boolean {
+  if (value == null || value === "") return true;
+  return Number.isFinite(Number(value));
+}
+
+/**
+ * فحص بنيوي سطحي قبل قبول باكب قديم — يوقف الاستيراد برسالة واضحة بدل ما
+ * تمرر صفوف تالفة بصمت. num()/strField() في باقي الملف بترجع افتراضي 0/""
+ * لأي حاجة مش رقم/نص، فمن غير الفحص ده أي عنصر مش object أو مبلغ مش رقمي
+ * كان بيختفي من الاستيراد من غير أي تنبيه للمستخدم.
+ */
+export function getLegacyBackupIssues(backup: LegacyBackup): string[] {
+  const issues: string[] = [];
+
+  const arrayFields: Array<[string, unknown]> = [
+    ["clients", backup.clients],
+    ["projects", backup.projects],
+    ["contracts", backup.contracts],
+    ["expenses", backup.expenses],
+  ];
+
+  for (const [key, list] of arrayFields) {
+    if (list === undefined || issues.length >= MAX_LEGACY_ISSUES) continue;
+    if (!Array.isArray(list)) {
+      issues.push(`"${key}" لازم يكون قايمة`);
+      continue;
+    }
+    if (list.length > MAX_LEGACY_ROWS_PER_ARRAY) {
+      issues.push(`"${key}" فيه صفوف أكتر من المسموح (${list.length})`);
+      continue;
+    }
+    for (let index = 0; index < list.length; index++) {
+      if (issues.length >= MAX_LEGACY_ISSUES) break;
+      const row = list[index];
+      if (!isPlainRow(row)) {
+        issues.push(`"${key}[${index}]" مش عنصر بيانات صالح`);
+        continue;
+      }
+      if (row.id === undefined || row.id === null || row.id === "") {
+        issues.push(`"${key}[${index}]" من غير id`);
+      }
+    }
+  }
+
+  const moneyChecks: Array<[string, unknown, string[]]> = [
+    ["contracts", backup.contracts, ["amount"]],
+    ["expenses", backup.expenses, ["amount"]],
+    ["projects", backup.projects, ["totalAmount", "paidAmount"]],
+  ];
+  for (const [key, list, fields] of moneyChecks) {
+    if (!Array.isArray(list)) continue;
+    for (let index = 0; index < list.length; index++) {
+      if (issues.length >= MAX_LEGACY_ISSUES) break;
+      const row = list[index];
+      if (!isPlainRow(row)) continue;
+      for (const field of fields) {
+        if (field in row && !isFiniteMoneyField(row[field])) {
+          issues.push(`"${key}[${index}].${field}" قيمة مالية غير صالحة`);
+        }
+      }
+    }
+  }
+
+  return issues.slice(0, MAX_LEGACY_ISSUES);
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;

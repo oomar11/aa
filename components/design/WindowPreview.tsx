@@ -173,11 +173,11 @@ export function WindowPreview({
     : frameMeta.hex;
   const isWood = Boolean(frameMeta.wood);
   const glass = printContrast ? "#ffffff" : "#9ec8e8";
-  const openStroke = printContrast ? "#111111" : "#2b7de9";
-  const hardware = printContrast ? "#111111" : "#6b7585";
-  const frameStroke = printContrast ? "#111111" : "#8a96a5";
-  const emptyFill = printContrast ? "#ffffff" : "#f4f6f9";
-  const emptyStroke = printContrast ? "#555555" : "#c5d0dc";
+  const openStroke = printContrast ? "#111111" : "#0d6a6b";
+  const hardware = printContrast ? "#111111" : "#6b5a48";
+  const frameStroke = printContrast ? "#111111" : "#8a7a68";
+  const emptyFill = printContrast ? "#ffffff" : "#f7f4ee";
+  const emptyStroke = printContrast ? "#555555" : "#d6ccb9";
   const profile = Math.max(2.8, Math.min(frame.w, frame.h) * 0.045);
   const frameStrokeW = printContrast ? 2.2 : 0.9;
   const paneStrokeW = printContrast ? 2 : 0.6;
@@ -400,7 +400,7 @@ export function WindowPreview({
           widthMm={widthMm}
           heightMm={heightMm}
           unit={unit}
-          color={printContrast ? "#111111" : "#2b7de9"}
+          color={printContrast ? "#111111" : "#0d6a6b"}
           printContrast={printContrast}
         />
       ) : null}
@@ -1241,7 +1241,7 @@ function LegacyStylePreview({
   const frame = printContrast ? "#6a7380" : "#7a8fa8";
   const glass = printContrast ? "#ffffff" : "#c5dcf5";
   const glassDark = printContrast ? "#e8e8e8" : "#9ec4ea";
-  const mark = printContrast ? "#111111" : "#2b7de9";
+  const mark = printContrast ? "#111111" : "#0d6a6b";
   const markOpacity = printContrast ? 1 : 0.4;
   const markW = printContrast ? 1.8 : 1.2;
 

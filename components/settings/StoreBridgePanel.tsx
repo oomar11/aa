@@ -16,6 +16,22 @@ import {
 } from "@/lib/store-bridge";
 import { ensureStoreBridgeBootstrapped } from "@/lib/store-bridge-bootstrap";
 import { formatCurrency } from "@/lib/utils";
+import { STORAGE_KEYS } from "@/lib/storage/keys";
+import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
+import type { LedgerSyncFailure } from "@/lib/ledger-sync-failures";
+
+const LEDGER_SYNC_FAILURES_EVENT = "upvc-ledger-sync-failures-updated";
+
+function readLedgerSyncFailures(): LedgerSyncFailure[] {
+  const raw = sharedGetItem(STORAGE_KEYS.ledgerSyncFailures);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as LedgerSyncFailure[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 /**
  * ربط الورشة بخزنة المتجر — المتجر هو مصدر الحقيقة للنقد.
@@ -32,6 +48,19 @@ export function StoreBridgePanel() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [advanced, setAdvanced] = useState(false);
+  const [syncFailures, setSyncFailures] = useState<LedgerSyncFailure[]>([]);
+
+  useEffect(() => {
+    setSyncFailures(readLedgerSyncFailures());
+    const onUpdate = () => setSyncFailures(readLedgerSyncFailures());
+    window.addEventListener(LEDGER_SYNC_FAILURES_EVENT, onUpdate);
+    return () => window.removeEventListener(LEDGER_SYNC_FAILURES_EVENT, onUpdate);
+  }, []);
+
+  function clearSyncFailures() {
+    sharedSetItem(STORAGE_KEYS.ledgerSyncFailures, JSON.stringify([]));
+    setSyncFailures([]);
+  }
 
   useEffect(() => {
     void (async () => {
@@ -203,6 +232,8 @@ export function StoreBridgePanel() {
       );
       if (result.errors.length > 0) {
         setError(result.errors.slice(0, 3).join(" · "));
+      } else {
+        clearSyncFailures();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "تعذر إعادة المزامنة");
@@ -221,11 +252,44 @@ export function StoreBridgePanel() {
         <p className="mt-1 text-xs leading-relaxed text-muted">
           {managed
             ? "الربط تلقائي من سيرفر الورشة — مش محتاج تدخل مفتاح. اختَر الخزنة الافتراضية للدفعات والمصروفات."
-            : "خُد المفتاح من المتجر ← الإعدادات ← الضريبة والخزن ← «جسر الورش»، أو فعّل WORKSHOP_BRIDGE_SECRET على سيرفر الورشة للربط التلقائي."}
+            : "الربط التلقائي مع خزنة المتجر لسه مش مكتمل. كلّم اللي مسؤول عن تجهيز السيرفر، أو افتح تفاصيل الربط اليدوي تحت."}
         </p>
+        {!managed ? (
+          <details className="mt-2 text-xs text-muted">
+            <summary className="cursor-pointer font-medium text-primary">
+              تفاصيل تقنية للربط اليدوي
+            </summary>
+            <p className="mt-1.5 leading-relaxed">
+              خُد المفتاح من المتجر ← الإعدادات ← الضريبة والخزن ← «جسر
+              الورش»، أو فعّل{" "}
+              <span className="font-mono">WORKSHOP_BRIDGE_SECRET</span> على
+              سيرفر الورشة للربط التلقائي.
+            </p>
+          </details>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-3 px-4 py-4">
+        {syncFailures.length > 0 ? (
+          <div className="rounded-xl border border-[#b5543f]/30 bg-[#b5543f]/10 px-3 py-2.5 text-xs text-foreground">
+            <p className="font-bold text-[#b5543f]">
+              فيه {syncFailures.length} محاولة مزامنة فشلت مع المتجر
+            </p>
+            <p className="mt-1 leading-relaxed text-muted">
+              آخر خطأ (
+              {new Date(syncFailures[0].at).toLocaleString("ar-EG", {
+                timeZone: "Africa/Cairo",
+                numberingSystem: "latn",
+              })}
+              ):{" "}
+              {syncFailures[0].error}
+            </p>
+            <p className="mt-1.5 leading-relaxed">
+              دوس «إعادة مزامنة المتجر» تحت عشان تحاول تاني.
+            </p>
+          </div>
+        ) : null}
+
         {active ? (
           <div className="rounded-xl border border-[#2F9B7A]/30 bg-[#2F9B7A]/10 px-3 py-2.5 text-xs text-foreground">
             {managed ? "مربوط تلقائياً ✓" : "مربوط ✓"} · الخزنة:{" "}
@@ -259,7 +323,7 @@ export function StoreBridgePanel() {
         ) : null}
 
         {error ? (
-          <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+          <p className="text-sm font-medium text-[#b5543f]">{error}</p>
         ) : null}
         {message ? (
           <p className="text-sm font-medium text-[#2F9B7A]">{message}</p>
@@ -316,7 +380,7 @@ export function StoreBridgePanel() {
                 <button
                   type="button"
                   onClick={handleDisconnect}
-                  className="h-10 rounded-xl text-sm font-semibold text-[#E85A8A]"
+                  className="h-10 rounded-xl text-sm font-semibold text-[#b5543f]"
                 >
                   فصل الربط
                 </button>

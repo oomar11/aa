@@ -163,7 +163,7 @@ export function ProjectDiscountEditor({ project, money }: Props) {
                   ? ` ${discountValue}%`
                   : ""}
               </span>
-              <span className="tabular-nums font-semibold text-[#E85A8A]">
+              <span className="tabular-nums font-semibold text-[#b5543f]">
                 −{formatCurrency(preview.discountAmount)} ج.م
               </span>
             </div>

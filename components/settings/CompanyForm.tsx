@@ -47,7 +47,7 @@ export function CompanyForm() {
 
       <label className="flex flex-col gap-1.5 text-right">
         <span className="text-sm font-medium">
-          اسم الشركة <span className="text-[#E85A8A]">*</span>
+          اسم الشركة <span className="text-[#b5543f]">*</span>
         </span>
         <input
           type="text"
@@ -141,7 +141,7 @@ export function CompanyForm() {
       </label>
 
       {error ? (
-        <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-sm font-medium text-[#b5543f]">{error}</p>
       ) : null}
       {saved ? (
         <p className="text-sm font-medium text-[#2F9B7A]">تم حفظ بيانات الشركة</p>

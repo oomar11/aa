@@ -107,8 +107,15 @@ function localHasSharedData(): boolean {
   });
 }
 
-/** مفاتيح تُدمج بالـ id عشان قيود جهاز متضيعش قيود جهاز تاني */
+/**
+ * مفاتيح تُدمج بالـ id عشان قيود جهاز متضيعش قيود جهاز تاني.
+ * لازم تكون array مباشرة وعناصرها فيها id نصي — deletedProjects (array من
+ * strings) وprojectItems/materialSystems (objects مش arrays) مش مرشحين هنا:
+ * mergeJsonArraysById بترجع serverRaw كما هي لو الشكل مش array من objects،
+ * إلا في حالة deletedProjects تحديدًا هتفضّي القايمة (array من strings بلا id).
+ */
 const MERGE_BY_ID_KEYS = new Set<SharedStorageKey>([
+  STORAGE_KEYS.customers,
   STORAGE_KEYS.projects,
   STORAGE_KEYS.expenses,
   STORAGE_KEYS.payments,

@@ -358,7 +358,7 @@ export function DrawingEditor({ customerId, projectId, itemId }: Props) {
       const dir = id === "split-h" ? "h" : "v";
       const result = splitPane(item.layout, selectedPaneId, dir, parts);
       if (!result) return;
-      let panes = syncPanesMap(result.layout, item.panes);
+      const panes = syncPanesMap(result.layout, item.panes);
       persistItem({ ...item, layout: result.layout, panes });
       setSelectedPaneId(result.newIds[0] ?? null);
       return;

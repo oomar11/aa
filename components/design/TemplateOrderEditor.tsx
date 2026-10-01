@@ -478,7 +478,7 @@ export function TemplateOrderEditor() {
                 active
                   ? "pointer-events-none border-transparent opacity-30 touch-none"
                   : highlighted
-                    ? "border-primary shadow-[0_0_0_3px_rgba(43,125,233,0.18)]"
+                    ? "border-primary shadow-[0_0_0_3px_rgba(13,106,107,0.18)]"
                     : "border-border"
               }`}
               style={{

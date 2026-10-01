@@ -112,7 +112,7 @@ export function ProjectList({ customerId }: Props) {
               متبقي:{" "}
               <strong
                 className={
-                  balance > 0 ? "text-[#E85A8A]" : "text-foreground"
+                  balance > 0 ? "text-[#b5543f]" : "text-foreground"
                 }
               >
                 {balance > 0
@@ -205,7 +205,7 @@ export function ProjectList({ customerId }: Props) {
                   <button
                     type="button"
                     onClick={() => handleDeleteProject(project)}
-                    className="min-w-[7rem] flex-1 rounded-xl border border-[#E85A8A]/35 bg-background px-3 py-2 text-center text-xs font-semibold text-[#E85A8A] transition-colors hover:bg-[#E85A8A]/10"
+                    className="min-w-[7rem] flex-1 rounded-xl border border-[#b5543f]/35 bg-background px-3 py-2 text-center text-xs font-semibold text-[#b5543f] transition-colors hover:bg-[#b5543f]/10"
                   >
                     حذف
                   </button>

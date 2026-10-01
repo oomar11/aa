@@ -355,7 +355,7 @@ export const FRAME_COLORS: Record<
 > = {
   white: { label: "أبيض", hex: "#f4f6f8" },
   beige: { label: "بيج", hex: "#d2c2a4" },
-  gray: { label: "رمادي", hex: "#9aa3ad" },
+  gray: { label: "رمادي", hex: "#8a7a68" },
   wood: { label: "خشبي", hex: "#c4a06a", wood: true },
   black: { label: "أسود", hex: "#1f2329" },
 };

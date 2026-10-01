@@ -22,7 +22,7 @@ type Props = {
 };
 
 const SECTION_COLOR: Record<CostSectionId, string> = {
-  profiles: "#2b7de9",
+  profiles: "#0d6a6b",
   glass: "#0d9488",
   mesh: "#7c3aed",
   accessories: "#c2410c",
@@ -38,7 +38,7 @@ export function EstimatedCostReport({ customerId, projectId }: Props) {
     return (
       <div className="report-sheet" style={{ width: REPORT_PAGE_WIDTH_PX }}>
         <section
-          className="report-page box-border flex items-center justify-center bg-white text-sm text-[#6b7585]"
+          className="report-page box-border flex items-center justify-center bg-white text-sm text-[#6b5a48]"
           style={{
             width: REPORT_PAGE_WIDTH_PX,
             height: REPORT_PAGE_HEIGHT_PX,
@@ -68,7 +68,7 @@ export function EstimatedCostReport({ customerId, projectId }: Props) {
 
   return (
     <div
-      className="estimated-cost-report bg-white text-[#152033]"
+      className="estimated-cost-report bg-white text-[#1f1b16]"
       style={{
         width: REPORT_PAGE_WIDTH_PX,
         fontFamily:
@@ -109,19 +109,23 @@ function ReportHeader({
   subtitle?: string;
 }) {
   return (
-    <header className="shrink-0 border-b-2 border-[#0f766e] pb-3">
+    <header className="shrink-0 border-b-2 border-[#0d6a6b] pb-3">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1 text-right">
-          <h1
-            className="truncate text-[22px] font-bold text-[#152033]"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/logo.png" alt="" style={{ display: "block", height: 46, width: "auto", marginBottom: 8 }} />
+          {(data.companyName).trim() !== "الوهيدي" ? (
+<h1
+            className="truncate text-[22px] font-bold text-[#1f1b16]"
             style={{ lineHeight: "28px", margin: 0 }}
           >
             {data.companyName}
           </h1>
+) : null}
           {data.companyPhone ? (
             <p
               dir="ltr"
-              className="text-right text-[11px] text-[#5a6578]"
+              className="text-right text-[11px] text-[#5c4e3f]"
               style={{ margin: 0, marginTop: 6, lineHeight: "16px" }}
             >
               {data.companyPhone}
@@ -144,7 +148,7 @@ function ReportHeader({
                   padding: "0 0 10px",
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "#0f766e",
+                  color: "#0d6a6b",
                   lineHeight: "20px",
                   whiteSpace: "nowrap",
                 }}
@@ -158,7 +162,7 @@ function ReportHeader({
                   padding: "0 0 10px",
                   fontSize: 14,
                   fontWeight: 700,
-                  color: "#152033",
+                  color: "#1f1b16",
                   lineHeight: "22px",
                   maxWidth: 250,
                   overflow: "hidden",
@@ -174,7 +178,7 @@ function ReportHeader({
                 style={{
                   padding: 0,
                   fontSize: 11,
-                  color: "#6b7585",
+                  color: "#6b5a48",
                   lineHeight: "18px",
                   whiteSpace: "nowrap",
                 }}
@@ -244,15 +248,15 @@ function SummaryPage({
         <>
           <ReportHeader data={data} />
           <div
-            className="mt-3 grid grid-cols-2 rounded-lg border border-[#e4e8ee] bg-[#f7f9fc] px-3 py-2.5 text-[11px]"
+            className="mt-3 grid grid-cols-2 rounded-lg border border-[#e4dccd] bg-[#f7f4ee] px-3 py-2.5 text-[11px]"
             style={{ gap: 12 }}
           >
             <div className="min-w-0">
-              <p style={{ margin: 0, color: "#6b7585", lineHeight: "15px" }}>
+              <p style={{ margin: 0, color: "#6b5a48", lineHeight: "15px" }}>
                 العميل
               </p>
               <p
-                className="truncate font-bold text-[#152033]"
+                className="truncate font-bold text-[#1f1b16]"
                 style={{ margin: 0, marginTop: 4, lineHeight: "17px" }}
               >
                 {data.customerName}
@@ -260,7 +264,7 @@ function SummaryPage({
               {data.customerPhone ? (
                 <p
                   dir="ltr"
-                  className="text-[#5a6578]"
+                  className="text-[#5c4e3f]"
                   style={{ margin: 0, marginTop: 4, lineHeight: "15px" }}
                 >
                   {data.customerPhone}
@@ -268,17 +272,17 @@ function SummaryPage({
               ) : null}
             </div>
             <div className="min-w-0">
-              <p style={{ margin: 0, color: "#6b7585", lineHeight: "15px" }}>
+              <p style={{ margin: 0, color: "#6b5a48", lineHeight: "15px" }}>
                 المشروع
               </p>
               <p
-                className="truncate font-bold text-[#152033]"
+                className="truncate font-bold text-[#1f1b16]"
                 style={{ margin: 0, marginTop: 4, lineHeight: "17px" }}
               >
                 {data.projectLocation || data.projectName}
               </p>
               <p
-                className="truncate text-[#5a6578]"
+                className="truncate text-[#5c4e3f]"
                 style={{ margin: 0, marginTop: 4, lineHeight: "15px" }}
               >
                 {data.createdAtLabel} · {data.itemCount} بند · عدد{" "}
@@ -299,7 +303,7 @@ function SummaryPage({
                       style={{
                         margin: 0,
                         fontSize: 11,
-                        color: "#6b7585",
+                        color: "#6b5a48",
                         lineHeight: "16px",
                       }}
                     >
@@ -322,7 +326,7 @@ function SummaryPage({
                         margin: 0,
                         fontSize: 12,
                         fontWeight: 700,
-                        color: "#0f766e",
+                        color: "#0d6a6b",
                         lineHeight: "18px",
                       }}
                     >
@@ -348,7 +352,7 @@ function SummaryPage({
                       margin: 0,
                       fontSize: 12,
                       fontWeight: 700,
-                      color: "#0f766e",
+                      color: "#0d6a6b",
                       lineHeight: "18px",
                     }}
                   >
@@ -372,7 +376,7 @@ function SummaryPage({
                 style={{
                   margin: 0,
                   fontSize: 12,
-                  color: "#6b7585",
+                  color: "#6b5a48",
                   lineHeight: "18px",
                 }}
               >
@@ -385,7 +389,7 @@ function SummaryPage({
                 margin: 0,
                 marginTop: 8,
                 fontSize: 10,
-                color: "#5a6578",
+                color: "#5c4e3f",
                 lineHeight: "14px",
               }}
             >
@@ -402,7 +406,7 @@ function SummaryPage({
                   marginBottom: 6,
                   fontSize: 12,
                   fontWeight: 700,
-                  color: "#0f766e",
+                  color: "#0d6a6b",
                   lineHeight: "18px",
                 }}
               >
@@ -421,7 +425,7 @@ function SummaryPage({
                       <td
                         style={{
                           padding: "6px 8px",
-                          borderBottom: "1px solid #eef1f5",
+                          borderBottom: "1px solid #f2ede3",
                           fontWeight: 600,
                           color: SECTION_COLOR[row.id],
                           lineHeight: "16px",
@@ -432,7 +436,7 @@ function SummaryPage({
                       <td
                         style={{
                           padding: "6px 8px",
-                          borderBottom: "1px solid #eef1f5",
+                          borderBottom: "1px solid #f2ede3",
                           textAlign: "left",
                           fontWeight: 700,
                           lineHeight: "16px",
@@ -449,11 +453,11 @@ function SummaryPage({
           ) : null}
         </>
       ) : (
-        <header className="flex shrink-0 items-center justify-between border-b border-[#e4e8ee] pb-2 text-[11px]">
-          <p className="font-bold text-[#152033]" style={{ margin: 0 }}>
+        <header className="flex shrink-0 items-center justify-between border-b border-[#e4dccd] pb-2 text-[11px]">
+          <p className="font-bold text-[#1f1b16]" style={{ margin: 0 }}>
             {data.companyName}
           </p>
-          <p className="text-[#6b7585]" style={{ margin: 0 }}>
+          <p className="text-[#6b5a48]" style={{ margin: 0 }}>
             تكلفة تقديرية · {data.projectName} · صفحة {pageIndex + 1}
           </p>
         </header>
@@ -466,14 +470,14 @@ function SummaryPage({
             marginBottom: 6,
             fontSize: 12,
             fontWeight: 700,
-            color: "#0f766e",
+            color: "#0d6a6b",
             lineHeight: "18px",
           }}
         >
           تكلفة البنود
         </h3>
         {items.length === 0 ? (
-          <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-[#d5dbe5] text-sm text-[#6b7585]">
+          <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-[#d6ccb9] text-sm text-[#6b5a48]">
             لا توجد بنود في المشروع
           </div>
         ) : (
@@ -485,7 +489,7 @@ function SummaryPage({
             }}
           >
             <thead>
-              <tr style={{ background: "#f7f9fc" }}>
+              <tr style={{ background: "#f7f4ee" }}>
                 <th style={thStyle("42%")}>البند</th>
                 <th style={thStyle("12%", "center")}>العدد</th>
                 <th style={thStyle("23%", "left")}>قبل الخصم</th>
@@ -501,7 +505,7 @@ function SummaryPage({
                       style={{
                         marginTop: 2,
                         fontSize: 10,
-                        color: "#6b7585",
+                        color: "#6b5a48",
                         lineHeight: "14px",
                       }}
                     >
@@ -524,7 +528,7 @@ function SummaryPage({
       </div>
 
       <footer
-        className="mt-2 shrink-0 text-center text-[10px] text-[#8a93a3]"
+        className="mt-2 shrink-0 text-center text-[10px] text-[#8a7a68]"
         style={{ lineHeight: "14px" }}
       >
         صفحة {pageIndex + 1} من {pageCount}
@@ -577,18 +581,18 @@ function LinesPage({
         padding: "28px 32px",
       }}
     >
-      <header className="flex shrink-0 items-center justify-between border-b border-[#e4e8ee] pb-2 text-[11px]">
-        <p className="font-bold text-[#152033]" style={{ margin: 0 }}>
+      <header className="flex shrink-0 items-center justify-between border-b border-[#e4dccd] pb-2 text-[11px]">
+        <p className="font-bold text-[#1f1b16]" style={{ margin: 0 }}>
           {data.companyName}
         </p>
-        <p className="text-[#6b7585]" style={{ margin: 0 }}>
+        <p className="text-[#6b5a48]" style={{ margin: 0 }}>
           تفاصيل التكلفة · {data.projectName} · صفحة {pageIndex + 1}
         </p>
       </header>
 
       <div className="mt-3 min-h-0 flex-1 overflow-hidden">
         {lines.length === 0 ? (
-          <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#d5dbe5] text-sm text-[#6b7585]">
+          <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[#d6ccb9] text-sm text-[#6b5a48]">
             لا توجد خامات محسوبة حالياً
           </div>
         ) : (
@@ -615,7 +619,7 @@ function LinesPage({
                   }}
                 >
                   <thead>
-                    <tr style={{ background: "#f7f9fc" }}>
+                    <tr style={{ background: "#f7f4ee" }}>
                       <th style={thStyle("36%")}>الصنف</th>
                       <th style={thStyle("26%", "center")}>الكمية</th>
                       <th style={thStyle("16%", "left")}>التكلفة</th>
@@ -657,7 +661,7 @@ function LinesPage({
                         <td
                           style={{
                             ...tdStyle(),
-                            color: "#6b7585",
+                            color: "#6b5a48",
                             maxWidth: 160,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -678,7 +682,7 @@ function LinesPage({
       </div>
 
       <footer
-        className="mt-2 shrink-0 text-center text-[10px] text-[#8a93a3]"
+        className="mt-2 shrink-0 text-center text-[10px] text-[#8a7a68]"
         style={{ lineHeight: "14px" }}
       >
         تقديري من أسعار الخامات · صفحة {pageIndex + 1} من {pageCount}
@@ -694,8 +698,8 @@ function thStyle(
   return {
     textAlign: align,
     padding: "6px 8px",
-    borderBottom: "1px solid #e4e8ee",
-    color: "#6b7585",
+    borderBottom: "1px solid #e4dccd",
+    color: "#6b5a48",
     fontWeight: 600,
     width,
   };
@@ -706,8 +710,8 @@ function tdStyle(
 ): CSSProperties {
   return {
     padding: "7px 8px",
-    borderBottom: "1px solid #eef1f5",
-    color: "#152033",
+    borderBottom: "1px solid #f2ede3",
+    color: "#1f1b16",
     lineHeight: "16px",
     textAlign: align,
   };

@@ -12,7 +12,7 @@ import {
 import { listAllProjects } from "@/lib/projects";
 import { upsertExpense } from "@/lib/accounting";
 import { ROUTES } from "@/lib/routes";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, toLocalIsoDate } from "@/lib/utils";
 import { StoreSafePicker } from "@/components/accounting/StoreSafePicker";
 import { StoreSupplierPicker } from "@/components/accounting/StoreSupplierPicker";
 
@@ -36,7 +36,7 @@ export function ExternalSupplyForm() {
     { description: "", quantity: 1, unit_price: 0 },
   ]);
   const [settlement, setSettlement] = useState<SettlementMode>("credit");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => toLocalIsoDate());
   const [notes, setNotes] = useState("");
   const [projectId, setProjectId] = useState("");
   const [error, setError] = useState("");

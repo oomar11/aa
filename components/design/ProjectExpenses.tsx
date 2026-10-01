@@ -383,7 +383,7 @@ export function ProjectExpenses({
   }
 
   const fieldClass =
-    "w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-[#E8956F] focus:ring-2 focus:ring-[#E8956F]/20";
+    "w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none transition-shadow placeholder:text-muted focus:border-[#d98a6c] focus:ring-2 focus:ring-[#d98a6c]/20";
 
   const cashTotal = expenses
     .filter((e) => !isCreditExpense(e))
@@ -396,7 +396,7 @@ export function ProjectExpenses({
 
   return (
     <div className="flex flex-col gap-5">
-      <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#C45C26] to-[#E8956F] px-4 py-5 text-white shadow-[0_8px_24px_rgba(196,92,38,0.28)] lg:hidden">
+      <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#C45C26] to-[#d98a6c] px-4 py-5 text-white shadow-[0_8px_24px_rgba(196,92,38,0.28)] lg:hidden">
         <p className="text-xs font-medium opacity-90">إجمالي مصروف المشروع</p>
         <p className="mt-1 text-3xl font-bold tabular-nums tracking-tight">
           {formatCurrency(total)}
@@ -438,7 +438,7 @@ export function ProjectExpenses({
           <p
             className={`mt-1 text-lg font-bold tabular-nums ${
               leftover < -0.004
-                ? "text-[#E85A8A]"
+                ? "text-[#b5543f]"
                 : leftover > 0.004
                   ? "text-[#2F9B7A]"
                   : "text-[#C45C26]"
@@ -467,7 +467,7 @@ export function ProjectExpenses({
               setStoreIssueOpen(true);
               setError("");
             }}
-            className="rounded-2xl border border-[#E8956F]/40 bg-[#E8956F]/10 px-4 py-3 text-sm font-bold text-[#C45C26] transition-transform active:scale-[0.98]"
+            className="rounded-2xl border border-[#d98a6c]/40 bg-[#d98a6c]/10 px-4 py-3 text-sm font-bold text-[#C45C26] transition-transform active:scale-[0.98]"
           >
             صرف من المحل
             <span className="mt-0.5 block text-[11px] font-medium text-[#C45C26]/80">
@@ -477,7 +477,7 @@ export function ProjectExpenses({
         ) : null}
 
         {storeIssueOpen ? (
-          <div className="rounded-2xl border border-[#E8956F] bg-card p-4">
+          <div className="rounded-2xl border border-[#d98a6c] bg-card p-4">
             <ProjectStoreIssue
               projectId={projectId}
               projectName={project.name}
@@ -510,7 +510,7 @@ export function ProjectExpenses({
         <form
           onSubmit={(e) => void handleSubmit(e)}
           className={`flex flex-col gap-3.5 rounded-2xl border bg-card p-4 transition-colors ${
-            isEditing ? "border-[#E8956F]" : "border-border"
+            isEditing ? "border-[#d98a6c]" : "border-border"
           }`}
         >
           <label className="flex flex-col gap-1.5 text-right">
@@ -623,7 +623,7 @@ export function ProjectExpenses({
                     onClick={() => setCategory(item)}
                     className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all active:scale-95 ${
                       active
-                        ? "bg-[#E8956F] text-white"
+                        ? "bg-[#d98a6c] text-white"
                         : "border border-border bg-background text-foreground"
                     }`}
                   >
@@ -634,7 +634,7 @@ export function ProjectExpenses({
               {!PROJECT_CATEGORIES.includes(
                 category as (typeof PROJECT_CATEGORIES)[number]
               ) ? (
-                <span className="rounded-xl bg-[#E8956F]/15 px-3 py-1.5 text-xs font-semibold text-[#C45C26]">
+                <span className="rounded-xl bg-[#d98a6c]/15 px-3 py-1.5 text-xs font-semibold text-[#C45C26]">
                   {category}
                 </span>
               ) : null}
@@ -675,7 +675,7 @@ export function ProjectExpenses({
           ) : null}
 
           {error ? (
-            <p className="text-sm font-medium text-[#E85A8A]">{error}</p>
+            <p className="text-sm font-medium text-[#b5543f]">{error}</p>
           ) : null}
 
           <div className="flex flex-col gap-2">
@@ -697,7 +697,7 @@ export function ProjectExpenses({
                   if (!editingId) return;
                   void handleDeleteExpense(editingId);
                 }}
-                className="flex h-11 w-full items-center justify-center rounded-2xl border border-[#E85A8A]/35 text-sm font-semibold text-[#E85A8A]"
+                className="flex h-11 w-full items-center justify-center rounded-2xl border border-[#b5543f]/35 text-sm font-semibold text-[#b5543f]"
               >
                 حذف المصروف
               </button>
@@ -745,10 +745,10 @@ export function ProjectExpenses({
                       onClick={() => startEdit(expense)}
                       className={`cursor-pointer border-t border-border ${
                         selected
-                          ? "bg-[#E8956F]/15"
+                          ? "bg-[#d98a6c]/15"
                           : highlight
-                            ? "bg-[#E8956F]/10"
-                            : "hover:bg-[#E8956F]/10"
+                            ? "bg-[#d98a6c]/10"
+                            : "hover:bg-[#d98a6c]/10"
                       }`}
                     >
                       <td className="whitespace-nowrap px-3 py-2.5 text-muted">
@@ -790,10 +790,10 @@ export function ProjectExpenses({
                     onClick={() => startEdit(expense)}
                     className={`w-full rounded-2xl border bg-card p-3.5 text-right transition-all duration-300 active:scale-[0.99] ${
                       selected
-                        ? "border-[#E8956F] bg-[#E8956F]/10 shadow-[0_0_0_3px_rgba(232,149,111,0.2)]"
+                        ? "border-[#d98a6c] bg-[#d98a6c]/10 shadow-[0_0_0_3px_rgba(232,149,111,0.2)]"
                         : highlight
-                          ? "border-[#E8956F] shadow-[0_0_0_3px_rgba(232,149,111,0.25)]"
-                          : "border-border hover:border-[#E8956F]/50"
+                          ? "border-[#d98a6c] shadow-[0_0_0_3px_rgba(232,149,111,0.25)]"
+                          : "border-border hover:border-[#d98a6c]/50"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -802,7 +802,7 @@ export function ProjectExpenses({
                           {expense.description}
                         </p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          <span className="rounded-lg bg-[#E8956F]/15 px-2 py-0.5 text-[10px] font-semibold text-[#C45C26]">
+                          <span className="rounded-lg bg-[#d98a6c]/15 px-2 py-0.5 text-[10px] font-semibold text-[#C45C26]">
                             {expense.category}
                           </span>
                           <span className="rounded-lg bg-background px-2 py-0.5 text-[10px] font-semibold text-muted">

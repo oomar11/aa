@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import {
-  BUSINESS_KEYS,
   CLEAN_START_VERSION,
   clearBusinessData,
   DATA_VERSION_KEY,
@@ -10,6 +9,7 @@ import {
 import {
   buildUpvcBackupFromLegacy,
   formatLegacyImportSummary,
+  getLegacyBackupIssues,
   isLegacyBackup,
 } from "@/lib/legacy-backup-import";
 import {
@@ -25,7 +25,6 @@ import {
   uploadLocalWorkshopData,
 } from "@/lib/storage/shared-client";
 import { useWorkshopSync } from "@/components/settings/SharedDataProvider";
-import { SupabaseSyncStatusPanel } from "@/components/settings/SupabaseSyncStatusPanel";
 
 const BACKUP_KEYS = [
   ...Object.values(STORAGE_KEYS),
@@ -94,6 +93,13 @@ export function DataBackupPanel() {
           let legacyNote = "";
 
           if (isLegacyBackup(raw)) {
+            const issues = getLegacyBackupIssues(raw);
+            if (issues.length > 0) {
+              const shown = issues.slice(0, 5).join("\n- ");
+              const more =
+                issues.length > 5 ? `\n...و${issues.length - 5} مشكلة تانية` : "";
+              throw new Error(`ملف الباكب فيه مشاكل:\n- ${shown}${more}`);
+            }
             const converted = buildUpvcBackupFromLegacy(raw);
             parsed = converted;
             legacyNote = formatLegacyImportSummary(converted.meta!.summary);
@@ -184,49 +190,72 @@ export function DataBackupPanel() {
     setMessage("تم رفع بيانات الجهاز ومزامنتها للورشة");
   }
 
+  const synced = sync.durable && sync.backend === "postgres";
+  const connecting = sync.syncing || !sync.ready;
+
   return (
     <>
-      <SupabaseSyncStatusPanel />
-
       <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
         <div className="border-b border-border px-4 py-3.5 text-right">
           <p className="text-sm font-medium text-foreground">
-            قاعدة بيانات الورشة المشتركة
+            مزامنة بيانات الورشة
           </p>
         </div>
         <div className="flex flex-col gap-2 px-4 py-3.5 text-right">
-          <p className="text-xs text-muted">
-            الحالة:{" "}
-            <span className="font-medium text-foreground">
-              {sync.syncing
-                ? "جاري المزامنة…"
-                : sync.ready
-                  ? "متصل"
-                  : "يتحمّل…"}
-            </span>
-            {" · "}
-            {backendLabel(sync.backend)}
-          </p>
-          {sync.durable && sync.backend === "postgres" ? (
+          {connecting ? (
+            <p className="rounded-xl border border-border bg-background px-3 py-2 text-xs leading-relaxed text-muted">
+              جاري الاتصال بقاعدة البيانات المشتركة…
+            </p>
+          ) : synced ? (
             <p className="rounded-xl border border-[#2F9B7A]/35 bg-[#2F9B7A]/10 px-3 py-2 text-xs leading-relaxed text-foreground">
-              متصل بـ Supabase عبر السيرفر — بيانات الورشة مشتركة وثابتة لكل
-              الأجهزة.
+              بياناتك متزامنة تلقائيًا بين كل الأجهزة ✓
             </p>
-          ) : !sync.durable ? (
+          ) : (
             <p className="rounded-xl border border-[#E8A838]/40 bg-[#E8A838]/10 px-3 py-2 text-xs leading-relaxed text-foreground">
-              أضف <span className="font-semibold">DATABASE_URL</span> من Supabase
-              في Vercel (Connection string — pooled) ثم أعد النشر.
+              مفيش اتصال بقاعدة البيانات المشتركة دلوقتي — البيانات هتفضل
+              على الجهاز ده بس لحد ما يتحل الاتصال.
             </p>
-          ) : null}
-          {sync.updatedAt ? (
-            <p className="text-xs text-muted">
-              آخر تحديث على السيرفر:{" "}
-              {new Date(sync.updatedAt).toLocaleString("ar-EG")}
-            </p>
-          ) : null}
+          )}
           {sync.error ? (
-            <p className="text-xs font-medium text-[#E85A8A]">{sync.error}</p>
+            <p className="text-xs font-medium text-[#b5543f]">{sync.error}</p>
           ) : null}
+          <details className="text-xs text-muted">
+            <summary className="cursor-pointer font-medium text-primary">
+              تفاصيل تقنية
+            </summary>
+            <div className="mt-1.5 flex flex-col gap-1.5 leading-relaxed">
+              <p>
+                الحالة:{" "}
+                <span className="font-medium text-foreground">
+                  {sync.syncing
+                    ? "جاري المزامنة…"
+                    : sync.ready
+                      ? synced
+                        ? "متصل"
+                        : "غير مربوط"
+                      : "يتحمّل…"}
+                </span>
+                {" · "}
+                {backendLabel(sync.backend)}
+              </p>
+              {!synced ? (
+                <p>
+                  أضف <span className="font-semibold">DATABASE_URL</span> من
+                  Supabase في Vercel (Connection string — pooled) ثم أعد
+                  النشر.
+                </p>
+              ) : null}
+              {sync.updatedAt && new Date(sync.updatedAt).getTime() > 0 ? (
+                <p>
+                  آخر تحديث على السيرفر:{" "}
+                  {new Date(sync.updatedAt).toLocaleString("ar-EG", {
+                    timeZone: "Africa/Cairo",
+                    numberingSystem: "latn",
+                  })}
+                </p>
+              ) : null}
+            </div>
+          </details>
           <button
             type="button"
             disabled={busy}
@@ -277,7 +306,7 @@ export function DataBackupPanel() {
             onClick={() => {
               if (
                 !window.confirm(
-                  "هل تريد مسح العملاء والمشاريع والحسابات من الورشة بالكامل والبدء من جديد؟ إعدادات الشركة والخامات تبقى."
+                  "هيتمسح نهائياً: كل العملاء والمشاريع والمقايسات والفواتير والدفعات والمصروفات، وكل بيانات الموظفين (الحضور والسلف والرواتب والمكافآت) — لكل الأجهزة المتصلة بالورشة. إعدادات الشركة والخامات هتفضل زي ما هي. متأكد إنك عايز تكمل؟"
                 )
               ) {
                 return;
@@ -287,7 +316,7 @@ export function DataBackupPanel() {
               setMessage("تم المسح — جاري إعادة التحميل…");
               window.setTimeout(() => window.location.reload(), 700);
             }}
-            className="flex h-11 w-full items-center justify-center rounded-xl border border-[#E85A8A]/35 text-sm font-semibold text-[#E85A8A] disabled:opacity-60"
+            className="flex h-11 w-full items-center justify-center rounded-xl border border-[#b5543f]/35 text-sm font-semibold text-[#b5543f] disabled:opacity-60"
           >
             مسح البيانات والبدء نظيفاً
           </button>
@@ -306,10 +335,12 @@ export function DataBackupPanel() {
             <p className="text-xs font-medium text-[#2F9B7A]">{message}</p>
           ) : null}
           {error ? (
-            <p className="text-xs font-medium text-[#E85A8A]">{error}</p>
+            <p className="text-xs font-medium text-[#b5543f]">{error}</p>
           ) : null}
           <p className="text-[11px] leading-relaxed text-muted">
-            مفاتيح الأعمال التي تُمسح: {BUSINESS_KEYS.length} مفاتيح مشتركة.
+            هيتمسح: العملاء، المشاريع، المقايسات، الفواتير، الدفعات،
+            المصروفات، وبيانات الموظفين — لكل الأجهزة المتصلة. إعدادات
+            الشركة والخامات مش بتتمسح.
           </p>
         </div>
       </section>

@@ -825,7 +825,7 @@ export function DesignWorkspace({
         draggingId ? "touch-none select-none" : ""
       }`}
     >
-      <header className="flex items-center justify-between rounded-2xl bg-primary px-3 py-2.5 text-primary-foreground shadow-[0_6px_18px_rgba(43,125,233,0.28)]">
+      <header className="flex items-center justify-between rounded-2xl bg-primary px-3 py-2.5 text-primary-foreground shadow-[0_6px_18px_rgba(13,106,107,0.28)]">
         <NavBack
           href={ROUTES.orders}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/15"
@@ -966,7 +966,7 @@ export function DesignWorkspace({
             <p className="text-[9px] text-muted lg:text-xs">باقي</p>
             <p
               className={`mt-0.5 text-[11px] font-bold tabular-nums lg:text-sm ${
-                money.remaining > 0 ? "text-[#E85A8A]" : "text-[#2F9B7A]"
+                money.remaining > 0 ? "text-[#b5543f]" : "text-[#2F9B7A]"
               }`}
             >
               {formatCurrency(money.remaining)}
@@ -994,7 +994,7 @@ export function DesignWorkspace({
             aria-label="إضافة بند جديد"
           >
             <div className="flex aspect-square w-full shrink-0 items-center justify-center border-b border-dashed border-primary/30 bg-primary-soft/40 p-3">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl font-light leading-none text-white shadow-[0_6px_16px_rgba(43,125,233,0.3)]">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl font-light leading-none text-white shadow-[0_6px_16px_rgba(13,106,107,0.3)]">
                 +
               </span>
             </div>
@@ -1032,7 +1032,7 @@ export function DesignWorkspace({
                   isDragging
                     ? "scale-[0.97] border-border opacity-35 touch-none"
                     : isDropTarget
-                      ? "scale-[1.02] border-primary bg-primary-soft/40 shadow-[0_0_0_2px_rgba(43,125,233,0.4)]"
+                      ? "scale-[1.02] border-primary bg-primary-soft/40 shadow-[0_0_0_2px_rgba(13,106,107,0.4)]"
                       : "border-border hover:-translate-y-0.5"
                 }`}
                 style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
@@ -1110,7 +1110,7 @@ export function DesignWorkspace({
                   ? ` ${money.discountValue}%`
                   : ""}
               </span>
-              <span className="tabular-nums text-[#E85A8A]">
+              <span className="tabular-nums text-[#b5543f]">
                 −{formatCurrency(money.discountAmount)} ج.م
               </span>
             </button>

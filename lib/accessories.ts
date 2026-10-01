@@ -550,15 +550,15 @@ export function calcItemAccessories(
   let doorCylinderQty = 0;
   let doorSignalHandleQty = 0;
   let doorEscutcheonQty = 0;
-  let tiltTopHingeQty = 0;
-  let tiltTopFrameHingeQty = 0;
-  let tiltBottomFrameHingeQty = 0;
-  let tiltBottomSashHingeQty = 0;
-  let tiltCornerUpperQty = 0;
-  let tiltCornerLowerQty = 0;
-  let tiltCornerStrikerQty = 0;
-  let tiltHingePinQty = 0;
-  let tiltHingeCoverQty = 0;
+  const tiltTopHingeQty = 0;
+  const tiltTopFrameHingeQty = 0;
+  const tiltBottomFrameHingeQty = 0;
+  const tiltBottomSashHingeQty = 0;
+  const tiltCornerUpperQty = 0;
+  const tiltCornerLowerQty = 0;
+  const tiltCornerStrikerQty = 0;
+  const tiltHingePinQty = 0;
+  const tiltHingeCoverQty = 0;
 
   const { solo, bouclierPairs } = hingedLocksetGroups(boxes);
   const espGap = details.espagnoletteSashDeductionMm;

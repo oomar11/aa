@@ -99,7 +99,7 @@ export function ProjectWorkersPicker({ projectId, compact = false }: Props) {
       ) : null}
 
       {error ? (
-        <p className="text-[11px] font-medium text-[#E85A8A]">{error}</p>
+        <p className="text-[11px] font-medium text-[#b5543f]">{error}</p>
       ) : null}
 
       {open ? (

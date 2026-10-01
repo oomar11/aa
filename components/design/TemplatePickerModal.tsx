@@ -79,7 +79,7 @@ export function TemplatePickerModal({ open, onClose, onConfirm }: Props) {
                   onClick={() => setSelectedId(tpl.id)}
                   className={`flex h-[7.25rem] items-center justify-center overflow-hidden rounded-xl border p-2 transition-all active:scale-[0.97] ${
                     active
-                      ? "border-primary bg-primary-soft shadow-[0_0_0_3px_rgba(43,125,233,0.18)]"
+                      ? "border-primary bg-primary-soft shadow-[0_0_0_3px_rgba(13,106,107,0.18)]"
                       : "border-border bg-background hover:border-primary/40 hover:bg-primary-soft/40"
                   }`}
                   aria-pressed={active}

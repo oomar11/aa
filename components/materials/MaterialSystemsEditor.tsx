@@ -79,6 +79,25 @@ function systemSummary(
   return "اضغط تفاصيل للضبط";
 }
 
+/** نظام من غير أي سعر مسجّل — لو استُخدم في تصميم فعلي هيتحسب بتكلفة صفر. */
+function systemHasNoPrices(
+  category: MaterialCategory,
+  system: MaterialSystem
+): boolean {
+  if (category === "profiles") {
+    return countProfilePricedCategories(system) === 0;
+  }
+  if (category === "glass" && system.glass) {
+    return getGlassBottlePrice(system) === 0;
+  }
+  if (category === "iron" && system.iron) {
+    return !system.iron.pieces.some(
+      (p) => p.enabled && ((p.barPrice ?? 0) > 0 || (p.pricePerM ?? 0) > 0)
+    );
+  }
+  return false;
+}
+
 export function MaterialSystemsEditor({ category }: Props) {
   const meta = getCategoryMeta(category);
   const [catalog, setCatalog] = useState<MaterialCatalog | null>(null);
@@ -376,6 +395,11 @@ export function MaterialSystemsEditor({ category }: Props) {
                         افتراضي
                       </span>
                     ) : null}
+                    {systemHasNoPrices(category, system) ? (
+                      <span className="rounded-full bg-[#E8A838]/15 px-2 py-0.5 text-[10px] font-bold text-[#B8791A]">
+                        بلا أسعار
+                      </span>
+                    ) : null}
                   </div>
                   {system.notes ? (
                     <p className="mt-0.5 text-xs text-muted">{system.notes}</p>
@@ -391,15 +415,16 @@ export function MaterialSystemsEditor({ category }: Props) {
                     >
                       تفاصيل
                     </Link>
-                    {!system.isDefault ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSetDefault(system.id)}
-                        className="rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-muted transition-colors hover:bg-primary-soft hover:text-primary"
-                      >
-                        افتراضي
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleSetDefault(system.id)}
+                      disabled={system.isDefault}
+                      className={`rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-muted transition-colors hover:bg-primary-soft hover:text-primary ${
+                        system.isDefault ? "invisible" : ""
+                      }`}
+                    >
+                      افتراضي
+                    </button>
                     <button
                       type="button"
                       onClick={() => openEdit(system)}

@@ -258,7 +258,7 @@ export function ExpensesBrowser() {
       </div>
 
       {actionError ? (
-        <p className="rounded-xl border border-[#E85A8A]/35 bg-[#E85A8A]/10 px-3 py-2 text-xs font-medium text-[#E85A8A]">
+        <p className="rounded-xl border border-[#b5543f]/35 bg-[#b5543f]/10 px-3 py-2 text-xs font-medium text-[#b5543f]">
           {actionError}
         </p>
       ) : null}
@@ -267,7 +267,7 @@ export function ExpensesBrowser() {
 
       <div className="rounded-2xl border border-border bg-card px-4 py-3 lg:hidden">
         <p className="text-xs text-muted">إجمالي المعروض</p>
-        <p className="mt-1 text-lg font-bold tabular-nums text-[#E8956F]">
+        <p className="mt-1 text-lg font-bold tabular-nums text-[#d98a6c]">
           {formatCurrency(totals.all)} ج.م
         </p>
       </div>
@@ -321,7 +321,7 @@ export function ExpensesBrowser() {
                       return (
                         <tr
                           key={expense.id}
-                          className="border-t border-border hover:bg-[#E8956F]/10"
+                          className="border-t border-border hover:bg-[#d98a6c]/10"
                         >
                           <td className="whitespace-nowrap px-4 py-2.5 text-muted">
                             {formatDate(expense.date)}
@@ -371,7 +371,7 @@ export function ExpensesBrowser() {
                               <button
                                 type="button"
                                 onClick={() => void handleDelete(expense)}
-                                className="text-xs font-semibold text-[#E85A8A]"
+                                className="text-xs font-semibold text-[#b5543f]"
                               >
                                 حذف
                               </button>
@@ -426,7 +426,7 @@ export function ExpensesBrowser() {
                           ) : null}
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-2">
-                          <p className="text-sm font-bold tabular-nums text-[#E8956F]">
+                          <p className="text-sm font-bold tabular-nums text-[#d98a6c]">
                             {formatCurrency(expense.amount)}
                           </p>
                           <Link
@@ -438,7 +438,7 @@ export function ExpensesBrowser() {
                           <button
                             type="button"
                             onClick={() => void handleDelete(expense)}
-                            className="text-xs font-semibold text-[#E85A8A]"
+                            className="text-xs font-semibold text-[#b5543f]"
                           >
                             حذف
                           </button>
@@ -458,7 +458,7 @@ export function ExpensesBrowser() {
 
 function leftoverTone(value: number): string {
   if (value > 0.004) return "text-[#2F9B7A]";
-  if (value < -0.004) return "text-[#E85A8A]";
+  if (value < -0.004) return "text-[#b5543f]";
   return "text-foreground";
 }
 
