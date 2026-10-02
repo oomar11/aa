@@ -16,6 +16,7 @@ const BUSINESS_KEYS = [
   STORAGE_KEYS.invoices,
   STORAGE_KEYS.payments,
   STORAGE_KEYS.expenses,
+  STORAGE_KEYS.supplierDiscounts,
   STORAGE_KEYS.activityNotes,
   STORAGE_KEYS.employees,
   STORAGE_KEYS.attendance,

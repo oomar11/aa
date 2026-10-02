@@ -118,6 +118,7 @@ const MERGE_BY_ID_KEYS = new Set<SharedStorageKey>([
   STORAGE_KEYS.customers,
   STORAGE_KEYS.projects,
   STORAGE_KEYS.expenses,
+  STORAGE_KEYS.supplierDiscounts,
   STORAGE_KEYS.payments,
   STORAGE_KEYS.invoices,
   STORAGE_KEYS.activityNotes,

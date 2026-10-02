@@ -9,6 +9,11 @@ import { isDeliveredProject } from "@/lib/accounting-scope";
 import { mergeCustomers } from "@/lib/customers";
 import { getProjectMoneySummary } from "@/lib/project-money";
 import { listAllProjects, type Project } from "@/lib/projects";
+import {
+  loadSupplierDiscounts,
+  supplierDiscountsInPeriod,
+  type SupplierDiscount,
+} from "@/lib/supplier-discounts";
 import { toLocalIsoDate } from "@/lib/utils";
 
 export type ReportPeriod = "all" | "month" | "quarter" | "year" | "custom";
@@ -44,13 +49,16 @@ export type AccountingReport = {
   collected: number;
   /** مصروف الشغل المتسلّم + المصروف العام في الفترة */
   expenses: number;
-  /** المحصّل − المصروف */
+  /** خصومات مكتسبة من الموردين في الفترة (بتتحسب مكسب) */
+  supplierDiscounts: number;
+  /** المحصّل − المصروف + خصومات الموردين */
   net: number;
   /** باقي على الشغل المتسلّم الظاهر في التقرير */
   outstanding: number;
   projectRows: ProjectProfitRow[];
   paymentCount: number;
   expenseCount: number;
+  supplierDiscountCount: number;
 };
 
 export function startOfPeriod(period: ReportPeriod, now = new Date()): string | null {
@@ -121,14 +129,15 @@ export function reportBounds(
 
 /**
  * تقرير ربحية من الشغل اللي خلص واتسلّم.
- * الفترة على تاريخ التسليم؛ المكسب = محصّل الشغل − مصروفه − المصروف العام في الفترة.
+ * الفترة على تاريخ التسليم؛ المكسب = محصّل الشغل − مصروفه − المصروف العام في الفترة + خصومات الموردين في الفترة.
  */
 export function buildAccountingReport(
   period: ReportPeriod = "month",
   payments: Payment[] = loadPayments(),
   expenses: Expense[] = loadExpenses(),
   projects: Project[] = listAllProjects(),
-  range?: ReportDateRange
+  range?: ReportDateRange,
+  discounts: SupplierDiscount[] = loadSupplierDiscounts()
 ): AccountingReport {
   const toDate = range?.toDate || todayIsoDate();
   const fromDate =
@@ -193,6 +202,14 @@ export function buildAccountingReport(
 
   const overhead = generalPeriodExpenses.reduce((s, e) => s + e.amount, 0);
   const expenseTotal = jobExpenseTotal + overhead;
+  const periodDiscounts = discounts.filter(
+    (d) => inPeriod(d.date, fromDate, toDate)
+  );
+  const supplierDiscounts = supplierDiscountsInPeriod(
+    fromDate,
+    toDate,
+    periodDiscounts
+  );
 
   return {
     period,
@@ -201,10 +218,12 @@ export function buildAccountingReport(
     sales,
     collected,
     expenses: expenseTotal,
-    net: collected - expenseTotal,
+    supplierDiscounts,
+    net: collected - expenseTotal + supplierDiscounts,
     outstanding,
     projectRows,
     paymentCount: jobPayments.length,
     expenseCount: jobExpenses.length + generalPeriodExpenses.length,
+    supplierDiscountCount: periodDiscounts.length,
   };
 }

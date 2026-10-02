@@ -78,7 +78,7 @@ export function DesktopHomeBoard() {
   const nextUpId = queued[0]?.id ?? null;
 
   const monthReport = !mounted
-    ? { collected: 0, outstanding: 0, net: 0, expenses: 0 }
+    ? { collected: 0, outstanding: 0, net: 0, expenses: 0, supplierDiscounts: 0 }
     : buildAccountingReport("month");
 
   // إجمالي الباقي عند العملاء على كل الشغل — مش بس اللي اتسلّم الشهر ده،
@@ -275,6 +275,9 @@ export function DesktopHomeBoard() {
               من الشغل المتسلّم هذا الشهر · محصّل{" "}
               {formatCurrency(monthReport.collected)} ج.م − مصروف{" "}
               {formatCurrency(monthReport.expenses)} ج.م
+              {monthReport.supplierDiscounts > 0
+                ? ` + خصومات موردين ${formatCurrency(monthReport.supplierDiscounts)} ج.م`
+                : ""}
             </p>
             <p className="mt-4 text-sm font-bold text-primary">فتح تقارير الربح</p>
           </Link>

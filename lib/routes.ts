@@ -69,6 +69,8 @@ export const ROUTES = {
     /** تسجيل مصروف مربوط بمشروع */
     expenseForProject: (projectId: string) =>
       `/accounting/expenses/new?project=${projectId}`,
+    /** خصم مكتسب من مورد — يُحسب ضمن المكاسب */
+    supplierDiscounts: "/accounting/supplier-discounts",
     /** توريد خارجي على مورد المحل */
     supply: "/accounting/supply",
     newSupply: "/accounting/supply/new",

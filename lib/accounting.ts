@@ -1,5 +1,6 @@
 import { STORAGE_KEYS } from "@/lib/storage/keys";
 import { sharedGetItem, sharedSetItem } from "@/lib/storage/shared-client";
+import { supplierDiscountsTotal } from "@/lib/supplier-discounts";
 import { toLocalIsoDate } from "@/lib/utils";
 
 export type PaymentMethod = "cash" | "transfer" | "cheque" | "other";
@@ -216,6 +217,9 @@ export type AccountingSummary = {
   /** مجموع المتبقي على الشغل المكتمل فقط */
   outstanding: number;
   expenses: number;
+  /** خصومات مكتسبة من الموردين — بتتحسب مكسب */
+  supplierDiscounts: number;
+  /** المحصّل − المصروف + خصومات الموردين */
   net: number;
 };
 
@@ -223,7 +227,8 @@ export function getAccountingSummary(
   payments: Payment[] = loadPayments(),
   expenses: Expense[] = loadExpenses(),
   sales = 0,
-  outstanding = 0
+  outstanding = 0,
+  supplierDiscounts: number = supplierDiscountsTotal()
 ): AccountingSummary {
   const collected = payments.reduce((sum, p) => sum + p.amount, 0);
   const expenseTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -232,7 +237,8 @@ export function getAccountingSummary(
     collected,
     outstanding,
     expenses: expenseTotal,
-    net: collected - expenseTotal,
+    supplierDiscounts,
+    net: collected - expenseTotal + supplierDiscounts,
   };
 }
 

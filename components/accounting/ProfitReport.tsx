@@ -25,11 +25,13 @@ function emptyReport(period: ReportPeriod): AccountingReport {
     sales: 0,
     collected: 0,
     expenses: 0,
+    supplierDiscounts: 0,
     net: 0,
     outstanding: 0,
     projectRows: [],
     paymentCount: 0,
     expenseCount: 0,
+    supplierDiscountCount: 0,
   };
 }
 
@@ -211,7 +213,7 @@ export function ProfitReport() {
           {formatCurrency(report.net)} ج.م
         </p>
         <p className="mt-1 text-xs opacity-80">
-          من الشغل اللي اتسلّم ناقص المصروف
+          من الشغل اللي اتسلّم ناقص المصروف زائد خصومات الموردين
           {period !== "all" && period !== "custom"
             ? ` — ${REPORT_PERIOD_LABELS[period]}`
             : period === "custom"
@@ -220,10 +222,15 @@ export function ProfitReport() {
         </p>
       </section>
 
-      <section className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
         <Tile label="بيع المتسلّم" value={report.sales} tone="neutral" />
         <Tile label="المحصّل" value={report.collected} tone="good" />
         <Tile label="المصروفات" value={report.expenses} tone="expense" />
+        <Tile
+          label="خصومات الموردين"
+          value={report.supplierDiscounts}
+          tone="good"
+        />
         <Tile label="لِيا برا" value={report.outstanding} tone="warn" />
       </section>
 

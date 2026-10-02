@@ -72,6 +72,12 @@ const links = [
     accent: "bg-[#5B6ABF]",
   },
   {
+    href: ROUTES.accounting.supplierDiscounts,
+    title: "خصومات الموردين",
+    description: "خصم مكتسب على حساب مورد — بيتحسب من المكاسب",
+    accent: "bg-[#2F9B7A]",
+  },
+  {
     href: ROUTES.accounting.newSupply,
     title: "توريد خارجي",
     description: "شراء ببنود متعددة على مورد المحل (نقدي أو آجل)",
@@ -96,7 +102,14 @@ type ProjectMoneyRow = {
 
 function readSummary(): AccountingSummary {
   if (typeof window === "undefined") {
-    return { sales: 0, collected: 0, outstanding: 0, expenses: 0, net: 0 };
+    return {
+      sales: 0,
+      collected: 0,
+      outstanding: 0,
+      expenses: 0,
+      supplierDiscounts: 0,
+      net: 0,
+    };
   }
   const { sales, outstanding } = workshopMoneyTotals();
   return getAccountingSummary(
@@ -202,7 +215,12 @@ export function AccountingHub() {
           tone="expense"
         />
         <SummaryTile
-          label="المحصّل ناقص المصروف"
+          label="خصومات الموردين"
+          value={summary.supplierDiscounts}
+          tone="good"
+        />
+        <SummaryTile
+          label="المحصّل ناقص المصروف زائد الخصومات"
           value={summary.net}
           tone={summary.net >= 0 ? "good" : "warn"}
           wide

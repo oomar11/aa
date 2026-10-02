@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   invoices: "upvc-invoices",
   payments: "upvc-payments",
   expenses: "upvc-expenses",
+  /** خصومات مكتسبة من الموردين (تُحسب ضمن المكاسب) */
+  supplierDiscounts: "upvc-supplier-discounts",
   /** ملاحظات المتابعة: قال / عمل / وعد */
   activityNotes: "upvc-activity-notes",
   /** موظفون الورشة */
@@ -55,6 +57,7 @@ export const SHARED_STORAGE_KEYS = [
   STORAGE_KEYS.invoices,
   STORAGE_KEYS.payments,
   STORAGE_KEYS.expenses,
+  STORAGE_KEYS.supplierDiscounts,
   STORAGE_KEYS.activityNotes,
   STORAGE_KEYS.employees,
   STORAGE_KEYS.attendance,
@@ -94,6 +97,7 @@ export const SHARED_KEY_EVENTS: Record<SharedStorageKey, string[]> = {
   [STORAGE_KEYS.invoices]: ["upvc-accounting-updated"],
   [STORAGE_KEYS.payments]: ["upvc-accounting-updated"],
   [STORAGE_KEYS.expenses]: ["upvc-accounting-updated"],
+  [STORAGE_KEYS.supplierDiscounts]: ["upvc-accounting-updated"],
   [STORAGE_KEYS.activityNotes]: ["upvc-activity-updated"],
   [STORAGE_KEYS.employees]: ["upvc-hr-updated"],
   [STORAGE_KEYS.attendance]: ["upvc-hr-updated"],
