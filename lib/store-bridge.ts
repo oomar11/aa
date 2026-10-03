@@ -972,6 +972,9 @@ export async function createStoreWorkshopIssue(
   };
 }
 
+/** Keep false: the bridge records new activity only (no history backfill). */
+const FULL_RESYNC_DISABLED = true;
+
 /**
  * Re-push local payments / expenses / project sales to the store.
  * Safe movements are idempotent by external_key; ledger by source_ref.
@@ -979,6 +982,14 @@ export async function createStoreWorkshopIssue(
 export async function resyncAllWorkshopMoneyToStore(
   config: StoreBridgeConfig | null = loadStoreBridgeConfig()
 ): Promise<{ payments: number; expenses: number; sales: number; errors: string[] }> {
+  if (FULL_RESYNC_DISABLED) {
+    // 2026-10-03: a full resync pushed the whole history to the store at once and
+    // duplicated safe movements. The bridge now only records NEW activity (each
+    // payment / expense is pushed when it is created, edited or deleted).
+    throw new Error(
+      "إعادة المزامنة الكاملة موقوفة: الجسر بيسجّل الدفعات والمصروفات الجديدة بس. التاريخ القديم مش هيتبعت للمتجر."
+    );
+  }
   if (!hasStoreBridgeCredentials(config) || !config) {
     throw new Error("اربط المتجر من الإعدادات أولاً");
   }
