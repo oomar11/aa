@@ -170,8 +170,10 @@ async function readRemoteStore(): Promise<WorkshopStoreSnapshot> {
         durable: true,
       };
     } catch (err) {
+      // لا fallback لـ DATABASE_URL: ده غالباً قاعدة قديمة (Neon) ببيانات
+      // قديمة، والعميل كان بيستبدل بنودنا المحلية بيها. الأفضل خطأ واضح.
       console.error("[workshop-store] Supabase read failed", err);
-      if (!getDatabaseUrl()) throw err;
+      throw err;
     }
   }
 
@@ -203,8 +205,9 @@ async function writeRemoteStore(
         durable: true,
       };
     } catch (err) {
+      // نفس السبب: ما نكتبش في قاعدة تانية بصمت لما Supabase يفشل.
       console.error("[workshop-store] Supabase write failed", err);
-      if (!getDatabaseUrl()) throw err;
+      throw err;
     }
   }
 
