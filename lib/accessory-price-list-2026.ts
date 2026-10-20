@@ -1,15 +1,63 @@
 /**
- * قائمة أسعار اكسسوارات UPVC — يوليو 2026 (فورنا / VORNE)
- * المصدر: قائمة أسعار الاكسسوارات 2026 — تسليم أرض المصنع
+ * قائمة أسعار اكسسوارات UPVC — أكتوبر 2026 (فورنا / VORNE)
+ * المصدر: قائمة أسعار الاكسسوارات 2026 (تاريخ التحرير 1 أكتوبر 2026) — تسليم أرض المصنع
  */
 
 import type { AccessoryBrand, AccessoryBrandCategory } from "@/lib/material-systems";
 
 export const VORNE_PRICE_LIST_NOTES =
-  "قائمة أسعار فورنا يوليو 2026 — تسليم أرض المصنع (بدون نقل)";
+  "قائمة أسعار فورنا أكتوبر 2026 — تسليم أرض المصنع (بدون نقل)";
 
 /** أسعار سبلونة مفصلي وجرار اكس 15.5 (ج.م/قطعة) */
 export const VORNE_ESPAGNOLETTE_STANDARD_PRICES: Record<number, number> = {
+  30: 44.5,
+  40: 50,
+  60: 61.2,
+  80: 71.7,
+  100: 82.3,
+  120: 94.5,
+  140: 108.9,
+  160: 121.2,
+  180: 132.3,
+  // مش في قائمة أكتوبر — آخر سعر معروف
+  200: 150,
+};
+
+/** أسعار سبلونة مفصلي قلاب — رينج maxDimMm (فورنا أكتوبر 2026) */
+export const VORNE_TILT_ESPAGNOLETTE_PRICES: Record<number, number> = {
+  700: 54.5,
+  800: 74.5,
+  1200: 109.8,
+  1400: 123.2,
+  1700: 162.3,
+  2200: 206.2,
+};
+
+/** أسعار ذراع قلاب — رينج maxDimMm (فورنا أكتوبر 2026) */
+export const VORNE_TILT_SCISSORS_PRICES: Record<number, number> = {
+  600: 139.4,
+  650: 145.1,
+  850: 172.8,
+  1100: 223.4,
+};
+
+/** أسعار سبلونة جرار اكس 7.5 (ج.م/قطعة) */
+export const VORNE_ESPAGNOLETTE_SLIDING_75_PRICES: Record<number, number> = {
+  40: 60.2,
+  60: 74.5,
+  80: 85.6,
+  100: 95.6,
+  120: 108.9,
+  140: 122.3,
+  160: 133.4,
+  180: 145.6,
+};
+
+/**
+ * قائمة يوليو 2026 — للترحيل بس: السعر المحفوظ اللي لسه زي يوليو
+ * (محدش عدّله) يتحدّث لسعر أكتوبر، والسعر اللي اتعدّل يدوي يفضل زي ما هو.
+ */
+const VORNE_JULY_2026_ESPAGNOLETTE_STANDARD_PRICES: Record<number, number> = {
   30: 42.3,
   40: 47.8,
   60: 58.4,
@@ -19,38 +67,73 @@ export const VORNE_ESPAGNOLETTE_STANDARD_PRICES: Record<number, number> = {
   140: 105.6,
   160: 116.7,
   180: 126.7,
-  200: 150,
 };
 
-/** أسعار سبلونة مفصلي قلاب — رينج maxDimMm (بريمير 2026) */
-export const VORNE_TILT_ESPAGNOLETTE_PRICES: Record<number, number> = {
-  700: 53.4,
-  800: 73.4,
-  1200: 108.9,
-  1400: 122.3,
-  1700: 161.2,
-  2200: 205.6,
+const VORNE_JULY_2026_SIZE_PRICES: Record<string, Record<number, number>> = {
+  "brand-vorne-hinged-esp": VORNE_JULY_2026_ESPAGNOLETTE_STANDARD_PRICES,
+  "brand-vorne-sliding-esp": VORNE_JULY_2026_ESPAGNOLETTE_STANDARD_PRICES,
+  "brand-vorne-tilt-scissors": { 600: 138.9, 650: 144.5, 850: 172.3, 1100: 222.3 },
 };
 
-/** أسعار ذراع قلاب — رينج maxDimMm (بريمير 2026) */
-export const VORNE_TILT_SCISSORS_PRICES: Record<number, number> = {
-  600: 138.9,
-  650: 144.5,
-  850: 172.3,
-  1100: 222.3,
+const VORNE_JULY_2026_UNIT_PRICES: Record<string, number> = {
+  "brand-vorne-tilt-top-hinge": 23.4,
+  "brand-vorne-tilt-top-frame-hinge": 36.7,
+  "brand-vorne-tilt-bottom-frame-hinge": 33.4,
+  "brand-vorne-tilt-bottom-sash-hinge": 33.4,
+  "brand-vorne-tilt-corner-upper": 72.3,
+  "brand-vorne-tilt-corner-lower": 94.5,
+  "brand-vorne-tilt-corner-striker": 26.7,
+  "brand-vorne-tilt-hinge-pin": 7.8,
+  "brand-vorne-tilt-hinge-cover": 13.4,
+  "brand-vorne-hinged-lock": 5,
+  "brand-vorne-protruding-handle": 46.7,
+  "brand-vorne-bouclier-lock": 10,
+  "brand-vorne-bouclier-bolt": 38.9,
+  "brand-vorne-bouclier-bolt-lock": 26.7,
+  "brand-vorne-roller": 18.4,
+  "brand-vorne-brush": 6.8,
+  "brand-vorne-sliding-lock": 14.2,
+  "brand-vorne-recessed-handle": 56,
 };
 
-/** أسعار سبلونة جرار اكس 7.5 (ج.م/قطعة) */
-export const VORNE_ESPAGNOLETTE_SLIDING_75_PRICES: Record<number, number> = {
-  40: 60,
-  60: 71.2,
-  80: 82.3,
-  100: 91.2,
-  120: 105,
-  140: 116.7,
-  160: 127.8,
-  180: 138.9,
-};
+function isSamePrice(a: number, b: number): boolean {
+  return Math.abs(a - b) < 0.005;
+}
+
+/** سعر محفوظ لسه بسعر يوليو → سعر أكتوبر؛ غير كده يفضل زي ما هو */
+function refreshJulyUnitPrice(
+  brandId: string,
+  saved: number,
+  current: number | undefined
+): number {
+  const july = VORNE_JULY_2026_UNIT_PRICES[brandId];
+  if (july == null || current == null) return saved;
+  return isSamePrice(saved, july) ? current : saved;
+}
+
+/** نفس الفكرة لأسعار المقاسات — بيغيّر المقاس اللي لسه بسعر يوليو بس */
+function refreshJulySizePrices(
+  brandId: string,
+  saved: Partial<Record<number, number>>,
+  current: Partial<Record<number, number>> | undefined
+): Partial<Record<number, number>> {
+  const july = VORNE_JULY_2026_SIZE_PRICES[brandId];
+  if (!july || !current) return saved;
+  const out = { ...saved };
+  for (const [key, price] of Object.entries(saved)) {
+    const size = Number(key);
+    const next = current[size];
+    if (
+      price != null &&
+      next != null &&
+      july[size] != null &&
+      isSamePrice(price, july[size])
+    ) {
+      out[size] = next;
+    }
+  }
+  return out;
+}
 
 export function vorneEspagnolettePrice(
   size: number,
@@ -117,7 +200,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-tilt-top-hinge",
       "مفصلة علوية 9 axis (جزء الضلفة)",
       "tilt-top-hinge",
-      23.4,
+      23.9,
       undefined,
       "مجموعة المفصلي القلاب T&T"
     ),
@@ -125,7 +208,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-tilt-top-frame-hinge",
       "مفصلة علوية (جزء الحلق)",
       "tilt-top-frame-hinge",
-      36.7,
+      37.3,
       undefined,
       "مجموعة المفصلي القلاب T&T"
     ),
@@ -133,7 +216,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-tilt-bottom-frame-hinge",
       "مفصلة سفلية (جزء الحلق)",
       "tilt-bottom-frame-hinge",
-      33.4,
+      34.4,
       undefined,
       "مجموعة المفصلي القلاب T&T"
     ),
@@ -141,7 +224,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-tilt-bottom-sash-hinge",
       "مفصلة سفلية (جزء الضلفة)",
       "tilt-bottom-sash-hinge",
-      33.4,
+      34.4,
       undefined,
       "مجموعة المفصلي القلاب T&T"
     ),
@@ -149,7 +232,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-tilt-corner-upper",
       "كورنر علوي",
       "tilt-corner-upper",
-      72.3,
+      72.6,
       undefined,
       "مجموعة المفصلي القلاب T&T"
     ),
@@ -157,7 +240,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-tilt-corner-lower",
       "كورنر سفلي",
       "tilt-corner-lower",
-      94.5,
+      95.5,
       undefined,
       "مجموعة المفصلي القلاب T&T"
     ),
@@ -165,7 +248,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-tilt-corner-striker",
       "سكاك كورنر سفلي 9 اكس",
       "tilt-corner-striker",
-      26.7,
+      27.7,
       undefined,
       "مجموعة المفصلي القلاب T&T"
     ),
@@ -173,7 +256,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-tilt-hinge-pin",
       "مفصلة علوية بنز",
       "tilt-hinge-pin",
-      7.8,
+      8.6,
       undefined,
       "مجموعة المفصلي القلاب T&T"
     ),
@@ -181,7 +264,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-tilt-hinge-cover",
       "غطاء مفصلة أبيض",
       "tilt-hinge-cover",
-      13.4,
+      14.4,
       undefined,
       "مجموعة المفصلي القلاب T&T — أبيض افتراضي"
     ),
@@ -196,7 +279,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-hinged-lock",
       "سكاك مفصلي زنك",
       "hinged-lock",
-      5,
+      5.3,
       undefined,
       "سكاك مفصلي — فورنا"
     ),
@@ -204,7 +287,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-protruding-handle",
       "مقبض بارز بصمة ثقيل",
       "protruding-handle",
-      46.7,
+      50,
       undefined,
       "KayaPen — أبيض/بيج"
     ),
@@ -236,7 +319,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-bouclier-lock",
       "سكاك مفصلي بوكلن",
       "bouclier-lock",
-      10,
+      10.6,
       undefined,
       "زنكي مفصلي — فورنا"
     ),
@@ -244,7 +327,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-bouclier-bolt",
       "ترباس علوي وسفلي 110مم",
       "bouclier-bolt",
-      38.9,
+      41.2,
       undefined,
       "ترباس بوكلير — فورنا"
     ),
@@ -252,7 +335,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-bouclier-bolt-lock",
       "سكاك ترباس زنك",
       "bouclier-bolt-lock",
-      26.7,
+      28.4,
       undefined,
       "سكاك ترباس — فورنا"
     ),
@@ -260,7 +343,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-roller",
       "عجلة جرار سنجل نحاس",
       "roller",
-      18.4,
+      19.2,
       undefined,
       "SHAHBAZ — 50-70 كجم"
     ),
@@ -268,7 +351,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-brush",
       "كاوتش قطاعات TPE",
       "brush",
-      6.8,
+      7.3,
       undefined,
       "فرش جرار — بالمتر"
     ),
@@ -284,7 +367,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-sliding-lock",
       "سكاك جرار",
       "sliding-lock",
-      14.2,
+      15,
       undefined,
       "سكاك جرار — فورنا"
     ),
@@ -292,7 +375,7 @@ export function defaultVorneAccessoryBrands(): AccessoryBrand[] {
       "brand-vorne-recessed-handle",
       "مقبض غاطس ألومنيوم",
       "recessed-handle",
-      56,
+      62.3,
       undefined,
       "KayaPen — أبيض/بيج"
     ),
@@ -340,11 +423,11 @@ export function migrateVorneAccessoryBrands(
       unitPrice: forceHingeRename
         ? def.unitPrice
         : prev.unitPrice != null && prev.unitPrice > 0
-          ? prev.unitPrice
+          ? refreshJulyUnitPrice(def.id, prev.unitPrice, def.unitPrice)
           : def.unitPrice,
       sizePrices:
         prev.sizePrices && Object.keys(prev.sizePrices).length > 0
-          ? prev.sizePrices
+          ? refreshJulySizePrices(def.id, prev.sizePrices, def.sizePrices)
           : def.sizePrices,
       notes: forceHingeRename ? def.notes : (prev.notes ?? def.notes),
     });

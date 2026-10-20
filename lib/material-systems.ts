@@ -1680,15 +1680,15 @@ export function cityPremierProfileBarRates(): Partial<
   const r = makeProfileBarRate;
   return {
     // مفصلي
-    "frame-hinged": r(790, 6, "حلق مفصلي ببار 6سم بالكاوتش"),
+    "frame-hinged": r(856, 6.5, "حلق مفصلي ببار 6سم بالكاوتش"),
     "sash-hinged": r(830, 6, "ضلفة شباك مفصلي"),
     "sash-door": r(980, 6, "ضلفة باب مفصلي"),
     bouclier: r(710, 6.5, "قائم متحرك بوكلير"),
     "mullion-hinged": r(875, 6.5, "قائم ثابت سوقاس مفصلي"),
-    "mullion-sliding": r(875, 6.5, "قائم ثابت سوقاس جرار"),
+    "mullion-sliding": r(700, 6.5, "قائم ثابت سوقاس جرار"),
     "bead-single-hinged": r(208, 6, "باكتة 35مم"),
     "bead-double-hinged": r(165, 6, "باكتة 20مم"),
-    panel: r(165, 6, "بنل عرض ١٥ سم"),
+    panel: r(750, 6.5, "بانل 3 طبقات"),
     coupling: r(240, 6, "كوبلن تجميع مفصلي/جرار"),
     // جرار
     "frame-sliding": r(1000, 6.5, "حلق جرار 3 سكة ببار 6سم"),
@@ -1700,6 +1700,48 @@ export function cityPremierProfileBarRates(): Partial<
     "four-leaf-meeting": r(190, 6, "تقابل 4 ضلفة جرار"),
     "mesh-meeting": r(140, 6, "تقابل سلك"),
   };
+}
+
+/**
+ * أسعار سيتي بريمير القديمة اللي كانت غلط عن قائمة المصنع — للترحيل بس:
+ * - حلق مفصلي كان 790 لعود 6م والقائمة 856 لعود 6.5م
+ * - سوقاس جرار كان متنسخ من سوقاس المفصلي (875) والقائمة 700
+ * - البنل كان متاخد من سعر الباكتة 20مم (165 لعود 6م) والقائمة بانل 3 طبقات 750 لعود 6.5م
+ */
+const CITY_PREMIER_OUTDATED_RATES: Partial<
+  Record<ProfilePriceCategory, { barPrice: number; barLengthM: number }>
+> = {
+  "frame-hinged": { barPrice: 790, barLengthM: 6 },
+  "mullion-sliding": { barPrice: 875, barLengthM: 6.5 },
+  panel: { barPrice: 165, barLengthM: 6 },
+};
+
+/**
+ * يصحّح أسعار نظام بريمير المحفوظة للبنود اللي لسه على السعر القديم بالظبط
+ * (أي سعر اتعدّل يدوي يفضل زي ما هو).
+ */
+function refreshOutdatedCityPremierRates(
+  rates: Partial<Record<ProfilePriceCategory, ProfileBarRate>>
+): Partial<Record<ProfilePriceCategory, ProfileBarRate>> {
+  const official = cityPremierProfileBarRates();
+  let out = rates;
+  for (const [cat, old] of Object.entries(CITY_PREMIER_OUTDATED_RATES) as [
+    ProfilePriceCategory,
+    { barPrice: number; barLengthM: number },
+  ][]) {
+    const saved = rates[cat];
+    const next = official[cat];
+    if (
+      !saved ||
+      !next ||
+      Math.abs(saved.barPrice - old.barPrice) >= 0.005 ||
+      Math.abs(saved.barLengthM - old.barLengthM) >= 0.005
+    ) {
+      continue;
+    }
+    out = { ...out, [cat]: { ...next } };
+  }
+  return out;
 }
 
 /** أسعار افتراضية قديمة (ج.م/م) — للترحيل فقط */
@@ -2458,7 +2500,7 @@ export function ensurePremierProfileSystems(
         ...profile,
         pieces: mergePremierProfilePieces(profile.pieces),
         rates: profileRatesHasPricing(profile.rates)
-          ? profile.rates
+          ? refreshOutdatedCityPremierRates(profile.rates ?? {})
           : cityPremierProfileBarRates(),
         deductions,
       },
